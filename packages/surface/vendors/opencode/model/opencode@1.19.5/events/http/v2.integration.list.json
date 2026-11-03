@@ -1,0 +1,490 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/v2.integration.list",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "List integrations — Retrieve available integrations and their authentication methods.",
+  "payloadSchema": {
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "location": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/$defs/IntegrationInfo"
+            },
+            "type": "array"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationInfo"
+          }
+        },
+        "required": [
+          "location",
+          "data"
+        ],
+        "type": "object"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "location": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/integration"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "IntegrationInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "connections": {
+            "items": {
+              "$ref": "#/$defs/ConnectionInfo"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/$defs/IntegrationMethod"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "methods",
+          "connections"
+        ],
+        "type": "object"
+      },
+      "LocationInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "project": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "directory"
+            ],
+            "type": "object"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory",
+          "project"
+        ],
+        "type": "object"
+      },
+      "ConnectionInfo": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ConnectionCredentialInfo"
+          },
+          {
+            "$ref": "#/$defs/ConnectionEnvInfo"
+          }
+        ]
+      },
+      "IntegrationMethod": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/IntegrationOAuthMethod"
+          },
+          {
+            "$ref": "#/$defs/IntegrationKeyMethod"
+          },
+          {
+            "$ref": "#/$defs/IntegrationEnvMethod"
+          }
+        ]
+      },
+      "ConnectionCredentialInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "credential"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "label"
+        ],
+        "type": "object"
+      },
+      "ConnectionEnvInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "env"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "name"
+        ],
+        "type": "object"
+      },
+      "IntegrationOAuthMethod": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "prompts": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntegrationTextPrompt"
+                },
+                {
+                  "$ref": "#/$defs/IntegrationSelectPrompt"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "oauth"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "label"
+        ],
+        "type": "object"
+      },
+      "IntegrationKeyMethod": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "key"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "IntegrationEnvMethod": {
+        "additionalProperties": false,
+        "properties": {
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "env"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "names"
+        ],
+        "type": "object"
+      },
+      "IntegrationTextPrompt": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          },
+          "when": {
+            "$ref": "#/$defs/IntegrationWhen"
+          }
+        },
+        "required": [
+          "type",
+          "key",
+          "message"
+        ],
+        "type": "object"
+      },
+      "IntegrationSelectPrompt": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "hint": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "label",
+                "value"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "select"
+            ],
+            "type": "string"
+          },
+          "when": {
+            "$ref": "#/$defs/IntegrationWhen"
+          }
+        },
+        "required": [
+          "type",
+          "key",
+          "message",
+          "options"
+        ],
+        "type": "object"
+      },
+      "IntegrationWhen": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "op": {
+            "enum": [
+              "eq",
+              "neq"
+            ],
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "op",
+          "value"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "method": {
+            "enum": [
+              "GET"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "properties": {
+              "location": {
+                "additionalProperties": false,
+                "properties": {
+                  "directory": {
+                    "type": "string"
+                  },
+                  "workspace": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/integration"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.integration.list; GET /api/integration."
+}

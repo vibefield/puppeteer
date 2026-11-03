@@ -1,7 +1,7 @@
 import { readNativeInvocationArguments, type NativeInvocationGrammar } from '@vibefield/puppeteer-core';
 
 /** Native help and parser evidence: __fixtures__/README.md. Unknown arity is a refusal. */
-export const INVOCATION_GRAMMAR_VERSION = '1.18.32';
+export const INVOCATION_GRAMMAR_VERSION = '1.19.5';
 export const INVOCATION_GRAMMAR = {
   booleanEquals: true,
   booleanValues: true,

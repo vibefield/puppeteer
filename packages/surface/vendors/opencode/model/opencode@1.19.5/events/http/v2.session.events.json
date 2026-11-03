@@ -1,0 +1,174 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/v2.session.events",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Subscribe to session events — Replay durable events after an aggregate sequence, then continue with new durable events.",
+  "payloadSchema": {
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "after": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "after": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/session/:sessionID/event"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "method": {
+            "enum": [
+              "GET"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "query": {
+            "properties": {
+              "after": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/session/:sessionID/event"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.events; GET /api/session/{sessionID}/event."
+}

@@ -1,4 +1,4 @@
-/** Typed REST client for the verified OpenCode 1.18.16 adapter slice. */
+/** Typed REST client for the verified OpenCode 1.19.5 adapter slice. */
 
 import { loopbackFetch } from './loopback-fetch.js';
 

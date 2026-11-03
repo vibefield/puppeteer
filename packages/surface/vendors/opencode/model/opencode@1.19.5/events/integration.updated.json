@@ -1,0 +1,63 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "integration.updated",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "properties": {},
+    "type": "object"
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "properties": {},
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "integration.updated"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/abort-stream/events.jsonl"
+}

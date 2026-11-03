@@ -20,7 +20,7 @@ Commands:
   opencode models [provider]   list all available models
   opencode stats               show token usage and cost statistics
   opencode export [sessionID]  export session data as JSON
-  opencode import <file>       import session data from JSON file or URL
+  opencode import <file>       import session data from JSON file
   opencode github              manage GitHub agent
   opencode pr <number>         fetch and checkout a GitHub PR branch, then run opencode
   opencode session             manage sessions

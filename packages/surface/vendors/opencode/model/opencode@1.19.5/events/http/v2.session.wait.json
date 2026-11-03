@@ -1,0 +1,150 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/v2.session.wait",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Wait for session — Wait for a session agent loop to become idle.",
+  "payloadSchema": {
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/session/:sessionID/wait"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/session/:sessionID/wait"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.wait; POST /api/session/{sessionID}/wait."
+}

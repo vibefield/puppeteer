@@ -1,0 +1,165 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/v2.session.question.reject",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Reject pending question request — Reject a pending question request owned by a session.",
+  "payloadSchema": {
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "requestID": {
+            "pattern": "^que",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestID",
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "requestID": {
+            "pattern": "^que",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestID",
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/session/:sessionID/question/:requestID/reject"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "requestID": {
+                "pattern": "^que",
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestID",
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/session/:sessionID/question/:requestID/reject"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.question.reject; POST /api/session/{sessionID}/question/{requestID}/reject."
+}

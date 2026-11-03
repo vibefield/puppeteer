@@ -1,0 +1,156 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "permission.replied",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "reply": {
+        "enum": [
+          "once",
+          "always",
+          "reject"
+        ],
+        "type": "string"
+      },
+      "requestID": {
+        "pattern": "^per",
+        "type": "string"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      }
+    },
+    "required": [
+      "sessionID",
+      "requestID",
+      "reply"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "reply": {
+            "enum": [
+              "once",
+              "always",
+              "reject"
+            ],
+            "type": "string"
+          },
+          "requestID": {
+            "pattern": "^per",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID",
+          "requestID",
+          "reply"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "permission.replied"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-permission-accept"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-permission-accept"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-permission-accept"
+    ]
+  },
+  "variantDiscriminants": [
+    "reply"
+  ],
+  "variants": [
+    {
+      "match": {
+        "reply": "once"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-permission-accept"
+        ],
+        "shape": [
+          "opencode-runtime-permission-accept"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "reply": "always"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-attach-exact-resume"
+        ],
+        "shape": [
+          "opencode-runtime-attach-exact-resume"
+        ]
+      },
+      "confidence": "verified-interactive"
+    },
+    {
+      "match": {
+        "reply": "reject"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-permission-reject"
+        ],
+        "shape": [
+          "opencode-runtime-permission-reject"
+        ]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/permission-accept/events.jsonl"
+}

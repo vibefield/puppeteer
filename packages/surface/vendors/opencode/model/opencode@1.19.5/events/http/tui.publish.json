@@ -1,0 +1,497 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/tui.publish",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Publish TUI event — Publish a TUI event.",
+  "payloadSchema": {
+    "properties": {
+      "body": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/EventTuiPromptAppend"
+          },
+          {
+            "$ref": "#/$defs/EventTuiCommandExecute"
+          },
+          {
+            "$ref": "#/$defs/EventTuiToastShow"
+          },
+          {
+            "$ref": "#/$defs/EventTuiSessionSelect"
+          }
+        ]
+      },
+      "method": {
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ],
+    "type": "object",
+    "$defs": {
+      "EventTuiPromptAppend": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.prompt.append"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiCommandExecute": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "session.list",
+                      "session.new",
+                      "session.share",
+                      "session.interrupt",
+                      "session.compact",
+                      "session.page.up",
+                      "session.page.down",
+                      "session.line.up",
+                      "session.line.down",
+                      "session.half.page.up",
+                      "session.half.page.down",
+                      "session.first",
+                      "session.last",
+                      "prompt.clear",
+                      "prompt.submit",
+                      "agent.cycle"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.command.execute"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiToastShow": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "duration": {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "variant": {
+                "enum": [
+                  "info",
+                  "success",
+                  "warning",
+                  "error"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "message",
+              "variant"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.toast.show"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiSessionSelect": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "sessionID": {
+                "description": "Session ID to navigate to",
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.session.select"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "description": "Event published successfully",
+        "type": "boolean"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/tui/publish"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "body"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/EventTuiPromptAppend"
+              },
+              {
+                "$ref": "#/$defs/EventTuiCommandExecute"
+              },
+              {
+                "$ref": "#/$defs/EventTuiToastShow"
+              },
+              {
+                "$ref": "#/$defs/EventTuiSessionSelect"
+              }
+            ]
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/tui/publish"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object",
+    "$defs": {
+      "EventTuiPromptAppend": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.prompt.append"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiCommandExecute": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "session.list",
+                      "session.new",
+                      "session.share",
+                      "session.interrupt",
+                      "session.compact",
+                      "session.page.up",
+                      "session.page.down",
+                      "session.line.up",
+                      "session.line.down",
+                      "session.half.page.up",
+                      "session.half.page.down",
+                      "session.first",
+                      "session.last",
+                      "prompt.clear",
+                      "prompt.submit",
+                      "agent.cycle"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.command.execute"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiToastShow": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "duration": {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "variant": {
+                "enum": [
+                  "info",
+                  "success",
+                  "warning",
+                  "error"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "message",
+              "variant"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.toast.show"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      },
+      "EventTuiSessionSelect": {
+        "additionalProperties": false,
+        "properties": {
+          "properties": {
+            "additionalProperties": false,
+            "properties": {
+              "sessionID": {
+                "description": "Session ID to navigate to",
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "tui.session.select"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId tui.publish; POST /tui/publish."
+}

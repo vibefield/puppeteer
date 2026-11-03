@@ -1,6 +1,6 @@
 /**
  * Checked runtime projection of
- * Surface `vendors/opencode/model/opencode@1.18.16/detection.json`.
+ * Surface `vendors/opencode/model/opencode@1.19.5/detection.json`.
  * Production code consumes this projection; it never imports the ASM.
  */
 

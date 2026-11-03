@@ -1,0 +1,451 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/v2.session.list",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "List sessions — Retrieve sessions in the requested order. Items keep that order across pages; use cursor.next or cursor.previous to move through the ordered list.",
+  "payloadSchema": {
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "cursor": {
+            "description": "Opaque pagination cursor returned as cursor.previous or cursor.next in the previous response.",
+            "type": "string"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "order": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string"
+          },
+          "project": {
+            "type": "string"
+          },
+          "search": {
+            "type": "string"
+          },
+          "subpath": {
+            "type": "string"
+          },
+          "workspace": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "$ref": "#/$defs/SessionsResponse"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "cursor": {
+            "description": "Opaque pagination cursor returned as cursor.previous or cursor.next in the previous response.",
+            "type": "string"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "order": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string"
+          },
+          "project": {
+            "type": "string"
+          },
+          "search": {
+            "type": "string"
+          },
+          "subpath": {
+            "type": "string"
+          },
+          "workspace": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/session"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "SessionsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "additionalProperties": false,
+            "properties": {
+              "next": {
+                "type": "string"
+              },
+              "previous": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/$defs/SessionV2Info"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data",
+          "cursor"
+        ],
+        "type": "object"
+      },
+      "SessionV2Info": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationRef"
+          },
+          "model": {
+            "$ref": "#/$defs/ModelRef"
+          },
+          "parentID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "projectID": {
+            "type": "string"
+          },
+          "revert": {
+            "$ref": "#/$defs/RevertState"
+          },
+          "subpath": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "archived": {
+                "type": "number"
+              },
+              "created": {
+                "type": "number"
+              },
+              "updated": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "created",
+              "updated"
+            ],
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          },
+          "tokens": {
+            "additionalProperties": false,
+            "properties": {
+              "cache": {
+                "additionalProperties": false,
+                "properties": {
+                  "read": {
+                    "type": "number"
+                  },
+                  "write": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "read",
+                  "write"
+                ],
+                "type": "object"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "input",
+              "output",
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "projectID",
+          "cost",
+          "tokens",
+          "time",
+          "title",
+          "location"
+        ],
+        "type": "object"
+      },
+      "LocationRef": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory"
+        ],
+        "type": "object"
+      },
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      },
+      "RevertState": {
+        "additionalProperties": false,
+        "properties": {
+          "diff": {
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/FileDiff"
+            },
+            "type": "array"
+          },
+          "messageID": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "partID": {
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageID"
+        ],
+        "type": "object"
+      },
+      "FileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "deletions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "modified",
+              "deleted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "status",
+          "additions",
+          "deletions",
+          "patch"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "method": {
+            "enum": [
+              "GET"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "properties": {
+              "cursor": {
+                "description": "Opaque pagination cursor returned as cursor.previous or cursor.next in the previous response.",
+                "type": "string"
+              },
+              "directory": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "order": {
+                "enum": [
+                  "asc",
+                  "desc"
+                ],
+                "type": "string"
+              },
+              "project": {
+                "type": "string"
+              },
+              "search": {
+                "type": "string"
+              },
+              "subpath": {
+                "type": "string"
+              },
+              "workspace": {
+                "pattern": "^wrk",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/session"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.list; GET /api/session."
+}

@@ -1,0 +1,328 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "session.status",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      },
+      "status": {
+        "$ref": "#/$defs/SessionStatus"
+      }
+    },
+    "required": [
+      "sessionID",
+      "status"
+    ],
+    "type": "object",
+    "$defs": {
+      "SessionStatus": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "idle"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "additionalProperties": false,
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "link": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "provider",
+                  "title",
+                  "message",
+                  "label"
+                ],
+                "type": "object"
+              },
+              "attempt": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              },
+              "next": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "enum": [
+                  "retry"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "attempt",
+              "message",
+              "next"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "busy"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        ]
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/$defs/SessionStatus"
+          }
+        },
+        "required": [
+          "sessionID",
+          "status"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "session.status"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "SessionStatus": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "idle"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "additionalProperties": false,
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "link": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "provider",
+                  "title",
+                  "message",
+                  "label"
+                ],
+                "type": "object"
+              },
+              "attempt": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              },
+              "next": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "enum": [
+                  "retry"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "attempt",
+              "message",
+              "next"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "busy"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        ]
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ]
+  },
+  "variantDiscriminants": [
+    "status.type"
+  ],
+  "variants": [
+    {
+      "match": {
+        "status.type": "idle"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "status.type": "retry"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-provider-retry"
+        ],
+        "shape": [
+          "opencode-runtime-provider-retry"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "status.type": "busy"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/abort-stream/events.jsonl"
+}

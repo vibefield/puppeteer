@@ -1,0 +1,11 @@
+{
+  "vendor": "opencode",
+  "vendorVersion": "1.19.5",
+  "kind": "generated-openapi",
+  "file": "openapi.json",
+  "sourceRepository": "https://github.com/anomalyco/opencode",
+  "sourceRevision": "810c0eba1a7348036f8bdf61e6632d0c36c6876c",
+  "sourcePath": "packages/sdk/openapi.json",
+  "sha256": "d224c1a7506ae981c8d4fc1a8d1f58ac185e27324f94d4daf1b8f84fc2552d26",
+  "notes": "Release-pinned copy of the generated OpenAPI 3.1 document. The linux-x64 1.19.5 runtime /doc publishes the same contract apart from the source copy's x-codeSamples annotations; this retained artifact makes model regeneration mandatory and offline."
+}

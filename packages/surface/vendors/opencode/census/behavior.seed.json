@@ -1,7 +1,7 @@
 {
   "behaviorVersion": 1,
   "title": "OpenCode HTTP/SSE native session lifecycle",
-  "description": "Evidence-qualified partial order for the pinned OpenCode 1.18.16 serve backend. Repeated status and part updates are native loops, and blocker branches remain distinct from normalized turn state.",
+  "description": "Evidence-qualified partial order for the pinned OpenCode 1.19.5 serve backend. Repeated status and part updates are native loops, and blocker branches remain distinct from normalized turn state.",
   "source": "Hermetic OpenCode HTTP/SSE census and exact-session native attach probe documented in packages/surface/vendors/opencode/findings.md.",
   "lanes": [
     {

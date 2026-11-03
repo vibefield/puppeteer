@@ -1,0 +1,243 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "question.v2.asked",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^que",
+        "type": "string"
+      },
+      "questions": {
+        "description": "Questions to ask",
+        "items": {
+          "$ref": "#/$defs/QuestionV2Info"
+        },
+        "type": "array"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      },
+      "tool": {
+        "$ref": "#/$defs/QuestionV2Tool"
+      }
+    },
+    "required": [
+      "id",
+      "sessionID",
+      "questions"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionV2Info": {
+        "additionalProperties": false,
+        "properties": {
+          "custom": {
+            "type": "boolean"
+          },
+          "header": {
+            "description": "Very short label (max 30 chars)",
+            "type": "string"
+          },
+          "multiple": {
+            "type": "boolean"
+          },
+          "options": {
+            "description": "Available choices",
+            "items": {
+              "$ref": "#/$defs/QuestionV2Option"
+            },
+            "type": "array"
+          },
+          "question": {
+            "description": "Complete question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "header",
+          "options"
+        ],
+        "type": "object"
+      },
+      "QuestionV2Tool": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "messageID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageID",
+          "callID"
+        ],
+        "type": "object"
+      },
+      "QuestionV2Option": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "description": "Explanation of choice",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display text (1-5 words, concise)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "description"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^que",
+            "type": "string"
+          },
+          "questions": {
+            "description": "Questions to ask",
+            "items": {
+              "$ref": "#/$defs/QuestionV2Info"
+            },
+            "type": "array"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "tool": {
+            "$ref": "#/$defs/QuestionV2Tool"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "questions"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "question.v2.asked"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionV2Info": {
+        "additionalProperties": false,
+        "properties": {
+          "custom": {
+            "type": "boolean"
+          },
+          "header": {
+            "description": "Very short label (max 30 chars)",
+            "type": "string"
+          },
+          "multiple": {
+            "type": "boolean"
+          },
+          "options": {
+            "description": "Available choices",
+            "items": {
+              "$ref": "#/$defs/QuestionV2Option"
+            },
+            "type": "array"
+          },
+          "question": {
+            "description": "Complete question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "header",
+          "options"
+        ],
+        "type": "object"
+      },
+      "QuestionV2Tool": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "messageID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageID",
+          "callID"
+        ],
+        "type": "object"
+      },
+      "QuestionV2Option": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "description": "Explanation of choice",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display text (1-5 words, concise)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "description"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified"
+}

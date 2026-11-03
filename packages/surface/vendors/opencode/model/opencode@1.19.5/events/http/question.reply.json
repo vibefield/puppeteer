@@ -1,0 +1,243 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/question.reply",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Reply to question request — Provide answers to a question request from the AI assistant.",
+  "payloadSchema": {
+    "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "description": "User answers in order of questions (each answer is an array of selected labels)",
+            "items": {
+              "$ref": "#/$defs/QuestionAnswer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "answers"
+        ],
+        "type": "object"
+      },
+      "method": {
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "requestID": {
+            "pattern": "^que",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionAnswer": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    }
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "description": "Question answered successfully",
+        "type": "boolean"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "requestID": {
+            "pattern": "^que",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/question/:requestID/reply"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "body": {
+            "additionalProperties": false,
+            "properties": {
+              "answers": {
+                "description": "User answers in order of questions (each answer is an array of selected labels)",
+                "items": {
+                  "$ref": "#/$defs/QuestionAnswer"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "answers"
+            ],
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "requestID": {
+                "pattern": "^que",
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestID"
+            ],
+            "type": "object"
+          },
+          "query": {
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/question/:requestID/reply"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionAnswer": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-question-reply"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-question-reply"
+    ],
+    "result": [
+      "opencode-generated-openapi",
+      "opencode-runtime-question-reply"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-question-reply"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/question-reply/http-roundtrip.jsonl",
+  "notes": "OpenAPI operationId question.reply; POST /question/{requestID}/reply."
+}

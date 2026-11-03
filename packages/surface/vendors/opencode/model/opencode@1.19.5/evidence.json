@@ -1,0 +1,596 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "opencode",
+  "vendorVersion": "1.19.5",
+  "artifacts": [
+    {
+      "id": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "channel": "stable",
+      "acquiredAt": "2026-11-03T19:16:55.054Z",
+      "versionOutput": "1.19.5",
+      "sourceUrl": "https://registry.npmjs.org/opencode-linux-x64/-/opencode-linux-x64-1.19.5.tgz",
+      "sourceTag": "v1.19.5",
+      "sourceRevision": "810c0eba1a7348036f8bdf61e6632d0c36c6876c",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:7df4e4136301f16589b0f30bf91a61380fca5f8ef22dd36570f5ebe1d4ec802c"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/anomalyco/opencode",
+      "revision": "810c0eba1a7348036f8bdf61e6632d0c36c6876c",
+      "tag": "v1.19.5",
+      "relation": "exact-release"
+    }
+  ],
+  "records": [
+    {
+      "id": "capture-abort-stream",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/abort-stream",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "777fca8aac884e43d2e664089451c530ff26b695d63c366eaa57fc00f6155193"
+    },
+    {
+      "id": "capture-abort-tool",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/abort-tool",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "53e9abc6d3accf117063efa958caa9b5d1841b70d246a7d0afef8d1f2bb3a976"
+    },
+    {
+      "id": "capture-agent-part",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/agent-part",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "b57a20105b6ead9b1757b7dce8c447c567a494b1438d08634406dd7fc0a7b8d5"
+    },
+    {
+      "id": "capture-attach-exact-resume",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/attach-exact-resume",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "f42bc24c9a38aee2135b657214a811b2938a927bc5b6059287ae9e84d3498eba"
+    },
+    {
+      "id": "capture-attach-permission-always",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/attach-permission-always",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "95d57481c4eccee552b1306966172c0eb222d3e2c98bf4b0aece176be23739eb"
+    },
+    {
+      "id": "capture-auto-compaction",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/auto-compaction",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "50313a61212ea0cd87a76c4d790e89b6061c864d7bfb5a04686a25a21e91454c"
+    },
+    {
+      "id": "capture-background-task",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/background-task",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "6d816242561f203d5f257d5c2367753426e77d292db4200edd9f400631f8ebd6"
+    },
+    {
+      "id": "capture-detach-task",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/detach-task",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "6b719d3b0acd10dc5dcb818a425e69cbda1cbfab58f5a577ad251f16e36f4f33"
+    },
+    {
+      "id": "capture-exact-resume",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/exact-resume",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "eda261d80b25415fb5da96159100e66a2d028a8049c6d3fcdc48716aedb8f7b9"
+    },
+    {
+      "id": "capture-file-delete",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/file-delete",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "db4524dac878efc986b68a52a4d534c1b16e1bf5142100b44fac16fc3b9fabcf"
+    },
+    {
+      "id": "capture-file-edit",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/file-edit",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "8b3c4a90f87d7841a06f348e16f81f078308b3ffff6c0aea21f8c49cb932a2be"
+    },
+    {
+      "id": "capture-file-part",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/file-part",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "6e7791ed733c7f11f44688d570a8b663c6c8ec5b564b5aa4b6436f31d8233a00"
+    },
+    {
+      "id": "capture-file-write",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/file-write",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "c33ea1f25c152aced0fa60b61318d6e6e576478b774e64c4c8760c5d44079fdd"
+    },
+    {
+      "id": "capture-manual-compaction",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/manual-compaction",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "b4f421cb6a9579fc5204d4f4712fe6dc790365c015cad23f0235140fb3e9c6c8"
+    },
+    {
+      "id": "capture-overflow-compaction",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/overflow-compaction",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "375d180c9a311f94fdcc95d3113c0cc43acbdd3f9146ef959732250122d364e9"
+    },
+    {
+      "id": "capture-permission-accept",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/permission-accept",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "51537f95afe3c5f2f1fa091bf173453c7123ad371640dab916bde3be51e70a30"
+    },
+    {
+      "id": "capture-permission-reject",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/permission-reject",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "56e97a400820785f778b9c3761a59a2bd946fc86c1e875103a2e517f86968fbf"
+    },
+    {
+      "id": "capture-provider-error",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/provider-error",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "ba4fcd0cb1612274ed0cfc1931c63d905687b5fd121387fee2d7bfe35733dc4c"
+    },
+    {
+      "id": "capture-provider-retry",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/provider-retry",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "c3473cb09de2d980639a32e820fedd90984da7148f3233130dae0ebec6d14063"
+    },
+    {
+      "id": "capture-question-reject",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/question-reject",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "2f243f9ecc03aab9c04bdd43cf644eecd0ee6f6727e37afc86919e628974210c"
+    },
+    {
+      "id": "capture-question-reply",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/question-reply",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "d63610a2749483bd9152131ea227dab53343c853a4d598312a6fa39f3dee3c29"
+    },
+    {
+      "id": "capture-reconnect-rehydrate",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/reconnect-rehydrate",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "00c8ad341d3d0c2def1bf95b2de5d1b7f29fb1d95d183928e97c3614eac919a8"
+    },
+    {
+      "id": "capture-session-lifecycle",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/session-lifecycle",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "4c23db12e8fadcd84701eea3a2ef8a5477c7b0706d0ec95af458df0d3ef9e876"
+    },
+    {
+      "id": "capture-subtask-part",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/subtask-part",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "de8965c28b47d833fc71b4095cfd0fb4eaf0cc6611cf31560f036ddd12a5b2e2"
+    },
+    {
+      "id": "capture-task-child",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/task-child",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "f3972d29b8fc3ec6b9635ce0cb24f1167b661e90cfa9f5a613f36b30736587ce"
+    },
+    {
+      "id": "capture-turn",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/turn",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "2c2cfa8d3aa9ed47d815b2fdc02e0517db4d19c98ee77037378a3c2a1d5ea91d"
+    },
+    {
+      "id": "capture-unknown-context",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/opencode/captures/opencode@1.19.5/unknown-context",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "0c20d289824bdbb7a58b4cbe000c4746ec2c17fd7ffe908655e3da36a36947bd"
+    },
+    {
+      "id": "binary-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/opencode/probes/opencode@1.19.5",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "c52e7372dadf966c9e423faaf505fcef09d5aa7e134ec58e6ccc1845880674e8"
+    },
+    {
+      "id": "generated-openapi",
+      "kind": "generated-schema",
+      "path": "packages/surface/vendors/opencode/references/opencode@1.19.5",
+      "exclude": [
+        "source/workspace-tools.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "a62c5878ab635c1373d25355df46270fd8a2b77552f6f178d1ebf0e7a1272891"
+    },
+    {
+      "id": "source-workspace-tools",
+      "kind": "source-contract",
+      "path": "packages/surface/vendors/opencode/references/opencode@1.19.5/source",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "e907e41f334ba7dd6d6a4ace43e3426e4f3b7d1b9f72c313871216093061e45f"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/opencode/model/opencode@1.19.5",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "7ff81f57fad7bc32599a32ef973bb36ead1fa7003f9bf04556f51737574f7cdc"
+    }
+  ],
+  "claims": [
+    {
+      "id": "opencode-binary-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "sourceReference": 0,
+      "platform": "linux-x64",
+      "harness": "opencode --version/--help; opencode serve --help; opencode attach --help",
+      "capturedAt": "2026-11-03T19:16:55.054Z"
+    },
+    {
+      "id": "opencode-generated-openapi",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "record": "generated-openapi",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "sourceReference": 0,
+      "harness": "GET /doc from the pinned private opencode serve backend",
+      "notes": "The generated schema proves possible names and shapes, not runtime occurrence or ordering."
+    },
+    {
+      "id": "opencode-exact-release-source",
+      "kind": "exact-source",
+      "confidence": "unverified",
+      "record": "source-workspace-tools",
+      "sourceReference": 0,
+      "notes": "Digest-pinned exact-release source establishes workspace tool arguments, result metadata, diff-preview production, generic output truncation semantics, and watcher variants; source alone does not prove runtime occurrence."
+    },
+    {
+      "id": "opencode-runtime-abort-stream",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-abort-stream",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:19:44.692Z",
+      "notes": "Hermetic headless census scenario: abort-stream."
+    },
+    {
+      "id": "opencode-runtime-abort-tool",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-abort-tool",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:19:53.173Z",
+      "notes": "Hermetic headless census scenario: abort-tool."
+    },
+    {
+      "id": "opencode-runtime-agent-part",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-agent-part",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:18:41.198Z",
+      "notes": "Hermetic headless census scenario: agent-part."
+    },
+    {
+      "id": "opencode-runtime-attach-exact-resume",
+      "kind": "runtime-capture",
+      "confidence": "verified-interactive",
+      "record": "capture-attach-exact-resume",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:27:52.397Z",
+      "notes": "Native attach TUI interaction on the shared backend; a scripted PTY operator pressed the TUI keys, and SSE/HTTP carriers record the outcome."
+    },
+    {
+      "id": "opencode-runtime-attach-permission-always",
+      "kind": "runtime-capture",
+      "confidence": "verified-interactive",
+      "record": "capture-attach-permission-always",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:27:19.525Z",
+      "notes": "Native attach TUI interaction on the shared backend; a scripted PTY operator pressed the TUI keys, and SSE/HTTP carriers record the outcome."
+    },
+    {
+      "id": "opencode-runtime-auto-compaction",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-auto-compaction",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:20:41.944Z",
+      "notes": "Hermetic headless census scenario: auto-compaction."
+    },
+    {
+      "id": "opencode-runtime-background-task",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-background-task",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:18:49.823Z",
+      "notes": "Hermetic headless census scenario: background-task."
+    },
+    {
+      "id": "opencode-runtime-detach-task",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-detach-task",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:18:59.621Z",
+      "notes": "Hermetic headless census scenario: detach-task."
+    },
+    {
+      "id": "opencode-runtime-exact-resume",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-exact-resume",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:26:55.243Z",
+      "notes": "Hermetic headless census scenario: exact-resume."
+    },
+    {
+      "id": "opencode-runtime-file-delete",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-file-delete",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:18:15.537Z",
+      "notes": "Hermetic headless census scenario: file-delete."
+    },
+    {
+      "id": "opencode-runtime-file-edit",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-file-edit",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:18:06.153Z",
+      "notes": "Hermetic headless census scenario: file-edit."
+    },
+    {
+      "id": "opencode-runtime-file-part",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-file-part",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:17:47.837Z",
+      "notes": "Hermetic headless census scenario: file-part."
+    },
+    {
+      "id": "opencode-runtime-file-write",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-file-write",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:17:57.093Z",
+      "notes": "Hermetic headless census scenario: file-write."
+    },
+    {
+      "id": "opencode-runtime-manual-compaction",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-manual-compaction",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:20:33.516Z",
+      "notes": "Hermetic headless census scenario: manual-compaction."
+    },
+    {
+      "id": "opencode-runtime-overflow-compaction",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-overflow-compaction",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:20:50.189Z",
+      "notes": "Hermetic headless census scenario: overflow-compaction."
+    },
+    {
+      "id": "opencode-runtime-permission-accept",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-permission-accept",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:19:09.991Z",
+      "notes": "Hermetic headless census scenario: permission-accept."
+    },
+    {
+      "id": "opencode-runtime-permission-reject",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-permission-reject",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:19:18.813Z",
+      "notes": "Hermetic headless census scenario: permission-reject."
+    },
+    {
+      "id": "opencode-runtime-provider-error",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-provider-error",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:20:09.675Z",
+      "notes": "Hermetic headless census scenario: provider-error."
+    },
+    {
+      "id": "opencode-runtime-provider-retry",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-provider-retry",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:20:01.523Z",
+      "notes": "Hermetic headless census scenario: provider-retry."
+    },
+    {
+      "id": "opencode-runtime-question-reject",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-question-reject",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:19:35.618Z",
+      "notes": "Hermetic headless census scenario: question-reject."
+    },
+    {
+      "id": "opencode-runtime-question-reply",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-question-reply",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:19:27.184Z",
+      "notes": "Hermetic headless census scenario: question-reply."
+    },
+    {
+      "id": "opencode-runtime-reconnect-rehydrate",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-reconnect-rehydrate",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:20:18.536Z",
+      "notes": "Hermetic headless census scenario: reconnect-rehydrate."
+    },
+    {
+      "id": "opencode-runtime-session-lifecycle",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-session-lifecycle",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:17:38.658Z",
+      "notes": "Hermetic headless census scenario: session-lifecycle."
+    },
+    {
+      "id": "opencode-runtime-subtask-part",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-subtask-part",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:18:32.518Z",
+      "notes": "Hermetic headless census scenario: subtask-part."
+    },
+    {
+      "id": "opencode-runtime-task-child",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-task-child",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:18:24.243Z",
+      "notes": "Hermetic headless census scenario: task-child."
+    },
+    {
+      "id": "opencode-runtime-turn",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-turn",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:17:19.470Z",
+      "notes": "Hermetic headless census scenario: turn."
+    },
+    {
+      "id": "opencode-runtime-unknown-context",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "capture-unknown-context",
+      "artifact": "opencode-1.19.5-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/opencode/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:20:58.345Z",
+      "notes": "Hermetic headless census scenario: unknown-context."
+    },
+    {
+      "id": "opencode-topology-inference",
+      "kind": "inference",
+      "confidence": "unverified",
+      "notes": "Reserved for explicitly unverified behavior relations; never upgrades runtime confidence."
+    }
+  ],
+  "limitations": [
+    "Artifact integrity and runtime probes are pinned only for linux-x64; darwin-arm64, darwin-x64, and windows-x64 1.19.5 artifacts were not acquired or executed.",
+    "OpenAPI/source-only branches remain unverified until a controlled runtime capture exercises them.",
+    "Workspace patch strings are indentation-normalized presentation previews and are not guaranteed to be directly applicable unified diffs.",
+    "Tool metadata `truncated` describes model-facing output truncation, not patch completeness.",
+    "The SSE carrier exposes no observed replay cursor; durable REST rehydration is required after a gap.",
+    "Native attach permission choices were entered by a scripted PTY operator rather than a person; the TUI was still the only replying client, and the HTTP trace contains no permission reply request."
+  ]
+}
