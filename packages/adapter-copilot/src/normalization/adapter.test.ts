@@ -35,6 +35,45 @@ describe('Copilot session normalization', () => {
       turnId: 'interaction',
     });
   });
+  it('observes the permission mode from both the 1.0.105 mode field and the allow-all pair it still writes', () => {
+    const mode = (data: Record<string, unknown>) =>
+      new CopilotSessionNormalizer().normalize(record('session.permissions_changed', data)).events;
+    // The 1.0.105 hermetic captures still persist the allow-all pair.
+    expect(
+      mode({
+        previousAllowAllPermissions: false,
+        allowAllPermissions: true,
+        previousAllowAllPermissionMode: 'off',
+        allowAllPermissionMode: 'on',
+      }),
+    ).toEqual([
+      {
+        type: 'mode:updated',
+        intent: 'observed',
+        modeKind: 'provider-permission',
+        mode: { raw: 'on', normalized: 'auto' },
+      },
+    ]);
+    // The 1.0.105 writer schema's PermissionMode: manual | assisted | allow-all.
+    expect(mode({ previousMode: 'manual', mode: 'allow-all' })).toEqual([
+      {
+        type: 'mode:updated',
+        intent: 'observed',
+        modeKind: 'provider-permission',
+        mode: { raw: 'allow-all', normalized: 'auto' },
+      },
+    ]);
+    for (const raw of ['manual', 'assisted'])
+      expect(mode({ previousMode: 'allow-all', mode: raw })).toEqual([
+        {
+          type: 'mode:updated',
+          intent: 'observed',
+          modeKind: 'provider-permission',
+          mode: { raw, normalized: 'manual' },
+        },
+      ]);
+    expect(mode({})).toEqual([]);
+  });
   it('maps native workspace file changes directly', () => {
     expect(
       new CopilotSessionNormalizer().normalize(

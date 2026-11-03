@@ -1,0 +1,1429 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "permission.requested",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agentMode": {
+        "type": "string"
+      },
+      "fusion": {
+        "type": "object",
+        "properties": {
+          "commitId": {
+            "type": "string"
+          },
+          "conversationScope": {
+            "type": "string"
+          },
+          "fusionId": {
+            "type": "string"
+          },
+          "hasUserSteering": {
+            "type": "boolean"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "phaseId": {
+            "type": "string"
+          },
+          "phaseKind": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "sourceModel": {
+            "type": "string"
+          },
+          "sourcePhaseId": {
+            "type": "string"
+          },
+          "syntheticModel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fusionId",
+          "pattern",
+          "policy",
+          "syntheticModel"
+        ],
+        "additionalProperties": true
+      },
+      "ownerAgentId": {
+        "type": "string"
+      },
+      "ownerSessionId": {
+        "type": "string"
+      },
+      "permissionMode": {
+        "type": "string"
+      },
+      "permissionRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "approvalKey": {
+            "type": "string"
+          },
+          "args": {},
+          "assistedApproval": {
+            "type": "object",
+            "properties": {
+              "evaluation": {
+                "type": "object",
+                "properties": {
+                  "evaluationStage": {},
+                  "judgeAttempted": {},
+                  "judgeStatus": {},
+                  "reasonCode": {}
+                },
+                "required": [
+                  "evaluationStage",
+                  "judgeStatus",
+                  "reasonCode"
+                ],
+                "additionalProperties": true
+              },
+              "evaluationId": {
+                "type": "string"
+              },
+              "failureReason": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "recommendation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "recommendation"
+            ],
+            "additionalProperties": true
+          },
+          "canOfferSessionApproval": {
+            "type": "boolean"
+          },
+          "canPersistApproval": {
+            "type": "boolean"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "citations": {
+            "type": "string"
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "identifier": {},
+                "readOnly": {}
+              },
+              "required": [
+                "identifier",
+                "readOnly"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "commandSegments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fullCommandText": {},
+                "identifier": {}
+              },
+              "required": [
+                "fullCommandText",
+                "identifier"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "declaredMaxAiCredits": {
+            "type": "number"
+          },
+          "declaredMaxConcurrentSubagents": {
+            "type": "number"
+          },
+          "declaredMaxTotalSubagents": {
+            "type": "number"
+          },
+          "declaredTimeoutSeconds": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "diff": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "environmentVariables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "extensionName": {
+            "type": "string"
+          },
+          "fact": {
+            "type": "string"
+          },
+          "fileEdits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "after": {},
+                "before": {}
+              },
+              "additionalProperties": true
+            }
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "fullCommandText": {
+            "type": "string"
+          },
+          "hasWriteFileRedirection": {
+            "type": "boolean"
+          },
+          "hookMessage": {
+            "type": "string"
+          },
+          "intention": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "managedApprovalRequired": {
+            "type": "boolean"
+          },
+          "maxAiCredits": {
+            "type": "number"
+          },
+          "maxConcurrentSubagents": {
+            "type": "number"
+          },
+          "maxTotalSubagents": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "newFileContents": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "permissionRecommendation": {
+            "type": "string"
+          },
+          "phases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "detail": {},
+                "title": {}
+              },
+              "required": [
+                "title"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "possiblePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "possibleUrls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {}
+              },
+              "required": [
+                "url"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "readOnly": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "redirectedFrom": {
+            "type": "string"
+          },
+          "repoNwo": {
+            "type": "string"
+          },
+          "requestSandboxBypass": {
+            "type": "boolean"
+          },
+          "requestSandboxBypassReason": {
+            "type": "string"
+          },
+          "requestSandboxPermissive": {
+            "type": "boolean"
+          },
+          "resolvedPath": {
+            "type": "string"
+          },
+          "resolvedPaths": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "resolvedWorkingDirectory": {
+            "type": "string"
+          },
+          "sandboxPathGrant": {
+            "type": "object",
+            "properties": {
+              "access": {
+                "type": "string"
+              },
+              "deniedPath": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "removedReadonlyPaths": {
+                "type": "array",
+                "items": {}
+              }
+            },
+            "required": [
+              "access",
+              "path"
+            ],
+            "additionalProperties": true
+          },
+          "scope": {
+            "type": "string"
+          },
+          "serverDisplayName": {
+            "type": "string"
+          },
+          "serverName": {
+            "type": "string"
+          },
+          "skipPermission": {
+            "type": "boolean"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "timeoutSeconds": {
+            "type": "number"
+          },
+          "toolArgs": {},
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolDescription": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string"
+          },
+          "toolTitle": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "warning": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": true
+      },
+      "promptRequest": {
+        "type": "object",
+        "properties": {
+          "accessKind": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "approvalKey": {
+            "type": "string"
+          },
+          "args": {},
+          "assistedApproval": {
+            "type": "object",
+            "properties": {
+              "evaluation": {
+                "type": "object",
+                "properties": {
+                  "evaluationStage": {},
+                  "judgeAttempted": {},
+                  "judgeStatus": {},
+                  "reasonCode": {}
+                },
+                "required": [
+                  "evaluationStage",
+                  "judgeStatus",
+                  "reasonCode"
+                ],
+                "additionalProperties": true
+              },
+              "evaluationId": {
+                "type": "string"
+              },
+              "failureReason": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "recommendation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "recommendation"
+            ],
+            "additionalProperties": true
+          },
+          "autoApproval": {
+            "type": "object",
+            "properties": {
+              "failureReason": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "recommendation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "recommendation"
+            ],
+            "additionalProperties": true
+          },
+          "canOfferServerWideApproval": {
+            "type": "boolean"
+          },
+          "canOfferSessionApproval": {
+            "type": "boolean"
+          },
+          "canPersistApproval": {
+            "type": "boolean"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "citations": {
+            "type": "string"
+          },
+          "commandIdentifiers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "declaredMaxAiCredits": {
+            "type": "number"
+          },
+          "declaredMaxConcurrentSubagents": {
+            "type": "number"
+          },
+          "declaredMaxTotalSubagents": {
+            "type": "number"
+          },
+          "declaredTimeoutSeconds": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "diff": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "environmentVariables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "extensionName": {
+            "type": "string"
+          },
+          "fact": {
+            "type": "string"
+          },
+          "fileEdits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "after": {},
+                "before": {}
+              },
+              "additionalProperties": true
+            }
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "fullCommandText": {
+            "type": "string"
+          },
+          "hookMessage": {
+            "type": "string"
+          },
+          "intention": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "managedApprovalRequired": {
+            "type": "boolean"
+          },
+          "maxAiCredits": {
+            "type": "number"
+          },
+          "maxConcurrentSubagents": {
+            "type": "number"
+          },
+          "maxTotalSubagents": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "newFileContents": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "permissionRecommendation": {
+            "type": "string"
+          },
+          "phases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "detail": {},
+                "title": {}
+              },
+              "required": [
+                "title"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "readOnlyDirectories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reason": {
+            "type": "string"
+          },
+          "redirectedFrom": {
+            "type": "string"
+          },
+          "requestSandboxBypass": {
+            "type": "boolean"
+          },
+          "requestSandboxBypassReason": {
+            "type": "string"
+          },
+          "requestSandboxPermissive": {
+            "type": "boolean"
+          },
+          "resolvedPath": {
+            "type": "string"
+          },
+          "sandboxPathGrant": {
+            "type": "object",
+            "properties": {
+              "access": {
+                "type": "string"
+              },
+              "deniedPath": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "removedReadonlyPaths": {
+                "type": "array",
+                "items": {}
+              }
+            },
+            "required": [
+              "access",
+              "path"
+            ],
+            "additionalProperties": true
+          },
+          "serverDisplayName": {
+            "type": "string"
+          },
+          "serverName": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "timeoutSeconds": {
+            "type": "number"
+          },
+          "toolArgs": {},
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolDescription": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string"
+          },
+          "toolTitle": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "warning": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "additionalProperties": true
+      },
+      "recoveryEpisodeId": {
+        "type": "string"
+      },
+      "requestId": {
+        "type": "string"
+      },
+      "resolvedByHook": {
+        "type": "boolean"
+      },
+      "riskAssessment": {}
+    },
+    "required": [
+      "permissionRequest",
+      "requestId"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "agentMode": {
+            "type": "string"
+          },
+          "fusion": {
+            "type": "object",
+            "properties": {
+              "commitId": {
+                "type": "string"
+              },
+              "conversationScope": {
+                "type": "string"
+              },
+              "fusionId": {
+                "type": "string"
+              },
+              "hasUserSteering": {
+                "type": "boolean"
+              },
+              "pattern": {
+                "type": "string"
+              },
+              "phaseId": {
+                "type": "string"
+              },
+              "phaseKind": {
+                "type": "string"
+              },
+              "policy": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "sourceModel": {
+                "type": "string"
+              },
+              "sourcePhaseId": {
+                "type": "string"
+              },
+              "syntheticModel": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fusionId",
+              "pattern",
+              "policy",
+              "syntheticModel"
+            ],
+            "additionalProperties": true
+          },
+          "ownerAgentId": {
+            "type": "string"
+          },
+          "ownerSessionId": {
+            "type": "string"
+          },
+          "permissionMode": {
+            "type": "string"
+          },
+          "permissionRequest": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string"
+              },
+              "approvalKey": {
+                "type": "string"
+              },
+              "args": {},
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "canOfferSessionApproval": {
+                "type": "boolean"
+              },
+              "canPersistApproval": {
+                "type": "boolean"
+              },
+              "capabilities": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "citations": {
+                "type": "string"
+              },
+              "commands": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "identifier": {},
+                    "readOnly": {}
+                  },
+                  "required": [
+                    "identifier",
+                    "readOnly"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "commandSegments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fullCommandText": {},
+                    "identifier": {}
+                  },
+                  "required": [
+                    "fullCommandText",
+                    "identifier"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "declaredMaxAiCredits": {
+                "type": "number"
+              },
+              "declaredMaxConcurrentSubagents": {
+                "type": "number"
+              },
+              "declaredMaxTotalSubagents": {
+                "type": "number"
+              },
+              "declaredTimeoutSeconds": {
+                "type": "number"
+              },
+              "description": {
+                "type": "string"
+              },
+              "diff": {
+                "type": "string"
+              },
+              "direction": {
+                "type": "string"
+              },
+              "environmentVariables": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "extensionName": {
+                "type": "string"
+              },
+              "fact": {
+                "type": "string"
+              },
+              "fileEdits": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "after": {},
+                    "before": {}
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "fileName": {
+                "type": "string"
+              },
+              "fullCommandText": {
+                "type": "string"
+              },
+              "hasWriteFileRedirection": {
+                "type": "boolean"
+              },
+              "hookMessage": {
+                "type": "string"
+              },
+              "intention": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "maxAiCredits": {
+                "type": "number"
+              },
+              "maxConcurrentSubagents": {
+                "type": "number"
+              },
+              "maxTotalSubagents": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              },
+              "newFileContents": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "permissionRecommendation": {
+                "type": "string"
+              },
+              "phases": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {},
+                    "title": {}
+                  },
+                  "required": [
+                    "title"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "possiblePaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "possibleUrls": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "url": {}
+                  },
+                  "required": [
+                    "url"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "readOnly": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "redirectedFrom": {
+                "type": "string"
+              },
+              "repoNwo": {
+                "type": "string"
+              },
+              "requestSandboxBypass": {
+                "type": "boolean"
+              },
+              "requestSandboxBypassReason": {
+                "type": "string"
+              },
+              "requestSandboxPermissive": {
+                "type": "boolean"
+              },
+              "resolvedPath": {
+                "type": "string"
+              },
+              "resolvedPaths": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "resolvedWorkingDirectory": {
+                "type": "string"
+              },
+              "sandboxPathGrant": {
+                "type": "object",
+                "properties": {
+                  "access": {
+                    "type": "string"
+                  },
+                  "deniedPath": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "removedReadonlyPaths": {
+                    "type": "array",
+                    "items": {}
+                  }
+                },
+                "required": [
+                  "access",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              "scope": {
+                "type": "string"
+              },
+              "serverDisplayName": {
+                "type": "string"
+              },
+              "serverName": {
+                "type": "string"
+              },
+              "skipPermission": {
+                "type": "boolean"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "timeoutSeconds": {
+                "type": "number"
+              },
+              "toolArgs": {},
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolDescription": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "toolTitle": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "warning": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          "promptRequest": {
+            "type": "object",
+            "properties": {
+              "accessKind": {
+                "type": "string"
+              },
+              "action": {
+                "type": "string"
+              },
+              "approvalKey": {
+                "type": "string"
+              },
+              "args": {},
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "autoApproval": {
+                "type": "object",
+                "properties": {
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "canOfferServerWideApproval": {
+                "type": "boolean"
+              },
+              "canOfferSessionApproval": {
+                "type": "boolean"
+              },
+              "canPersistApproval": {
+                "type": "boolean"
+              },
+              "capabilities": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "citations": {
+                "type": "string"
+              },
+              "commandIdentifiers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "declaredMaxAiCredits": {
+                "type": "number"
+              },
+              "declaredMaxConcurrentSubagents": {
+                "type": "number"
+              },
+              "declaredMaxTotalSubagents": {
+                "type": "number"
+              },
+              "declaredTimeoutSeconds": {
+                "type": "number"
+              },
+              "description": {
+                "type": "string"
+              },
+              "diff": {
+                "type": "string"
+              },
+              "direction": {
+                "type": "string"
+              },
+              "environmentVariables": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "extensionName": {
+                "type": "string"
+              },
+              "fact": {
+                "type": "string"
+              },
+              "fileEdits": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "after": {},
+                    "before": {}
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "fileName": {
+                "type": "string"
+              },
+              "fullCommandText": {
+                "type": "string"
+              },
+              "hookMessage": {
+                "type": "string"
+              },
+              "intention": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "maxAiCredits": {
+                "type": "number"
+              },
+              "maxConcurrentSubagents": {
+                "type": "number"
+              },
+              "maxTotalSubagents": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              },
+              "newFileContents": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "permissionRecommendation": {
+                "type": "string"
+              },
+              "phases": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {},
+                    "title": {}
+                  },
+                  "required": [
+                    "title"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "readOnlyDirectories": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "reason": {
+                "type": "string"
+              },
+              "redirectedFrom": {
+                "type": "string"
+              },
+              "requestSandboxBypass": {
+                "type": "boolean"
+              },
+              "requestSandboxBypassReason": {
+                "type": "string"
+              },
+              "requestSandboxPermissive": {
+                "type": "boolean"
+              },
+              "resolvedPath": {
+                "type": "string"
+              },
+              "sandboxPathGrant": {
+                "type": "object",
+                "properties": {
+                  "access": {
+                    "type": "string"
+                  },
+                  "deniedPath": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "removedReadonlyPaths": {
+                    "type": "array",
+                    "items": {}
+                  }
+                },
+                "required": [
+                  "access",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              "serverDisplayName": {
+                "type": "string"
+              },
+              "serverName": {
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "timeoutSeconds": {
+                "type": "number"
+              },
+              "toolArgs": {},
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolDescription": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "toolTitle": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "warning": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          "recoveryEpisodeId": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "resolvedByHook": {
+            "type": "boolean"
+          },
+          "riskAssessment": {}
+        },
+        "required": [
+          "permissionRequest",
+          "requestId"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ],
+    "carrier": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s); source evidence: writer."
+}

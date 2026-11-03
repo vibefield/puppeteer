@@ -27,7 +27,7 @@ specifications versus historical material.
 [![Antigravity: baseline pending 1.1.20](https://img.shields.io/badge/Antigravity-baseline_pending_1.1.20-lightgrey)](packages/surface/vendors/antigravity/groundtruth.json)
 [![Claude Code: verified 2.1.308](https://img.shields.io/badge/Claude_Code-verified_2.1.308-blue)](packages/surface/vendors/claude/groundtruth.json)
 [![Codex: verified 0.164.0](https://img.shields.io/badge/Codex-verified_0.164.0-blue)](packages/surface/vendors/codex/groundtruth.json)
-[![GitHub Copilot CLI: baseline pending 1.0.80](https://img.shields.io/badge/GitHub_Copilot_CLI-baseline_pending_1.0.80-lightgrey)](packages/surface/vendors/copilot/groundtruth.json)
+[![GitHub Copilot CLI: baseline pending 1.0.105](https://img.shields.io/badge/GitHub_Copilot_CLI-baseline_pending_1.0.105-lightgrey)](packages/surface/vendors/copilot/groundtruth.json)
 [![Grok Build: verified 1.0.70](https://img.shields.io/badge/Grok_Build-verified_1.0.70-blue)](packages/surface/vendors/grok/groundtruth.json)
 [![Hermes Agent: baseline pending 0.20.0](https://img.shields.io/badge/Hermes_Agent-baseline_pending_0.20.0-lightgrey)](packages/surface/vendors/hermes/groundtruth.json)
 [![Kimi Code: baseline pending 0.34.0](https://img.shields.io/badge/Kimi_Code-baseline_pending_0.34.0-lightgrey)](packages/surface/vendors/kimi/groundtruth.json)

@@ -1,0 +1,88 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "session-store:session-store.db:forge_skill_proposals",
+  "nativeName": "session-store.db:forge_skill_proposals",
+  "channel": "session-store",
+  "channels": [
+    "session-store"
+  ],
+  "transport": "sqlite-row",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "branch_name": {
+        "type": "string"
+      },
+      "created_at": {
+        "type": "string"
+      },
+      "failure_reason": {
+        "type": "string"
+      },
+      "fingerprint": {
+        "type": "string"
+      },
+      "git_root_path": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "manifest_json": {
+        "type": "string"
+      },
+      "repo_name": {
+        "type": "string"
+      },
+      "repo_owner": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      },
+      "summary_json": {
+        "type": "string"
+      },
+      "superseded_by": {
+        "type": "string"
+      },
+      "trigger_mode": {
+        "type": "string"
+      },
+      "updated_at": {
+        "type": "string"
+      },
+      "workspace_before_json": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "branch_name",
+      "created_at",
+      "git_root_path",
+      "id",
+      "status",
+      "trigger_mode",
+      "updated_at"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-store.db*; 0 retained observation(s); source evidence: fixture."
+}

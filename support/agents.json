@@ -104,10 +104,11 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-copilot",
       "persona": "copilot",
       "groundTruth": "packages/surface/vendors/copilot/groundtruth.json",
-      "candidateVersion": "1.0.80",
+      "candidateVersion": "1.0.105",
       "status": "baseline-pending",
       "blockers": [
-        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed."
+        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed.",
+        "The 1.0.105 Surface evidence is imported from Rosetta commit 8ebdd48d2cd52586ee7c524b6a36261295ce4ead (hermetic linux-x64 BYOK farm), which is not yet landed in vibefield/rosetta; land it before relying on this candidate, then re-run surface:census:copilot and confirm the import is byte-identical. The other three platforms carry no 1.0.105 capture."
       ]
     },
     {

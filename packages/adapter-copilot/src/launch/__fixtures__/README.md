@@ -1,7 +1,10 @@
 # copilot invocation grammar evidence
 
-Captured 2026-09-28 from the installed native CLI, version 1.0.88, using
-`--version` and `--help`. These fixtures describe the command parser, not session
+Captured 2026-11-03 from the native CLI, version 1.0.105 (npm
+`@github/copilot-linux-x64`, run in a disposable offline home), using `--version`
+and `--help`. 1.0.105 drops `--remote-export` (renamed `--sync-session`) and
+`--no-remote` (both now native parse errors) from the parser, and stops listing
+`--remote` and `--no-remote-export`, which still parse and stay as hidden rows. These fixtures describe the command parser, not session
 state inferred from terminal text. Machine-specific diagnostics are omitted;
 trailing whitespace is normalized.
 The bidirectional option and command census checks each public spelling against

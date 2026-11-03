@@ -1,0 +1,400 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "tool.execution_start",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "arguments": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "additionalProperties": true
+      },
+      "displayVerbatim": {
+        "type": "boolean"
+      },
+      "fusion": {
+        "type": "object",
+        "properties": {
+          "commitId": {
+            "type": "string"
+          },
+          "conversationScope": {
+            "type": "string"
+          },
+          "fusionId": {
+            "type": "string"
+          },
+          "hasUserSteering": {
+            "type": "boolean"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "phaseId": {
+            "type": "string"
+          },
+          "phaseKind": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "sourceModel": {
+            "type": "string"
+          },
+          "sourcePhaseId": {
+            "type": "string"
+          },
+          "syntheticModel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fusionId",
+          "pattern",
+          "policy",
+          "syntheticModel"
+        ],
+        "additionalProperties": true
+      },
+      "mcpConfigServerName": {
+        "type": "string"
+      },
+      "mcpConfigSource": {
+        "type": "string"
+      },
+      "mcpServerName": {
+        "type": "string"
+      },
+      "mcpToolName": {
+        "type": "string"
+      },
+      "mcpTransport": {
+        "type": "string"
+      },
+      "model": {
+        "type": "string"
+      },
+      "parentToolCallId": {
+        "type": "string"
+      },
+      "rte": {
+        "type": "boolean"
+      },
+      "shellToolInfo": {
+        "type": "object",
+        "properties": {
+          "displayCommand": {
+            "type": "string"
+          },
+          "hasWriteFileRedirection": {
+            "type": "boolean"
+          },
+          "possiblePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "hasWriteFileRedirection",
+          "possiblePaths"
+        ],
+        "additionalProperties": true
+      },
+      "toolCallId": {
+        "type": "string"
+      },
+      "toolDescription": {
+        "type": "object",
+        "properties": {
+          "_meta": {
+            "type": "object",
+            "properties": {
+              "ui": {
+                "type": "object",
+                "properties": {
+                  "resourceUri": {
+                    "type": "string"
+                  },
+                  "visibility": {
+                    "type": "array",
+                    "items": {}
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": true
+      },
+      "toolName": {
+        "type": "string"
+      },
+      "toolTitle": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "toolCallId",
+      "toolName"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "additionalProperties": true
+          },
+          "displayVerbatim": {
+            "type": "boolean"
+          },
+          "fusion": {
+            "type": "object",
+            "properties": {
+              "commitId": {
+                "type": "string"
+              },
+              "conversationScope": {
+                "type": "string"
+              },
+              "fusionId": {
+                "type": "string"
+              },
+              "hasUserSteering": {
+                "type": "boolean"
+              },
+              "pattern": {
+                "type": "string"
+              },
+              "phaseId": {
+                "type": "string"
+              },
+              "phaseKind": {
+                "type": "string"
+              },
+              "policy": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "sourceModel": {
+                "type": "string"
+              },
+              "sourcePhaseId": {
+                "type": "string"
+              },
+              "syntheticModel": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fusionId",
+              "pattern",
+              "policy",
+              "syntheticModel"
+            ],
+            "additionalProperties": true
+          },
+          "mcpConfigServerName": {
+            "type": "string"
+          },
+          "mcpConfigSource": {
+            "type": "string"
+          },
+          "mcpServerName": {
+            "type": "string"
+          },
+          "mcpToolName": {
+            "type": "string"
+          },
+          "mcpTransport": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "parentToolCallId": {
+            "type": "string"
+          },
+          "rte": {
+            "type": "boolean"
+          },
+          "shellToolInfo": {
+            "type": "object",
+            "properties": {
+              "displayCommand": {
+                "type": "string"
+              },
+              "hasWriteFileRedirection": {
+                "type": "boolean"
+              },
+              "possiblePaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "hasWriteFileRedirection",
+              "possiblePaths"
+            ],
+            "additionalProperties": true
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolDescription": {
+            "type": "object",
+            "properties": {
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "ui": {
+                    "type": "object",
+                    "properties": {
+                      "resourceUri": {
+                        "type": "string"
+                      },
+                      "visibility": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "additionalProperties": true
+              },
+              "description": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": true
+          },
+          "toolName": {
+            "type": "string"
+          },
+          "toolTitle": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "toolCallId",
+          "toolName"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-runtime"
+    ],
+    "shape": [
+      "copilot-rosetta-runtime"
+    ],
+    "carrier": [
+      "copilot-rosetta-runtime"
+    ]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/copilot@1.0.105/tool-denied/events.jsonl",
+  "notes": "session-state/*/events.jsonl; 5 retained observation(s); source evidence: writer."
+}

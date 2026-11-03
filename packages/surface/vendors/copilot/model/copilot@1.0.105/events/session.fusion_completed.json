@@ -1,0 +1,275 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "session.fusion_completed",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "awaitingBackgroundWork": {
+        "type": "boolean"
+      },
+      "cachedTokens": {
+        "type": "number"
+      },
+      "cacheWriteTokens": {
+        "type": "number"
+      },
+      "commitId": {
+        "type": "string"
+      },
+      "degradedReason": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "durationMs": {
+        "type": "number"
+      },
+      "finalSourceModel": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "finalSourcePhaseId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "followUpModel": {
+        "type": "string"
+      },
+      "fusionId": {
+        "type": "string"
+      },
+      "inputTokens": {
+        "type": "number"
+      },
+      "outcome": {
+        "type": "string"
+      },
+      "outputTokens": {
+        "type": "number"
+      },
+      "pattern": {
+        "type": "string"
+      },
+      "phaseCount": {
+        "type": "number"
+      },
+      "requestCount": {
+        "type": "number"
+      },
+      "syntheticModel": {
+        "type": "string"
+      },
+      "totalNanoAiu": {
+        "type": "number"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "cachedTokens",
+      "commitId",
+      "degradedReason",
+      "durationMs",
+      "finalSourceModel",
+      "finalSourcePhaseId",
+      "followUpModel",
+      "fusionId",
+      "inputTokens",
+      "outcome",
+      "outputTokens",
+      "pattern",
+      "phaseCount",
+      "requestCount",
+      "syntheticModel",
+      "totalNanoAiu",
+      "turnId"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "awaitingBackgroundWork": {
+            "type": "boolean"
+          },
+          "cachedTokens": {
+            "type": "number"
+          },
+          "cacheWriteTokens": {
+            "type": "number"
+          },
+          "commitId": {
+            "type": "string"
+          },
+          "degradedReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "durationMs": {
+            "type": "number"
+          },
+          "finalSourceModel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finalSourcePhaseId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "followUpModel": {
+            "type": "string"
+          },
+          "fusionId": {
+            "type": "string"
+          },
+          "inputTokens": {
+            "type": "number"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "outputTokens": {
+            "type": "number"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "phaseCount": {
+            "type": "number"
+          },
+          "requestCount": {
+            "type": "number"
+          },
+          "syntheticModel": {
+            "type": "string"
+          },
+          "totalNanoAiu": {
+            "type": "number"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cachedTokens",
+          "commitId",
+          "degradedReason",
+          "durationMs",
+          "finalSourceModel",
+          "finalSourcePhaseId",
+          "followUpModel",
+          "fusionId",
+          "inputTokens",
+          "outcome",
+          "outputTokens",
+          "pattern",
+          "phaseCount",
+          "requestCount",
+          "syntheticModel",
+          "totalNanoAiu",
+          "turnId"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ],
+    "carrier": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s); source evidence: writer."
+}

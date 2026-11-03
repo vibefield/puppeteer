@@ -1,0 +1,359 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "system.notification",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string"
+          },
+          "agentType": {
+            "type": "string"
+          },
+          "attempt": {
+            "type": "number"
+          },
+          "consumedNanoAiu": {
+            "type": "number"
+          },
+          "consumedSubagents": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "elapsedMs": {
+            "type": "number"
+          },
+          "entryId": {
+            "type": "string"
+          },
+          "exitCode": {
+            "type": "number"
+          },
+          "factoryName": {
+            "type": "string"
+          },
+          "failure": {},
+          "metadata": {},
+          "pauseInfo": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {}
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "key": {},
+                  "type": {}
+                },
+                "required": [
+                  "key",
+                  "type"
+                ],
+                "additionalProperties": true
+              }
+            ]
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "resultPreview": {
+            "type": "string"
+          },
+          "retryGuidance": {
+            "type": "string"
+          },
+          "runId": {
+            "type": "string"
+          },
+          "senderName": {
+            "type": "string"
+          },
+          "senderType": {
+            "type": "string"
+          },
+          "shellId": {
+            "type": "string"
+          },
+          "sourcePath": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "triggerFile": {
+            "type": "string"
+          },
+          "triggerTool": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "workflowName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": true
+      },
+      "responsesReasoning": {
+        "type": "object",
+        "properties": {
+          "effort": {
+            "type": "string"
+          },
+          "initialEffort": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "effort",
+          "initialEffort",
+          "model"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "content",
+      "kind"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "object",
+            "properties": {
+              "agentId": {
+                "type": "string"
+              },
+              "agentType": {
+                "type": "string"
+              },
+              "attempt": {
+                "type": "number"
+              },
+              "consumedNanoAiu": {
+                "type": "number"
+              },
+              "consumedSubagents": {
+                "type": "number"
+              },
+              "description": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "elapsedMs": {
+                "type": "number"
+              },
+              "entryId": {
+                "type": "string"
+              },
+              "exitCode": {
+                "type": "number"
+              },
+              "factoryName": {
+                "type": "string"
+              },
+              "failure": {},
+              "metadata": {},
+              "pauseInfo": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {}
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "key": {},
+                      "type": {}
+                    },
+                    "required": [
+                      "key",
+                      "type"
+                    ],
+                    "additionalProperties": true
+                  }
+                ]
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "resultPreview": {
+                "type": "string"
+              },
+              "retryGuidance": {
+                "type": "string"
+              },
+              "runId": {
+                "type": "string"
+              },
+              "senderName": {
+                "type": "string"
+              },
+              "senderType": {
+                "type": "string"
+              },
+              "shellId": {
+                "type": "string"
+              },
+              "sourcePath": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "triggerFile": {
+                "type": "string"
+              },
+              "triggerTool": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "workflowName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": true
+          },
+          "responsesReasoning": {
+            "type": "object",
+            "properties": {
+              "effort": {
+                "type": "string"
+              },
+              "initialEffort": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "effort",
+              "initialEffort",
+              "model"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "content",
+          "kind"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ],
+    "carrier": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s); source evidence: writer."
+}

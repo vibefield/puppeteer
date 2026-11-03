@@ -1,0 +1,668 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "assistant.message",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "apiCallId": {
+        "type": "string"
+      },
+      "chunkCount": {
+        "type": "number"
+      },
+      "chunkIndex": {
+        "type": "number"
+      },
+      "citations": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "provider"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "spans": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "endIndex": {
+                  "type": "number"
+                },
+                "references": {
+                  "type": "array",
+                  "items": {}
+                },
+                "startIndex": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "endIndex",
+                "references",
+                "startIndex"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "sources",
+          "spans"
+        ],
+        "additionalProperties": true
+      },
+      "clientRequestId": {
+        "type": "string"
+      },
+      "content": {
+        "type": "string"
+      },
+      "encryptedContent": {
+        "type": "string"
+      },
+      "fusion": {
+        "type": "object",
+        "properties": {
+          "commitId": {
+            "type": "string"
+          },
+          "conversationScope": {
+            "type": "string"
+          },
+          "fusionId": {
+            "type": "string"
+          },
+          "hasUserSteering": {
+            "type": "boolean"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "phaseId": {
+            "type": "string"
+          },
+          "phaseKind": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "sourceModel": {
+            "type": "string"
+          },
+          "sourcePhaseId": {
+            "type": "string"
+          },
+          "syntheticModel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fusionId",
+          "pattern",
+          "policy",
+          "syntheticModel"
+        ],
+        "additionalProperties": true
+      },
+      "interactionId": {
+        "type": "string"
+      },
+      "messageId": {
+        "type": "string"
+      },
+      "model": {
+        "type": "string"
+      },
+      "originatingMessageId": {
+        "type": "string"
+      },
+      "outputTokens": {
+        "type": "number"
+      },
+      "parentToolCallId": {
+        "type": "string"
+      },
+      "phase": {
+        "type": "string"
+      },
+      "providerId": {
+        "type": "string"
+      },
+      "reasoningBlocks": {
+        "type": "object",
+        "properties": {
+          "blocks": {
+            "type": "array",
+            "items": {}
+          },
+          "orderedBlocks": {
+            "type": "array",
+            "items": {}
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "additionalProperties": true
+      },
+      "reasoningOpaque": {
+        "type": "string"
+      },
+      "reasoningText": {
+        "type": "string"
+      },
+      "reasoningWireField": {
+        "type": "string"
+      },
+      "requestId": {
+        "type": "string"
+      },
+      "rte": {
+        "type": "boolean"
+      },
+      "serverTools": {
+        "type": "object",
+        "properties": {
+          "advisorModel": {
+            "type": "string"
+          },
+          "functionCallNamespaces": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "items": {
+            "type": "array",
+            "items": {}
+          },
+          "provider": {
+            "type": "string"
+          },
+          "rawContentBlocks": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "additionalProperties": true
+      },
+      "serviceRequestId": {
+        "type": "string"
+      },
+      "toolRequests": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "arguments": {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "command"
+              ],
+              "additionalProperties": true
+            },
+            "caller": {
+              "type": "object",
+              "properties": {
+                "callerId": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "callerId",
+                "type"
+              ],
+              "additionalProperties": true
+            },
+            "intentionSummary": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mcpServerName": {
+              "type": "string"
+            },
+            "mcpToolName": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "toolCallId": {
+              "type": "string"
+            },
+            "toolTitle": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "toolCallId"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "content",
+      "messageId"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "apiCallId": {
+            "type": "string"
+          },
+          "chunkCount": {
+            "type": "number"
+          },
+          "chunkIndex": {
+            "type": "number"
+          },
+          "citations": {
+            "type": "object",
+            "properties": {
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "provider"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "spans": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "endIndex": {
+                      "type": "number"
+                    },
+                    "references": {
+                      "type": "array",
+                      "items": {}
+                    },
+                    "startIndex": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "endIndex",
+                    "references",
+                    "startIndex"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "sources",
+              "spans"
+            ],
+            "additionalProperties": true
+          },
+          "clientRequestId": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "encryptedContent": {
+            "type": "string"
+          },
+          "fusion": {
+            "type": "object",
+            "properties": {
+              "commitId": {
+                "type": "string"
+              },
+              "conversationScope": {
+                "type": "string"
+              },
+              "fusionId": {
+                "type": "string"
+              },
+              "hasUserSteering": {
+                "type": "boolean"
+              },
+              "pattern": {
+                "type": "string"
+              },
+              "phaseId": {
+                "type": "string"
+              },
+              "phaseKind": {
+                "type": "string"
+              },
+              "policy": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "sourceModel": {
+                "type": "string"
+              },
+              "sourcePhaseId": {
+                "type": "string"
+              },
+              "syntheticModel": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fusionId",
+              "pattern",
+              "policy",
+              "syntheticModel"
+            ],
+            "additionalProperties": true
+          },
+          "interactionId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "originatingMessageId": {
+            "type": "string"
+          },
+          "outputTokens": {
+            "type": "number"
+          },
+          "parentToolCallId": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "reasoningBlocks": {
+            "type": "object",
+            "properties": {
+              "blocks": {
+                "type": "array",
+                "items": {}
+              },
+              "orderedBlocks": {
+                "type": "array",
+                "items": {}
+              },
+              "provider": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "provider"
+            ],
+            "additionalProperties": true
+          },
+          "reasoningOpaque": {
+            "type": "string"
+          },
+          "reasoningText": {
+            "type": "string"
+          },
+          "reasoningWireField": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "rte": {
+            "type": "boolean"
+          },
+          "serverTools": {
+            "type": "object",
+            "properties": {
+              "advisorModel": {
+                "type": "string"
+              },
+              "functionCallNamespaces": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "items": {
+                "type": "array",
+                "items": {}
+              },
+              "provider": {
+                "type": "string"
+              },
+              "rawContentBlocks": {
+                "type": "array",
+                "items": {}
+              }
+            },
+            "required": [
+              "provider"
+            ],
+            "additionalProperties": true
+          },
+          "serviceRequestId": {
+            "type": "string"
+          },
+          "toolRequests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "arguments": {
+                  "type": "object",
+                  "properties": {
+                    "command": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "command"
+                  ],
+                  "additionalProperties": true
+                },
+                "caller": {
+                  "type": "object",
+                  "properties": {
+                    "callerId": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "callerId",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                "intentionSummary": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "mcpServerName": {
+                  "type": "string"
+                },
+                "mcpToolName": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "toolCallId": {
+                  "type": "string"
+                },
+                "toolTitle": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "toolCallId"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "messageId"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-runtime"
+    ],
+    "shape": [
+      "copilot-rosetta-runtime"
+    ],
+    "carrier": [
+      "copilot-rosetta-runtime"
+    ]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/copilot@1.0.105/basic-chat/events.jsonl",
+  "notes": "session-state/*/events.jsonl; 16 retained observation(s); source evidence: writer."
+}

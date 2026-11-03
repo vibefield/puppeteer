@@ -1,0 +1,429 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "session.fusion_resolved",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "contractVersion": {
+        "type": "number"
+      },
+      "critics": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "string"
+            },
+            "phaseId": {
+              "type": "string"
+            },
+            "reasoningEffort": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "model",
+            "phaseId"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "fallbackModel": {
+        "type": "string"
+      },
+      "followUp": {
+        "type": "object",
+        "properties": {
+          "compactionTurn": {
+            "type": "string"
+          },
+          "userTurn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "compactionTurn",
+          "userTurn"
+        ],
+        "additionalProperties": true
+      },
+      "followUpModel": {
+        "type": "string"
+      },
+      "fusionId": {
+        "type": "string"
+      },
+      "hint": {
+        "type": "string"
+      },
+      "judgeModel": {
+        "type": "string"
+      },
+      "modelUniverseVersion": {
+        "type": "string"
+      },
+      "pattern": {
+        "type": "string"
+      },
+      "phasePlan": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "conditional": {
+              "type": "boolean"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "role": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "conditional",
+            "kind",
+            "role",
+            "scope"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "planVersion": {
+        "type": "string"
+      },
+      "policy": {
+        "type": "string"
+      },
+      "policyVersion": {
+        "type": "string"
+      },
+      "primaryModel": {
+        "type": "string"
+      },
+      "repairModel": {
+        "type": "string"
+      },
+      "routeSource": {
+        "type": "string"
+      },
+      "routingLatencyMs": {
+        "type": "number"
+      },
+      "ruleId": {
+        "type": "string"
+      },
+      "ruleIndex": {
+        "type": "number"
+      },
+      "ruleName": {
+        "type": "string"
+      },
+      "scores": {
+        "type": "object",
+        "properties": {
+          "codeGen": {
+            "type": "number"
+          },
+          "debugging": {
+            "type": "number"
+          },
+          "reasoning": {
+            "type": "number"
+          },
+          "toolUse": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "codeGen",
+          "debugging",
+          "reasoning",
+          "toolUse"
+        ],
+        "additionalProperties": true
+      },
+      "secondaryModel": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "selectedRuleId": {
+        "type": "string"
+      },
+      "syntheticModel": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "contractVersion",
+      "fallbackModel",
+      "followUpModel",
+      "fusionId",
+      "pattern",
+      "policy",
+      "primaryModel",
+      "secondaryModel",
+      "syntheticModel",
+      "turnId"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "type": "number"
+          },
+          "critics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "phaseId": {
+                  "type": "string"
+                },
+                "reasoningEffort": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "model",
+                "phaseId"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "fallbackModel": {
+            "type": "string"
+          },
+          "followUp": {
+            "type": "object",
+            "properties": {
+              "compactionTurn": {
+                "type": "string"
+              },
+              "userTurn": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "compactionTurn",
+              "userTurn"
+            ],
+            "additionalProperties": true
+          },
+          "followUpModel": {
+            "type": "string"
+          },
+          "fusionId": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          },
+          "judgeModel": {
+            "type": "string"
+          },
+          "modelUniverseVersion": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "phasePlan": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "conditional": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "conditional",
+                "kind",
+                "role",
+                "scope"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "planVersion": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "string"
+          },
+          "policyVersion": {
+            "type": "string"
+          },
+          "primaryModel": {
+            "type": "string"
+          },
+          "repairModel": {
+            "type": "string"
+          },
+          "routeSource": {
+            "type": "string"
+          },
+          "routingLatencyMs": {
+            "type": "number"
+          },
+          "ruleId": {
+            "type": "string"
+          },
+          "ruleIndex": {
+            "type": "number"
+          },
+          "ruleName": {
+            "type": "string"
+          },
+          "scores": {
+            "type": "object",
+            "properties": {
+              "codeGen": {
+                "type": "number"
+              },
+              "debugging": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "toolUse": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "codeGen",
+              "debugging",
+              "reasoning",
+              "toolUse"
+            ],
+            "additionalProperties": true
+          },
+          "secondaryModel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "selectedRuleId": {
+            "type": "string"
+          },
+          "syntheticModel": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contractVersion",
+          "fallbackModel",
+          "followUpModel",
+          "fusionId",
+          "pattern",
+          "policy",
+          "primaryModel",
+          "secondaryModel",
+          "syntheticModel",
+          "turnId"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ],
+    "carrier": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s); source evidence: writer."
+}

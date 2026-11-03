@@ -32,7 +32,7 @@ describe.skipIf(process.platform === 'win32')('Rosetta persona spawners', () => 
     {
       vendor: 'copilot',
       label: 'GitHub Copilot CLI native surface',
-      version: '1.0.80',
+      version: '1.0.105',
       event: 'user.message',
       channel: 'events',
       bootEvent: 'session.start',

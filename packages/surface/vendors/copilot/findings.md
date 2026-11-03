@@ -1,4 +1,4 @@
-# GitHub Copilot CLI 1.0.80 surface findings
+# GitHub Copilot CLI 1.0.105 surface findings
 
 Status: canonical ground truth, adapter, Imposter persona, built-in provider,
 and local conformance are implemented. The baseline remains
@@ -10,13 +10,51 @@ four platforms.
 
 The vendor-root `groundtruth.json` is the single Puppeteer truth artifact. It
 is generated from the complete Rosetta `rosetta-groundtruth/1` inventory,
-controlled `1.0.80` fixtures, and the pinned writer schema. The schema defines
+controlled `1.0.105` fixtures, and the pinned writer schema. The schema defines
 many persisted event variants that controlled fixtures do not exercise; such
 variants remain schema-backed rather than being presented as runtime-observed.
 
 Official acquisition uses the four platform-specific `@github/copilot-*`
 packages from the npm registry. The executable version is probed from the
 extracted artifact before it can enter the evidence workflow.
+
+## 1.0.105 capture and drift from 1.0.80
+
+The 1.0.105 corpus was farmed by Rosetta (commit
+`8ebdd48d2cd52586ee7c524b6a36261295ce4ead`, not yet landed upstream) from the
+npm `@github/copilot-linux-x64` executable on linux-x64, offline, against
+Rosetta's loopback BYOK mock model; the 1.0.80 corpus was farmed on
+darwin-arm64. From 1.0.85 the platform package is a single-file executable whose
+writer schema exists only after its first run unpacks the payload; Rosetta now
+reads it from that unpacked payload.
+
+Rosetta's canonical inventory is cumulative across its pinned versions, so the
+imported reference and this model still list 1.0.80 writer/fixture shapes (for
+example the allow-all pair of `session.permissions_changed`) beside 1.0.105's.
+A field or event shown here is therefore proven for 1.0.80 or 1.0.105, not
+necessarily both.
+
+- Writer schema: 53 → 80 persisted event types, none removed (fusion,
+  permission-authorization, `session.usage_record`, `subagent.configured`, …).
+- `session.permissions_changed`: the 1.0.105 writer schema replaces the
+  allow-all pair with `mode`/`previousMode` (`manual | assisted | allow-all`),
+  yet the 1.0.105 captures still persist the allow-all pair. The adapter reads
+  `mode` first and keeps the pair.
+- `session.model_change` is no longer written at session start in these
+  scenarios; `session.start.selectedModel` carries the model and was already
+  consumed. The persona now mirrors that.
+- `session.usage_record` is persisted once per model request. Usage stays
+  `unsupported` (durable transcript usage is excluded), so it is retained as a
+  native event.
+- New optional fields: `user.message.messageId`/`turnId`,
+  `assistant.message.originatingMessageId` (and no `outputTokens` in these
+  captures), `tool.execution_start.toolTitle`,
+  `tool.execution_complete.shellExecution`, and shutdown accounting snapshots.
+- Invocation grammar (`--help`, 1.0.105): new `config`, `workflow` and
+  `sandbox` commands and `--trust-folder`, `--disable-client-telemetry`,
+  `--mcp-github-auth`, `--sync-session`, `--host-environment`,
+  `--host-compute-id`; `--remote-export` and `--no-remote` are removed, while
+  `--remote` and `--no-remote-export` still parse but are unlisted.
 
 ## Adapter boundary
 

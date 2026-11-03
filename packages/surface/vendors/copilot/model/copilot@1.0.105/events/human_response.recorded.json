@@ -1,0 +1,357 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "human_response.recorded",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "actor": {
+        "type": "string"
+      },
+      "requestId": {
+        "type": "string"
+      },
+      "response": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "message": {
+                "type": "string"
+              },
+              "requestedSchema": {
+                "type": "object",
+                "properties": {
+                  "properties": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "required": {
+                    "type": "array",
+                    "items": {}
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "properties",
+                  "type"
+                ],
+                "additionalProperties": true
+              },
+              "responseKind": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "content",
+              "message",
+              "requestedSchema",
+              "responseKind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "allowFreeform": {
+                "type": "boolean"
+              },
+              "answer": {
+                "type": "string"
+              },
+              "choices": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "question": {
+                "type": "string"
+              },
+              "responseKind": {
+                "type": "string"
+              },
+              "wasFreeform": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "answer",
+              "question",
+              "responseKind",
+              "wasFreeform"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "actions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "approved": {
+                "type": "boolean"
+              },
+              "autoApproveEdits": {
+                "type": "boolean"
+              },
+              "feedback": {
+                "type": "string"
+              },
+              "planContent": {
+                "type": "string"
+              },
+              "recommendedAction": {
+                "type": "string"
+              },
+              "responseKind": {
+                "type": "string"
+              },
+              "selectedAction": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "actions",
+              "approved",
+              "planContent",
+              "recommendedAction",
+              "responseKind",
+              "summary"
+            ],
+            "additionalProperties": true
+          }
+        ]
+      },
+      "toolCallId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "actor",
+      "requestId",
+      "response"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "response": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "requestedSchema": {
+                    "type": "object",
+                    "properties": {
+                      "properties": {
+                        "type": "object",
+                        "additionalProperties": true
+                      },
+                      "required": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "type": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "properties",
+                      "type"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "responseKind": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "content",
+                  "message",
+                  "requestedSchema",
+                  "responseKind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "allowFreeform": {
+                    "type": "boolean"
+                  },
+                  "answer": {
+                    "type": "string"
+                  },
+                  "choices": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "question": {
+                    "type": "string"
+                  },
+                  "responseKind": {
+                    "type": "string"
+                  },
+                  "wasFreeform": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "answer",
+                  "question",
+                  "responseKind",
+                  "wasFreeform"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "actions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "approved": {
+                    "type": "boolean"
+                  },
+                  "autoApproveEdits": {
+                    "type": "boolean"
+                  },
+                  "feedback": {
+                    "type": "string"
+                  },
+                  "planContent": {
+                    "type": "string"
+                  },
+                  "recommendedAction": {
+                    "type": "string"
+                  },
+                  "responseKind": {
+                    "type": "string"
+                  },
+                  "selectedAction": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "actions",
+                  "approved",
+                  "planContent",
+                  "recommendedAction",
+                  "responseKind",
+                  "summary"
+                ],
+                "additionalProperties": true
+              }
+            ]
+          },
+          "toolCallId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor",
+          "requestId",
+          "response"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ],
+    "carrier": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s); source evidence: writer."
+}
