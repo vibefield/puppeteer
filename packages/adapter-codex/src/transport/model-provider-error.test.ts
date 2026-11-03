@@ -56,9 +56,37 @@ describe('Codex model-provider refusals (0.166.0)', () => {
     });
   });
 
-  it('quotes back no provider id that is not a plain identifier', () => {
+  it('decodes any provider id Codex names, including a non-ASCII one, so the refusal still stops the retry', () => {
+    // A configured provider id is any TOML key; the variant comes from `data.type` alone.
+    const data = { type: 'modelProviderMismatch', modelProvider: 'ローカル', currentModelProvider: 'openai' };
+    expect(codexModelProviderRefusal(refused(data))).toEqual(data);
+    expect(asCodexModelProviderRefusal(refused(data))).toMatchObject({
+      code: 'CODEX_MODEL_PROVIDER_MISMATCH',
+      message: 'This Codex thread uses model provider "ローカル", but the configured provider is "openai".',
+    });
+  });
+
+  it('sanitises a provider id only where the sentence quotes it', () => {
+    const odd = 'a "quoted"\nid\u202e';
+    expect(codexModelProviderRefusal(refused({ type: 'modelProviderNotConfigured', modelProvider: odd }))).toEqual({
+      type: 'modelProviderNotConfigured',
+      modelProvider: odd,
+    });
     expect(
-      codexModelProviderRefusal(refused({ type: 'modelProviderNotConfigured', modelProvider: 'a "quoted"\nid' })),
-    ).toBeUndefined();
+      asCodexModelProviderRefusal(refused({ type: 'modelProviderNotConfigured', modelProvider: odd })),
+    ).toMatchObject({
+      message: `This Codex thread uses model provider "a 'quoted'id", which is no longer configured.`,
+    });
+    expect(
+      asCodexModelProviderRefusal(refused({ type: 'modelProviderNotConfigured', modelProvider: '\n' })),
+    ).toMatchObject({
+      code: 'CODEX_MODEL_PROVIDER_NOT_CONFIGURED',
+      message: "This Codex thread's model provider is no longer configured.",
+    });
+    const long = 'p'.repeat(100);
+    expect(
+      (asCodexModelProviderRefusal(refused({ type: 'modelProviderNotConfigured', modelProvider: long })) as Error)
+        .message,
+    ).toBe(`This Codex thread uses model provider "${'p'.repeat(63)}…", which is no longer configured.`);
   });
 });
