@@ -483,9 +483,11 @@ export class KimiMonitorEvidence {
         } else if (!this.parentAgents.has(childId)) {
           this.parentAgents.set(childId, observed.agentId);
         }
+        // A resumed child reuses its id, so a parent-journal spawned/started opens a new run.
         if (terminal) this.stoppedAgents.add(childId);
+        else this.stoppedAgents.delete(childId);
         const child = this.actor(childId)!;
-        const state = this.stoppedAgents.has(childId) ? 'stopped' : 'active';
+        const state = terminal ? 'stopped' : 'active';
         updates.push(
           upsert('delegation', `actor:${child.runKey}`, {
             kind: 'actor',

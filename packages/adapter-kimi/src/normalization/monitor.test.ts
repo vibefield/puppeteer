@@ -157,6 +157,31 @@ describe('KimiMonitorEvidence', () => {
     ).toBe(true);
   });
 
+  it('reopens a resumed child when its parent journal spawns the same id again', () => {
+    const projector = evidence();
+    let cursor = 100;
+    const delegationStates = (record: Record<string, unknown>, agentId = 'main') =>
+      (
+        projector.recordBatch(observed(record, { agentId, cursorStart: cursor, cursorEnd: (cursor += 100) }), AT)
+          ?.updates ?? []
+      )
+        .filter(({ family }) => family === 'delegation')
+        .map((update) => (update as unknown as { value: { state: string } }).value.state);
+    const run = () => [
+      ...delegationStates({ type: 'subagent.spawned', subagentId: 'agent-0', subagentName: 'coder' }),
+      ...delegationStates({ type: 'subagent.started', subagentId: 'agent-0' }),
+    ];
+
+    expect(run()).toEqual(['active', 'active']);
+    expect(delegationStates({ type: 'subagent.completed', subagentId: 'agent-0' })).toEqual(['stopped']);
+    expect(run()).toEqual(['active', 'active']);
+    // Child-journal records after the resume project activity again.
+    const childStates = delegationStates({ type: 'turn.prompt', turnId: 1 }, 'agent-0');
+    expect(childStates.length).toBeGreaterThan(0);
+    expect(childStates.every((state) => state === 'active')).toBe(true);
+    expect(delegationStates({ type: 'subagent.completed', subagentId: 'agent-0' })).toEqual(['stopped']);
+  });
+
   it('marks source-only subagent failure and cancellation as provisional', () => {
     const projector = evidence();
     for (const type of ['subagent.failed', 'subagent.cancelled']) {

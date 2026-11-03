@@ -295,6 +295,53 @@ describe('KimiWireNormalizer', () => {
     });
   });
 
+  it('reports a background task.started that follows its subagent mirror as no-output', () => {
+    const normalizer = new KimiWireNormalizer();
+    const info = { taskId: 'agent-x', kind: 'agent', agentId: 'agent-1', subagentType: 'explore', status: 'running' };
+    expect(
+      normalizer.normalize({ type: 'subagent.spawned', subagentId: 'agent-1', subagentName: 'explore' }).events,
+    ).toEqual([{ type: 'delegation:subagent-started', subagentId: 'agent-1', agentType: 'explore' }]);
+    expect(normalizer.normalize({ type: 'task.started', agentId: 'main', info })).toMatchObject({
+      events: [],
+      disposition: 'no-output',
+    });
+  });
+
+  it('opens a new start/stop pair when a resumed foreground child reuses its id', () => {
+    const normalizer = new KimiWireNormalizer();
+    const run = () =>
+      [
+        { type: 'subagent.spawned', subagentId: 'agent-0', subagentName: 'coder' },
+        { type: 'subagent.started', subagentId: 'agent-0' },
+        { type: 'subagent.completed', subagentId: 'agent-0' },
+      ].flatMap((record) => normalizer.normalize(record).events);
+    const pair = [
+      { type: 'delegation:subagent-started', subagentId: 'agent-0', agentType: 'coder' },
+      { type: 'delegation:subagent-stopped', subagentId: 'agent-0' },
+    ];
+    expect(run()).toEqual(pair);
+    expect(run()).toEqual(pair);
+  });
+
+  it('opens a new start/stop pair when a resumed background child reuses its id', () => {
+    const normalizer = new KimiWireNormalizer();
+    const info = { taskId: 'agent-x', kind: 'agent', agentId: 'agent-1', subagentType: 'explore' };
+    const run = () =>
+      [
+        { type: 'task.started', agentId: 'main', info: { ...info, status: 'running' } },
+        { type: 'subagent.spawned', subagentId: 'agent-1', subagentName: 'explore' },
+        { type: 'subagent.started', subagentId: 'agent-1' },
+        { type: 'subagent.completed', subagentId: 'agent-1' },
+        { type: 'task.terminated', agentId: 'main', info: { ...info, status: 'completed' } },
+      ].flatMap((record) => normalizer.normalize(record).events);
+    const pair = [
+      { type: 'delegation:subagent-started', subagentId: 'agent-1', agentType: 'explore' },
+      { type: 'delegation:subagent-stopped', subagentId: 'agent-1' },
+    ];
+    expect(run()).toEqual(pair);
+    expect(run()).toEqual(pair);
+  });
+
   it('closes a captured print-mode SIGINT as a cancelled turn and keeps cancel/abort facts native', () => {
     const events = normalize(capture('interrupt-stream'));
     expect(events.filter((event) => event.type.startsWith('turn:'))).toEqual([

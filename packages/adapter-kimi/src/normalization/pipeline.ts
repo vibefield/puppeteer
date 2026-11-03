@@ -93,7 +93,7 @@ export class KimiWireNormalizer {
     if (type === 'task.started') {
       const events = this.delegation.started(body);
       return events
-        ? result(events, 'mapped', { turnId: this.turn.currentTurnId() })
+        ? result(events, events.length > 0 ? 'mapped' : 'no-output', { turnId: this.turn.currentTurnId() })
         : result([kimiNativeEvent(type)], 'retained-native');
     }
     if (type === 'task.terminated') {
