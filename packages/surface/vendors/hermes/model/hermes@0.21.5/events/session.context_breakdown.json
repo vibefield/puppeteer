@@ -1,0 +1,231 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "session.context_breakdown",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Cursor-style split of the context window by category.",
+  "payloadSchema": {
+    "$ref": "#/$defs/SessionContextBreakdownParams",
+    "$defs": {
+      "SessionContextBreakdownParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id"],
+        "title": "SessionContextBreakdownParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/SessionContextBreakdownResult",
+    "$defs": {
+      "SessionContextBreakdownResult": {
+        "additionalProperties": false,
+        "description": "``agent.context_breakdown.compute_session_context_breakdown`` (empty categories before the agent builds)\nplus the per-file context manifest (empty until the agent exists).",
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/$defs/ContextCategory"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "context_estimated": {
+            "title": "Context Estimated",
+            "type": "boolean"
+          },
+          "context_files": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/ContextFileSource"
+            },
+            "title": "Context Files",
+            "type": "array"
+          },
+          "context_max": {
+            "title": "Context Max",
+            "type": "integer"
+          },
+          "context_percent": {
+            "title": "Context Percent",
+            "type": "integer"
+          },
+          "context_source": {
+            "title": "Context Source",
+            "type": "string"
+          },
+          "context_used": {
+            "title": "Context Used",
+            "type": "integer"
+          },
+          "estimated_total": {
+            "title": "Estimated Total",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "categories",
+          "context_max",
+          "context_percent",
+          "context_used",
+          "estimated_total",
+          "context_estimated",
+          "context_source",
+          "model"
+        ],
+        "title": "SessionContextBreakdownResult",
+        "type": "object"
+      },
+      "ContextCategory": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": ["color", "id", "label", "tokens"],
+        "title": "ContextCategory",
+        "type": "object"
+      },
+      "ContextFileSource": {
+        "additionalProperties": false,
+        "description": "One row of ``agent.context_file_sources.list_context_file_sources``.",
+        "properties": {
+          "chars": {
+            "title": "Chars",
+            "type": "integer"
+          },
+          "est_tokens": {
+            "title": "Est Tokens",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "loaded": {
+            "title": "Loaded",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": ["label", "path", "chars", "est_tokens", "loaded", "status"],
+        "title": "ContextFileSource",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session.context_breakdown"]
+      },
+      "params": {
+        "$ref": "#/$defs/SessionContextBreakdownParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "SessionContextBreakdownParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id"],
+        "title": "SessionContextBreakdownParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

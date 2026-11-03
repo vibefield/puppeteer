@@ -1,0 +1,181 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "session.interrupt",
+  "firstSeen": "0.21.5",
+  "lastVerified": "0.21.5",
+  "fixture": "captures/hermes@0.21.5/interrupt/rpc.jsonl",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Stop the running turn (and streaming TTS); retires the crash-recovery marker.",
+  "payloadSchema": {
+    "$ref": "#/$defs/SessionInterruptParams",
+    "$defs": {
+      "SessionInterruptParams": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_hosted_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expected Hosted Task Id"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id"],
+        "title": "SessionInterruptParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/SessionInterruptResult",
+    "$defs": {
+      "SessionInterruptResult": {
+        "additionalProperties": false,
+        "properties": {
+          "interrupted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Interrupted"
+          },
+          "status": {
+            "$ref": "#/$defs/InterruptStatus"
+          },
+          "turn_isolation": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Turn Isolation"
+          }
+        },
+        "required": ["status"],
+        "title": "SessionInterruptResult",
+        "type": "object"
+      },
+      "InterruptStatus": {
+        "enum": ["interrupted", "not_interrupted"],
+        "title": "InterruptStatus",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session.interrupt"]
+      },
+      "params": {
+        "$ref": "#/$defs/SessionInterruptParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "SessionInterruptParams": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_hosted_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expected Hosted Task Id"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id"],
+        "title": "SessionInterruptParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-runtime-headless", "hermes-generated-contract"],
+    "shape": ["hermes-generated-contract", "hermes-runtime-headless"],
+    "result": ["hermes-generated-contract", "hermes-runtime-headless"],
+    "carrier": ["hermes-runtime-headless"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "The RPC result is not the stop: wait for message.complete status interrupted."
+}

@@ -6,6 +6,11 @@
  * and `hermes acp --version/--check`. They never submit a model prompt, never
  * authenticate a provider, and never touch the operator's ~/.hermes.
  *
+ * The reviewed locked recipe installs no optional extras, and ACP's protocol
+ * package is the optional `acp` extra in every pinned release. `acp --check`
+ * is therefore recorded with its exit status rather than required to pass:
+ * ACP is a separate host that Puppeteer never runs beside the native TUI.
+ *
  * usage:
  *   node harness.mjs --hermes-bin /path/to/hermes --home /isolated/HERMES_HOME --checkout /path/to/tag
  */
@@ -17,9 +22,33 @@ import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const VERSION = '0.20.0';
-export const RELEASE_TAG = 'v2026.8.3';
-export const SOURCE_REVISION = '3c27eb6234bf91b8ceee9e9071591b31e9b148cb';
+/**
+ * Reviewed release pins. A Hermes GitHub release is a date tag whose
+ * annotated-tag subject carries the product version
+ * (`Hermes Agent v0.21.5 (2026.9.24)`), matching `pyproject.toml` and
+ * `hermes_cli.__version__` at the peeled commit.
+ */
+export const RELEASES = Object.freeze({
+  '0.20.0': Object.freeze({
+    releaseTag: 'v2026.8.3',
+    releaseDate: '2026.8.3',
+    sourceRevision: '3c27eb6234bf91b8ceee9e9071591b31e9b148cb',
+    tagObject: '7de39e700d2c329e15d32eb0b96e2f7cdd9fbdb2',
+  }),
+  '0.21.5': Object.freeze({
+    releaseTag: 'v2026.9.24',
+    releaseDate: '2026.9.24',
+    sourceRevision: 'f97608f178d1ffeca59860195ab7da295f7c8e5f',
+    tagObject: 'e3dd27ee2d8b011737a4eea8e3eb3d711ab78690',
+  }),
+});
+
+/** The candidate this census tooling currently authors. */
+export const VERSION = '0.21.5';
+export const RELEASE_TAG = RELEASES[VERSION].releaseTag;
+export const RELEASE_DATE = RELEASES[VERSION].releaseDate;
+export const SOURCE_REVISION = RELEASES[VERSION].sourceRevision;
+export const TAG_OBJECT = RELEASES[VERSION].tagObject;
 export const REQUIRED_FLAGS = [
   '--tui',
   '--cli',
@@ -51,6 +80,15 @@ export function sanitizeVersionOutput(text) {
     .replace(/^Install directory:.*$/m, 'Install directory: <redacted:install-directory>')
     .replace(/\/(?:private\/)?tmp\/puppeteer-hermes-[^\s]+/g, '<redacted:path>')
     .replace(new RegExp(homedir().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '<redacted:home>');
+}
+
+/** Redact the probe's own checkout and environment roots wherever a native message names them. */
+export function redactProbeRoots(text, roots) {
+  let result = String(text ?? '');
+  for (const root of [...roots].filter(Boolean).sort((left, right) => right.length - left.length)) {
+    result = result.split(root).join('<redacted:path>');
+  }
+  return sanitizeVersionOutput(result);
 }
 
 export function sanitizeProcessTree(text) {
@@ -121,13 +159,14 @@ function main() {
   if (!existsSync(join(checkout, 'pyproject.toml'))) throw new Error(`checkout missing: ${checkout}`);
 
   const env = isolatedEnv(home);
+  const probeRoots = [checkout, dirname(dirname(hermesBin)), home];
   const versionProbe = run(hermesBin, ['--version'], env);
   const helpProbe = run(hermesBin, ['--help'], env);
   const rejected = run(hermesBin, ['--definitely-not-a-hermes-option'], env);
   const acpVersion = run(hermesBin, ['acp', '--version'], env);
   const acpCheck = run(hermesBin, ['acp', '--check'], env);
   const sanitizedVersion = sanitizeVersionOutput(versionProbe.stdout);
-  if (!sanitizedVersion.includes(VERSION) || !sanitizedVersion.includes('2026.8.3')) {
+  if (!sanitizedVersion.includes(VERSION) || !sanitizedVersion.includes(RELEASE_DATE)) {
     throw new Error(`unexpected version output: ${sanitizedVersion}`);
   }
   if (helpProbe.status !== 0) throw new Error('help probe failed');
@@ -138,8 +177,8 @@ function main() {
   if (acpVersion.status !== 0 || !acpVersion.stdout.includes(VERSION)) {
     throw new Error(`acp --version failed: ${acpVersion.stdout || acpVersion.stderr}`);
   }
-  if (acpCheck.status !== 0 || !acpCheck.stdout.includes('Hermes ACP check OK')) {
-    throw new Error(`acp --check failed: ${acpCheck.stdout || acpCheck.stderr}`);
+  if (acpCheck.status === 0 && !acpCheck.stdout.includes('Hermes ACP check OK')) {
+    throw new Error(`acp --check succeeded without its native confirmation: ${acpCheck.stdout}`);
   }
 
   const platform = canonicalizePlatform();
@@ -151,7 +190,10 @@ function main() {
   );
   writeFileSync(join(platformRoot, 'help.txt'), helpProbe.stdout);
   writeFileSync(join(platformRoot, 'acp-version.txt'), acpVersion.stdout.trimEnd() + '\n');
-  writeFileSync(join(platformRoot, 'acp-check.txt'), acpCheck.stdout.trimEnd() + '\n');
+  writeFileSync(
+    join(platformRoot, 'acp-check.txt'),
+    `exit ${acpCheck.status}\n${redactProbeRoots(`${acpCheck.stdout}${acpCheck.stderr}`, probeRoots).trimEnd()}\n`,
+  );
   writeJson(join(platformRoot, 'flags.json'), {
     visibleHelpOptions: Object.fromEntries(REQUIRED_FLAGS.map((name) => [name, helpProbe.stdout.includes(name)])),
     visibleSubcommands: Object.fromEntries(REQUIRED_SUBCOMMANDS.map((name) => [name, helpProbe.stdout.includes(name)])),
@@ -168,7 +210,7 @@ function main() {
     vendorVersion: VERSION,
     releaseTag: RELEASE_TAG,
     sourceRevision: SOURCE_REVISION,
-    tagObject: '7de39e700d2c329e15d32eb0b96e2f7cdd9fbdb2',
+    tagObject: TAG_OBJECT,
     relation: 'annotated-tag-peels-to-release-commit',
     pyprojectSha256: sha256(readFileSync(join(checkout, 'pyproject.toml'))),
     uvLockSha256: sha256(lockBytes),
@@ -184,6 +226,12 @@ function main() {
     versionArgs: ['--version'],
     versionOutput: sanitizedVersion.split('\n')[0],
     probeHost: { platform: process.platform, arch: process.arch },
+    probeEnvironment: {
+      install: 'survey: uv sync --frozen --no-default-groups of the exact tag checkout',
+      pythonVersion: versionProbe.stdout.match(/^Python: (\S+)$/m)?.[1] ?? 'unknown',
+      attested: false,
+      note: 'Not the protected installed-console materialization; its pinned toolchain and digests come from the adaptation workflow.',
+    },
     probedAt: new Date().toISOString(),
   });
   console.log(`wrote probes under ${defaultOutput}`);

@@ -14,9 +14,7 @@ function boundedText(value: unknown, maxLength: number): string | undefined {
   return trimmed ? trimmed.slice(0, maxLength) : undefined;
 }
 
-/** Project the pinned Hermes clarify.request payload without parsing terminal text. */
-export function hermesStructuredQuestions(payloadValue: unknown): AgentStructuredQuestion[] | undefined {
-  const payload = record(payloadValue);
+function structuredQuestion(payload: Record<string, unknown> | undefined, id: unknown) {
   const prompt = boundedText(payload?.question, MAX_QUESTION_LENGTH);
   if (!prompt) return undefined;
   const options = Array.isArray(payload?.choices)
@@ -25,22 +23,39 @@ export function hermesStructuredQuestions(payloadValue: unknown): AgentStructure
         return label ? [{ label }] : [];
       })
     : [];
-  const requestId = boundedText(payload?.request_id, MAX_OPTION_LENGTH);
-  return [
-    {
-      ...(requestId ? { id: requestId } : {}),
-      prompt,
-      ...(options.length > 0 ? { options } : {}),
-      allowMultiple: payload?.multi_select === true,
-      // The native Hermes picker always offers an Other/free-text branch.
-      allowFreeForm: true,
-    },
-  ];
+  const questionId = boundedText(id, MAX_OPTION_LENGTH);
+  return {
+    ...(questionId ? { id: questionId } : {}),
+    prompt,
+    ...(options.length > 0 ? { options } : {}),
+    allowMultiple: payload?.multi_select === true,
+    // The native Hermes picker always offers an Other/free-text branch.
+    allowFreeForm: true,
+  } satisfies AgentStructuredQuestion;
+}
+
+/**
+ * Project a Hermes clarification without parsing terminal text: the 0.20 `clarify.request` event
+ * payload (one question, `request_id`) or the 0.21 `clarify` server-request params (one question,
+ * or a batch of `questions` with their own `qid`s).
+ */
+export function hermesStructuredQuestions(payloadValue: unknown): AgentStructuredQuestion[] | undefined {
+  const payload = record(payloadValue);
+  if (Array.isArray(payload?.questions)) {
+    const batch = payload.questions
+      .slice(0, MAX_OPTIONS)
+      .flatMap((entry) => structuredQuestion(record(entry), record(entry)?.qid) ?? []);
+    return batch.length > 0 ? batch : undefined;
+  }
+  const single = structuredQuestion(payload, payload?.request_id);
+  return single ? [single] : undefined;
 }
 
 /** Hermes approval/clarification frames → interaction state events. */
 export class HermesInteractionNormalizer {
   private readonly questionStates = new Map<string, 'requested' | 'resolved'>();
+  /** Open server→client requests by `srq-` id, so `request.cancel` resolves the interaction it opened. */
+  private readonly serverRequests = new Map<string, { kind: 'permission' | 'question'; requestId: string }>();
 
   permission(payload: Record<string, unknown>, liveSessionId: string | undefined): AgentEvent[] {
     const toolCallId = hermesString(payload.tool_id);
@@ -61,6 +76,45 @@ export class HermesInteractionNormalizer {
     if (!requestId || !questions || this.questionStates.has(requestId)) return [];
     boundedHermesMapSet(this.questionStates, requestId, 'requested');
     return [{ type: 'interaction:question-requested', requestId, questions }];
+  }
+
+  /**
+   * The 0.21 `approval` server request. Its answer comes from the native TUI and never reaches this
+   * observer, so the request opens the interaction and only a withdrawal (`request.cancel`) closes it.
+   */
+  requestPermission(serverRequestId: string, payload: Record<string, unknown>): AgentEvent[] {
+    const requestId = hermesString(payload.request_id) ?? serverRequestId;
+    if (this.serverRequests.has(serverRequestId)) return [];
+    boundedHermesMapSet(this.serverRequests, serverRequestId, { kind: 'permission', requestId });
+    return [
+      {
+        type: 'interaction:permission-requested',
+        requestId,
+        tool: hermesString(payload.tool_name) ?? 'terminal',
+        presentation: 'native-tui',
+      },
+    ];
+  }
+
+  /** The 0.21 `clarify` server request; its params carry no request id, so the `srq-` id names it. */
+  requestServerQuestion(serverRequestId: string, payload: Record<string, unknown>): AgentEvent[] {
+    const questions = hermesStructuredQuestions({ ...payload, request_id: undefined });
+    if (!questions || this.serverRequests.has(serverRequestId)) return [];
+    boundedHermesMapSet(this.serverRequests, serverRequestId, { kind: 'question', requestId: serverRequestId });
+    boundedHermesMapSet(this.questionStates, serverRequestId, 'requested');
+    return [{ type: 'interaction:question-requested', requestId: serverRequestId, questions }];
+  }
+
+  /** `request.cancel {id, method, reason}`: a timeout, interrupt, or close withdrew an open request. */
+  cancelServerRequest(payload: Record<string, unknown>): AgentEvent[] {
+    const serverRequestId = hermesString(payload.id);
+    const open = serverRequestId ? this.serverRequests.get(serverRequestId) : undefined;
+    if (!serverRequestId || !open) return [];
+    this.serverRequests.delete(serverRequestId);
+    if (open.kind === 'permission') {
+      return [{ type: 'interaction:permission-resolved', requestId: open.requestId, outcome: 'dismissed' }];
+    }
+    return this.expireQuestion({ request_id: open.requestId });
   }
 
   expireQuestion(payload: Record<string, unknown>): AgentEvent[] {

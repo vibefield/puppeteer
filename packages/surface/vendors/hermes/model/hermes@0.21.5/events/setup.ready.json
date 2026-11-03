@@ -1,0 +1,230 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "setup.ready",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "The free-tier bootstrap finished (broadcast); the desktop's setup gate reads the record.",
+  "payloadSchema": {
+    "$ref": "#/$defs/SetupReadyPayload",
+    "$defs": {
+      "SetupReadyPayload": {
+        "additionalProperties": true,
+        "description": "``hermes_cli/free_tier_bootstrap.py::SetupRecord.as_payload``.",
+        "properties": {
+          "error": {
+            "default": "",
+            "title": "Error",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Code"
+          },
+          "finished_at": {
+            "title": "Finished At",
+            "type": "number"
+          },
+          "free_tier": {
+            "title": "Free Tier",
+            "type": "boolean"
+          },
+          "has_identity": {
+            "title": "Has Identity",
+            "type": "boolean"
+          },
+          "inference_provider": {
+            "title": "Inference Provider",
+            "type": "string"
+          },
+          "other_providers": {
+            "title": "Other Providers",
+            "type": "boolean"
+          },
+          "provider_configured": {
+            "title": "Provider Configured",
+            "type": "boolean"
+          },
+          "retry_after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retry After"
+          },
+          "retryable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retryable"
+          }
+        },
+        "required": [
+          "provider_configured",
+          "inference_provider",
+          "free_tier",
+          "has_identity",
+          "other_providers",
+          "finished_at"
+        ],
+        "title": "SetupReadyPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["setup.ready"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/SetupReadyPayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "SetupReadyPayload": {
+        "additionalProperties": true,
+        "description": "``hermes_cli/free_tier_bootstrap.py::SetupRecord.as_payload``.",
+        "properties": {
+          "error": {
+            "default": "",
+            "title": "Error",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Code"
+          },
+          "finished_at": {
+            "title": "Finished At",
+            "type": "number"
+          },
+          "free_tier": {
+            "title": "Free Tier",
+            "type": "boolean"
+          },
+          "has_identity": {
+            "title": "Has Identity",
+            "type": "boolean"
+          },
+          "inference_provider": {
+            "title": "Inference Provider",
+            "type": "string"
+          },
+          "other_providers": {
+            "title": "Other Providers",
+            "type": "boolean"
+          },
+          "provider_configured": {
+            "title": "Provider Configured",
+            "type": "boolean"
+          },
+          "retry_after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retry After"
+          },
+          "retryable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retryable"
+          }
+        },
+        "required": [
+          "provider_configured",
+          "inference_provider",
+          "free_tier",
+          "has_identity",
+          "other_providers",
+          "finished_at"
+        ],
+        "title": "SetupReadyPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "unverified"
+}

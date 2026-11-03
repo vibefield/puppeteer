@@ -1,0 +1,102 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "agent.terminal.output",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "Output chunk from an agent-owned background process.",
+  "payloadSchema": {
+    "$ref": "#/$defs/TerminalOutputPayload",
+    "$defs": {
+      "TerminalOutputPayload": {
+        "additionalProperties": false,
+        "description": "``session_notifications`` process_registry.on_output.",
+        "properties": {
+          "chunk": {
+            "title": "Chunk",
+            "type": "string"
+          },
+          "process_id": {
+            "title": "Process Id",
+            "type": "string"
+          }
+        },
+        "required": ["process_id", "chunk"],
+        "title": "TerminalOutputPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["agent.terminal.output"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/TerminalOutputPayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "TerminalOutputPayload": {
+        "additionalProperties": false,
+        "description": "``session_notifications`` process_registry.on_output.",
+        "properties": {
+          "chunk": {
+            "title": "Chunk",
+            "type": "string"
+          },
+          "process_id": {
+            "title": "Process Id",
+            "type": "string"
+          }
+        },
+        "required": ["process_id", "chunk"],
+        "title": "TerminalOutputPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "unverified"
+}

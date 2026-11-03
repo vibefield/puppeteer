@@ -114,11 +114,10 @@ export async function prepareHermesTuiSession(
     // gateway.ready from session.start, which runs after session.create.
     await waitForEvent('gateway.ready', 250);
 
+    // session.resume names only the stored session: the resumed session keeps its recorded cwd. The
+    // 0.21 contract rejects any undeclared key (error 4000), where 0.20 ignored an unread `cwd`.
     const session = options.resume
-      ? ((await transport.request('session.resume', {
-          session_id: options.resume,
-          cwd: options.cwd,
-        })) as HermesSessionResult)
+      ? ((await transport.request('session.resume', { session_id: options.resume })) as HermesSessionResult)
       : ((await transport.request('session.create', {
           cwd: options.cwd,
           source: 'tui',

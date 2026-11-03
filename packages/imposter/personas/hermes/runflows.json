@@ -10,7 +10,9 @@
       "kind": "typical",
       "danger": "safe",
       "tags": ["tui-gateway", "turn"],
-      "defaultStimulus": { "text": "hello" },
+      "defaultStimulus": {
+        "text": "hello"
+      },
       "defaultSpeed": 4
     },
     {
@@ -18,7 +20,7 @@
       "intent": "permission.deny",
       "scenario": "permission-deny",
       "title": "Approval deny",
-      "summary": "tool.start, approval.request, blocked tool.complete, then message.complete.",
+      "summary": "tool.start, the approval server request answered by the client, blocked tool.complete, then message.complete.",
       "kind": "typical",
       "danger": "safe",
       "tags": ["approval", "tool"],

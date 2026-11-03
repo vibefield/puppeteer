@@ -1,53 +1,89 @@
 {
   "$server": {
     "jsonrpc": "2.0",
-    "command": "tui-gateway"
+    "command": "tui-gateway",
+    "requestIdPrefix": "srq-"
   },
-
   "session.create": {
     "bind": {
       "$liveSessionId": "$uuid:live",
       "$storedSessionId": "$uuid:stored"
     },
-    "then": [{ "op": "session.start" }, { "op": "session.ready" }],
+    "then": [
+      {
+        "op": "session.start"
+      },
+      {
+        "op": "session.ready"
+      }
+    ],
     "result": {
       "session_id": "$liveSessionId",
       "stored_session_id": "$storedSessionId",
-      "message_count": 0
+      "message_count": 0,
+      "messages": [],
+      "info": {
+        "model": "puppeteer-hermes-census",
+        "cwd": "$cwd"
+      }
     }
   },
-
   "session.resume": {
     "bind": {
       "$liveSessionId": "$uuid:live",
       "$storedSessionId": "$params.session_id"
     },
-    "then": [{ "op": "session.start" }, { "op": "session.ready" }],
+    "then": [
+      {
+        "op": "session.start"
+      },
+      {
+        "op": "session.ready"
+      }
+    ],
     "result": {
       "session_id": "$liveSessionId",
       "resumed": "$storedSessionId",
       "session_key": "$storedSessionId",
       "status": "idle",
       "message_count": 2,
+      "messages": [],
+      "info": {
+        "model": "puppeteer-hermes-census",
+        "cwd": "$cwd"
+      },
       "running": false
     }
   },
-
   "prompt.submit": {
     "then": "$behavior",
-    "result": { "status": "streaming" }
+    "result": {
+      "status": "streaming"
+    }
   },
-
   "session.interrupt": {
-    "result": { "status": "interrupted" }
+    "result": {
+      "status": "interrupted"
+    }
   },
-
   "approval.respond": {
-    "result": { "resolved": 1 },
+    "result": {
+      "resolved": 1
+    },
     "then": [
       {
         "op": "tool.end",
-        "with": { "tool": "terminal", "toolId": "call_imposter" }
+        "with": {
+          "tool": "terminal",
+          "toolId": "call_imposter",
+          "status": "error",
+          "result": {
+            "output": "",
+            "exit_code": -1,
+            "error": "BLOCKED: Command denied by user.",
+            "status": "blocked"
+          }
+        }
       }
     ]
   }

@@ -4,10 +4,10 @@ import { defaultRules, extendRules } from '@vibefield/puppeteer-surface/sanitize
 const extended = extendRules(
   {
     idKey:
-      /^(?:session_id|sessionId|session_key|stored_session_id|storedSessionId|live_session_id|tool_id|tool_call_id|toolCallId|request_id|requestId|delivery_id|parent_session_id|child_session_id)$/,
+      /^(?:session_id|sessionId|session_key|stored_session_id|storedSessionId|live_session_id|tool_id|tool_call_id|toolCallId|request_id|requestId|delivery_id|parent_session_id|child_session_id|x-hermes-delivery)$/,
     pathKey: /^(?:install_directory|installDirectory|hermes_home|cwd|workspace)$/,
     sensitiveTextKey:
-      /^(?:prompt|message|response|assistant_response|user_message|command|args|stderr_tail|content|result|summary|args_text|result_text|inline_diff)$/,
+      /^(?:prompt|message|response|assistant_response|user_message|command|args|stderr_tail|content|result|summary|args_text|result_text|inline_diff|arguments|context|preview)$/,
     sensitiveContainer: /^(?:args|extra)$/,
     unsafeTextPatterns: [
       /\bsk-[A-Za-z0-9_-]{16,}\b/,

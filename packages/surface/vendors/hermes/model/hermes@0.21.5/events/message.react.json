@@ -1,0 +1,279 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "message.react",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Set/clear one author's emoji reaction on a message; returns the row's full reaction list.",
+  "payloadSchema": {
+    "$ref": "#/$defs/MessageReactParams",
+    "$defs": {
+      "MessageReactParams": {
+        "additionalProperties": false,
+        "description": "``row_id`` is ``messages.id``; a not-yet-persisted live message names ``newest_role`` instead.\n``emoji`` null clears; the same emoji again retracts.",
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReactionAuthor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "emoji": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Emoji"
+          },
+          "newest_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Newest Role"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "row_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Row Id"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id"],
+        "title": "MessageReactParams",
+        "type": "object"
+      },
+      "ReactionAuthor": {
+        "enum": ["user", "agent"],
+        "title": "ReactionAuthor",
+        "type": "string"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/MessageReactResult",
+    "$defs": {
+      "MessageReactResult": {
+        "additionalProperties": false,
+        "properties": {
+          "reactions": {
+            "items": {
+              "$ref": "#/$defs/MessageReaction"
+            },
+            "title": "Reactions",
+            "type": "array"
+          },
+          "row_id": {
+            "title": "Row Id",
+            "type": "integer"
+          }
+        },
+        "required": ["row_id", "reactions"],
+        "title": "MessageReactResult",
+        "type": "object"
+      },
+      "MessageReaction": {
+        "additionalProperties": true,
+        "description": "One persisted reaction row (``hermes_state_messages.set_message_reaction``); ``seen`` is\nstamped once announced.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "At"
+          },
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "emoji": {
+            "title": "Emoji",
+            "type": "string"
+          },
+          "seen": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Seen"
+          }
+        },
+        "required": ["emoji", "author"],
+        "title": "MessageReaction",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["message.react"]
+      },
+      "params": {
+        "$ref": "#/$defs/MessageReactParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "MessageReactParams": {
+        "additionalProperties": false,
+        "description": "``row_id`` is ``messages.id``; a not-yet-persisted live message names ``newest_role`` instead.\n``emoji`` null clears; the same emoji again retracts.",
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReactionAuthor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "emoji": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Emoji"
+          },
+          "newest_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Newest Role"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "row_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Row Id"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id"],
+        "title": "MessageReactParams",
+        "type": "object"
+      },
+      "ReactionAuthor": {
+        "enum": ["user", "agent"],
+        "title": "ReactionAuthor",
+        "type": "string"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

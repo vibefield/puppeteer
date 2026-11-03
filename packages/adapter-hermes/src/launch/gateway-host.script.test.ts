@@ -83,6 +83,49 @@ describe.skipIf(!python3)('Hermes gateway host admission', () => {
   });
 });
 
+/** Loads the script with a stand-in tui_gateway on sys.path and reports whether it tees events itself. */
+const FANOUT_PROBE = `
+import importlib.util, json, sys
+sys.path.insert(0, sys.argv[2])
+spec = importlib.util.spec_from_file_location("tui_gateway_host", sys.argv[1])
+host = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(host)
+from tui_gateway.ws import WSTransport
+original = WSTransport.write
+host.enable_session_event_fanout()
+print(json.dumps({"native": host.gateway_attaches_resuming_clients(), "patched": WSTransport.write is not original}))
+`;
+
+const FANOUT_STAND_IN = (nativeFanout: boolean): Record<string, string> => ({
+  'tui_gateway/__init__.py': '',
+  'tui_gateway/server.py': [
+    'import threading',
+    '_live_transports_lock = threading.Lock()',
+    '_live_transports = []',
+  ].join('\n'),
+  'tui_gateway/ws.py': ['class WSTransport:', '    def write(self, frame):', '        return True'].join('\n'),
+  ...(nativeFanout ? { 'tui_gateway/transport.py': 'class FanoutTransport:\n    pass' } : {}),
+});
+
+describe.skipIf(!python3)('Hermes gateway host session fan-out', () => {
+  it.each([
+    { nativeFanout: false, patched: true },
+    { nativeFanout: true, patched: false },
+  ])('tees session events itself only when Hermes has no native fan-out ($nativeFanout)', async (expected) => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-hermes-fanout-'));
+    try {
+      for (const [path, source] of Object.entries(FANOUT_STAND_IN(expected.nativeFanout))) {
+        await mkdir(join(root, dirname(path)), { recursive: true });
+        await writeFile(join(root, path), `${source}\n`);
+      }
+      const { stdout } = await execFileAsync('python3', ['-I', '-c', FANOUT_PROBE, HOST_SCRIPT, root]);
+      expect(JSON.parse(stdout)).toEqual({ native: expected.nativeFanout, patched: expected.patched });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
+
 const STAND_IN: Record<string, string> = {
   'tui_gateway/__init__.py': '',
   'tui_gateway/server.py': [

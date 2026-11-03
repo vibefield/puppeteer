@@ -1,33 +1,38 @@
 #!/usr/bin/env node
 /**
- * Write the adapter detection projection from the Hermes candidate ASM.
- * First-vendor: read the model path directly until a ledger entry exists.
+ * Write the adapter detection projection from the Hermes canonical ground truth, whose embedded
+ * manifest names the candidate version. The release date comes from that version's own banner.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const adapterRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-const detection = JSON.parse(
-  readFileSync(join(adapterRoot, '../surface/vendors/hermes/model/hermes@0.20.0/detection.json'), 'utf8'),
-);
+const groundTruth = JSON.parse(readFileSync(join(adapterRoot, '../surface/vendors/hermes/groundtruth.json'), 'utf8'));
+const detection = groundTruth.detection;
+const version = groundTruth.manifest.vendorVersion;
+const banner = new RegExp(detection.versionPattern).exec(detection.versionOutput);
+if (!banner || banner[1] !== version) {
+  throw new Error(`ground-truth banner ${detection.versionOutput} does not identify Hermes ${version}`);
+}
+const releaseDate = banner[2];
 
 const flags = detection.launchFlags ?? {};
 const source = `/**
  * Checked runtime projection of
- * Surface \`vendors/hermes/model/hermes@0.20.0/detection.json\`.
+ * Surface \`vendors/hermes/groundtruth.json\` (hermes@${version}).
  * Production code consumes this file; it never imports the ASM.
  */
 
-export const HERMES_SURFACE_VERSION = '0.20.0';
-export const HERMES_RELEASE_TAG = '2026.8.3';
+export const HERMES_SURFACE_VERSION = '${version}';
+export const HERMES_RELEASE_TAG = '${releaseDate}';
 export const HERMES_DEFAULT_EXECUTABLE = ${JSON.stringify(detection.executables?.[0] ?? 'hermes')};
 export const HERMES_EXECUTABLE_ENV = ${JSON.stringify(detection.envVar ?? 'PUPPETEER_HERMES_BIN')};
 export const HERMES_HOME_ENV = ${JSON.stringify(detection.isolatedHomeEnv ?? 'HERMES_HOME')};
 export const HERMES_PYTHON_ENV = 'HERMES_PYTHON';
 export const HERMES_GATEWAY_URL_ENV = 'HERMES_TUI_GATEWAY_URL';
 export const HERMES_VERSION_FLAG = ${JSON.stringify(detection.versionFlag ?? '--version')};
-export const HERMES_VERSION_PATTERN = /${String(detection.versionPattern ?? '').slice(1, -1)}/;
+export const HERMES_VERSION_PATTERN = /${detection.versionPattern}/;
 
 export const HERMES_LAUNCH_FLAGS = {
   tui: ${JSON.stringify(flags.tui ?? '--tui')},

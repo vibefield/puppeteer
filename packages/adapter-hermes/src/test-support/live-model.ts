@@ -29,8 +29,13 @@ function messageContent(body: unknown, role: string): string[] {
   });
 }
 
+// Hermes's auxiliary session-title prompt (agent/title_generator.py): the 0.20 and 0.21 wordings.
+const TITLE_PROMPT_OPENINGS = ['Generate a short, descriptive title', 'You name chat sessions.'];
+
 function isTitleRequest(body: unknown): boolean {
-  return messageContent(body, 'system').some((content) => content.includes('Generate a short, descriptive title'));
+  return messageContent(body, 'system').some((content) =>
+    TITLE_PROMPT_OPENINGS.some((opening) => content.includes(opening)),
+  );
 }
 
 export function isHermesLiveTurnRequest(request: HermesLiveModelRequest): boolean {

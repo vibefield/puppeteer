@@ -1,0 +1,106 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "onboarding.ensure_setup_profile",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Create-or-read the backend-owned setup profile; the backend picks the name and finds it by role.",
+  "payloadSchema": {
+    "$ref": "#/$defs/Params",
+    "$defs": {
+      "Params": {
+        "additionalProperties": false,
+        "description": "Client→server method params / server→client request params. Unknown keys are rejected.",
+        "properties": {},
+        "title": "Params",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/OnboardingEnsureSetupProfileResult",
+    "$defs": {
+      "OnboardingEnsureSetupProfileResult": {
+        "additionalProperties": false,
+        "description": "``created`` is false when an existing setup profile was found (and returned untouched).",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "role": {
+            "const": "setup",
+            "default": "setup",
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": ["name", "path", "created"],
+        "title": "OnboardingEnsureSetupProfileResult",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["onboarding.ensure_setup_profile"]
+      },
+      "params": {
+        "$ref": "#/$defs/Params"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "Params": {
+        "additionalProperties": false,
+        "description": "Client→server method params / server→client request params. Unknown keys are rejected.",
+        "properties": {},
+        "title": "Params",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -1,0 +1,440 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "profiles.list",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Roster of profiles with previews so a client paints without N follow-up calls.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ProfilesListParams",
+    "$defs": {
+      "ProfilesListParams": {
+        "additionalProperties": false,
+        "properties": {
+          "include_sessions": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Include Sessions"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "ProfilesListParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/ProfilesListResult",
+    "$defs": {
+      "ProfilesListResult": {
+        "additionalProperties": false,
+        "description": "``bot_mode_protocol`` tells clients this backend injects the teammate protocol itself.",
+        "properties": {
+          "bot_mode_protocol": {
+            "default": true,
+            "title": "Bot Mode Protocol",
+            "type": "boolean"
+          },
+          "profiles": {
+            "items": {
+              "$ref": "#/$defs/ProfileRow"
+            },
+            "title": "Profiles",
+            "type": "array"
+          }
+        },
+        "title": "ProfilesListResult",
+        "type": "object"
+      },
+      "ProfileRow": {
+        "additionalProperties": false,
+        "description": "One roster row; the session fields are present only with ``include_sessions``.",
+        "properties": {
+          "canonical_session": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ProfileCanonicalSession"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "display_name": {
+            "default": "",
+            "title": "Display Name",
+            "type": "string"
+          },
+          "has_avatar": {
+            "default": false,
+            "title": "Has Avatar",
+            "type": "boolean"
+          },
+          "is_default": {
+            "default": false,
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "last_session": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ProfileSessionPreview"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Model"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "previous_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Previous Names",
+            "type": "array"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Provider"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "const": "setup",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Role"
+          },
+          "skill_count": {
+            "default": 0,
+            "title": "Skill Count",
+            "type": "integer"
+          },
+          "ui_meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Ui Meta"
+          },
+          "ui_meta_revisions": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Ui Meta Revisions",
+            "type": "object"
+          },
+          "worker_session": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ProfileWorkerSession"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": ["name", "path"],
+        "title": "ProfileRow",
+        "type": "object"
+      },
+      "ProfileCanonicalSession": {
+        "additionalProperties": false,
+        "description": "The profile's \"Bot Chat\" registry row; ``resolved_id`` is the live compression tip.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_active": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "default": 0,
+            "title": "Last Active"
+          },
+          "message_count": {
+            "default": 0,
+            "title": "Message Count",
+            "type": "integer"
+          },
+          "preview": {
+            "default": "",
+            "title": "Preview",
+            "type": "string"
+          },
+          "resolved_id": {
+            "title": "Resolved Id",
+            "type": "string"
+          },
+          "root_title": {
+            "default": "",
+            "title": "Root Title",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "default": 0,
+            "title": "Started At"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": ["id", "resolved_id"],
+        "title": "ProfileCanonicalSession",
+        "type": "object"
+      },
+      "ProfileSessionPreview": {
+        "additionalProperties": false,
+        "description": "Newest human-facing session of a profile (``_latest_profile_session_rows``).",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_active": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "default": 0,
+            "title": "Last Active"
+          },
+          "message_count": {
+            "default": 0,
+            "title": "Message Count",
+            "type": "integer"
+          },
+          "preview": {
+            "default": "",
+            "title": "Preview",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "default": 0,
+            "title": "Started At"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "title": "ProfileSessionPreview",
+        "type": "object"
+      },
+      "ProfileWorkerSession": {
+        "additionalProperties": false,
+        "description": "Newest kanban/tool worker row, so rosters can show a profile as working.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_active": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "default": 0,
+            "title": "Last Active"
+          },
+          "source": {
+            "default": "",
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "title": "ProfileWorkerSession",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["profiles.list"]
+      },
+      "params": {
+        "$ref": "#/$defs/ProfilesListParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ProfilesListParams": {
+        "additionalProperties": false,
+        "properties": {
+          "include_sessions": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Include Sessions"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "ProfilesListParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

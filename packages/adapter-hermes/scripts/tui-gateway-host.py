@@ -79,6 +79,22 @@ def short_circuit_disabled_wake_start() -> None:
     server._methods["wake.start"] = wake_start
 
 
+def gateway_attaches_resuming_clients() -> bool:
+    """Whether this Hermes adds a resuming client beside a live session's others.
+
+    From 0.21 a live session holds a ``tui_gateway.transport.FanoutTransport``
+    of every attached client, and ``session.resume`` joins it rather than
+    taking the slot, so the native TUI and the adapter both receive the
+    session's events and server→client requests without help.
+    """
+
+    try:
+        from tui_gateway import transport
+    except ImportError:
+        return False
+    return hasattr(transport, "FanoutTransport")
+
+
 def enable_session_event_fanout() -> None:
     """Tee one session's events to the adapter and its native TUI viewer.
 
@@ -88,7 +104,13 @@ def enable_session_event_fanout() -> None:
     when the native TUI attaches. This host is private to one Puppeteer session,
     so fan-out is confined to its adapter and TUI connections. RPC results stay
     request-local; only session-scoped event notifications are copied.
+
+    A Hermes that already attaches resuming clients side by side is left as
+    shipped: the tee only supplied the membership that 0.20 lacked.
     """
+
+    if gateway_attaches_resuming_clients():
+        return
 
     from tui_gateway import server
     from tui_gateway.ws import WSTransport

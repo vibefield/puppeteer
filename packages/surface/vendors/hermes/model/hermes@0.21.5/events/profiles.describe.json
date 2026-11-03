@@ -1,0 +1,267 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "profiles.describe",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Everything the profile editor shows: soul, model pin, skills, toolsets, MCP servers.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ProfileNameParams",
+    "$defs": {
+      "ProfileNameParams": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "ProfileNameParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/ProfilesDescribeResult",
+    "$defs": {
+      "ProfilesDescribeResult": {
+        "additionalProperties": false,
+        "description": "Editor snapshot; ``toolsets_pinned`` says whether ``tools.enabled_toolsets`` is explicit.",
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "mcp_servers": {
+            "items": {
+              "$ref": "#/$defs/McpServerEntry"
+            },
+            "title": "Mcp Servers",
+            "type": "array"
+          },
+          "model": {
+            "$ref": "#/$defs/ProfileModelPin"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/$defs/CapabilityEntry"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "soul": {
+            "default": "",
+            "title": "Soul",
+            "type": "string"
+          },
+          "toolsets": {
+            "items": {
+              "$ref": "#/$defs/ToolsetEntry"
+            },
+            "title": "Toolsets",
+            "type": "array"
+          },
+          "toolsets_pinned": {
+            "default": false,
+            "title": "Toolsets Pinned",
+            "type": "boolean"
+          }
+        },
+        "required": ["name", "model"],
+        "title": "ProfilesDescribeResult",
+        "type": "object"
+      },
+      "McpServerEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "transport": {
+            "default": "stdio",
+            "title": "Transport",
+            "type": "string"
+          }
+        },
+        "required": ["name"],
+        "title": "McpServerEntry",
+        "type": "object"
+      },
+      "ProfileModelPin": {
+        "additionalProperties": false,
+        "properties": {
+          "default": {
+            "default": "",
+            "title": "Default",
+            "type": "string"
+          },
+          "provider": {
+            "default": "",
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "title": "ProfileModelPin",
+        "type": "object"
+      },
+      "CapabilityEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": ["name"],
+        "title": "CapabilityEntry",
+        "type": "object"
+      },
+      "ToolsetEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "tool_count": {
+            "default": 0,
+            "title": "Tool Count",
+            "type": "integer"
+          }
+        },
+        "required": ["name"],
+        "title": "ToolsetEntry",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["profiles.describe"]
+      },
+      "params": {
+        "$ref": "#/$defs/ProfileNameParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ProfileNameParams": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "ProfileNameParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -14,16 +14,16 @@ test('every committed native capture replays through its declared fidelity and I
   }
 });
 
-test('hermes replay covers projected tui_gateway and plugin-hook occurrence without claiming native shape', () => {
+test('hermes replay shape-validates every tui_gateway frame, server request, and plugin hook', () => {
   const report = replayAgentSurface({
     vendor: 'hermes',
     groundTruthPath: 'packages/surface/vendors/hermes/groundtruth.json',
   });
   assert.equal(report.status, 'passed', JSON.stringify(report.issues, null, 2));
-  assert.ok(report.frames > 0);
-  assert.equal(report.captureFidelity.defaultRepresentation, 'legacy-privacy-projection');
-  assert.equal(report.shapeValidatedRecords, 0);
-  assert.ok(report.projectionOnlyRecords > 0);
+  assert.ok(report.frames > 100);
+  assert.equal(report.captureFidelity.defaultRepresentation, 'type-preserving-redaction');
+  assert.equal(report.shapeValidatedRecords, report.frames + report.results);
+  assert.equal(report.projectionOnlyRecords, 0);
   assert.match(report.replayDigest, /^[0-9a-f]{64}$/);
 });
 

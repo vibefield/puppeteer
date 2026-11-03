@@ -3,18 +3,19 @@
     {
       "channel": "jsonrpc",
       "event": "gateway.ready",
-      "with": { "skin": {}, "change_events": true }
+      "with": {
+        "skin": {},
+        "change_events": true,
+        "replay_epoch": "$uuid:replay-epoch"
+      }
     },
     {
       "channel": "hook",
       "event": "on_session_start",
       "with": {
-        "hook_event_name": "on_session_start",
         "session_id": "$storedSessionId",
-        "platform": "tui",
-        "choice": null,
-        "tool_name": null,
-        "keys": ["session_id", "model", "platform"]
+        "model": "puppeteer-hermes-census",
+        "platform": "tui"
       }
     }
   ],
@@ -26,7 +27,7 @@
         "model": "puppeteer-hermes-census",
         "provider": "custom",
         "approval_mode": "manual",
-        "version": "0.20.0",
+        "version": "0.21.5",
         "cwd": "$cwd",
         "stored_session_id": "$storedSessionId",
         "running": false
@@ -38,24 +39,18 @@
       "channel": "hook",
       "event": "on_session_end",
       "with": {
-        "hook_event_name": "on_session_end",
         "session_id": "$storedSessionId",
-        "platform": "tui",
-        "choice": null,
-        "tool_name": null,
-        "keys": ["session_id", "completed", "interrupted", "platform"]
+        "completed": true,
+        "interrupted": false,
+        "platform": "tui"
       }
     },
     {
       "channel": "hook",
       "event": "on_session_finalize",
       "with": {
-        "hook_event_name": "on_session_finalize",
         "session_id": "$storedSessionId",
-        "platform": "tui",
-        "choice": null,
-        "tool_name": null,
-        "keys": ["session_id", "platform"]
+        "platform": "tui"
       }
     }
   ],
@@ -69,12 +64,9 @@
       "channel": "hook",
       "event": "pre_llm_call",
       "with": {
-        "hook_event_name": "pre_llm_call",
         "session_id": "$storedSessionId",
-        "platform": "tui",
-        "choice": null,
-        "tool_name": null,
-        "keys": ["session_id", "user_message", "platform"]
+        "user_message": "$op.text",
+        "platform": "tui"
       }
     }
   ],
@@ -82,35 +74,43 @@
     {
       "channel": "jsonrpc",
       "event": "thinking.delta",
-      "with": { "text": "(⊙_⊙) pondering..." }
+      "with": {
+        "text": "(⊙_⊙) pondering..."
+      }
     },
     {
       "channel": "jsonrpc",
       "event": "message.delta",
-      "with": { "text": "$op.text" }
+      "with": {
+        "text": "$op.text"
+      }
     }
   ],
   "tool.start": [
     {
       "channel": "jsonrpc",
       "event": "tool.generating",
-      "with": { "name": "$op.tool" }
+      "with": {
+        "name": "$op.tool"
+      }
     },
     {
       "channel": "jsonrpc",
       "event": "tool.start",
-      "with": { "name": "$op.tool", "tool_id": "$op.toolId", "context": "agent" }
+      "with": {
+        "name": "$op.tool",
+        "tool_id": "$op.toolId",
+        "context": "agent"
+      }
     },
     {
       "channel": "hook",
       "event": "pre_tool_call",
       "with": {
-        "hook_event_name": "pre_tool_call",
         "session_id": "$storedSessionId",
         "tool_name": "$op.tool",
-        "platform": null,
-        "choice": null,
-        "keys": ["tool_name", "args", "session_id", "tool_call_id"]
+        "tool_call_id": "$op.toolId",
+        "args": {}
       }
     }
   ],
@@ -122,43 +122,49 @@
         "name": "$op.tool",
         "tool_id": "$op.toolId",
         "args": {},
-        "result": { "output": "", "exit_code": 0 }
+        "result": "$op.result"
       }
     },
     {
       "channel": "hook",
       "event": "post_tool_call",
       "with": {
-        "hook_event_name": "post_tool_call",
         "session_id": "$storedSessionId",
         "tool_name": "$op.tool",
-        "platform": null,
-        "choice": null,
-        "keys": ["tool_name", "args", "result", "session_id", "status"]
+        "tool_call_id": "$op.toolId",
+        "args": {},
+        "status": "$op.status"
       }
     }
   ],
   "permission.ask": [
     {
-      "channel": "jsonrpc",
-      "event": "approval.request",
-      "with": {
-        "choices": ["once", "session", "always", "deny"],
-        "pattern_key": "delete in root path",
-        "allow_permanent": true,
-        "allow_session": true
-      }
-    },
-    {
       "channel": "hook",
       "event": "pre_approval_request",
       "with": {
-        "hook_event_name": "pre_approval_request",
         "session_id": "$storedSessionId",
-        "tool_name": null,
-        "platform": null,
-        "choice": null,
-        "keys": ["command", "pattern_key", "session_key", "surface"]
+        "session_key": "$storedSessionId",
+        "surface": "gateway",
+        "command": "rm -rf ./scratch",
+        "description": "delete in root path",
+        "pattern_key": "delete in root path",
+        "pattern_keys": ["delete in root path"]
+      }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "approval",
+      "await": true,
+      "with": {
+        "session_id": "$liveSessionId",
+        "request_id": "$uuid:approval",
+        "command": "rm -rf ./scratch",
+        "description": "delete in root path",
+        "pattern_key": "delete in root path",
+        "pattern_keys": ["delete in root path"],
+        "allow_permanent": true,
+        "allow_session": true,
+        "choices": ["once", "session", "always", "deny"]
       }
     }
   ],
@@ -166,7 +172,9 @@
     {
       "channel": "jsonrpc",
       "event": "reasoning.available",
-      "with": { "text": "$reply" }
+      "with": {
+        "text": "$reply"
+      }
     },
     {
       "channel": "jsonrpc",
@@ -190,12 +198,9 @@
       "channel": "hook",
       "event": "post_llm_call",
       "with": {
-        "hook_event_name": "post_llm_call",
         "session_id": "$storedSessionId",
-        "platform": "tui",
-        "choice": null,
-        "tool_name": null,
-        "keys": ["session_id", "assistant_response", "platform"]
+        "assistant_response": "$reply",
+        "platform": "tui"
       }
     }
   ],
@@ -207,7 +212,7 @@
         "model": "puppeteer-hermes-census",
         "provider": "custom",
         "approval_mode": "manual",
-        "version": "0.20.0",
+        "version": "0.21.5",
         "cwd": "$cwd",
         "stored_session_id": "$storedSessionId",
         "running": false,

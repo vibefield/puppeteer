@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 2,
+  "representation": "type-preserving-redaction",
+  "vendor": "hermes",
+  "version": "0.21.5",
+  "scenario": "permission-deny",
+  "mode": "tui-gateway-stdio-hermetic"
+}

@@ -55,6 +55,7 @@ export function sanitizeHermesCaptureSet(input, output, version = VERSION) {
       'webhooks.jsonl',
       'plugin-hooks.jsonl',
       'follow-ups.jsonl',
+      'rejections.jsonl',
     ]) {
       const path = join(source, name);
       if (existsSync(path)) writeJsonLines(join(destination, name), parseJsonLines(path));

@@ -1,5 +1,23 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { HermesGatewayNormalizer } from './pipeline.js';
+
+/** The sanitized 0.21.5 census stream (Surface evidence), one native JSON-RPC frame per line. */
+function census(scenario: string): Record<string, unknown>[] {
+  const path = fileURLToPath(
+    new URL(`../../../surface/vendors/hermes/captures/hermes@0.21.5/${scenario}/rpc.jsonl`, import.meta.url),
+  );
+  return readFileSync(path, 'utf8')
+    .split('\n')
+    .filter((line) => line.trim())
+    .map((line) => JSON.parse(line) as Record<string, unknown>)
+    .filter((frame) => frame.direction !== 'client');
+}
+
+function serverRequest(id: string, method: string, params: Record<string, unknown>) {
+  return { jsonrpc: '2.0', id, method, params: { session_id: 'abcd1234', ...params } };
+}
 
 function event(type: string, payload: Record<string, unknown> = {}, sessionId = 'abcd1234') {
   return { jsonrpc: '2.0', method: 'event', params: { type, session_id: sessionId, payload } };
@@ -174,5 +192,102 @@ describe('HermesGatewayNormalizer', () => {
       { type: 'interaction:question-resolved', requestId: 'clarify-1', outcome: 'cancelled' },
     ]);
     expect(normalizer.normalize(event('clarify.expire', { request_id: 'clarify-1' })).events).toEqual([]);
+  });
+
+  it('opens a native-TUI permission from the 0.21.5 approval server request in the captured deny turn', () => {
+    const normalizer = new HermesGatewayNormalizer();
+    const frames = census('permission-deny');
+    const approval = frames.find((frame) => frame.method === 'approval') as { params: { request_id: string } };
+    const events = frames.flatMap((frame) => normalizer.normalize(frame).events);
+
+    expect(events.filter((item) => item.type.startsWith('interaction:'))).toEqual([
+      {
+        type: 'interaction:permission-requested',
+        requestId: approval.params.request_id,
+        tool: 'terminal',
+        presentation: 'native-tui',
+      },
+    ]);
+    const types = events.map((item) => item.type);
+    expect(types.indexOf('tool:requested')).toBeLessThan(types.indexOf('interaction:permission-requested'));
+    expect(types.indexOf('interaction:permission-requested')).toBeLessThan(types.indexOf('tool:failed'));
+    expect(types).toContain('turn:completed');
+  });
+
+  it('closes a server-request permission only when Hermes withdraws it', () => {
+    const normalizer = new HermesGatewayNormalizer();
+    const request = serverRequest('srq-0123456789ab', 'approval', {
+      request_id: 'approval-1',
+      command: 'rm -rf ./scratch',
+      choices: ['once', 'session', 'always', 'deny'],
+    });
+    expect(normalizer.normalize(request).events).toHaveLength(1);
+    expect(normalizer.normalize(request).events).toEqual([]);
+    expect(
+      normalizer.normalize(event('request.cancel', { id: 'srq-0123456789ab', method: 'approval', reason: 'timeout' }))
+        .events,
+    ).toEqual([{ type: 'interaction:permission-resolved', requestId: 'approval-1', outcome: 'dismissed' }]);
+    expect(
+      normalizer.normalize(event('request.cancel', { id: 'srq-0123456789ab', method: 'approval', reason: 'timeout' })),
+    ).toMatchObject({
+      disposition: 'retained-native',
+      events: [{ type: 'adapter:native-event', nativeType: 'request.cancel' }],
+    });
+  });
+
+  it('asks single and batch 0.21.5 clarify server requests and cancels them by srq id', () => {
+    const normalizer = new HermesGatewayNormalizer();
+    expect(
+      normalizer.normalize(
+        serverRequest('srq-00000000000a', 'clarify', {
+          question: 'Which release lane?',
+          choices: ['Canary', 'Stable'],
+        }),
+      ).events,
+    ).toEqual([
+      {
+        type: 'interaction:question-requested',
+        requestId: 'srq-00000000000a',
+        questions: [
+          {
+            prompt: 'Which release lane?',
+            options: [{ label: 'Canary' }, { label: 'Stable' }],
+            allowMultiple: false,
+            allowFreeForm: true,
+          },
+        ],
+      },
+    ]);
+    expect(
+      normalizer.normalize(
+        serverRequest('srq-00000000000b', 'clarify', {
+          questions: [
+            { qid: 'q1', question: 'Name?', multi_select: false },
+            { qid: 'q2', question: 'Targets?', choices: ['a', 'b'], multi_select: true },
+          ],
+        }),
+      ).events,
+    ).toEqual([
+      expect.objectContaining({
+        requestId: 'srq-00000000000b',
+        questions: [
+          expect.objectContaining({ id: 'q1', prompt: 'Name?', allowMultiple: false }),
+          expect.objectContaining({ id: 'q2', prompt: 'Targets?', allowMultiple: true }),
+        ],
+      }),
+    ]);
+    expect(
+      normalizer.normalize(
+        event('request.cancel', { id: 'srq-00000000000a', method: 'clarify', reason: 'interrupted' }),
+      ).events,
+    ).toEqual([{ type: 'interaction:question-resolved', requestId: 'srq-00000000000a', outcome: 'cancelled' }]);
+  });
+
+  it('retains server requests it does not interpret as native events', () => {
+    const normalizer = new HermesGatewayNormalizer();
+    expect(normalizer.normalize(serverRequest('srq-00000000000c', 'sudo', {}))).toMatchObject({
+      disposition: 'retained-native',
+      events: [{ type: 'adapter:native-event', adapter: 'hermes', nativeType: 'sudo' }],
+    });
   });
 });

@@ -1,0 +1,374 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "groups.capabilities",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Describe the hosted-room protocol implemented by this gateway.",
+  "payloadSchema": {
+    "$ref": "#/$defs/GroupsCapabilitiesParams",
+    "$defs": {
+      "GroupsCapabilitiesParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "GroupsCapabilitiesParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/GroupsCapabilitiesResult",
+    "$defs": {
+      "GroupsCapabilitiesResult": {
+        "additionalProperties": false,
+        "properties": {
+          "authority_gateway_id": {
+            "title": "Authority Gateway Id",
+            "type": "string"
+          },
+          "driver": {
+            "title": "Driver",
+            "type": "boolean"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "max_log_limit": {
+            "title": "Max Log Limit",
+            "type": "integer"
+          },
+          "methods": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Methods",
+            "type": "array"
+          },
+          "persistent_process": {
+            "title": "Persistent Process",
+            "type": "boolean"
+          },
+          "protocol_version": {
+            "title": "Protocol Version",
+            "type": "integer"
+          },
+          "room_link": {
+            "$ref": "#/$defs/RoomLinkStatus"
+          }
+        },
+        "required": [
+          "protocol_version",
+          "driver",
+          "persistent_process",
+          "authority_gateway_id",
+          "room_link",
+          "features",
+          "methods",
+          "max_log_limit"
+        ],
+        "title": "GroupsCapabilitiesResult",
+        "type": "object"
+      },
+      "RoomLinkStatus": {
+        "additionalProperties": false,
+        "description": "``enabled`` with ``profile``/``catalog``/``endpoint``, or disabled with a ``reason``.",
+        "properties": {
+          "catalog": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RoomLinkCatalog"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RoomLinkEndpoint"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          }
+        },
+        "required": ["enabled"],
+        "title": "RoomLinkStatus",
+        "type": "object"
+      },
+      "RoomLinkCatalog": {
+        "additionalProperties": false,
+        "description": "``gateway/hosted_room_peer.py::GatewayRoomCatalog.as_mapping``.",
+        "properties": {
+          "attachments": {
+            "title": "Attachments",
+            "type": "boolean"
+          },
+          "catalog_digest": {
+            "title": "Catalog Digest",
+            "type": "string"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RoomLinkEndpoint"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "execution_policy": {
+            "$ref": "#/$defs/RoomExecutionPolicy"
+          },
+          "installation_id": {
+            "title": "Installation Id",
+            "type": "string"
+          },
+          "link_modes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Link Modes",
+            "type": "array"
+          },
+          "persistent_process": {
+            "title": "Persistent Process",
+            "type": "boolean"
+          },
+          "protocol_versions": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Protocol Versions",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "installation_id",
+          "protocol_versions",
+          "link_modes",
+          "persistent_process",
+          "text",
+          "attachments",
+          "execution_policy",
+          "catalog_digest"
+        ],
+        "title": "RoomLinkCatalog",
+        "type": "object"
+      },
+      "RoomLinkEndpoint": {
+        "additionalProperties": false,
+        "description": "``GatewayRoomCatalog.endpoint_mapping``: ``url``/``transport_security`` when available,\n``reason`` when not.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          },
+          "transport_security": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Transport Security"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "required": ["available"],
+        "title": "RoomLinkEndpoint",
+        "type": "object"
+      },
+      "RoomExecutionPolicy": {
+        "additionalProperties": false,
+        "description": "``gateway/hosted_room_execution_policy.py::execution_policy_mapping``.",
+        "properties": {
+          "approval_mode": {
+            "title": "Approval Mode",
+            "type": "string"
+          },
+          "enabled_toolsets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Enabled Toolsets",
+            "type": "array"
+          },
+          "max_iterations": {
+            "title": "Max Iterations",
+            "type": "integer"
+          },
+          "policy_digest": {
+            "title": "Policy Digest",
+            "type": "string"
+          },
+          "target_profile": {
+            "title": "Target Profile",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "target_profile",
+          "enabled_toolsets",
+          "approval_mode",
+          "max_iterations",
+          "policy_digest"
+        ],
+        "title": "RoomExecutionPolicy",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["groups.capabilities"]
+      },
+      "params": {
+        "$ref": "#/$defs/GroupsCapabilitiesParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "GroupsCapabilitiesParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "GroupsCapabilitiesParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

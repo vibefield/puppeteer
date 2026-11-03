@@ -1,0 +1,114 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "vault.save_login",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "Save a login for a site the agent is about to fill; the answer is JSON {identifier, password}.",
+  "payloadSchema": {
+    "$ref": "#/$defs/VaultSaveLoginRequestParams",
+    "$defs": {
+      "VaultSaveLoginRequestParams": {
+        "additionalProperties": false,
+        "properties": {
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "site": {
+            "title": "Site",
+            "type": "string"
+          }
+        },
+        "required": ["session_id", "origin", "site"],
+        "title": "VaultSaveLoginRequestParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/ValueResult",
+    "$defs": {
+      "ValueResult": {
+        "additionalProperties": false,
+        "description": "The answer to any one-string prompt (sudo, secret, vault prompts, desktop bridges):\n``''`` means skipped / declined.",
+        "properties": {
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": ["value"],
+        "title": "ValueResult",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["vault.save_login"]
+      },
+      "params": {
+        "$ref": "#/$defs/VaultSaveLoginRequestParams"
+      }
+    },
+    "required": ["jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "VaultSaveLoginRequestParams": {
+        "additionalProperties": false,
+        "properties": {
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "site": {
+            "title": "Site",
+            "type": "string"
+          }
+        },
+        "required": ["session_id", "origin", "site"],
+        "title": "VaultSaveLoginRequestParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

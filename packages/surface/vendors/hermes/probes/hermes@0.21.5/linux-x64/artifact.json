@@ -1,0 +1,24 @@
+{
+  "probeKind": "console-script",
+  "vendor": "hermes",
+  "vendorVersion": "0.21.5",
+  "platform": "linux-x64",
+  "artifact": "$PUPPETEER_HERMES_BIN",
+  "identity": "source-revision-and-lockfile",
+  "note": "hermes is a Python console script; product identity is the pinned checkout, not the wrapper bytes.",
+  "versionArgs": [
+    "--version"
+  ],
+  "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)",
+  "probeHost": {
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "probeEnvironment": {
+    "install": "survey: uv sync --frozen --no-default-groups of the exact tag checkout",
+    "pythonVersion": "3.11.18",
+    "attested": false,
+    "note": "Not the protected installed-console materialization; its pinned toolchain and digests come from the adaptation workflow."
+  },
+  "probedAt": "2026-11-03T19:21:19.561Z"
+}

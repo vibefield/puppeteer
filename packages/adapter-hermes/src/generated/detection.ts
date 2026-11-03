@@ -1,11 +1,11 @@
 /**
  * Checked runtime projection of
- * Surface `vendors/hermes/model/hermes@0.20.0/detection.json`.
+ * Surface `vendors/hermes/groundtruth.json` (hermes@0.21.5).
  * Production code consumes this file; it never imports the ASM.
  */
 
-export const HERMES_SURFACE_VERSION = '0.20.0';
-export const HERMES_RELEASE_TAG = '2026.8.3';
+export const HERMES_SURFACE_VERSION = '0.21.5';
+export const HERMES_RELEASE_TAG = '2026.9.24';
 export const HERMES_DEFAULT_EXECUTABLE = 'hermes';
 export const HERMES_EXECUTABLE_ENV = 'PUPPETEER_HERMES_BIN';
 export const HERMES_HOME_ENV = 'HERMES_HOME';

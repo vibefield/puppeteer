@@ -1,4 +1,4 @@
-/** Hermes 0.20.0 tui_gateway facts projected onto the evidence-backed monitor SPI. */
+/** Hermes tui_gateway facts (0.21.5 contract, with the 0.20 event spellings) projected onto the monitor SPI. */
 
 import { createHash, randomUUID } from 'node:crypto';
 import type { ActorRunRef, MonitorMetricFamily } from '@vibefield/puppeteer-core';
@@ -11,6 +11,7 @@ import type {
   ObservationCoverage,
 } from '@vibefield/puppeteer-core/monitor-spi';
 import { hermesStructuredQuestions } from './interaction.js';
+import { hermesServerRequest } from './types.js';
 import { eventType, type HermesGatewayFrame } from '../transport/jsonrpc.js';
 import { HERMES_CONTRACT, HERMES_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
 
@@ -128,6 +129,8 @@ export class HermesMonitorEvidence {
   private readonly activeTools = new Map<string, string>();
   private readonly pendingPermissions = new Map<string, string>();
   private uncorrelatedPermission: string | undefined;
+  /** Open 0.21 server→client requests by `srq-` id, for `request.cancel`. */
+  private readonly serverRequests = new Map<string, { kind: 'permission' | 'question'; interactionId: string }>();
   private compactionActive = false;
   private lastCompressionCount: number | undefined;
 
@@ -153,6 +156,16 @@ export class HermesMonitorEvidence {
       const oldest = this.pendingQuestions.keys().next().value as string | undefined;
       if (!oldest) break;
       this.pendingQuestions.delete(oldest);
+    }
+  }
+
+  private retainServerRequest(id: string, kind: 'permission' | 'question', interactionId: string): void {
+    this.serverRequests.delete(id);
+    this.serverRequests.set(id, { kind, interactionId });
+    while (this.serverRequests.size > MAX_INTERACTIONS) {
+      const oldest = this.serverRequests.keys().next().value as string | undefined;
+      if (!oldest) break;
+      this.serverRequests.delete(oldest);
     }
   }
 
@@ -281,9 +294,10 @@ export class HermesMonitorEvidence {
     observedAt: string,
     phase: 'bootstrap' | 'live' = 'live',
   ): AdapterMonitorObservationBatch | null {
-    const nativeType = eventType(frame);
+    const request = hermesServerRequest(frame);
+    const nativeType = eventType(frame) ?? (request ? `server-request:${request.method}` : undefined);
     if (!nativeType) return null;
-    const payload = eventPayload(frame);
+    const payload = request ? request.params : eventPayload(frame);
     const updates: MonitorFamilyUpdate[] = [];
     let actor: ActorRunRef | undefined;
     let quality: AdapterMonitorObservationBatch['quality'] = 'exact';
@@ -531,11 +545,16 @@ export class HermesMonitorEvidence {
         break;
       }
 
+      case 'server-request:approval':
       case 'approval.request': {
         const correlatedToolId =
           text(payload.tool_id) ?? text(payload.tool_call_id) ?? [...this.activeTools.keys()].at(-1);
         const interactionId =
-          text(payload.request_id) ?? correlatedToolId ?? `approval:${eventSessionId(frame) ?? 'root'}`;
+          text(payload.request_id) ??
+          (request ? undefined : correlatedToolId) ??
+          request?.id ??
+          `approval:${eventSessionId(frame) ?? 'root'}`;
+        if (request) this.retainServerRequest(request.id, 'permission', interactionId);
         if (correlatedToolId) this.pendingPermissions.set(correlatedToolId, interactionId);
         else this.uncorrelatedPermission = interactionId;
         updates.push(
@@ -546,8 +565,8 @@ export class HermesMonitorEvidence {
             state: 'pending',
             permission: {
               requestId: interactionId,
-              ...(text(payload.name)
-                ? { tool: text(payload.name)! }
+              ...(text(payload.name ?? payload.tool_name)
+                ? { tool: text(payload.name ?? payload.tool_name)! }
                 : text(payload.command)
                   ? { tool: 'terminal' }
                   : {}),
@@ -557,10 +576,12 @@ export class HermesMonitorEvidence {
         break;
       }
 
+      case 'server-request:clarify':
       case 'clarify.request': {
         const questions = hermesStructuredQuestions(payload);
-        const interactionId = text(payload.request_id);
+        const interactionId = request?.id ?? text(payload.request_id);
         if (!questions || !interactionId) break;
+        if (request) this.retainServerRequest(request.id, 'question', interactionId);
         const choices = questions.some((question) => (question.options?.length ?? 0) > 0);
         const kind = choices ? ('mixed' as const) : ('free-form' as const);
         this.retainQuestion(interactionId, kind);
@@ -573,6 +594,40 @@ export class HermesMonitorEvidence {
             questions,
           }),
         );
+        quality = 'strong';
+        break;
+      }
+
+      case 'request.cancel': {
+        const serverRequestId = text(payload.id);
+        const open = serverRequestId ? this.serverRequests.get(serverRequestId) : undefined;
+        if (!serverRequestId || !open) break;
+        this.serverRequests.delete(serverRequestId);
+        if (open.kind === 'permission') {
+          for (const [toolId, interactionId] of this.pendingPermissions) {
+            if (interactionId === open.interactionId) this.pendingPermissions.delete(toolId);
+          }
+          if (this.uncorrelatedPermission === open.interactionId) this.uncorrelatedPermission = undefined;
+          updates.push(
+            upsert('status', `permission:${open.interactionId}`, {
+              kind: 'interaction',
+              interactionId: open.interactionId,
+              interactionKind: 'permission',
+              state: 'cancelled',
+            }),
+          );
+        } else {
+          const kind = this.pendingQuestions.get(open.interactionId) ?? 'mixed';
+          this.pendingQuestions.delete(open.interactionId);
+          updates.push(
+            upsert('status', `question:${open.interactionId}`, {
+              kind: 'interaction',
+              interactionId: open.interactionId,
+              interactionKind: kind,
+              state: 'cancelled',
+            }),
+          );
+        }
         quality = 'strong';
         break;
       }

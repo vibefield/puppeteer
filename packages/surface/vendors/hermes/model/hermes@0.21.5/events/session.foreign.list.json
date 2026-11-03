@@ -1,0 +1,276 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "session.foreign.list",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "One page of Claude Code / Codex sessions found on the serving backend.",
+  "payloadSchema": {
+    "$ref": "#/$defs/SessionForeignListParams",
+    "$defs": {
+      "SessionForeignListParams": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Limit"
+          },
+          "offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Offset"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ForeignSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "title": "SessionForeignListParams",
+        "type": "object"
+      },
+      "ForeignSource": {
+        "enum": ["claude", "codex"],
+        "title": "ForeignSource",
+        "type": "string"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/SessionForeignListResult",
+    "$defs": {
+      "SessionForeignListResult": {
+        "additionalProperties": false,
+        "description": "``unreadable`` counts logs on this page that failed to parse.",
+        "properties": {
+          "host": {
+            "title": "Host",
+            "type": "string"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Offset"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/$defs/ForeignSessionRow"
+            },
+            "title": "Sessions",
+            "type": "array"
+          },
+          "unreadable": {
+            "default": 0,
+            "title": "Unreadable",
+            "type": "integer"
+          }
+        },
+        "required": ["host"],
+        "title": "SessionForeignListResult",
+        "type": "object"
+      },
+      "ForeignSessionRow": {
+        "additionalProperties": false,
+        "description": "``hermes_cli/foreign_sessions_browser.py::list_foreign_sessions`` — ``id`` is an opaque\nhandle, never a path.",
+        "properties": {
+          "cwd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cwd"
+          },
+          "excerpt": {
+            "default": "",
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "mtime": {
+            "title": "Mtime",
+            "type": "number"
+          },
+          "source": {
+            "$ref": "#/$defs/ForeignSource"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "turn_count": {
+            "default": 0,
+            "title": "Turn Count",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "source", "label", "mtime"],
+        "title": "ForeignSessionRow",
+        "type": "object"
+      },
+      "ForeignSource": {
+        "enum": ["claude", "codex"],
+        "title": "ForeignSource",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session.foreign.list"]
+      },
+      "params": {
+        "$ref": "#/$defs/SessionForeignListParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "SessionForeignListParams": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Limit"
+          },
+          "offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Offset"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ForeignSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "title": "SessionForeignListParams",
+        "type": "object"
+      },
+      "ForeignSource": {
+        "enum": ["claude", "codex"],
+        "title": "ForeignSource",
+        "type": "string"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

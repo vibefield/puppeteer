@@ -10,15 +10,20 @@ import {
 } from './detection.js';
 import { HERMES_LAUNCH_FLAGS } from './generated/detection.js';
 
-const surfaceDetection = JSON.parse(
-  readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), '../../surface/vendors/hermes/model/hermes@0.20.0/detection.json'),
-    'utf8',
-  ),
-) as { launchFlags: Record<string, string>; versionPattern: string };
+const groundTruth = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../surface/vendors/hermes/groundtruth.json'), 'utf8'),
+) as {
+  manifest: { vendorVersion: string };
+  detection: { launchFlags: Record<string, string>; versionPattern: string; versionOutput: string };
+};
+const surfaceDetection = groundTruth.detection;
 
 describe('Hermes detection contract', () => {
   it('parses the captured --version line and rejects unrelated text', () => {
+    expect(parseHermesVersion(`${surfaceDetection.versionOutput}\nInstall directory: /tmp\n`)).toEqual({
+      version: '0.21.5',
+      releaseTag: '2026.9.24',
+    });
     expect(parseHermesVersion('Hermes Agent v0.20.0 (2026.8.3)\nInstall directory: /tmp\n')).toEqual({
       version: '0.20.0',
       releaseTag: '2026.8.3',
@@ -27,7 +32,8 @@ describe('Hermes detection contract', () => {
   });
 
   it('projects Surface launch flags without inventing ACP as the TUI attach path', () => {
-    expect(HERMES_SURFACE_VERSION).toBe('0.20.0');
+    expect(HERMES_SURFACE_VERSION).toBe(groundTruth.manifest.vendorVersion);
+    expect(HERMES_SURFACE_VERSION).toBe('0.21.5');
     expect(HERMES_LAUNCH_FLAGS.tui).toBe(surfaceDetection.launchFlags.tui);
     expect(HERMES_LAUNCH_FLAGS.resume).toBe(surfaceDetection.launchFlags.resume);
     expect(buildHermesTuiArgs({ resume: '20260812_132919_ae981b' })).toEqual([

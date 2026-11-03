@@ -1,0 +1,478 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "connectors.policy.set",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Apply one scoped member connector or tool-list policy change.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ConnectorPolicySetParams",
+    "$defs": {
+      "ConnectorPolicySetParams": {
+        "additionalProperties": false,
+        "properties": {
+          "change": {
+            "discriminator": {
+              "mapping": {
+                "connector": "#/components/schemas/ConnectorChange",
+                "tools": "#/components/schemas/ToolsChange"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/ToolsChange"
+              },
+              {
+                "$ref": "#/$defs/ConnectorChange"
+              }
+            ],
+            "title": "Change"
+          },
+          "expected_revision": {
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+            "title": "Expected Revision",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "required": ["change", "expected_revision"],
+        "title": "ConnectorPolicySetParams",
+        "type": "object"
+      },
+      "ToolsChange": {
+        "additionalProperties": false,
+        "properties": {
+          "connector": {
+            "title": "Connector",
+            "type": "string"
+          },
+          "disabled_tools": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 2000,
+            "title": "Disabled Tools",
+            "type": "array"
+          },
+          "type": {
+            "const": "tools",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "connector", "disabled_tools"],
+        "title": "ToolsChange",
+        "type": "object"
+      },
+      "ConnectorChange": {
+        "additionalProperties": false,
+        "properties": {
+          "connector": {
+            "title": "Connector",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "type": {
+            "const": "connector",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "connector", "enabled"],
+        "title": "ConnectorChange",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/ConnectorPolicySetResult",
+    "$defs": {
+      "ConnectorPolicySetResult": {
+        "additionalProperties": false,
+        "properties": {
+          "effective": {
+            "discriminator": {
+              "mapping": {
+                "allow": "#/components/schemas/ConnectorPolicyEffectiveAllow",
+                "deny": "#/components/schemas/ConnectorPolicyEffectiveDeny",
+                "deny-all": "#/components/schemas/ConnectorPolicyEffectiveDenyAll",
+                "unrestricted": "#/components/schemas/ConnectorPolicyEffectiveUnrestricted"
+              },
+              "propertyName": "mode"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/ConnectorPolicyEffectiveUnrestricted"
+              },
+              {
+                "$ref": "#/$defs/ConnectorPolicyEffectiveDenyAll"
+              },
+              {
+                "$ref": "#/$defs/ConnectorPolicyEffectiveAllow"
+              },
+              {
+                "$ref": "#/$defs/ConnectorPolicyEffectiveDeny"
+              }
+            ],
+            "title": "Effective"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          }
+        },
+        "required": ["revision", "effective"],
+        "title": "ConnectorPolicySetResult",
+        "type": "object"
+      },
+      "ConnectorPolicyEffectiveUnrestricted": {
+        "additionalProperties": false,
+        "properties": {
+          "issued_at_ms": {
+            "title": "Issued At Ms",
+            "type": "integer"
+          },
+          "mode": {
+            "const": "unrestricted",
+            "title": "Mode",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": ["version", "revision", "issued_at_ms", "mode"],
+        "title": "ConnectorPolicyEffectiveUnrestricted",
+        "type": "object"
+      },
+      "ConnectorPolicyEffectiveDenyAll": {
+        "additionalProperties": false,
+        "properties": {
+          "issued_at_ms": {
+            "title": "Issued At Ms",
+            "type": "integer"
+          },
+          "mode": {
+            "const": "deny-all",
+            "title": "Mode",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": ["version", "revision", "issued_at_ms", "mode"],
+        "title": "ConnectorPolicyEffectiveDenyAll",
+        "type": "object"
+      },
+      "ConnectorPolicyEffectiveAllow": {
+        "additionalProperties": false,
+        "properties": {
+          "connectors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Connectors",
+            "type": "array"
+          },
+          "issued_at_ms": {
+            "title": "Issued At Ms",
+            "type": "integer"
+          },
+          "mode": {
+            "const": "allow",
+            "title": "Mode",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectorPolicyTags"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "tools": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Tools",
+            "type": "object"
+          },
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": ["version", "revision", "issued_at_ms", "mode", "connectors", "tools"],
+        "title": "ConnectorPolicyEffectiveAllow",
+        "type": "object"
+      },
+      "ConnectorPolicyEffectiveDeny": {
+        "additionalProperties": false,
+        "properties": {
+          "disabled_connectors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disabled Connectors",
+            "type": "array"
+          },
+          "issued_at_ms": {
+            "title": "Issued At Ms",
+            "type": "integer"
+          },
+          "mode": {
+            "const": "deny",
+            "title": "Mode",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectorPolicyTags"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "tools": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Tools",
+            "type": "object"
+          },
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": ["version", "revision", "issued_at_ms", "mode", "disabled_connectors", "tools"],
+        "title": "ConnectorPolicyEffectiveDeny",
+        "type": "object"
+      },
+      "ConnectorPolicyTags": {
+        "additionalProperties": false,
+        "properties": {
+          "disable": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Disable"
+          },
+          "enable": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Enable"
+          }
+        },
+        "title": "ConnectorPolicyTags",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["connectors.policy.set"]
+      },
+      "params": {
+        "$ref": "#/$defs/ConnectorPolicySetParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ConnectorPolicySetParams": {
+        "additionalProperties": false,
+        "properties": {
+          "change": {
+            "discriminator": {
+              "mapping": {
+                "connector": "#/components/schemas/ConnectorChange",
+                "tools": "#/components/schemas/ToolsChange"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/ToolsChange"
+              },
+              {
+                "$ref": "#/$defs/ConnectorChange"
+              }
+            ],
+            "title": "Change"
+          },
+          "expected_revision": {
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+            "title": "Expected Revision",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "required": ["change", "expected_revision"],
+        "title": "ConnectorPolicySetParams",
+        "type": "object"
+      },
+      "ToolsChange": {
+        "additionalProperties": false,
+        "properties": {
+          "connector": {
+            "title": "Connector",
+            "type": "string"
+          },
+          "disabled_tools": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 2000,
+            "title": "Disabled Tools",
+            "type": "array"
+          },
+          "type": {
+            "const": "tools",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "connector", "disabled_tools"],
+        "title": "ToolsChange",
+        "type": "object"
+      },
+      "ConnectorChange": {
+        "additionalProperties": false,
+        "properties": {
+          "connector": {
+            "title": "Connector",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "type": {
+            "const": "connector",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "connector", "enabled"],
+        "title": "ConnectorChange",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -1,0 +1,181 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "mcp.servers.status",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Cached runtime state per configured server; never connects, probes, or starts auth.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ProfileParams",
+    "$defs": {
+      "ProfileParams": {
+        "additionalProperties": false,
+        "description": "Any method the desktop may route to a named profile (``requestGatewayForProfile`` adds ``profile``).",
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "ProfileParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/McpServersStatusResult",
+    "$defs": {
+      "McpServersStatusResult": {
+        "additionalProperties": false,
+        "properties": {
+          "checked_at": {
+            "title": "Checked At",
+            "type": "integer"
+          },
+          "servers": {
+            "items": {
+              "$ref": "#/$defs/McpServerRuntimeRow"
+            },
+            "title": "Servers",
+            "type": "array"
+          }
+        },
+        "required": ["servers", "checked_at"],
+        "title": "McpServersStatusResult",
+        "type": "object"
+      },
+      "McpServerRuntimeRow": {
+        "additionalProperties": false,
+        "description": "Safe projection of ``tools.mcp_tool_discovery.get_mcp_status`` rows.",
+        "properties": {
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "disabled": {
+            "title": "Disabled",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "plugin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Plugin"
+          },
+          "source": {
+            "$ref": "#/$defs/McpServerSource"
+          },
+          "status": {
+            "$ref": "#/$defs/McpRuntimeStatus"
+          },
+          "tools": {
+            "title": "Tools",
+            "type": "integer"
+          },
+          "transport": {
+            "title": "Transport",
+            "type": "string"
+          }
+        },
+        "required": ["name", "transport", "tools", "connected", "disabled", "status", "source"],
+        "title": "McpServerRuntimeRow",
+        "type": "object"
+      },
+      "McpServerSource": {
+        "enum": ["config", "plugin"],
+        "title": "McpServerSource",
+        "type": "string"
+      },
+      "McpRuntimeStatus": {
+        "enum": ["connected", "disabled", "connecting", "failed", "lazy", "configured"],
+        "title": "McpRuntimeStatus",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["mcp.servers.status"]
+      },
+      "params": {
+        "$ref": "#/$defs/ProfileParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ProfileParams": {
+        "additionalProperties": false,
+        "description": "Any method the desktop may route to a named profile (``requestGatewayForProfile`` adds ``profile``).",
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "ProfileParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

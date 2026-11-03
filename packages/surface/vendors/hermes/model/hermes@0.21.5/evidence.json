@@ -1,0 +1,108 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "hermes",
+  "vendorVersion": "0.21.5",
+  "artifacts": [
+    {
+      "id": "hermes-0.21.5-source-revision",
+      "kind": "source-revision-pin",
+      "platform": "linux-x64",
+      "channel": "stable",
+      "acquiredAt": "2026-11-03T19:21:19.561Z",
+      "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)",
+      "identity": "source-revision-and-lockfile",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:6f969b9fdff95e7269ec808361e3ae8be5357036e6257e53a3306878cf8c41dd"
+      },
+      "notes": "Integrity is pyproject.toml of the tagged checkout, not a source-archive or installed-console digest; the census ran in an unattested survey environment.",
+      "uvLockSha256": "5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590"
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/NousResearch/hermes-agent",
+      "revision": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+      "relation": "exact-release",
+      "tag": "v2026.9.24",
+      "tagObject": "e3dd27ee2d8b011737a4eea8e3eb3d711ab78690"
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/hermes/captures/hermes@0.21.5",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "a8d46a00732fe5fc12a3044c4623b25f8152e48874431433e1b1e5e877acf469"
+    },
+    {
+      "id": "identity-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/hermes/probes/hermes@0.21.5",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "f1194dbd20acc34d9ee1878f75790457462298235b8d4ae95417bc2834bc898e"
+    },
+    {
+      "id": "exact-source-surface",
+      "kind": "source-projection",
+      "path": "packages/surface/vendors/hermes/references/hermes@0.21.5",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "6756e2fe25ad6d60988558ad7181183d8065eaa52a13f4d933989a6b3741c226"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/hermes/model/hermes@0.21.5",
+      "exclude": ["evidence.json"],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "caf7f7e6b64c5c4d7da40b97425f708e1c7b55977e8cde126322b9c9020faaa8"
+    }
+  ],
+  "claims": [
+    {
+      "id": "hermes-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "hermes-0.21.5-source-revision",
+      "platform": "linux-x64",
+      "harness": "isolated HERMES_HOME, loopback OpenAI-compatible provider, stdio tui_gateway census sidecar answering server→client requests, plugin-hook dump and outbound webhook collector",
+      "capturedAt": "2026-11-03T19:35:07.000Z"
+    },
+    {
+      "id": "hermes-identity-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "identity-probes",
+      "artifact": "hermes-0.21.5-source-revision",
+      "platform": "linux-x64",
+      "harness": "source pin, --version, --help, rejected option, hermes acp --version/--check",
+      "capturedAt": "2026-11-03T19:21:19.561Z"
+    },
+    {
+      "id": "hermes-generated-contract",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "record": "exact-source-surface",
+      "sourceReference": 0,
+      "harness": "apps/shared/src/gateway-contract.openrpc.json (upstream scripts/gen_gateway_contracts.py), sha256 c89a203e853c285c4af204a229d4d804a36847efdcb6d223da8d3d22017f184d",
+      "notes": "Names equal the contract registry and registered handler table of the same checkout. The contract establishes declared shape, not runtime reachability."
+    },
+    {
+      "id": "hermes-exact-source",
+      "kind": "exact-source",
+      "confidence": "unverified",
+      "record": "exact-source-surface",
+      "sourceReference": 0,
+      "notes": "Digest-pinned VALID_HOOKS, hook envelopes, hook result handling, and the inline-diff preview projection."
+    }
+  ],
+  "limitations": [
+    "Only linux-x64 executed the source-revision checkout, in an unattested survey environment (Python 3.11.18, not the reviewed recipe's pinned toolchain). Other platforms are declared execution environments.",
+    "Turn captures are stdio tui_gateway, not a live hermes --tui PTY with a Node viewer attached.",
+    "Plugin hooks and outbound webhooks required the census sidecar. Default tui_gateway.entry does not register them.",
+    "Hook payload schemas are sampled from the census; unencountered hooks have no payload schema.",
+    "state.db was used for resume identity but was not snapshotted as a live event carrier."
+  ]
+}

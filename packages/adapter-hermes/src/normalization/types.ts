@@ -38,11 +38,21 @@ export function boundedHermesMapSet<K, V>(target: Map<K, V>, key: K, value: V): 
 
 export function parseHermesFrame(frame: unknown): {
   type?: string | undefined;
+  /** A server→client JSON-RPC request (0.21+ approvals, clarify, ...): its id and method. */
+  serverRequest?: { id: string; method: string } | undefined;
   liveSessionId?: string | undefined;
   payload: Record<string, unknown>;
 } {
   const body = hermesRecord(frame);
   if (!body) return { payload: {} };
+  const request = hermesServerRequest(body);
+  if (request) {
+    return {
+      serverRequest: { id: request.id, method: request.method },
+      liveSessionId: hermesString(request.params.session_id),
+      payload: request.params,
+    };
+  }
   if (body.method === 'event') {
     const params = hermesRecord(body.params);
     return {
@@ -56,6 +66,20 @@ export function parseHermesFrame(frame: unknown): {
     liveSessionId: hermesString(body.session_id),
     payload: hermesRecord(body.payload) ?? {},
   };
+}
+
+/**
+ * From 0.21 the gateway asks its clients questions as JSON-RPC requests of its own: a method other
+ * than `event`, an `srq-` string id, and params carrying `session_id`. Every attached client receives
+ * one and the first response settles it, so Puppeteer observes these and never answers them.
+ */
+export function hermesServerRequest(
+  frame: unknown,
+): { id: string; method: string; params: Record<string, unknown> } | undefined {
+  const body = hermesRecord(frame);
+  if (!body || typeof body.method !== 'string' || body.method === 'event') return undefined;
+  if (typeof body.id !== 'string' && typeof body.id !== 'number') return undefined;
+  return { id: String(body.id), method: body.method, params: hermesRecord(body.params) ?? {} };
 }
 
 export function hermesNativeEvent(nativeType: string): AgentEvent {

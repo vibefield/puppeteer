@@ -1,0 +1,183 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "bot_relay.deliver",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Deliver a relayed DM into a Bot Chat on this gateway and return the one-turn reply (blocking).",
+  "payloadSchema": {
+    "$ref": "#/$defs/BotRelayDeliverParams",
+    "$defs": {
+      "BotRelayDeliverParams": {
+        "additionalProperties": false,
+        "description": "``profile`` here is the TARGET profile on this gateway (also what the desktop route wrapper adds).",
+        "properties": {
+          "from_connection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "From Connection"
+          },
+          "from_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "From Handle"
+          },
+          "from_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "From Profile"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          }
+        },
+        "required": ["profile", "message"],
+        "title": "BotRelayDeliverParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/BotRelayDeliverResult",
+    "$defs": {
+      "BotRelayDeliverResult": {
+        "additionalProperties": false,
+        "properties": {
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          }
+        },
+        "required": ["reply"],
+        "title": "BotRelayDeliverResult",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["bot_relay.deliver"]
+      },
+      "params": {
+        "$ref": "#/$defs/BotRelayDeliverParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "BotRelayDeliverParams": {
+        "additionalProperties": false,
+        "description": "``profile`` here is the TARGET profile on this gateway (also what the desktop route wrapper adds).",
+        "properties": {
+          "from_connection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "From Connection"
+          },
+          "from_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "From Handle"
+          },
+          "from_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "From Profile"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          }
+        },
+        "required": ["profile", "message"],
+        "title": "BotRelayDeliverParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}
