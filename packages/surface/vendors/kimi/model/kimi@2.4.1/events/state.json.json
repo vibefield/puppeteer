@@ -1,0 +1,64 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "2.4.1",
+  "event": "state.json",
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
+  "channel": "session-state",
+  "channels": ["session-state"],
+  "transport": "json-file",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "version": {
+        "type": "number"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "createdAt": {
+        "type": "number"
+      },
+      "updatedAt": {
+        "type": "number"
+      },
+      "archived": {
+        "type": "boolean"
+      },
+      "agents": {
+        "type": "object"
+      },
+      "custom": {
+        "type": "object"
+      },
+      "lastTurnReason": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "isCustomTitle": {
+        "type": "boolean"
+      }
+    },
+    "required": ["id", "version", "cwd", "createdAt", "updatedAt", "archived", "agents", "custom"]
+  },
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/kimi@2.4.1/basic-turn/state.json"
+}

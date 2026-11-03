@@ -1,0 +1,119 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "2.4.1",
+  "event": "permission.record_approval_result",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "number"
+      },
+      "toolCallId": {
+        "type": "string"
+      },
+      "toolName": {
+        "type": "string"
+      },
+      "action": {
+        "type": "string"
+      },
+      "sessionApprovalRule": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": ["approved", "rejected", "cancelled"]
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["session"]
+          },
+          "feedback": {
+            "type": "string"
+          },
+          "selectedLabel": {
+            "type": "string"
+          }
+        },
+        "required": ["decision"]
+      }
+    },
+    "required": ["agentId", "turnId", "toolCallId", "toolName", "action", "result"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["permission.record_approval_result"]
+      },
+      "agentId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "number"
+      },
+      "toolCallId": {
+        "type": "string"
+      },
+      "toolName": {
+        "type": "string"
+      },
+      "action": {
+        "type": "string"
+      },
+      "sessionApprovalRule": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": ["approved", "rejected", "cancelled"]
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["session"]
+          },
+          "feedback": {
+            "type": "string"
+          },
+          "selectedLabel": {
+            "type": "string"
+          }
+        },
+        "required": ["decision"]
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "agentId", "turnId", "toolCallId", "toolName", "action", "result", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"],
+    "carrier": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified"
+}

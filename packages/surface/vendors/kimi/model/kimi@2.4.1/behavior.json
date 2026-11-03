@@ -1,0 +1,1073 @@
+{
+  "behaviorVersion": 1,
+  "title": "Kimi Code 2.4.1 native wire and hook lifecycle",
+  "description": "Partial order over the durable v2 journal, its interleaved engine-journal records, and external hooks. Only hermetically captured print-mode branches are verified.",
+  "source": "Controlled Kimi 2.4.1 census plus exact release source. Source-only branches remain unverified.",
+  "lanes": [
+    {
+      "id": "session",
+      "label": "Session"
+    },
+    {
+      "id": "turn",
+      "label": "Turn / step"
+    },
+    {
+      "id": "tool",
+      "label": "Tool / interaction"
+    },
+    {
+      "id": "compact",
+      "label": "Compaction"
+    },
+    {
+      "id": "task",
+      "label": "Task / subagent / swarm"
+    },
+    {
+      "id": "hook",
+      "label": "External hooks"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "metadata",
+      "event": "metadata",
+      "lane": "session",
+      "order": 0,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "runtime-binding",
+      "event": "runtime.set_binding",
+      "lane": "session",
+      "order": 1,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "profile-bind",
+      "event": "profile.bind",
+      "lane": "session",
+      "order": 2,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "change-snapshot",
+      "event": "changeNotifier.snapshot",
+      "lane": "session",
+      "order": 3,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "permission-mode",
+      "event": "permission.set_mode",
+      "lane": "session",
+      "order": 4,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "turn-prompt",
+      "event": "turn.prompt",
+      "lane": "turn",
+      "order": 5,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "context-user",
+      "event": "context.append_message",
+      "lane": "turn",
+      "order": 6,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "match": {
+        "message.role": "user"
+      }
+    },
+    {
+      "id": "context-hook-result",
+      "event": "context.append_message",
+      "lane": "turn",
+      "order": 6,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "match": {
+        "message.origin.kind": "hook_result"
+      }
+    },
+    {
+      "id": "engine-turn-started",
+      "event": "agent.turn.started",
+      "lane": "turn",
+      "order": 7,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "step-begin",
+      "event": "context.append_loop_event",
+      "lane": "turn",
+      "order": 8,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "match": {
+        "event.type": "step.begin"
+      }
+    },
+    {
+      "id": "content-part",
+      "event": "context.append_loop_event",
+      "lane": "turn",
+      "order": 9,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "match": {
+        "event.type": "content.part"
+      }
+    },
+    {
+      "id": "tool-call",
+      "event": "context.append_loop_event",
+      "lane": "tool",
+      "order": 10,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "match": {
+        "event.type": "tool.call"
+      }
+    },
+    {
+      "id": "tool-result",
+      "event": "context.append_loop_event",
+      "lane": "tool",
+      "order": 11,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "match": {
+        "event.type": "tool.result"
+      }
+    },
+    {
+      "id": "step-end",
+      "event": "context.append_loop_event",
+      "lane": "turn",
+      "order": 12,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "match": {
+        "event.type": "step.end"
+      }
+    },
+    {
+      "id": "step-retrying",
+      "event": "turn.step.retrying",
+      "lane": "turn",
+      "order": 13,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "step-interrupted",
+      "event": "turn.step.interrupted",
+      "lane": "turn",
+      "order": 13,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "turn-cancel",
+      "event": "turn.cancel",
+      "lane": "turn",
+      "order": 11,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "engine-turn-ended",
+      "event": "agent.turn.ended",
+      "lane": "turn",
+      "order": 14,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "turn-ended",
+      "event": "turn.ended",
+      "lane": "turn",
+      "order": 15,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "prompt-completed",
+      "event": "prompt.completed",
+      "lane": "turn",
+      "order": 16,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "prompt-aborted",
+      "event": "prompt.aborted",
+      "lane": "turn",
+      "order": 16,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "session-start-hook",
+      "event": "SessionStart",
+      "lane": "hook",
+      "order": 0,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "prompt-hook",
+      "event": "UserPromptSubmit",
+      "lane": "hook",
+      "order": 5,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "turn-start-hook",
+      "event": "TurnStarted",
+      "lane": "hook",
+      "order": 7,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "pre-tool-hook",
+      "event": "PreToolUse",
+      "lane": "hook",
+      "order": 10,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "post-tool-hook",
+      "event": "PostToolUse",
+      "lane": "hook",
+      "order": 11,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "post-tool-failure-hook",
+      "event": "PostToolUseFailure",
+      "lane": "hook",
+      "order": 11,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "task-started-hook",
+      "event": "TaskStarted",
+      "lane": "hook",
+      "order": 10,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "notification-hook",
+      "event": "Notification",
+      "lane": "hook",
+      "order": 13,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "interrupt-hook",
+      "event": "Interrupt",
+      "lane": "hook",
+      "order": 15,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "stop-failure-hook",
+      "event": "StopFailure",
+      "lane": "hook",
+      "order": 15,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "stop-hook",
+      "event": "Stop",
+      "lane": "hook",
+      "order": 15,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "subagent-start-hook",
+      "event": "SubagentStart",
+      "lane": "hook",
+      "order": 10,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "subagent-stop-hook",
+      "event": "SubagentStop",
+      "lane": "hook",
+      "order": 11,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "interaction-request",
+      "event": "interaction.request",
+      "lane": "tool",
+      "order": 10,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "interaction-resolved",
+      "event": "interaction.resolved",
+      "lane": "tool",
+      "order": 11,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "turn-steer",
+      "event": "turn.steer",
+      "lane": "turn",
+      "order": 9,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "compact-begin",
+      "event": "full_compaction.begin",
+      "lane": "compact",
+      "order": 8,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "compact-apply",
+      "event": "context.apply_compaction",
+      "lane": "compact",
+      "order": 9,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "compact-complete",
+      "event": "full_compaction.complete",
+      "lane": "compact",
+      "order": 10,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "compact-cancel",
+      "event": "full_compaction.cancel",
+      "lane": "compact",
+      "order": 10,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "task-started",
+      "event": "task.started",
+      "lane": "task",
+      "order": 10,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "task-terminated",
+      "event": "task.terminated",
+      "lane": "task",
+      "order": 12,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "subagent-spawned",
+      "event": "subagent.spawned",
+      "lane": "task",
+      "order": 10,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "subagent-started",
+      "event": "subagent.started",
+      "lane": "task",
+      "order": 10,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "subagent-completed",
+      "event": "subagent.completed",
+      "lane": "task",
+      "order": 11,
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "subagent-failed",
+      "event": "subagent.failed",
+      "lane": "task",
+      "order": 11,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "subagent-cancelled",
+      "event": "subagent.cancelled",
+      "lane": "task",
+      "order": 11,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "swarm-enter",
+      "event": "swarm_mode.enter",
+      "lane": "task",
+      "order": 6,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "swarm-exit",
+      "event": "swarm_mode.exit",
+      "lane": "task",
+      "order": 16,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "undo-switched",
+      "event": "agent.switched",
+      "lane": "turn",
+      "order": 17,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "undo-legacy",
+      "event": "context.undo",
+      "lane": "turn",
+      "order": 17,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "id": "undo-marker",
+      "event": "context.undone",
+      "lane": "turn",
+      "order": 17,
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      }
+    }
+  ],
+  "relations": [
+    {
+      "from": "metadata",
+      "to": "runtime-binding",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "runtime-binding",
+      "to": "profile-bind",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "profile-bind",
+      "to": "change-snapshot",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "change-snapshot",
+      "to": "permission-mode",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "permission-mode",
+      "to": "turn-prompt",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "permission-mode",
+      "to": "context-hook-result",
+      "kind": "conditional",
+      "label": "UserPromptSubmit block",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "turn-prompt",
+      "to": "context-user",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "context-user",
+      "to": "engine-turn-started",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "engine-turn-started",
+      "to": "step-begin",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-begin",
+      "to": "content-part",
+      "kind": "conditional",
+      "label": "assistant content",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-begin",
+      "to": "tool-call",
+      "kind": "conditional",
+      "label": "tool step",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "tool-call",
+      "to": "tool-result",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "content-part",
+      "to": "step-end",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "tool-result",
+      "to": "step-end",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-end",
+      "to": "step-begin",
+      "kind": "loop",
+      "label": "next model step after a tool",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-end",
+      "to": "step-retrying",
+      "kind": "conditional",
+      "label": "finishReason error, retryable",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-retrying",
+      "to": "step-begin",
+      "kind": "loop",
+      "label": "retried step",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-end",
+      "to": "step-interrupted",
+      "kind": "conditional",
+      "label": "finishReason error or interrupted",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "turn-cancel",
+      "to": "step-end",
+      "kind": "conditional",
+      "label": "cancelled active turn",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-interrupted",
+      "to": "engine-turn-ended",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "step-end",
+      "to": "engine-turn-ended",
+      "kind": "conditional",
+      "label": "end_turn",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "engine-turn-ended",
+      "to": "turn-ended",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "turn-ended",
+      "to": "prompt-completed",
+      "kind": "conditional",
+      "label": "completed or failed",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "turn-ended",
+      "to": "prompt-aborted",
+      "kind": "conditional",
+      "label": "cancelled",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "context-hook-result",
+      "to": "prompt-completed",
+      "kind": "conditional",
+      "label": "blocked",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "interaction-request",
+      "to": "interaction-resolved",
+      "kind": "sequence",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"],
+        "ordering": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "from": "compact-begin",
+      "to": "compact-apply",
+      "kind": "conditional",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"],
+        "ordering": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "from": "compact-apply",
+      "to": "compact-complete",
+      "kind": "sequence",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"],
+        "ordering": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "from": "compact-begin",
+      "to": "compact-cancel",
+      "kind": "conditional",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"],
+        "ordering": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "from": "task-started",
+      "to": "task-terminated",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "subagent-spawned",
+      "to": "subagent-started",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "subagent-started",
+      "to": "subagent-completed",
+      "kind": "conditional",
+      "label": "completed",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "subagent-started",
+      "to": "subagent-failed",
+      "kind": "conditional",
+      "label": "failed",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"],
+        "ordering": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "from": "subagent-started",
+      "to": "subagent-cancelled",
+      "kind": "conditional",
+      "label": "cancelled",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"],
+        "ordering": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "from": "subagent-start-hook",
+      "to": "subagent-stop-hook",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+        "ordering": ["kimi-runtime-headless"]
+      }
+    },
+    {
+      "from": "swarm-enter",
+      "to": "swarm-exit",
+      "kind": "sequence",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"],
+        "ordering": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "from": "undo-switched",
+      "to": "undo-legacy",
+      "kind": "sequence",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"],
+        "ordering": ["kimi-exact-release-source"]
+      }
+    },
+    {
+      "from": "undo-legacy",
+      "to": "undo-marker",
+      "kind": "sequence",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"],
+        "ordering": ["kimi-exact-release-source"]
+      }
+    }
+  ]
+}

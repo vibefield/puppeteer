@@ -7,7 +7,11 @@
         "emit": {
           "channel": "wire",
           "event": "turn.prompt",
-          "with": { "input": [{ "type": "text", "text": "$stimulus.text" }], "origin": { "kind": "user" } }
+          "with": {
+            "agentId": "main",
+            "input": [{ "type": "text", "text": "$stimulus.text" }],
+            "origin": { "kind": "user" }
+          }
         }
       }
     },
@@ -18,6 +22,7 @@
           "channel": "wire",
           "event": "context.append_loop_event",
           "with": {
+            "agentId": "main",
             "event": {
               "type": "tool.call",
               "uuid": "$uuid:tool-event",
@@ -39,6 +44,7 @@
           "channel": "wire",
           "event": "context.append_loop_event",
           "with": {
+            "agentId": "main",
             "event": {
               "type": "tool.result",
               "parentUuid": "$uuid:tool-event",
@@ -51,7 +57,13 @@
     },
     {
       "at": 60,
-      "do": { "emit": { "channel": "wire", "event": "turn.ended", "with": { "turnId": 0, "reason": "completed" } } }
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "turn.ended",
+          "with": { "agentId": "main", "turnId": 0, "reason": "completed" }
+        }
+      }
     }
   ]
 }

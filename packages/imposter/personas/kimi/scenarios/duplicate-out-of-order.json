@@ -8,6 +8,7 @@
           "channel": "wire",
           "event": "context.append_loop_event",
           "with": {
+            "agentId": "main",
             "event": {
               "type": "tool.result",
               "parentUuid": "$uuid:tool-event",
@@ -25,6 +26,7 @@
           "channel": "wire",
           "event": "context.append_loop_event",
           "with": {
+            "agentId": "main",
             "event": {
               "type": "tool.call",
               "uuid": "$uuid:tool-event",
@@ -46,6 +48,7 @@
           "channel": "wire",
           "event": "context.append_loop_event",
           "with": {
+            "agentId": "main",
             "event": {
               "type": "tool.result",
               "parentUuid": "$uuid:tool-event",

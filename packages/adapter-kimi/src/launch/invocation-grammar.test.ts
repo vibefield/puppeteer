@@ -16,9 +16,9 @@ const invoke = (argv: string[], implementation: AgentNativeInvocation['implement
 const matrix: Record<'utility' | 'one-shot' | 'elsewhere' | 'reject', string[][]> & {
   mapped: [string[], Record<string, unknown>][];
 } = {
-  utility: [['--help'], ['--model', '--help', 'doctor'], ['provider', 'list']],
+  utility: [['--help'], ['--model', '--help', 'doctor'], ['provider', 'list'], ['import-sessions']],
   'one-shot': [['-p', 'hello'], ['--prompt=hello']],
-  elsewhere: [['acp'], ['web'], ['remote']],
+  elsewhere: [['acp'], ['web'], ['remote'], ['app'], ['app', '/other/project']],
   reject: [
     ['--session'],
     ['--continue'],

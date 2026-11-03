@@ -3,7 +3,13 @@
   "steps": [
     {
       "at": 0,
-      "do": { "emit": { "channel": "wire", "event": "turn.ended", "with": { "turnId": 0, "reason": "completed" } } }
+      "do": {
+        "emit": {
+          "channel": "wire",
+          "event": "turn.ended",
+          "with": { "agentId": "main", "turnId": 0, "reason": "completed" }
+        }
+      }
     },
     {
       "at": 30,
@@ -12,6 +18,7 @@
           "channel": "wire",
           "event": "context.append_loop_event",
           "with": {
+            "agentId": "main",
             "event": {
               "type": "content.part",
               "uuid": "$uuid:late",

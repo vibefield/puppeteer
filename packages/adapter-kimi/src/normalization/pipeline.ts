@@ -103,6 +103,13 @@ export class KimiWireNormalizer {
         : result([kimiNativeEvent(type)], 'retained-native');
     }
 
+    if (type.startsWith('subagent.')) {
+      const events = this.delegation.mirrored(type, body);
+      return events
+        ? result(events, events.length > 0 ? 'mapped' : 'no-output', { turnId: this.turn.currentTurnId() })
+        : result([kimiNativeEvent(type)], 'retained-native');
+    }
+
     const disposition = kimiAdapterDisposition(type);
     return disposition === 'no-output'
       ? result([], disposition)

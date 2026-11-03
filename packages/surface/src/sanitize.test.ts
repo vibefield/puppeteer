@@ -42,6 +42,15 @@ describe('correlation — the property that makes a fixture replayable', () => {
     expect(sanitizeRecord({ turnId: '1786346001309' })).not.toEqual({ turnId: '1786346001309' });
   });
 
+  it('keeps a vendor-declared structural value under an id key in both redaction and detection', () => {
+    const rules = extendRules({ structuralEnumValue: /^main$/ });
+    const out = sanitizeRecord({ agentId: 'main', parentAgentId: 'agent-7' }, rules) as Record<string, unknown>;
+    expect(out.agentId).toBe('main');
+    expect(out.parentAgentId).toMatch(/^anon-[0-9a-f]{16}$/);
+    expect(checkRecord(out, rules)).toEqual([]);
+    expect(checkRecord({ agentId: 'agent-7' }, rules)).not.toEqual([]);
+  });
+
   it('is idempotent — re-sanitizing a fixture changes nothing', () => {
     const record = { threadId: '019f5d86-423a-7083-ab79-2deb044599c1', cwd: '/Users/someone/repo', text: 'hello' };
     const once = sanitizeRecord(record);

@@ -1,0 +1,2439 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "2.4.1",
+  "event": "context.append_loop_event",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "event": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["step.begin", "step.end", "content.part", "tool.call", "tool.result"]
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "parentUuid": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          },
+          "step": {
+            "type": "number"
+          },
+          "stepUuid": {
+            "type": "string"
+          },
+          "part": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["text"]
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "meta": {
+                    "type": "object"
+                  }
+                },
+                "required": ["type", "text"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["think"]
+                  },
+                  "think": {
+                    "type": "string"
+                  },
+                  "encrypted": {
+                    "type": "string"
+                  },
+                  "detailsIndex": {
+                    "type": "number"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "reasoningKey": {
+                    "type": "string"
+                  }
+                },
+                "required": ["type", "think"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["image_url"]
+                  },
+                  "imageUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "imageUrl"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["audio_url"]
+                  },
+                  "audioUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "audioUrl"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["video_url"]
+                  },
+                  "videoUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "videoUrl"]
+              }
+            ]
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "args": {},
+          "extras": {
+            "type": "object"
+          },
+          "display": {
+            "type": "object"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["text"]
+                            },
+                            "text": {
+                              "type": "string"
+                            },
+                            "meta": {
+                              "type": "object"
+                            }
+                          },
+                          "required": ["type", "text"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["think"]
+                            },
+                            "think": {
+                              "type": "string"
+                            },
+                            "encrypted": {
+                              "type": "string"
+                            },
+                            "detailsIndex": {
+                              "type": "number"
+                            },
+                            "hidden": {
+                              "type": "boolean"
+                            },
+                            "reasoningKey": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["type", "think"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["image_url"]
+                            },
+                            "imageUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "imageUrl"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["audio_url"]
+                            },
+                            "audioUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "audioUrl"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["video_url"]
+                            },
+                            "videoUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "videoUrl"]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "isError": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string"
+              },
+              "durationMs": {
+                "type": "number"
+              }
+            },
+            "required": ["output"]
+          },
+          "finishReason": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "inputOther": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "inputCacheRead": {
+                "type": "number"
+              },
+              "inputCacheCreation": {
+                "type": "number"
+              },
+              "raw": {
+                "type": "object"
+              }
+            },
+            "required": ["inputOther", "output", "inputCacheRead", "inputCacheCreation"]
+          },
+          "llmFirstTokenLatencyMs": {
+            "type": "number"
+          },
+          "llmStreamDurationMs": {
+            "type": "number"
+          },
+          "llmRequestBuildMs": {
+            "type": "number"
+          },
+          "llmServerFirstTokenMs": {
+            "type": "number"
+          },
+          "llmServerDecodeMs": {
+            "type": "number"
+          },
+          "llmClientConsumeMs": {
+            "type": "number"
+          },
+          "llmClientBlockedMs": {
+            "type": "number"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "providerFinishReason": {
+            "type": "string",
+            "enum": ["completed", "tool_calls", "truncated", "filtered", "paused", "other"]
+          },
+          "rawFinishReason": {
+            "type": "string"
+          }
+        },
+        "required": ["type"],
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["step.begin"]
+              },
+              "uuid": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "uuid"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["step.end"]
+              },
+              "uuid": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "uuid"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["content.part"]
+              },
+              "stepUuid": {
+                "type": "string"
+              },
+              "part": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["text"]
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "meta": {
+                        "type": "object"
+                      }
+                    },
+                    "required": ["type", "text"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["think"]
+                      },
+                      "think": {
+                        "type": "string"
+                      },
+                      "encrypted": {
+                        "type": "string"
+                      },
+                      "detailsIndex": {
+                        "type": "number"
+                      },
+                      "hidden": {
+                        "type": "boolean"
+                      },
+                      "reasoningKey": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["type", "think"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["image_url"]
+                      },
+                      "imageUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "imageUrl"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["audio_url"]
+                      },
+                      "audioUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "audioUrl"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["video_url"]
+                      },
+                      "videoUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "videoUrl"]
+                  }
+                ]
+              }
+            },
+            "required": ["type", "stepUuid", "part"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["tool.call"]
+              },
+              "stepUuid": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "stepUuid", "toolCallId", "name"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["tool.result"]
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "result": {
+                "type": "object",
+                "properties": {
+                  "output": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["text"]
+                                },
+                                "text": {
+                                  "type": "string"
+                                },
+                                "meta": {
+                                  "type": "object"
+                                }
+                              },
+                              "required": ["type", "text"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["think"]
+                                },
+                                "think": {
+                                  "type": "string"
+                                },
+                                "encrypted": {
+                                  "type": "string"
+                                },
+                                "detailsIndex": {
+                                  "type": "number"
+                                },
+                                "hidden": {
+                                  "type": "boolean"
+                                },
+                                "reasoningKey": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["type", "think"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["image_url"]
+                                },
+                                "imageUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "imageUrl"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["audio_url"]
+                                },
+                                "audioUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "audioUrl"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["video_url"]
+                                },
+                                "videoUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "videoUrl"]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "isError": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "type": "string"
+                  },
+                  "durationMs": {
+                    "type": "number"
+                  }
+                },
+                "required": ["output"]
+              }
+            },
+            "required": ["type", "toolCallId", "result"]
+          }
+        ]
+      }
+    },
+    "required": ["agentId", "event"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["context.append_loop_event"]
+      },
+      "agentId": {
+        "type": "string"
+      },
+      "event": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["step.begin", "step.end", "content.part", "tool.call", "tool.result"]
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "parentUuid": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          },
+          "step": {
+            "type": "number"
+          },
+          "stepUuid": {
+            "type": "string"
+          },
+          "part": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["text"]
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "meta": {
+                    "type": "object"
+                  }
+                },
+                "required": ["type", "text"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["think"]
+                  },
+                  "think": {
+                    "type": "string"
+                  },
+                  "encrypted": {
+                    "type": "string"
+                  },
+                  "detailsIndex": {
+                    "type": "number"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "reasoningKey": {
+                    "type": "string"
+                  }
+                },
+                "required": ["type", "think"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["image_url"]
+                  },
+                  "imageUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "imageUrl"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["audio_url"]
+                  },
+                  "audioUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "audioUrl"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["video_url"]
+                  },
+                  "videoUrl": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["url"]
+                  }
+                },
+                "required": ["type", "videoUrl"]
+              }
+            ]
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "args": {},
+          "extras": {
+            "type": "object"
+          },
+          "display": {
+            "type": "object"
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["text"]
+                            },
+                            "text": {
+                              "type": "string"
+                            },
+                            "meta": {
+                              "type": "object"
+                            }
+                          },
+                          "required": ["type", "text"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["think"]
+                            },
+                            "think": {
+                              "type": "string"
+                            },
+                            "encrypted": {
+                              "type": "string"
+                            },
+                            "detailsIndex": {
+                              "type": "number"
+                            },
+                            "hidden": {
+                              "type": "boolean"
+                            },
+                            "reasoningKey": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["type", "think"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["image_url"]
+                            },
+                            "imageUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "imageUrl"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["audio_url"]
+                            },
+                            "audioUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "audioUrl"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["video_url"]
+                            },
+                            "videoUrl": {
+                              "type": "object",
+                              "properties": {
+                                "url": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["url"]
+                            }
+                          },
+                          "required": ["type", "videoUrl"]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "isError": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string"
+              },
+              "durationMs": {
+                "type": "number"
+              }
+            },
+            "required": ["output"]
+          },
+          "finishReason": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "inputOther": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "inputCacheRead": {
+                "type": "number"
+              },
+              "inputCacheCreation": {
+                "type": "number"
+              },
+              "raw": {
+                "type": "object"
+              }
+            },
+            "required": ["inputOther", "output", "inputCacheRead", "inputCacheCreation"]
+          },
+          "llmFirstTokenLatencyMs": {
+            "type": "number"
+          },
+          "llmStreamDurationMs": {
+            "type": "number"
+          },
+          "llmRequestBuildMs": {
+            "type": "number"
+          },
+          "llmServerFirstTokenMs": {
+            "type": "number"
+          },
+          "llmServerDecodeMs": {
+            "type": "number"
+          },
+          "llmClientConsumeMs": {
+            "type": "number"
+          },
+          "llmClientBlockedMs": {
+            "type": "number"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "providerFinishReason": {
+            "type": "string",
+            "enum": ["completed", "tool_calls", "truncated", "filtered", "paused", "other"]
+          },
+          "rawFinishReason": {
+            "type": "string"
+          }
+        },
+        "required": ["type"],
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["step.begin"]
+              },
+              "uuid": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "uuid"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["step.end"]
+              },
+              "uuid": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "uuid"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["content.part"]
+              },
+              "stepUuid": {
+                "type": "string"
+              },
+              "part": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["text"]
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "meta": {
+                        "type": "object"
+                      }
+                    },
+                    "required": ["type", "text"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["think"]
+                      },
+                      "think": {
+                        "type": "string"
+                      },
+                      "encrypted": {
+                        "type": "string"
+                      },
+                      "detailsIndex": {
+                        "type": "number"
+                      },
+                      "hidden": {
+                        "type": "boolean"
+                      },
+                      "reasoningKey": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["type", "think"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["image_url"]
+                      },
+                      "imageUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "imageUrl"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["audio_url"]
+                      },
+                      "audioUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "audioUrl"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["video_url"]
+                      },
+                      "videoUrl": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    },
+                    "required": ["type", "videoUrl"]
+                  }
+                ]
+              }
+            },
+            "required": ["type", "stepUuid", "part"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["tool.call"]
+              },
+              "stepUuid": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "stepUuid", "toolCallId", "name"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["tool.result"]
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "result": {
+                "type": "object",
+                "properties": {
+                  "output": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["text"]
+                                },
+                                "text": {
+                                  "type": "string"
+                                },
+                                "meta": {
+                                  "type": "object"
+                                }
+                              },
+                              "required": ["type", "text"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["think"]
+                                },
+                                "think": {
+                                  "type": "string"
+                                },
+                                "encrypted": {
+                                  "type": "string"
+                                },
+                                "detailsIndex": {
+                                  "type": "number"
+                                },
+                                "hidden": {
+                                  "type": "boolean"
+                                },
+                                "reasoningKey": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["type", "think"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["image_url"]
+                                },
+                                "imageUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "imageUrl"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["audio_url"]
+                                },
+                                "audioUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "audioUrl"]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["video_url"]
+                                },
+                                "videoUrl": {
+                                  "type": "object",
+                                  "properties": {
+                                    "url": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["url"]
+                                }
+                              },
+                              "required": ["type", "videoUrl"]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "isError": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "type": "string"
+                  },
+                  "durationMs": {
+                    "type": "number"
+                  }
+                },
+                "required": ["output"]
+              }
+            },
+            "required": ["type", "toolCallId", "result"]
+          }
+        ]
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "agentId", "event", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+    "carrier": ["kimi-runtime-headless", "kimi-exact-release-source"]
+  },
+  "confidence": "verified-headless",
+  "variants": [
+    {
+      "match": {
+        "event.type": "step.begin"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.type": "step.end"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.type": "content.part"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.part.type": "text"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.part.type": "think"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.part.type": "image_url"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.part.type": "audio_url"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.part.type": "video_url"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.type": "tool.call"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.type": "tool.result"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "completed"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "tool_calls"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless", "kimi-exact-release-source"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "truncated"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "filtered"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "paused"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "event.providerFinishReason": "other"
+      },
+      "evidence": {
+        "existence": ["kimi-exact-release-source"],
+        "shape": ["kimi-exact-release-source"]
+      },
+      "confidence": "unverified"
+    }
+  ],
+  "variantDiscriminants": ["event.type", "event.part.type", "event.providerFinishReason"],
+  "payloadRefinements": [
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Agent"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "resume": {
+            "type": "string"
+          },
+          "run_in_background": {
+            "type": "boolean"
+          },
+          "subagent_type": {
+            "type": "string"
+          }
+        },
+        "required": ["prompt", "description"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "AgentSwarm"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "prompt_template": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "resume_agent_ids": {
+            "additionalProperties": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "propertyNames": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "subagent_type": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["description"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "AskUserQuestion"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "background": {
+            "default": false,
+            "type": "boolean"
+          },
+          "questions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "header": {
+                  "default": "",
+                  "type": "string"
+                },
+                "multi_select": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "options": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "description": {
+                        "default": "",
+                        "type": "string"
+                      },
+                      "label": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": ["label"],
+                    "type": "object"
+                  },
+                  "maxItems": 4,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                "question": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": ["question", "options"],
+              "type": "object"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": ["questions"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Bash"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "disable_timeout": {
+            "type": "boolean"
+          },
+          "run_in_background": {
+            "type": "boolean"
+          },
+          "timeout": {
+            "default": 60,
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": ["command"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "CreateGoal"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "completionCriterion": {
+            "type": "string"
+          },
+          "objective": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "replace": {
+            "type": "boolean"
+          }
+        },
+        "required": ["objective"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "CronCreate"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "cron": {
+            "type": "string"
+          },
+          "prompt": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "type": "string"
+          },
+          "recurring": {
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "required": ["cron", "prompt"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "CronDelete"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "CronList"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Edit"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "new_string": {
+            "type": "string"
+          },
+          "old_string": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "replace_all": {
+            "type": "boolean"
+          }
+        },
+        "required": ["path", "old_string", "new_string"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "ExitPlanMode"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "options": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "default": "",
+                  "type": "string"
+                },
+                "label": {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": ["label"],
+              "type": "object"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "FetchURL"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": ["url"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "GetGoal"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Glob"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "head_limit": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "include_dirs": {
+            "type": "boolean"
+          },
+          "include_ignored": {
+            "type": "boolean"
+          },
+          "offset": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          }
+        },
+        "required": ["pattern"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Grep"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "-A": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "-B": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "-C": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "-i": {
+            "type": "boolean"
+          },
+          "-n": {
+            "type": "boolean"
+          },
+          "glob": {
+            "type": "string"
+          },
+          "head_limit": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "include_ignored": {
+            "type": "boolean"
+          },
+          "multiline": {
+            "type": "boolean"
+          },
+          "offset": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "output_mode": {
+            "enum": ["content", "files_with_matches", "count_matches"],
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": ["pattern"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Read"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "column_offset": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "line_offset": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "exclusiveMaximum": 0,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              }
+            ]
+          },
+          "max_chars": {
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "type": "integer"
+          },
+          "n_lines": {
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": ["path"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "SetGoalBudget"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "unit": {
+            "enum": ["turns", "tokens", "milliseconds", "seconds", "minutes", "hours"],
+            "type": "string"
+          },
+          "value": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          }
+        },
+        "required": ["value", "unit"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Skill"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "type": "string"
+          },
+          "skill": {
+            "type": "string"
+          }
+        },
+        "required": ["skill"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "TaskList"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "active_only": {
+            "default": true,
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "TaskOutput"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": ["task_id"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "TaskStop"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "default": "Stopped by TaskStop",
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": ["task_id"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "TodoList"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "todos": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "enum": ["pending", "in_progress", "done"],
+                  "type": "string"
+                },
+                "title": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": ["title", "status"],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "UpdateGoal"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": ["active", "complete", "blocked"],
+            "type": "string"
+          }
+        },
+        "required": ["status"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "WaitFor"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "timeout": {
+            "exclusiveMinimum": 0,
+            "maximum": 90,
+            "type": "integer"
+          }
+        },
+        "required": ["timeout"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "event.type": "tool.call",
+        "event.name": "Write"
+      },
+      "path": "event.args",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": ["overwrite", "append"],
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": ["path", "content"],
+        "type": "object"
+      },
+      "evidence": {
+        "existence": ["kimi-runtime-headless"],
+        "shape": ["kimi-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    }
+  ],
+  "fixture": "captures/kimi@2.4.1/basic-turn/wire.jsonl"
+}

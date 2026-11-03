@@ -1,0 +1,8 @@
+{
+  "asmVersion": 3,
+  "vendor": "kimi",
+  "vendorVersion": "2.4.1",
+  "generatedAt": "2026-11-03",
+  "source": "Kimi Code 2.4.1 controlled print-mode census plus a digest-pinned projection of the exact release source. The generated manifest lists 67 durable record types; three engine-journal records and two undo records outside it are inventory-checked against their producers. Unforced branches remain unverified.",
+  "evidence": "evidence.json"
+}

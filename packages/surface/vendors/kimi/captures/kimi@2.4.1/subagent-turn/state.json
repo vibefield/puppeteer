@@ -1,0 +1,26 @@
+{
+  "id": "session_a11a5ed02e45bbab3c40638cd0a53db9deff",
+  "version": 2,
+  "cwd": "/workspace",
+  "archived": false,
+  "agents": {
+    "main": {
+      "homedir": "/workspace/redacted-file",
+      "type": "main"
+    },
+    "agent-0": {
+      "homedir": "/workspace/redacted-file",
+      "type": "sub",
+      "parentAgentId": "main",
+      "labels": {
+        "parentAgentId": "main",
+        "profileName": "coder"
+      }
+    }
+  },
+  "custom": {},
+  "createdAt": 1767225600000,
+  "updatedAt": 1767225600000,
+  "lastTurnReason": "completed",
+  "isCustomTitle": false
+}

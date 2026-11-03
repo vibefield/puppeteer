@@ -171,10 +171,12 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-kimi",
       "persona": "kimi",
       "groundTruth": "packages/surface/vendors/kimi/groundtruth.json",
-      "candidateVersion": "0.34.0",
+      "candidateVersion": "2.4.1",
       "status": "baseline-pending",
       "blockers": [
-        "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."
+        "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform.",
+        "Kimi Code 2.4.1 runtime evidence is a linux-x64 print-mode census only; the darwin-arm64, darwin-x64, and windows-x64 artifacts have not been acquired or attested.",
+        "The 2.4.1 native TUI (startup, folder trust, first-prompt discovery, Esc-cancel, permissions, and resume tail offsets) has not been exercised through the adapter."
       ]
     },
     {

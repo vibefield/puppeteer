@@ -1,0 +1,96 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "kimi",
+  "vendorVersion": "2.4.1",
+  "artifacts": [
+    {
+      "id": "installed-kimi-2.4.1-linux-x64",
+      "platform": "linux-x64",
+      "channel": "stable",
+      "acquiredAt": "2026-11-03T19:30:14.499Z",
+      "versionOutput": "2.4.1",
+      "fileDescription": "ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=5e67bdf95c7646325b62decd0ca8d375d325ea19, for GNU/Linux 3.2.0, with debug_info, not stripped, too many notes (256)",
+      "bytes": 192613568,
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:f2b3634c17b604e5b0f0c578b6a787fd01bcafb40a3c0dd62203ae14ff2ea068"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/moonshotai/kimi-code",
+      "revision": "2c73f3f50af4fa7f2540ca0d2e33b07a1408e3a7",
+      "relation": "exact-release",
+      "tag": "@moonshot-ai/kimi-code@2.4.1",
+      "contract": "packages/surface/vendors/kimi/references/kimi@2.4.1/source-contract.json"
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/kimi/captures/kimi@2.4.1",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "b3e84b5c5430eeb4413bdf4404e321acf4b89721f6e200a69a0188e470d49bdd"
+    },
+    {
+      "id": "binary-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/kimi/probes/kimi@2.4.1",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "77c754a7e20509980c9bb6c52abe2df7267b5a63ffdffcd623db911d4ab9dfb7"
+    },
+    {
+      "id": "exact-source-reference",
+      "kind": "reference-snapshot",
+      "path": "packages/surface/vendors/kimi/references/kimi@2.4.1",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "4826095335653e83e5b532d2a7eec9cafbd53f774f2d5a9cc6d82c9d505ade2a"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/kimi/model/kimi@2.4.1",
+      "exclude": ["evidence.json"],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "32538767ff8cf45f6a30bca6f430d43ab41c590109eeb6d84eca1cb6dcbd63b0"
+    }
+  ],
+  "claims": [
+    {
+      "id": "kimi-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "installed-kimi-2.4.1-linux-x64",
+      "platform": "linux-x64",
+      "harness": "isolated KIMI_CODE_HOME with loopback OpenAI-compatible provider, command hooks, multi-invocation resume, detached process task, provider rejection, hook block/deny, HTTP 429 and malformed-SSE step retries, print-mode SIGINT cancellation, and a foreground subagent journal",
+      "capturedAt": "2026-11-03T19:17:30.683Z"
+    },
+    {
+      "id": "kimi-binary-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "installed-kimi-2.4.1-linux-x64",
+      "platform": "linux-x64",
+      "harness": "SHA-256, file identity, --version, --help, rejected-option, and raw-capture tree probes",
+      "capturedAt": "2026-11-03T19:30:14.499Z"
+    },
+    {
+      "id": "kimi-exact-release-source",
+      "kind": "exact-source",
+      "confidence": "unverified",
+      "record": "exact-source-reference",
+      "sourceReference": 0,
+      "notes": "Digest-pinned exact release source establishes 67 durable record schemas from the generated manifest, 5 engine-journal/undo records outside it, 20 hook schemas, protocol 1.5, and CLI declarations; it does not promote unforced runtime behavior."
+    }
+  ],
+  "limitations": [
+    "The controlled census is native print mode, including multi-invocation resume, a detached process task, provider rejection, hook block/deny, HTTP 429 and malformed-SSE step retries, print-mode SIGINT cancellation, and a foreground subagent journal; it is not interactive PTY mode.",
+    "Runtime evidence covers 43 of 95 modelled surfaces; the remaining 52 are exact-source-only.",
+    "Interactive TUI permissions, questions, steer, queueing, Esc-cancel, compaction, undo/branch switching, swarm, tower mode, and non-success process-task or subagent outcomes remain unverified.",
+    "Only the linux-x64 release artifact has runtime evidence; this is not a support promotion."
+  ]
+}

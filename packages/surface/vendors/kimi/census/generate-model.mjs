@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Generate the evidence-bound Kimi 0.34.0 Agent Surface Model. */
+/** Generate the evidence-bound Kimi 2.4.1 Agent Surface Model. */
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -10,7 +10,7 @@ import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 import { projectJsonSchema } from '@vibefield/puppeteer-surface';
 
-const VERSION = '0.34.0';
+const VERSION = '2.4.1';
 
 const vendorRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const packageRoot = dirname(dirname(vendorRoot));
@@ -27,7 +27,7 @@ const sourceReference = JSON.parse(readFileSync(join(referencesRoot, 'source-con
 const artifactProbe = JSON.parse(readFileSync(join(probesRoot, 'artifact.json'), 'utf8'));
 const flagProbe = JSON.parse(readFileSync(join(probesRoot, 'flags.json'), 'utf8'));
 const rawCaptureAttestation = JSON.parse(readFileSync(join(probesRoot, 'raw-capture-attestation.json'), 'utf8'));
-if (sourceReference.vendorVersion !== VERSION || sourceReference.wire.persistedOperationTypes !== 40) {
+if (sourceReference.vendorVersion !== VERSION || sourceReference.wire.persistedOperationTypes !== 67) {
   throw new Error(`invalid Kimi ${VERSION} source reference`);
 }
 if (artifactProbe.vendorVersion !== VERSION || !/^[0-9a-f]{64}$/.test(artifactProbe.sha256)) {
@@ -62,43 +62,99 @@ const variant = (match, claim) => ({
 
 const schemas = sourceReference.wire.payloadSchemas;
 const persistedWireTypes = sourceReference.wire.persisted.map((entry) => entry.type);
+const supplementalSchemas = sourceReference.wire.supplemental.payloadSchemas;
+const supplementalWireTypes = Object.keys(supplementalSchemas);
 const hookEvents = sourceReference.hooks.events;
 const hookSchemas = sourceReference.hooks.payloadSchemas;
-const observedWireTypes = new Set([
-  'context.append_loop_event',
-  'context.append_message',
-  'llm.request',
-  'llm.tools_snapshot',
-  'permission.set_mode',
-  'profile.bind',
-  'task.started',
-  'task.terminated',
-  'turn.ended',
-  'turn.prompt',
-  'usage.record',
-]);
-const observedHooks = new Set([
-  'PreToolUse',
-  'PostToolUse',
-  'PostToolUseFailure',
-  'Notification',
-  'StopFailure',
-  'TaskStarted',
-  'UserPromptSubmit',
-  'TurnStarted',
-  'Stop',
-  'SessionStart',
-  'SubagentStart',
-  'SubagentStop',
-]);
-const totalSurfaceCount = persistedWireTypes.length + hookEvents.length + 3;
+
+// Scenario preference when several captures contain the same native record.
+const fixturePreference = [
+  'basic-turn',
+  'tool-success',
+  'tool-nonzero',
+  'background-task',
+  'resume-turn',
+  'provider-error',
+  'provider-retry',
+  'malformed-stream',
+  'interrupt-stream',
+  'hook-block-prompt',
+  'hook-deny-tool',
+  'subagent-turn',
+];
+
+function scenarioDirectories() {
+  const names = readdirSync(capturesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+  const unknown = names.filter((name) => !fixturePreference.includes(name));
+  if (unknown.length) throw new Error(`Kimi ${VERSION} captures contain unranked scenarios: ${unknown.join(', ')}`);
+  return fixturePreference.filter((name) => names.includes(name));
+}
+
+function jsonLines(path) {
+  return readFileSync(path, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+}
+
+/** Observed record/hook names, each with the first preferred fixture that contains it. */
+function observedSurfaces() {
+  const wire = new Map();
+  const hooks = new Map();
+  for (const scenario of scenarioDirectories()) {
+    const root = join(capturesRoot, scenario);
+    const journals = [join(root, 'wire.jsonl')];
+    const agentsDir = join(root, 'agents');
+    try {
+      journals.push(
+        ...readdirSync(agentsDir)
+          .filter((name) => name.endsWith('.jsonl'))
+          .sort()
+          .map((name) => join(agentsDir, name)),
+      );
+    } catch {
+      // Only subagent scenarios carry child journals.
+    }
+    for (const journal of journals) {
+      for (const record of jsonLines(journal)) {
+        if (record.type === 'metadata' || wire.has(record.type)) continue;
+        wire.set(record.type, relative(vendorRoot, journal).split(sep).join('/'));
+      }
+    }
+    for (const file of readdirSync(join(root, 'hooks')).sort()) {
+      const event = file.replace(/\.jsonl$/, '');
+      if (!hooks.has(event))
+        hooks.set(
+          event,
+          relative(vendorRoot, join(root, 'hooks', file))
+            .split(sep)
+            .join('/'),
+        );
+    }
+  }
+  return { wire, hooks };
+}
+
+const observed = observedSurfaces();
+const knownWireTypes = new Set([...persistedWireTypes, ...supplementalWireTypes]);
+for (const type of observed.wire.keys()) {
+  if (!knownWireTypes.has(type)) throw new Error(`captured Kimi record ${type} has no source contract`);
+}
+const observedWireTypes = new Set(observed.wire.keys());
+const observedHooks = new Set(observed.hooks.keys());
+const totalSurfaceCount = persistedWireTypes.length + supplementalWireTypes.length + hookEvents.length + 3;
 const runtimeSurfaceCount = observedWireTypes.size + observedHooks.size + 3;
 
 const selectedVariantPaths = {
+  'agent.turn.ended': ['outcome'],
   'context.append_loop_event': ['event.type', 'event.part.type', 'event.providerFinishReason'],
   'context.append_message': ['message.role', 'message.origin.kind', 'message.origin.status'],
+  'prompt.completed': ['reason'],
   'task.started': ['info.kind', 'info.status'],
   'task.terminated': ['info.kind', 'info.status'],
+  'turn.cancel': ['target', 'reason'],
   'turn.ended': ['reason'],
   Notification: ['sink', 'severity'],
   SessionStart: ['source'],
@@ -225,34 +281,6 @@ const toolCallRefinements = runtimeToolSchemas.map((tool) => ({
   fidelity: 'exact',
 }));
 
-const wireFixtures = {
-  'context.append_loop_event': 'tool-success',
-  'context.append_message': 'basic-turn',
-  'llm.request': 'basic-turn',
-  'llm.tools_snapshot': 'basic-turn',
-  'permission.set_mode': 'basic-turn',
-  'profile.bind': 'basic-turn',
-  'task.started': 'background-task',
-  'task.terminated': 'background-task',
-  'turn.ended': 'basic-turn',
-  'turn.prompt': 'basic-turn',
-  'usage.record': 'basic-turn',
-};
-const hookFixtures = {
-  PreToolUse: 'tool-success',
-  PostToolUse: 'tool-success',
-  PostToolUseFailure: 'tool-nonzero',
-  Notification: 'background-task',
-  StopFailure: 'provider-error',
-  TaskStarted: 'background-task',
-  UserPromptSubmit: 'basic-turn',
-  TurnStarted: 'basic-turn',
-  Stop: 'basic-turn',
-  SessionStart: 'basic-turn',
-  SubagentStart: 'subagent-turn',
-  SubagentStop: 'subagent-turn',
-};
-
 function writeJson(path, value) {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
@@ -297,7 +325,7 @@ writeJson(join(modelRoot, 'manifest.json'), {
   vendorVersion: VERSION,
   generatedAt: artifactProbe.probedAt.slice(0, 10),
   source:
-    'Kimi Code 0.34.0 controlled print-mode census plus a digest-pinned projection of the exact release source. The source inventory contains 40 persisted and 8 transient operation types; unforced branches remain unverified.',
+    'Kimi Code 2.4.1 controlled print-mode census plus a digest-pinned projection of the exact release source. The generated manifest lists 67 durable record types; three engine-journal records and two undo records outside it are inventory-checked against their producers. Unforced branches remain unverified.',
   evidence: 'evidence.json',
 });
 writeJson(join(modelRoot, 'detection.json'), {
@@ -361,27 +389,24 @@ writeEvent('metadata', {
   fixture: `captures/kimi@${VERSION}/basic-turn/wire.jsonl`,
 });
 
-for (const type of persistedWireTypes) {
+const wireSchemas = { ...schemas, ...supplementalSchemas };
+for (const type of [...persistedWireTypes, ...supplementalWireTypes]) {
   const claim = observedWireTypes.has(type) ? runtimeClaim : sourceClaim;
-  const eventVariants = variantsFor(type, schemas[type]);
+  const eventVariants = variantsFor(type, wireSchemas[type]);
   const variantDiscriminants = Object.keys(selectedVariantValues[type] ?? {});
   writeEvent(type, {
     channel: 'wire',
     channels: ['wire'],
     transport: 'jsonl-record',
     direction: 'agent-local',
-    payloadSchema: schemas[type],
-    recordSchema: recordSchema(type, schemas[type]),
+    payloadSchema: wireSchemas[type],
+    recordSchema: recordSchema(type, wireSchemas[type]),
     recordChannel: 'wire',
     evidence: evidence(claim, true, true),
     confidence: claim === runtimeClaim ? 'verified-headless' : 'unverified',
     ...(eventVariants.length ? { variants: eventVariants, variantDiscriminants } : {}),
     ...(type === 'context.append_loop_event' ? { payloadRefinements: toolCallRefinements } : {}),
-    ...(observedWireTypes.has(type)
-      ? {
-          fixture: `captures/kimi@${VERSION}/${wireFixtures[type]}/wire.jsonl`,
-        }
-      : {}),
+    ...(observedWireTypes.has(type) ? { fixture: observed.wire.get(type) } : {}),
   });
 }
 
@@ -400,9 +425,7 @@ for (const event of hookEvents) {
     ...(eventVariants.length
       ? { variants: eventVariants, variantDiscriminants: Object.keys(selectedVariantValues[event] ?? {}) }
       : {}),
-    ...(observedHooks.has(event)
-      ? { fixture: `captures/kimi@${VERSION}/${hookFixtures[event]}/hooks/${event}.jsonl` }
-      : {}),
+    ...(observedHooks.has(event) ? { fixture: observed.hooks.get(event) } : {}),
   });
 }
 
@@ -422,6 +445,7 @@ writeEvent('state.json', {
       agents: object(),
       custom: object(),
       lastTurnReason: { anyOf: [string(), { type: 'null' }] },
+      isCustomTitle: boolean,
     },
     ['id', 'version', 'cwd', 'createdAt', 'updatedAt', 'archived', 'agents', 'custom'],
   ),
@@ -463,82 +487,118 @@ const relation = (from, to, kind = 'sequence', claim = runtimeClaim, label) => (
 });
 writeJson(join(modelRoot, 'behavior.json'), {
   behaviorVersion: 1,
-  title: 'Kimi Code 0.34.0 native wire and hook lifecycle',
+  title: 'Kimi Code 2.4.1 native wire and hook lifecycle',
   description:
-    'Partial order over the durable v2 journal and external hooks. Only hermetically captured print-mode branches are verified.',
-  source: 'Controlled Kimi 0.34.0 census plus exact release source. Source-only branches remain unverified.',
+    'Partial order over the durable v2 journal, its interleaved engine-journal records, and external hooks. Only hermetically captured print-mode branches are verified.',
+  source: 'Controlled Kimi 2.4.1 census plus exact release source. Source-only branches remain unverified.',
   lanes: [
     { id: 'session', label: 'Session' },
     { id: 'turn', label: 'Turn / step' },
     { id: 'tool', label: 'Tool / interaction' },
     { id: 'compact', label: 'Compaction' },
-    { id: 'task', label: 'Task / swarm' },
+    { id: 'task', label: 'Task / subagent / swarm' },
     { id: 'hook', label: 'External hooks' },
   ],
   nodes: [
     node('metadata', 'metadata', 'session', 0),
-    node('profile-bind', 'profile.bind', 'session', 1),
-    node('permission-mode', 'permission.set_mode', 'session', 2),
-    node('turn-prompt', 'turn.prompt', 'turn', 3),
-    node('context-user', 'context.append_message', 'turn', 4, runtimeClaim, { match: { 'message.role': 'user' } }),
-    node('context-hook-result', 'context.append_message', 'turn', 4, runtimeClaim, {
+    node('runtime-binding', 'runtime.set_binding', 'session', 1),
+    node('profile-bind', 'profile.bind', 'session', 2),
+    node('change-snapshot', 'changeNotifier.snapshot', 'session', 3),
+    node('permission-mode', 'permission.set_mode', 'session', 4),
+    node('turn-prompt', 'turn.prompt', 'turn', 5),
+    node('context-user', 'context.append_message', 'turn', 6, runtimeClaim, { match: { 'message.role': 'user' } }),
+    node('context-hook-result', 'context.append_message', 'turn', 6, runtimeClaim, {
       match: { 'message.origin.kind': 'hook_result' },
     }),
-    node('step-begin', 'context.append_loop_event', 'turn', 5, runtimeClaim, { match: { 'event.type': 'step.begin' } }),
-    node('content-part', 'context.append_loop_event', 'turn', 6, runtimeClaim, {
+    node('engine-turn-started', 'agent.turn.started', 'turn', 7),
+    node('step-begin', 'context.append_loop_event', 'turn', 8, runtimeClaim, { match: { 'event.type': 'step.begin' } }),
+    node('content-part', 'context.append_loop_event', 'turn', 9, runtimeClaim, {
       match: { 'event.type': 'content.part' },
     }),
-    node('tool-call', 'context.append_loop_event', 'tool', 7, runtimeClaim, { match: { 'event.type': 'tool.call' } }),
-    node('tool-result', 'context.append_loop_event', 'tool', 8, runtimeClaim, {
+    node('tool-call', 'context.append_loop_event', 'tool', 10, runtimeClaim, { match: { 'event.type': 'tool.call' } }),
+    node('tool-result', 'context.append_loop_event', 'tool', 11, runtimeClaim, {
       match: { 'event.type': 'tool.result' },
     }),
-    node('step-end', 'context.append_loop_event', 'turn', 9, runtimeClaim, { match: { 'event.type': 'step.end' } }),
-    node('turn-ended', 'turn.ended', 'turn', 10),
+    node('step-end', 'context.append_loop_event', 'turn', 12, runtimeClaim, { match: { 'event.type': 'step.end' } }),
+    node('step-retrying', 'turn.step.retrying', 'turn', 13),
+    node('step-interrupted', 'turn.step.interrupted', 'turn', 13),
+    node('turn-cancel', 'turn.cancel', 'turn', 11),
+    node('engine-turn-ended', 'agent.turn.ended', 'turn', 14),
+    node('turn-ended', 'turn.ended', 'turn', 15),
+    node('prompt-completed', 'prompt.completed', 'turn', 16),
+    node('prompt-aborted', 'prompt.aborted', 'turn', 16),
     node('session-start-hook', 'SessionStart', 'hook', 0),
-    node('prompt-hook', 'UserPromptSubmit', 'hook', 3),
-    node('turn-start-hook', 'TurnStarted', 'hook', 4),
-    node('pre-tool-hook', 'PreToolUse', 'hook', 7),
-    node('post-tool-hook', 'PostToolUse', 'hook', 8),
-    node('post-tool-failure-hook', 'PostToolUseFailure', 'hook', 8),
-    node('task-started-hook', 'TaskStarted', 'hook', 5),
-    node('notification-hook', 'Notification', 'hook', 9),
-    node('stop-failure-hook', 'StopFailure', 'hook', 10),
-    node('stop-hook', 'Stop', 'hook', 10),
-    node('subagent-start-hook', 'SubagentStart', 'hook', 5),
-    node('subagent-stop-hook', 'SubagentStop', 'hook', 9),
-    node('interaction-request', 'interaction.request', 'tool', 7, sourceClaim),
-    node('interaction-resolved', 'interaction.resolved', 'tool', 8, sourceClaim),
-    node('turn-cancel', 'turn.cancel', 'turn', 9, sourceClaim),
-    node('turn-steer', 'turn.steer', 'turn', 4, sourceClaim),
-    node('compact-begin', 'full_compaction.begin', 'compact', 5, sourceClaim),
-    node('compact-apply', 'context.apply_compaction', 'compact', 6, sourceClaim),
-    node('compact-complete', 'full_compaction.complete', 'compact', 7, sourceClaim),
-    node('compact-cancel', 'full_compaction.cancel', 'compact', 7, sourceClaim),
-    node('task-started', 'task.started', 'task', 5),
-    node('task-terminated', 'task.terminated', 'task', 9),
-    node('swarm-enter', 'swarm_mode.enter', 'task', 4, sourceClaim),
-    node('swarm-exit', 'swarm_mode.exit', 'task', 10, sourceClaim),
+    node('prompt-hook', 'UserPromptSubmit', 'hook', 5),
+    node('turn-start-hook', 'TurnStarted', 'hook', 7),
+    node('pre-tool-hook', 'PreToolUse', 'hook', 10),
+    node('post-tool-hook', 'PostToolUse', 'hook', 11),
+    node('post-tool-failure-hook', 'PostToolUseFailure', 'hook', 11),
+    node('task-started-hook', 'TaskStarted', 'hook', 10),
+    node('notification-hook', 'Notification', 'hook', 13),
+    node('interrupt-hook', 'Interrupt', 'hook', 15),
+    node('stop-failure-hook', 'StopFailure', 'hook', 15),
+    node('stop-hook', 'Stop', 'hook', 15),
+    node('subagent-start-hook', 'SubagentStart', 'hook', 10),
+    node('subagent-stop-hook', 'SubagentStop', 'hook', 11),
+    node('interaction-request', 'interaction.request', 'tool', 10, sourceClaim),
+    node('interaction-resolved', 'interaction.resolved', 'tool', 11, sourceClaim),
+    node('turn-steer', 'turn.steer', 'turn', 9, sourceClaim),
+    node('compact-begin', 'full_compaction.begin', 'compact', 8, sourceClaim),
+    node('compact-apply', 'context.apply_compaction', 'compact', 9, sourceClaim),
+    node('compact-complete', 'full_compaction.complete', 'compact', 10, sourceClaim),
+    node('compact-cancel', 'full_compaction.cancel', 'compact', 10, sourceClaim),
+    node('task-started', 'task.started', 'task', 10),
+    node('task-terminated', 'task.terminated', 'task', 12),
+    node('subagent-spawned', 'subagent.spawned', 'task', 10),
+    node('subagent-started', 'subagent.started', 'task', 10),
+    node('subagent-completed', 'subagent.completed', 'task', 11),
+    node('subagent-failed', 'subagent.failed', 'task', 11, sourceClaim),
+    node('subagent-cancelled', 'subagent.cancelled', 'task', 11, sourceClaim),
+    node('swarm-enter', 'swarm_mode.enter', 'task', 6, sourceClaim),
+    node('swarm-exit', 'swarm_mode.exit', 'task', 16, sourceClaim),
+    node('undo-switched', 'agent.switched', 'turn', 17, sourceClaim),
+    node('undo-legacy', 'context.undo', 'turn', 17, sourceClaim),
+    node('undo-marker', 'context.undone', 'turn', 17, sourceClaim),
   ],
   relations: [
-    relation('metadata', 'profile-bind'),
-    relation('profile-bind', 'permission-mode'),
+    relation('metadata', 'runtime-binding'),
+    relation('runtime-binding', 'profile-bind'),
+    relation('profile-bind', 'change-snapshot'),
+    relation('change-snapshot', 'permission-mode'),
     relation('permission-mode', 'turn-prompt'),
+    relation('permission-mode', 'context-hook-result', 'conditional', runtimeClaim, 'UserPromptSubmit block'),
     relation('turn-prompt', 'context-user'),
-    relation('context-user', 'step-begin'),
+    relation('context-user', 'engine-turn-started'),
+    relation('engine-turn-started', 'step-begin'),
     relation('step-begin', 'content-part', 'conditional', runtimeClaim, 'assistant content'),
     relation('step-begin', 'tool-call', 'conditional', runtimeClaim, 'tool step'),
     relation('tool-call', 'tool-result'),
     relation('content-part', 'step-end'),
     relation('tool-result', 'step-end'),
     relation('step-end', 'step-begin', 'loop', runtimeClaim, 'next model step after a tool'),
-    relation('step-end', 'turn-ended', 'conditional', runtimeClaim, 'end_turn'),
+    relation('step-end', 'step-retrying', 'conditional', runtimeClaim, 'finishReason error, retryable'),
+    relation('step-retrying', 'step-begin', 'loop', runtimeClaim, 'retried step'),
+    relation('step-end', 'step-interrupted', 'conditional', runtimeClaim, 'finishReason error or interrupted'),
+    relation('turn-cancel', 'step-end', 'conditional', runtimeClaim, 'cancelled active turn'),
+    relation('step-interrupted', 'engine-turn-ended'),
+    relation('step-end', 'engine-turn-ended', 'conditional', runtimeClaim, 'end_turn'),
+    relation('engine-turn-ended', 'turn-ended'),
+    relation('turn-ended', 'prompt-completed', 'conditional', runtimeClaim, 'completed or failed'),
+    relation('turn-ended', 'prompt-aborted', 'conditional', runtimeClaim, 'cancelled'),
+    relation('context-hook-result', 'prompt-completed', 'conditional', runtimeClaim, 'blocked'),
     relation('interaction-request', 'interaction-resolved', 'sequence', sourceClaim),
     relation('compact-begin', 'compact-apply', 'conditional', sourceClaim),
     relation('compact-apply', 'compact-complete', 'sequence', sourceClaim),
     relation('compact-begin', 'compact-cancel', 'conditional', sourceClaim),
     relation('task-started', 'task-terminated'),
+    relation('subagent-spawned', 'subagent-started'),
+    relation('subagent-started', 'subagent-completed', 'conditional', runtimeClaim, 'completed'),
+    relation('subagent-started', 'subagent-failed', 'conditional', sourceClaim, 'failed'),
+    relation('subagent-started', 'subagent-cancelled', 'conditional', sourceClaim, 'cancelled'),
     relation('subagent-start-hook', 'subagent-stop-hook'),
     relation('swarm-enter', 'swarm-exit', 'sequence', sourceClaim),
+    relation('undo-switched', 'undo-legacy', 'sequence', sourceClaim),
+    relation('undo-legacy', 'undo-marker', 'sequence', sourceClaim),
   ],
 });
 
@@ -615,7 +675,7 @@ writeJson(join(modelRoot, 'evidence.json'), {
       artifact: `installed-kimi-${VERSION}-${artifactProbe.platform}`,
       platform: artifactProbe.platform,
       harness:
-        'isolated KIMI_CODE_HOME with loopback OpenAI-compatible provider, command hooks, multi-invocation resume, detached process task, provider rejection, hook block/deny, HTTP retry, print-mode SIGINT abort, and a foreground subagent journal',
+        'isolated KIMI_CODE_HOME with loopback OpenAI-compatible provider, command hooks, multi-invocation resume, detached process task, provider rejection, hook block/deny, HTTP 429 and malformed-SSE step retries, print-mode SIGINT cancellation, and a foreground subagent journal',
       capturedAt: CAPTURED_AT,
     },
     {
@@ -635,14 +695,14 @@ writeJson(join(modelRoot, 'evidence.json'), {
       record: 'exact-source-reference',
       sourceReference: 0,
       notes:
-        'Digest-pinned exact release source establishes 40 persisted operation schemas, 8 transient types, 20 hook schemas, protocol 1.5, and CLI declarations; it does not promote unforced runtime behavior.',
+        'Digest-pinned exact release source establishes 67 durable record schemas from the generated manifest, 5 engine-journal/undo records outside it, 20 hook schemas, protocol 1.5, and CLI declarations; it does not promote unforced runtime behavior.',
     },
   ],
   limitations: [
-    'The controlled census is native print mode, including multi-invocation resume, a detached process task, provider rejection, hook block/deny, HTTP retry, print-mode SIGINT abort, and a foreground subagent journal; it is not interactive PTY mode.',
+    'The controlled census is native print mode, including multi-invocation resume, a detached process task, provider rejection, hook block/deny, HTTP 429 and malformed-SSE step retries, print-mode SIGINT cancellation, and a foreground subagent journal; it is not interactive PTY mode.',
     `Runtime evidence covers ${runtimeSurfaceCount} of ${totalSurfaceCount} modelled surfaces; the remaining ${totalSurfaceCount - runtimeSurfaceCount} are exact-source-only.`,
-    'Interactive TUI permissions, questions, steer, queueing, Esc-cancel with durable turn.ended(cancelled), compaction, swarm, and non-success process-task outcomes remain unverified.',
-    'Only the locally installed darwin-arm64 artifact has runtime evidence; this is not a support promotion.',
+    'Interactive TUI permissions, questions, steer, queueing, Esc-cancel, compaction, undo/branch switching, swarm, tower mode, and non-success process-task or subagent outcomes remain unverified.',
+    'Only the linux-x64 release artifact has runtime evidence; this is not a support promotion.',
   ],
 });
 formatGenerated(join(modelRoot, 'evidence.json'));

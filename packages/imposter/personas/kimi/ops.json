@@ -7,13 +7,19 @@
     },
     {
       "channel": "native-log",
+      "event": "runtime.set_binding",
+      "with": { "agentId": "main", "workspaceId": "$workdirKey", "runtimeId": "local" }
+    },
+    {
+      "channel": "native-log",
       "event": "profile.bind",
       "with": {
+        "agentId": "main",
         "modelAlias": "kimi-imposter",
         "profileName": "agent",
         "thinkingEffort": "on",
         "systemPrompt": "Kimi Imposter system prompt",
-        "environmentDisclosure": { "cwd": "$cwd", "date": { "disclosed": false } },
+        "environmentDisclosure": { "cwd": "$cwd" },
         "agentsMdPaths": [],
         "activeToolNames": ["Bash"],
         "disallowedTools": []
@@ -22,7 +28,7 @@
     {
       "channel": "native-log",
       "event": "permission.set_mode",
-      "with": { "mode": "manual" }
+      "with": { "agentId": "main", "mode": "manual" }
     },
     {
       "channel": "hook",
@@ -50,7 +56,8 @@
         "updatedAt": "$nowMs",
         "archived": false,
         "agents": { "main": { "homedir": "$cwd", "type": "main" } },
-        "custom": {}
+        "custom": {},
+        "isCustomTitle": false
       }
     },
     {
@@ -83,7 +90,8 @@
         "archived": false,
         "agents": { "main": { "homedir": "$cwd", "type": "main" } },
         "custom": {},
-        "lastTurnReason": "completed"
+        "lastTurnReason": "completed",
+        "isCustomTitle": false
       }
     }
   ],
@@ -91,18 +99,25 @@
     {
       "channel": "native-log",
       "event": "turn.prompt",
-      "with": { "input": [{ "type": "text", "text": "$op.text" }], "origin": { "kind": "user" } }
+      "with": {
+        "agentId": "main",
+        "input": [{ "type": "text", "text": "$op.text" }],
+        "origin": { "kind": "user" },
+        "promptId": "$nativeId:msg:prompt",
+        "turnId": "$turnIndex"
+      }
     },
     {
       "channel": "native-log",
       "event": "context.append_message",
       "with": {
+        "agentId": "main",
         "message": {
           "role": "user",
           "content": [{ "type": "text", "text": "$op.text" }],
           "toolCalls": [],
           "origin": { "kind": "user" },
-          "id": "$uuid:user-message"
+          "id": "$nativeId:msg:prompt"
         }
       }
     },
@@ -110,6 +125,7 @@
       "channel": "native-log",
       "event": "context.append_message",
       "with": {
+        "agentId": "main",
         "message": {
           "role": "user",
           "content": [{ "type": "text", "text": "Permission mode: manual" }],
@@ -122,6 +138,7 @@
       "channel": "native-log",
       "event": "context.append_loop_event",
       "with": {
+        "agentId": "main",
         "event": {
           "type": "step.begin",
           "uuid": "$uuid:step-one",
@@ -133,12 +150,13 @@
     {
       "channel": "native-log",
       "event": "llm.tools_snapshot",
-      "with": { "hash": "imposter-tools", "tools": [] }
+      "with": { "agentId": "main", "hash": "imposter-tools", "tools": [] }
     },
     {
       "channel": "native-log",
       "event": "llm.request",
       "with": {
+        "agentId": "main",
         "kind": "loop",
         "provider": "imposter",
         "model": "kimi-imposter",
@@ -157,6 +175,7 @@
       "channel": "native-log",
       "event": "usage.record",
       "with": {
+        "agentId": "main",
         "model": "kimi-imposter",
         "usage": { "inputOther": 12, "output": 4, "inputCacheRead": 0, "inputCacheCreation": 0 },
         "usageScope": "turn"
@@ -193,6 +212,7 @@
       "channel": "native-log",
       "event": "context.append_loop_event",
       "with": {
+        "agentId": "main",
         "event": {
           "type": "content.part",
           "uuid": "$uuid:content",
@@ -209,6 +229,7 @@
       "channel": "native-log",
       "event": "context.append_loop_event",
       "with": {
+        "agentId": "main",
         "event": {
           "type": "tool.call",
           "uuid": "$uuid:tool-event",
@@ -240,10 +261,10 @@
       "channel": "native-log",
       "event": "interaction.request",
       "with": {
+        "agentId": "main",
         "id": "$uuid:interaction",
         "kind": "approval",
         "toolCallId": "$op.toolId",
-        "agentId": "main",
         "request": { "tool": "$op.tool", "input": "$op.input" }
       }
     },
@@ -257,7 +278,11 @@
         "client_type": "kimi_code_cli",
         "tool_name": "$op.tool",
         "tool_input": "$op.input",
-        "tool_call_id": "$op.toolId"
+        "tool_call_id": "$op.toolId",
+        "agent_id": "main",
+        "turn_id": "$turnIndex",
+        "action": "$op.action",
+        "display": "$op.display"
       }
     }
   ],
@@ -266,6 +291,7 @@
       "channel": "native-log",
       "event": "context.append_loop_event",
       "with": {
+        "agentId": "main",
         "event": {
           "type": "tool.result",
           "parentUuid": "$uuid:tool-event",
@@ -294,6 +320,7 @@
       "channel": "native-log",
       "event": "context.append_loop_event",
       "with": {
+        "agentId": "main",
         "event": {
           "type": "step.end",
           "uuid": "$uuid:step-one",
@@ -309,7 +336,12 @@
     {
       "channel": "native-log",
       "event": "turn.ended",
-      "with": { "turnId": "$turnIndex", "reason": "completed", "durationMs": 100 }
+      "with": { "agentId": "main", "turnId": "$turnIndex", "reason": "completed", "durationMs": 100 }
+    },
+    {
+      "channel": "native-log",
+      "event": "prompt.completed",
+      "with": { "agentId": "main", "promptId": "$nativeId:msg:prompt", "finishedAt": "$now", "reason": "completed" }
     },
     {
       "channel": "hook",
@@ -334,7 +366,8 @@
         "archived": false,
         "agents": { "main": { "homedir": "$cwd", "type": "main" } },
         "custom": {},
-        "lastTurnReason": "completed"
+        "lastTurnReason": "completed",
+        "isCustomTitle": false
       }
     }
   ],
@@ -350,7 +383,8 @@
         "updatedAt": "$nowMs",
         "archived": false,
         "agents": { "main": { "homedir": "$cwd", "type": "main" } },
-        "custom": {}
+        "custom": {},
+        "isCustomTitle": false
       }
     }
   ]

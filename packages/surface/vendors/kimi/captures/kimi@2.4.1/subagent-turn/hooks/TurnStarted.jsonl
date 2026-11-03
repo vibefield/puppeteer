@@ -1,0 +1,2 @@
+{"hook_event_name":"TurnStarted","session_id":"session_a11a5ed02e45bbab3c40638cd0a53db9deff","cwd":"/workspace","client_type":"kimi_code_cli","turn_id":0,"origin_kind":"user","prompt":"<redacted:prompt>"}
+{"hook_event_name":"TurnStarted","session_id":"session_a11a5ed02e45bbab3c40638cd0a53db9deff","cwd":"/workspace","client_type":"kimi_code_cli","turn_id":0,"origin_kind":"system_trigger","origin_name":"subagent","prompt":"<redacted:prompt>"}
