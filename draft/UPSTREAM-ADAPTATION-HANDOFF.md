@@ -37,8 +37,10 @@ The merged tree passes `support:check`, `groundtruth:mapping:check`, `upstream:c
 
 ### 1. Land the Rosetta dependency (Copilot, Pi)
 
-The Copilot and Pi imports read Rosetta commits that were never pushed. They existed only in the authoring
-container's clone at `../rosetta`, on branch `groundtruth/upstream-rosetta-trio`:
+The Copilot and Pi imports read Rosetta commits on the `vibefield/rosetta` branch
+`groundtruth/upstream-rosetta-trio`, based on `main` at `972d090`. The branch is pushed but not merged. Merge it in
+Rosetta, open a PR there if none exists, and confirm a clean re-import before this PR is ready. To work on it, clone
+it as the sibling `../rosetta` and check out that branch.
 
 - `8ebdd48d2cd52586ee7c524b6a36261295ce4ead` — capture Copilot CLI 1.0.105, with farm fixes for single-executable
   packages, FTS5 store reduction and empty lock files.
@@ -48,7 +50,7 @@ container's clone at `../rosetta`, on branch `groundtruth/upstream-rosetta-trio`
 - `a6fbaadfbc3b3d9f7daa3ba64779383542aa5083` — the Gemini mock fills whatever shell-tool schema is declared, which
   Antigravity 1.4.12 needs.
 
-If those commits are gone, re-create them in `vibefield/rosetta`, branched from `972d090`:
+If that branch is ever lost, re-create the commits from `972d090`:
 `ROSETTA_FARM_ISOLATED=1 python3 -m tools.groundtruth farm copilot --version 1.0.105`, and the same for `pi --version 1.5.0`.
 Repeat the fixes listed above, then run `build_canonical`. Re-import into Puppeteer with
 `pnpm --filter @vibefield/puppeteer-surface run surface:census:<vendor>` and `surface:model:<vendor>`, and confirm the
