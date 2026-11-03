@@ -12,7 +12,8 @@
       "candidateVersion": "1.1.20",
       "status": "baseline-pending",
       "blockers": [
-        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed."
+        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed.",
+        "Upstream stable is 1.4.12; the candidate stays 1.1.20 because 1.4.12 is not yet captured into Surface. A hermetic linux-x64 Rosetta farm of 1.4.12 runs end to end once Rosetta commit a6fbaadfbc3b3d9f7daa3ba64779383542aa5083 (Gemini mock follows the declared run_command schema; unpushed) is in place, but importing it still needs: (1) a 1.4.12 writer document extracted from the 1.4.12 binary's FileDescriptorSet, since the only protobuf grammar is the 1.2.9 extraction and Rosetta pins the newest farmed release with writer evidence; (2) Rosetta antigravity raw types and goldens for the transcript drift (run_command results are recorded as GENERIC steps with no exit_code, PLANNER_RESPONSE carries input/cache_read/output token counts, CHECKPOINT no longer appears, run_command arguments are CommandLine/toolSummary/WaitMsBeforeAsync); (3) adapter rework, because tool results are correlated by the RUN_COMMAND step type and exit_code and would stay unresolved on 1.4.12; and (4) the Surface census harness re-run for 1.4.12 on all four platforms."
       ]
     },
     {

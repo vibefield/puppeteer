@@ -62,6 +62,33 @@ the exact `1.1.20` artifacts before promotion.
 
 ---
 
+## Upstream 1.4.12: surveyed, not imported
+
+On 2026-11-03 Rosetta farmed `agy_cli_linux_x64.tar.gz` 1.4.12 (archive
+SHA-256 `3368d1923fc869f21ec8fce83252a8c96c89283aac9393958ac91fbf7a3949e4`)
+hermetically against its loopback Gemini mock. The run needed a mock fix
+(Rosetta `a6fbaadfbc3b3d9f7daa3ba64779383542aa5083`, unpushed): 1.4.12
+declares `run_command` with a strict schema (`CommandLine`, `toolSummary`,
+`WaitMsBeforeAsync` required) and records the old `commandLine` call as an
+INVALID step. With the fix the farm completes, and it shows real drift that
+the 1.1.20 adapter does not handle:
+
+- a command result is recorded as a `GENERIC` transcript step with no
+  `exit_code`, where 1.1.20 wrote `RUN_COMMAND` with `exit_code`; the adapter
+  correlates tool results by that step type, so 1.4.12 command results would
+  stay unresolved;
+- `PLANNER_RESPONSE` carries `input_tokens`, `cache_read_tokens` and
+  `output_tokens`, a transcript usage source 1.1.20 lacked;
+- the tool-use scenario writes no `CHECKPOINT` step;
+- new store files appear (`annotations/*.pbtxt`, `implicit/*.pb`,
+  `jetbox_summaries_proto.pb`), and `conversation_summaries` gains
+  `raw_summary` and `group_id`.
+
+The corpus is not imported. Rosetta pins the newest farmed release that has
+writer evidence, and its only protobuf grammar is the 1.2.9 FileDescriptorSet
+extraction, so 1.4.12 first needs its own descriptor extraction, plus Rosetta
+raw types for the transcript drift. The ledger's blockers list these steps.
+
 ## Historical survey: 1.1.12
 
 Status: Stage 0 complete. Stage 1 authorized print-mode survey in progress on
