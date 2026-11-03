@@ -15,22 +15,16 @@
  * `codex --remote` only creates a thread on the first prompt, which left the
  * panel stuck on preparing until the user typed.
  *
- * Injection is still bracketed-paste into the native TUI; confirmation is
- * best-effort `confirmed` (the structured driver has deterministic receipts).
+ * Injection stays in the native TUI; confirmation waits for a matching live
+ * user-message echo (the structured driver also correlates an exact client id).
  */
 
 import { pickAgentBriefing, validateAgentBriefing, type AgentRunBriefing } from '@vibefield/puppeteer-core';
 import { CODEX_BRIEFING_CAPABILITIES } from './briefing.js';
 import { randomUUID } from 'node:crypto';
-import type {
-  AgentHost,
-  AgentAdapterBinding,
-  AgentTuiSessionOptions,
-  PromptReceipt,
-  PromptSubmission,
-  TerminalSpec,
-} from '@vibefield/puppeteer-core';
+import type { AgentHost, AgentAdapterBinding, AgentTuiSessionOptions, TerminalSpec } from '@vibefield/puppeteer-core';
 import { resolveCodexExecutable } from '../detection.js';
+import { CodexTuiPromptService } from '../services/tui-prompt.js';
 import { createCodexObserver } from '../observation/observer.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
 import { spawnAppServer, type AppServerTransportKind } from '../transport/app-server-process.js';
@@ -246,10 +240,12 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   };
   let adoptedRuntimeSessionId: string | undefined;
   let adoptedSession: CodexTuiSession | undefined;
+  let prompts: CodexTuiPromptService | undefined;
   let disposed = false;
   async function dispose(): Promise<void> {
     if (disposed) return;
     disposed = true;
+    prompts?.dispose();
     await observer.dispose().catch(() => undefined);
     await resumeTap?.dispose();
     await server.dispose();
@@ -265,6 +261,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
       }
       if (adoptedSession) return adoptedSession;
       adoptedRuntimeSessionId = runtimeSessionId;
+      prompts = new CodexTuiPromptService({ observer, host, runtimeSessionId });
       adoptedSession = {
         get sessionId(): string {
           return observer.sessionId ?? threadId;
@@ -273,18 +270,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
         observationLevel: () => observer.observationLevel(),
         threadPath: () => observer.threadPath(),
         events: observer.events,
-        services: {
-          prompt: {
-            async submit(submission: PromptSubmission): Promise<PromptReceipt> {
-              const result = await host.automateTerminal(runtimeSessionId, {
-                kind: 'paste',
-                text: submission.text,
-                submit: submission.mode !== 'paste-only',
-              });
-              return result.accepted ? { status: 'confirmed' } : { status: 'rejected', reason: result.reason };
-            },
-          },
-        },
+        services: { prompt: prompts },
         dispose,
       };
       return adoptedSession;

@@ -25,6 +25,8 @@ interface ControllableOptions {
   config?: Record<string, unknown>;
   deferRead?: boolean;
   deferCatalog?: boolean;
+  deferResume?: boolean;
+  resumeError?: { code: number; message: string; data?: unknown };
   server?: ServerGeneration;
   /** Turns per `thread/turns/list` page. Default: every turn on one page. */
   pageSize?: number;
@@ -104,7 +106,10 @@ function controllable(
             return;
           }
           resumeAttempts++;
-          if (resumeFails > 0) {
+          if (options.deferResume) return;
+          if (options.resumeError) {
+            onMsg?.({ id: msg.id, error: options.resumeError });
+          } else if (resumeFails > 0) {
             resumeFails--;
             refuse(msg.id, -1, 'no rollout found for thread id');
           } else if (storedThread) {
@@ -193,6 +198,64 @@ function monitorFromEvents(envelopes: readonly AgentEventEnvelope[]) {
 }
 
 describe('createCodexObserver attach resilience', () => {
+  it('applies the attach deadline to a lost resume response', async () => {
+    vi.useFakeTimers();
+    try {
+      const t = controllable(0, {}, { deferResume: true });
+      const close = vi.spyOn(t.transport, 'close');
+      const creating = createCodexObserver({ transport: t.transport, threadId: 'existing', attachTimeoutMs: 50 });
+      const error = creating.catch((error: unknown) => error);
+      await vi.advanceTimersByTimeAsync(51);
+      expect(await error).toMatchObject({
+        name: 'AppServerRequestTimeoutError',
+        method: 'thread/resume',
+        timeoutMs: 50,
+      });
+      expect(t.resumeAttempts()).toBe(1);
+      expect(close).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('rejects a permanent provider mismatch immediately and closes bootstrap resources', async () => {
+    const t = controllable(
+      0,
+      {},
+      { resumeError: { code: -32600, message: 'provider mismatch', data: { type: 'modelProviderMismatch' } } },
+    );
+    const close = vi.spyOn(t.transport, 'close');
+    await expect(createCodexObserver({ transport: t.transport, threadId: 'existing' })).rejects.toThrow(
+      'provider mismatch',
+    );
+    expect(t.resumeAttempts()).toBe(1);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('bounds missing-rollout retries for an explicitly selected thread', async () => {
+    const t = controllable(Infinity);
+    await expect(
+      createCodexObserver({ transport: t.transport, threadId: 'missing', attachTimeoutMs: 50 }),
+    ).rejects.toThrow('no rollout found');
+    expect(t.resumeAttempts()).toBe(2);
+  });
+
+  it('reports a failed passive attachment without an unhandled rejection or process death', async () => {
+    const t = controllable(0, {}, { resumeError: { code: -32600, message: 'required MCP server failed' } });
+    const obs = await createCodexObserver({ transport: t.transport });
+    const projection = projectAgentEvents(obs);
+    t.deliver(threadStarted);
+    await vi.waitFor(() => expect(obs.observationLevel()).toBe('terminal-only'));
+    expect(t.resumeAttempts()).toBe(1);
+    expect(
+      projection.envelopes.some(
+        ({ event }) => event.type === 'notification:received' && event.notificationType === 'error',
+      ),
+    ).toBe(true);
+    expect(projection.envelopes.some(({ event }) => event.type === 'process:exited')).toBe(false);
+    projection.dispose();
+    await obs.dispose();
+  });
   it('keeps retrying thread/resume until it succeeds, then attaches (no one-shot give-up)', async () => {
     const t = controllable(4); // rollout only materializes on the 5th resume
     const obs = await createCodexObserver({ transport: t.transport });
@@ -230,6 +293,93 @@ describe('createCodexObserver attach resilience', () => {
 });
 
 describe('createCodexObserver controller-owned bootstrap', () => {
+  it('leaves user input, auth and other threads to their owning client', async () => {
+    const t = controllable(0);
+    const onApproval = vi.fn(() => 'approved' as const);
+    const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' }, onApproval });
+    const projection = projectAgentEvents(obs);
+    for (const [index, method] of [
+      'item/tool/requestUserInput',
+      'mcpServer/elicitation/request',
+      'account/chatgptAuthTokens/refresh',
+      'future/capability',
+    ].entries()) {
+      t.deliver({ id: `cap-${index}`, method, params: { threadId: 'th-owned' } });
+    }
+    t.deliver({
+      id: 'foreign',
+      method: 'item/commandExecution/requestApproval',
+      params: { threadId: 'another-thread' },
+    });
+    t.deliver({ id: 'foreign-legacy', method: 'execCommandApproval', params: { conversationId: 'another-thread' } });
+    await Promise.resolve();
+    expect(onApproval).not.toHaveBeenCalled();
+    expect(t.sent().some((message) => typeof message.id === 'string')).toBe(false);
+    expect(projection.envelopes.some(({ event }) => event.type === 'interaction:permission-requested')).toBe(false);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('tracks root waiting flags even when questions are owned by the terminal connection', async () => {
+    const t = controllable(0);
+    const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
+    const projection = projectAgentEvents(obs);
+    const status = (type: string, activeFlags: string[] = []) =>
+      t.deliver({ method: 'thread/status/changed', params: { threadId: 'th-owned', status: { type, activeFlags } } });
+    status('active');
+    expect(monitorFromEvents(projection.envelopes).status).toBe('working');
+    status('active', ['waitingOnUserInput']);
+    expect(monitorFromEvents(projection.envelopes).status).toBe('blocked');
+    status('active', ['waitingOnApproval']);
+    expect(monitorFromEvents(projection.envelopes).status).toBe('blocked');
+    status('idle');
+    expect(monitorFromEvents(projection.envelopes).status).toBe('idle');
+    status('systemError');
+    expect(monitorFromEvents(projection.envelopes).status).toBe('blocked');
+    status('idle');
+    expect(monitorFromEvents(projection.envelopes).status).toBe('idle');
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('keeps live prompt echoes separate from bootstrap and resumed history', async () => {
+    const t = controllable(0, {
+      thread: {
+        turns: [
+          {
+            id: 'old',
+            status: 'completed',
+            items: [{ type: 'userMessage', id: 'old-user', content: [{ type: 'text', text: 'same' }] }],
+          },
+        ],
+      },
+    });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-history' });
+    const echo = vi.fn();
+    obs.onUserMessage(echo);
+    const projection = projectAgentEvents(obs);
+    expect(projection.envelopes.some(({ event }) => event.type === 'session:started')).toBe(true);
+    expect(echo).not.toHaveBeenCalled();
+    t.deliver({
+      method: 'item/completed',
+      params: {
+        threadId: 'another-thread',
+        item: { type: 'userMessage', id: 'foreign', content: [{ type: 'text', text: 'same' }] },
+      },
+    });
+    expect(echo).not.toHaveBeenCalled();
+    t.deliver({
+      method: 'item/completed',
+      params: {
+        threadId: 'th-history',
+        turnId: 'new-turn',
+        item: { type: 'userMessage', id: 'new-user', content: [{ type: 'text', text: 'same' }] },
+      },
+    });
+    expect(echo).toHaveBeenCalledWith({ id: 'new-user', text: 'same', turnId: 'new-turn' });
+    projection.dispose();
+    await obs.dispose();
+  });
   it('applies requested model and effort when creating the native thread, without changing profile defaults', async () => {
     const t = controllable(0);
     const obs = await createCodexObserver({
@@ -523,6 +673,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       // The TUI is sent the same request, so the host decision races the person.
       signal: expect.any(AbortSignal),
     });
+    t.deliver({ method: 'serverRequest/resolved', params: { requestId: 999 } });
     expect(events).toEqual(
       expect.arrayContaining(['interaction:permission-requested', 'interaction:permission-resolved']),
     );

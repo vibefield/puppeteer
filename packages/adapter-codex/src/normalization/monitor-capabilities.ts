@@ -17,7 +17,8 @@ export const CODEX_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     source: 'codex-app-server',
     contractVersion: CODEX_CONTRACT,
     limitations: [
-      'Approvals and prompts reach the controller as server requests. Beside the native Codex TUI, which is sent the same requests, the controller leaves the answer to the person there and holds the wait pending until Codex reports it resolved, which names no decision.',
+      'Thread status exposes approval/input waits; question details may remain on the native TUI connection.',
+      'Server-request resolution clears the wait but does not reveal the native TUI approval decision.',
     ],
   },
   {

@@ -132,30 +132,35 @@ describe('CodexApprovalService', () => {
       await expect(approvals.handle(method, { threadId: 'th', itemId: `item-${id}` }, id)).resolves.toBe(NO_REPLY);
     }
     expect(decide).not.toHaveBeenCalled();
-    expect(approvals.pendingCount).toBe(PROMPTS.length);
+    expect(approvals.pendingCount).toBe(1); // Only request-permissions is a permission.
   });
 
-  it('keeps refusing a capability request no person answers', async () => {
-    const { approvals, published } = service({ unhandled: 'defer' });
-    await expect(approvals.handle('item/tool/call', { threadId: 'th' }, 9)).rejects.toThrow(
-      UnsupportedServerRequestError,
-    );
-    expect(published.map((event) => event.type)).toEqual([
-      'interaction:permission-requested',
-      'interaction:permission-resolved',
-    ]);
-    expect(approvals.pendingCount).toBe(0);
-  });
+  it.each(['item/tool/call', 'account/chatgptAuthTokens/refresh', 'future/capability'])(
+    'leaves %s unanswered beside the TUI, without publishing a false permission',
+    async (method) => {
+      const { approvals, published } = service({ unhandled: 'defer' });
+      await expect(approvals.handle(method, { threadId: 'th' }, 9)).resolves.toBe(NO_REPLY);
+      expect(published).toEqual([]);
+      expect(approvals.pendingCount).toBe(0);
+      const headless = service();
+      await expect(headless.approvals.handle(method, { threadId: 'th' }, 9)).rejects.toThrow(
+        UnsupportedServerRequestError,
+      );
+      expect(headless.published).toEqual([]);
+    },
+  );
 
-  it('answers with a host decision that comes first, and ignores the resolution after it', async () => {
+  it('sends a host decision but waits for native resolution without claiming which client won', async () => {
     const decide = vi.fn(() => 'approved' as const);
     const { approvals, published } = service({ unhandled: 'defer', decide });
     await expect(approvals.handle(COMMAND, commandParams, 7)).resolves.toEqual({ decision: 'accept' });
     expect(decide).toHaveBeenCalledWith(expect.objectContaining({ requestId: 7, signal: expect.any(AbortSignal) }));
+    expect(approvals.pendingCount).toBe(1);
+    expect(published).toHaveLength(1);
     approvals.observe('serverRequest/resolved', resolvedNotice(7));
     expect(published).toMatchObject([
       { type: 'interaction:permission-requested', presentation: 'host-ui' },
-      { type: 'interaction:permission-resolved', outcome: 'allowed' },
+      { type: 'interaction:permission-resolved', outcome: 'unknown' },
     ]);
     expect(published).toHaveLength(2);
   });
@@ -202,7 +207,7 @@ describe('CodexApprovalService', () => {
         return new Promise(() => undefined);
       },
     });
-    await expect(approvals.handle(PROMPTS[0]!, { threadId: 'th' }, 6)).resolves.toBe(NO_REPLY);
+    await expect(approvals.handle('item/permissions/requestApproval', { threadId: 'th' }, 6)).resolves.toBe(NO_REPLY);
     void approvals.handle(COMMAND, commandParams, 7);
 
     approvals.settleAll('unknown', { lifecycle: 'dispose' });

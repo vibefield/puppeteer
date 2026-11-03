@@ -92,6 +92,7 @@ export class AppServerClient {
   private serverRequestHandler?: ServerRequestHandler;
   private closeHandler?: (info: { code: number | null; signal: string | null }) => void;
   private closed = false;
+  private readonly serverRequests = new Map<number | string, object>();
   private closePromise?: Promise<void>;
   private readonly requestTimeoutMs: number;
 
@@ -105,6 +106,7 @@ export class AppServerClient {
     // its subscriber, so the driver layers on the client, never the transport.
     transport.onClose((info) => {
       this.closed = true;
+      this.serverRequests.clear();
       this.rejectAllPending(new Error('app-server transport closed'));
       this.closeHandler?.(info);
     });
@@ -154,6 +156,7 @@ export class AppServerClient {
     if (this.closePromise) return this.closePromise;
     if (this.closed) return Promise.resolve();
     this.closed = true;
+    this.serverRequests.clear();
     this.rejectAllPending(new Error('client closed'));
     try {
       this.closePromise = Promise.resolve(this.transport.close());
@@ -194,21 +197,34 @@ export class AppServerClient {
     if (hasId && method !== undefined) {
       // Server → client request (approvals). Answer, error back on throw, or
       // leave it to another client of the same app-server (NO_REPLY).
+      const id = m.id as number | string;
+      if (this.serverRequests.has(id)) return;
+      const pending = {};
+      this.serverRequests.set(id, pending);
       try {
         const result = this.serverRequestHandler
           ? await this.serverRequestHandler(method, rec(m.params), m.id as number | string)
           : null;
-        if (this.closed || result === NO_REPLY) return;
+        if (this.closed || this.serverRequests.get(id) !== pending || result === NO_REPLY) return;
         this.transport.send({ jsonrpc: '2.0', id: m.id, result });
       } catch (err) {
-        if (this.closed) return;
+        if (this.closed || this.serverRequests.get(id) !== pending) return;
         const message = err instanceof Error ? err.message : String(err);
         this.transport.send({ jsonrpc: '2.0', id: m.id, error: { code: -32000, message } });
+      } finally {
+        if (this.serverRequests.get(id) === pending) this.serverRequests.delete(id);
       }
       return;
     }
 
-    if (method !== undefined) this.notificationHandler?.(method, rec(m.params));
+    if (method !== undefined) {
+      const params = rec(m.params);
+      if (method === 'serverRequest/resolved') {
+        const id = params?.requestId;
+        if (typeof id === 'number' || typeof id === 'string') this.serverRequests.delete(id);
+      }
+      this.notificationHandler?.(method, params);
+    }
   }
 }
 

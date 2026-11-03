@@ -40,7 +40,12 @@
 
 import type { AgentRunBriefing } from '@vibefield/puppeteer-core';
 import { codexBriefingParams } from '../launch/briefing.js';
-import { AppServerError, AppServerRequestTimeoutError, type AppServerClient } from '../transport/app-server-client.js';
+import {
+  AppServerError,
+  AppServerRequestTimeoutError,
+  type AppServerClient,
+  type AppServerRequestOptions,
+} from '../transport/app-server-client.js';
 
 /** Which history calls this connection's app-server accepts. */
 type CodexHistoryApi = 'paginated' | 'full-hydration';
@@ -137,7 +142,15 @@ export class CodexThreadHistory {
   async resume(
     threadId: string,
     overrides?: CodexResumeOverrides | undefined,
+    requestOptions: AppServerRequestOptions = {},
   ): Promise<Record<string, unknown> | undefined> {
+    const startedAt = Date.now();
+    const remainingOptions = (): AppServerRequestOptions =>
+      requestOptions.timeoutMs === undefined
+        ? {}
+        : {
+            timeoutMs: Math.max(1, requestOptions.timeoutMs - (Date.now() - startedAt)),
+          };
     const selection = {
       ...(overrides?.cwd === undefined ? {} : { cwd: overrides.cwd }),
       ...(overrides?.model ? { model: overrides.model } : {}),
@@ -145,7 +158,13 @@ export class CodexThreadHistory {
     };
     if (this.current === 'paginated') {
       try {
-        const resumed = rec(await this.client.request('thread/resume', { threadId, excludeTurns: true, ...selection }));
+        const resumed = rec(
+          await this.client.request(
+            'thread/resume',
+            { threadId, excludeTurns: true, ...selection },
+            remainingOptions(),
+          ),
+        );
         this.resumeHydrated = false;
         return resumed;
       } catch (error) {
@@ -153,7 +172,7 @@ export class CodexThreadHistory {
         this.current = 'full-hydration';
       }
     }
-    const resumed = rec(await this.client.request('thread/resume', { threadId, ...selection }));
+    const resumed = rec(await this.client.request('thread/resume', { threadId, ...selection }, remainingOptions()));
     this.resumeHydrated = true;
     return resumed;
   }

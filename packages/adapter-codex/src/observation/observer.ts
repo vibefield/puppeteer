@@ -38,7 +38,13 @@ import {
   type ObservationLevel,
 } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
-import { AppServerClient, type Transport } from '../transport/app-server-client.js';
+import {
+  AppServerClient,
+  AppServerError,
+  AppServerRequestTimeoutError,
+  NO_REPLY,
+  type Transport,
+} from '../transport/app-server-client.js';
 import { CodexApprovalService } from '../services/approvals.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
 import { CodexNotificationNormalizer } from '../normalization/pipeline.js';
@@ -46,6 +52,7 @@ import { CodexEventSource } from '../services/event-source.js';
 import { readLastCodexContextWindow } from './rollout-context.js';
 import { CodexThreadHistory, turnsOf } from './thread-history.js';
 import { CodexMonitorEvidence, type CodexConfiguredIntent } from '../normalization/monitor.js';
+import { itemText } from '../normalization/types.js';
 
 const CLIENT_INFO = { name: 'puppeteer-observer', version: PUPPETEER_VERSION } as const;
 
@@ -58,6 +65,8 @@ const rec = (v: unknown): Record<string, unknown> | undefined =>
 
 export interface CreateCodexObserverOptions {
   transport: Transport;
+  /** Bound transient resume failures; passive discovery may wait for its first persisted turn. */
+  attachTimeoutMs?: number | undefined;
   /**
    * Decide approval requests beside the person. Without it, this connection
    * answers none of the requests a person answers: every turn on the observed
@@ -121,6 +130,9 @@ export interface CodexObserver {
   onThread(listener: (info: CodexThreadInfo) => void): () => void;
   /** Bind a thread discovered by a native TUI resume request. */
   attachThread(threadId: string): Promise<void>;
+  /** Live user-message echoes only; subscribing does not consume the runtime's bootstrap buffer. */
+  onUserMessage(listener: (message: { id: string; text: string; turnId?: string | undefined }) => void): () => void;
+  onUnavailable(listener: () => void): () => void;
   dispose(): Promise<void>;
 }
 
@@ -160,6 +172,11 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   let attaching = false;
   let disposed = false;
   let railClosed = false;
+  const attachTimeoutMs = opts.attachTimeoutMs ?? 30_000;
+  if (!Number.isFinite(attachTimeoutMs) || attachTimeoutMs <= 0) {
+    await client.close();
+    throw new RangeError('Codex attach timeout must be positive');
+  }
   let contextWindowObserved = false;
   let observation: ObservationLevel = 'structured';
   const events = new CodexEventSource({
@@ -167,6 +184,8 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     turnId: () => currentTurnId,
   });
   const threadListeners = new Set<(info: CodexThreadInfo) => void>();
+  const userMessageListeners = new Set<(message: { id: string; text: string; turnId?: string | undefined }) => void>();
+  const unavailableListeners = new Set<() => void>();
   const queuedLiveNotifications: Array<{ method: string; params: Record<string, unknown> }> = [];
   let hasEventSubscriber = false;
   let historyReplayed = false;
@@ -189,6 +208,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   emitMonitorBatch(capabilitiesBatch);
 
   function apply(event: AgentEvent, source: AgentEventSource, nativeEvent?: unknown, replay = false): void {
+    if (disposed) return;
     if (event.type === 'model:updated') currentModel = event.model;
     if (event.type === 'context-window:updated') contextWindowObserved = true;
     if (event.type === 'context-window:invalidated') contextWindowObserved = false;
@@ -214,8 +234,6 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   }
 
   function consumeNotification(method: string, params: Record<string, unknown>, replayed = false): void {
-    // Request ids are the app-server's own, so a resolution settles whichever thread's request it names.
-    if (!replayed) approvals.observe(method, params);
     const observedAt = new Date().toISOString();
     emitMonitorBatch(
       monitorEvidence.notificationBatch({ method, params }, observedAt, replayed ? 'bootstrap' : 'live'),
@@ -326,13 +344,18 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     };
     // A thread isn't materializable until it has a rollout. Passive-created threads
     // only write one on the first user message; controller-owned threads write
-    // one via empty inject_items before calling attach. Retry until it takes,
-    // the connection drops, or we're disposed — a bounded one-shot was the
-    // "stuck at preparing, no messages" bug when a slow first turn missed it.
+    // one via empty inject_items before calling attach. Only passive discovery
+    // may wait indefinitely for that first prompt; other transient failures are
+    // bounded, and permanent failures must not leave the panel preparing forever.
     let delay = 200;
+    const startedAt = Date.now();
+    let waitingForFirstPrompt = false;
     while (!attached && !disposed && !railClosed) {
       try {
-        const resumed = await history.resume(threadId, overrides); // opens the live stream
+        const timeoutMs = waitingForFirstPrompt
+          ? attachTimeoutMs
+          : Math.max(1, attachTimeoutMs - (Date.now() - startedAt));
+        const resumed = await history.resume(threadId, overrides, { timeoutMs }); // opens the live stream
         threadPath = str(rec(resumed?.thread)?.path) ?? threadPath;
         applyEnvironmentFromResponse(resumed, undefined, undefined, configured);
         let turns = turnsOf(resumed);
@@ -347,6 +370,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         // A thread this connection just created has no prior turns or usage.
         // Existing and externally discovered threads retain the replay barrier.
         const contextWindow = !fresh && threadPath ? await readLastCodexContextWindow(threadPath) : undefined;
+        if (disposed) break;
         apply({ type: 'session:started', nativeSessionId: threadId }, 'native-hook');
         // A resumed history can exceed the event source's 256-event startup
         // buffer and evict session:started (leaving the monitor "Starting").
@@ -393,6 +417,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         };
         attached = true;
         attaching = false;
+        if (!railClosed) observation = 'structured';
         flushHistoryReplay();
       } catch (error) {
         // An explicit briefing resume must surface rejected native config instead of retrying it forever.
@@ -401,7 +426,22 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
           throw error;
         }
         if (disposed || railClosed) break;
-        await new Promise((r) => setTimeout(r, delay));
+        const missingRollout =
+          error instanceof AppServerError && /no rollout found|not materialized/i.test(error.body.message);
+        const transient =
+          missingRollout ||
+          error instanceof AppServerRequestTimeoutError ||
+          (error instanceof AppServerError && error.body.code === -32001);
+        waitingForFirstPrompt = missingRollout && !opts.start && !opts.threadId && thread !== undefined;
+        if (!transient || (!waitingForFirstPrompt && Date.now() - startedAt >= attachTimeoutMs)) {
+          attaching = false;
+          queuedLiveNotifications.length = 0;
+          throw error;
+        }
+        const retryDelay = waitingForFirstPrompt
+          ? delay
+          : Math.min(delay, Math.max(1, attachTimeoutMs - (Date.now() - startedAt)));
+        await new Promise((r) => setTimeout(r, retryDelay));
         delay = Math.min(Math.floor(delay * 1.5), 2000);
       }
     }
@@ -412,7 +452,34 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     for (const l of threadListeners) l({ threadId, path: threadPath });
   }
 
+  function reportAttachFailure(error: unknown): void {
+    if (disposed || railClosed) return;
+    const detail = error instanceof Error ? error.message : String(error);
+    observation = 'terminal-only';
+    for (const listener of unavailableListeners) listener();
+    emitMonitorBatch(monitorEvidence.railUnavailableBatch(new Date().toISOString(), detail));
+    apply(
+      {
+        type: 'notification:received',
+        notificationType: 'error',
+        message: `Codex observation could not attach: ${detail}`,
+      },
+      'native-protocol',
+      { error },
+    );
+  }
+
   client.onNotification((method, params) => {
+    if (disposed) return;
+    if (method === 'serverRequest/resolved' && (!params?.threadId || params.threadId === sessionId))
+      approvals.observe(method, params ?? {});
+    if (method === 'item/completed' && params && params.threadId === sessionId) {
+      const item = rec(params.item);
+      const id = str(item?.id);
+      if (item?.type === 'userMessage' && id) {
+        for (const listener of userMessageListeners) listener({ id, text: itemText(item), turnId: str(params.turnId) });
+      }
+    }
     if (!attached) {
       const notificationParams = params ?? {};
       if (attaching) {
@@ -424,7 +491,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       if (!opts.threadId && !opts.start && method === 'thread/started') {
         const thread = rec(params?.thread);
         const tid = str(thread?.id);
-        if (tid && (!opts.selectThread || opts.selectThread(tid))) void attach(tid, thread);
+        if (tid && (!opts.selectThread || opts.selectThread(tid))) void attach(tid, thread).catch(reportAttachFailure);
       }
       return; // ignore everything until we've attached to a thread
     }
@@ -436,7 +503,11 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     consumeNotification(method, params ?? {});
   });
 
-  client.onServerRequest((method, params, id) => approvals.handle(method, params, id));
+  client.onServerRequest((method, params, id) => {
+    const threadId = str(params?.threadId) ?? str(params?.conversationId);
+    if (!sessionId || (threadId && threadId !== sessionId)) return NO_REPLY;
+    return approvals.handle(method, params, id);
+  });
 
   client.onClose(({ code, signal }) => {
     if (disposed) return;
@@ -444,6 +515,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     approvals.settleAll('unknown', { transport: 'closed', code, signal });
     railClosed = true; // let any in-flight attach retry loop exit without ending the host process
     observation = 'terminal-only';
+    for (const listener of unavailableListeners) listener();
     const observedAt = new Date().toISOString();
     const detail = signal ? `signal:${signal}` : code === null ? 'transport closed' : `exit:${code}`;
     const publishClosure = () => {
@@ -556,6 +628,9 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       }
     }
   } catch (error) {
+    approvals.settleAll('unknown', { lifecycle: 'bootstrap-failed' });
+    disposed = true;
+    events.close();
     await client.close();
     throw error;
   }
@@ -578,10 +653,31 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       threadListeners.add(listener);
       return () => threadListeners.delete(listener);
     },
-    attachThread: (threadId) => attach(threadId, undefined),
+    attachThread: async (threadId) => {
+      try {
+        await attach(threadId, undefined);
+      } catch (error) {
+        reportAttachFailure(error);
+      }
+    },
+    onUserMessage(listener) {
+      userMessageListeners.add(listener);
+      return () => {
+        userMessageListeners.delete(listener);
+      };
+    },
+    onUnavailable(listener) {
+      unavailableListeners.add(listener);
+      return () => {
+        unavailableListeners.delete(listener);
+      };
+    },
     async dispose() {
       approvals.settleAll('unknown', { lifecycle: 'dispose' });
       disposed = true; // stop the attach retry loop if it is still running
+      for (const listener of unavailableListeners) listener();
+      unavailableListeners.clear();
+      userMessageListeners.clear();
       pendingHistoryReplay = undefined;
       pendingRailClosure = undefined;
       queuedLiveNotifications.length = 0;

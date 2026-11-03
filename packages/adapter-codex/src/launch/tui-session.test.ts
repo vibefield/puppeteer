@@ -4,6 +4,7 @@ import type { AgentHost } from '@vibefield/puppeteer-core';
 const fakes = vi.hoisted(() => ({
   createObserver: vi.fn(),
   observerOnCandidate: vi.fn(() => () => undefined),
+  userMessage: undefined as ((message: { id: string; text: string; turnId?: string }) => void) | undefined,
   observerDispose: vi.fn(),
   serverDispose: vi.fn(),
   serverReady: vi.fn(),
@@ -44,7 +45,11 @@ import { createCodexTuiSession, prepareCodexTuiSession } from './tui-session.js'
 function host(): AgentHost {
   return {
     spawnTerminal: vi.fn(async () => ({ runtimeSessionId: 'spawned-pane' })),
-    automateTerminal: vi.fn(async () => ({ accepted: true as const })),
+    automateTerminal: vi.fn(async (_id, operation) => {
+      if (operation.kind === 'paste' && operation.submit)
+        fakes.userMessage?.({ id: 'user-1', text: operation.text, turnId: 'turn-1' });
+      return { accepted: true as const };
+    }),
   };
 }
 
@@ -66,6 +71,11 @@ describe('Codex TUI preparation', () => {
       observationLevel: () => 'structured',
       threadPath: () => '/tmp/thread.jsonl',
       events: { onCandidate: fakes.observerOnCandidate },
+      onUserMessage: (listener: typeof fakes.userMessage) => {
+        fakes.userMessage = listener;
+        return () => undefined;
+      },
+      onUnavailable: () => () => undefined,
       attachThread: vi.fn(),
       dispose: fakes.observerDispose,
     });
@@ -251,6 +261,8 @@ describe('Codex TUI preparation', () => {
       observationLevel: () => 'structured',
       threadPath: () => undefined,
       events: { onCandidate: fakes.observerOnCandidate },
+      onUserMessage: () => () => undefined,
+      onUnavailable: () => () => undefined,
       attachThread: vi.fn(),
       dispose: fakes.observerDispose,
     });
@@ -323,6 +335,8 @@ describe('Codex TUI preparation', () => {
       observationLevel: () => 'structured',
       threadPath: () => undefined,
       events: { onCandidate: fakes.observerOnCandidate },
+      onUserMessage: () => () => undefined,
+      onUnavailable: () => () => undefined,
       attachThread,
       dispose: fakes.observerDispose,
     });
