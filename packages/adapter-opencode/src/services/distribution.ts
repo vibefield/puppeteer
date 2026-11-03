@@ -120,11 +120,26 @@ export function classifyOpenCodeCandidate(candidate: InstallCandidate): Classifi
   return undefined;
 }
 
+/** OpenCode 1.19.0 stopped installing updates by itself: `true` and `"notify"` both only report a release. */
+const OPENCODE_NOTIFY_ONLY_SINCE = [1, 19, 0] as const;
+
+function notifyOnlyRelease(version: string): boolean {
+  const parts = version.split('.').map(Number);
+  for (let index = 0; index < OPENCODE_NOTIFY_ONLY_SINCE.length; index += 1) {
+    const part = parts[index] ?? 0;
+    if (part !== OPENCODE_NOTIFY_ONLY_SINCE[index]) return part > OPENCODE_NOTIFY_ONLY_SINCE[index]!;
+  }
+  return true;
+}
+
 /**
- * OpenCode's `autoupdate` config key is `true`, `false`, or `"notify"`. Only
- * `true` means the agent replaces itself; `"notify"` reports and waits.
+ * OpenCode's `autoupdate` config key is `true`, `false`, or `"notify"`, and what `true` does depends on the release.
+ * Through 1.18.x `true` let the agent replace itself (patch releases, from `cli/upgrade.ts`); `"notify"` reported
+ * and waited. From 1.19.0 the check never installs: the schema documents "Updates are never installed
+ * automatically ... true and 'notify' behave the same", and `cli/upgrade.ts` no longer calls `Installation.upgrade`.
+ * Without a parsed version `true` cannot be read either way.
  */
-export function autoUpdateFromConfig(document: string): AutoUpdateState | undefined {
+export function autoUpdateFromConfig(document: string, version?: string): AutoUpdateState | undefined {
   let parsed: unknown;
   try {
     parsed = JSON.parse(document);
@@ -133,9 +148,10 @@ export function autoUpdateFromConfig(document: string): AutoUpdateState | undefi
   }
   if (typeof parsed !== 'object' || parsed === null) return undefined;
   const value = (parsed as Record<string, unknown>).autoupdate;
-  if (value === true) return 'enabled';
   if (value === false || value === 'notify') return 'disabled';
-  return undefined;
+  if (value !== true) return undefined;
+  if (version === undefined) return 'unknown';
+  return notifyOnlyRelease(version) ? 'disabled' : 'enabled';
 }
 
 function errorMessage(error: unknown): string {
@@ -172,7 +188,7 @@ export function createOpenCodeDistributionService(
 
       let autoUpdate: AutoUpdateState = 'unknown';
       try {
-        autoUpdate = autoUpdateFromConfig(await readConfigFile(configPath)) ?? 'unknown';
+        autoUpdate = autoUpdateFromConfig(await readConfigFile(configPath), version) ?? 'unknown';
       } catch {
         // A missing config is the documented default, not a fault worth warning about.
       }

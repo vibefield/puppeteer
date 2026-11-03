@@ -131,12 +131,38 @@ describe('OpenCode install classification', () => {
 
 describe('OpenCode auto-update evidence', () => {
   it('reads the three documented config values and nothing else', () => {
-    expect(autoUpdateFromConfig('{"autoupdate":true}')).toBe('enabled');
-    expect(autoUpdateFromConfig('{"autoupdate":false}')).toBe('disabled');
+    expect(autoUpdateFromConfig('{"autoupdate":true}', '1.18.16')).toBe('enabled');
+    expect(autoUpdateFromConfig('{"autoupdate":false}', '1.18.16')).toBe('disabled');
     // "notify" reports a new release but never replaces the binary.
+    expect(autoUpdateFromConfig('{"autoupdate":"notify"}', '1.18.16')).toBe('disabled');
+    expect(autoUpdateFromConfig('{"mcp":{}}', '1.18.16')).toBeUndefined();
+    expect(autoUpdateFromConfig('not json', '1.18.16')).toBeUndefined();
+  });
+
+  it('reads `true` as self-updating only through 1.18.x, where the check installed patch releases', () => {
+    expect(autoUpdateFromConfig('{"autoupdate":true}', '1.18.35')).toBe('enabled');
+    // 1.19.0 made every value notify-only: "true and 'notify' behave the same".
+    for (const version of ['1.19.0', '1.19.5', '1.20.0']) {
+      expect(autoUpdateFromConfig('{"autoupdate":true}', version)).toBe('disabled');
+      expect(autoUpdateFromConfig('{"autoupdate":"notify"}', version)).toBe('disabled');
+      expect(autoUpdateFromConfig('{"autoupdate":false}', version)).toBe('disabled');
+    }
+    // Without a parsed version `true` is not evidence either way; the explicit off values still are.
+    expect(autoUpdateFromConfig('{"autoupdate":true}')).toBe('unknown');
     expect(autoUpdateFromConfig('{"autoupdate":"notify"}')).toBe('disabled');
-    expect(autoUpdateFromConfig('{"mcp":{}}')).toBeUndefined();
-    expect(autoUpdateFromConfig('not json')).toBeUndefined();
+  });
+
+  it('applies the installed version the native probe reported', async () => {
+    const config = async () => '{"autoupdate":true}';
+    const old = await service({ readConfigFile: config }).inspect(
+      candidate({ realPath: '/home/tester/.opencode/bin/opencode' }),
+    );
+    expect(old).toMatchObject({ version: '1.18.23', autoUpdate: 'enabled' });
+    const current = await service({
+      readConfigFile: config,
+      exec: async () => ({ stdout: '1.19.5\n', stderr: '' }),
+    }).inspect(candidate({ realPath: '/home/tester/.opencode/bin/opencode' }));
+    expect(current).toMatchObject({ version: '1.19.5', autoUpdate: 'disabled' });
   });
 
   it('reads the config beside the XDG config root', async () => {
