@@ -46,9 +46,21 @@ export function createIsolatedRoot(prefix = 'pcc-') {
   return layout;
 }
 
+/**
+ * Fail-closed model endpoint for every execution that does not name the
+ * census's own loopback model. An empty environment does not prove the
+ * artifact holds no credential: in a hosted Linux container the 2.1.311
+ * artifact still sent an Authorization header (findings.md, 2.1.311), so the
+ * only safe default is an endpoint nothing can listen on. Port 0 refuses every
+ * connection, so a request fails with ECONNREFUSED and its headers reach no
+ * listener. Lanes with a loopback model override it.
+ */
+export const FAIL_CLOSED_BASE_URL = 'http://127.0.0.1:0';
+
 /** A complete environment for one artifact process; `extra` may add census-owned variables only. */
 export function isolatedEnvironment(layout, extra = {}) {
   return {
+    ANTHROPIC_BASE_URL: FAIL_CLOSED_BASE_URL,
     PATH: [layout.bin, dirname(process.execPath), '/usr/bin', '/bin', '/usr/sbin', '/sbin'].join(delimiter),
     HOME: layout.home,
     USERPROFILE: layout.home,

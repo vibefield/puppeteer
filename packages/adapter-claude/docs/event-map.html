@@ -1403,7 +1403,7 @@ flowchart LR
           <thead><tr><th>Raw hook</th><th>Why it is interesting</th></tr></thead>
           <tbody>
             <tr><td class="m">PreCompact</td><td>opens the compaction; the compact <code>SessionStart</code> between it and <code>PostCompact</code> leaves it open, and <code>PostCompact</code> completes it and emits <code>context-window:invalidated</code></td></tr>
-            <tr><td class="m">SubagentStop (internal)</td><td>2.1.308 <code>/compact</code> runs an internal agent whose stop has an empty <code>agent_type</code> and no <code>SubagentStart</code>; retained natively, never a delegation</td></tr>
+            <tr><td class="m">SubagentStop (internal)</td><td>2.1.308 <code>/compact</code> runs an internal agent whose stop has an empty <code>agent_type</code> and no <code>SubagentStart</code> (2.1.311: two such agents, two stops with distinct <code>agent_id</code>s); each retained natively, never a delegation</td></tr>
             <tr><td class="m">PreModelSwitch</td><td>observation mode <code>timeout-blocks</code>: excluded from the default registration because a missed timeout blocks the native switch</td></tr>
             <tr><td class="m">Elicitation / ElicitationResult</td><td>registered and retained without falsely mapping every MCP form to a single permission state</td></tr>
             <tr><td class="m">FileChanged</td><td>opt-in via <code>fileChangeMatcher</code>, then emits the direct observation <code>workspace:file-changed</code></td></tr>
@@ -1432,7 +1432,8 @@ flowchart LR
                 changes produce events. Transcript history does not publish turns, models, usage or metadata events,
                 and child transcripts are not discovered or read. Only <code>user</code>/<code>assistant</code> rows
                 are projected; 2.1.300+ request bookkeeping (<code>api-request*</code>, <code>atis-latch</code>,
-                <code>cost-state</code>) is dropped before the bounded read window.
+                <code>cost-state</code>) and side rows without a <code>uuid</code> (2.1.311 adds <code>tools-used</code>)
+                are dropped before the bounded read window.
               </td>
             </tr>
             <tr>
@@ -1461,7 +1462,8 @@ flowchart LR
 
       <footer>
         Generated against Claude Code 2.1.207 census data, with the 2.1.308 candidate's additions
-        (PreModelSwitch, PostModelSwitch, transcript bookkeeping rows); last verified stays at the promoted 2.1.207. Verify with
+        (PreModelSwitch, PostModelSwitch, transcript bookkeeping rows) and the 2.1.311 candidate's (a second internal
+        compaction stop, the <code>tools-used</code> transcript row); last verified stays at the promoted 2.1.207. Verify with
         <code>src/generated/registry.ts</code> · <code>src/normalization/index.ts</code> · <code>src/launch/settings.ts</code>.
       </footer>
     </main>

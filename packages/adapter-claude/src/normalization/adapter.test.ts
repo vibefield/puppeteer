@@ -964,6 +964,14 @@ describe('Claude 2.1.308 hook additions', () => {
     // Runtime refuses empty candidate actor metadata, so the empty type is not stamped.
     expect(result.agentId).toBe(internal!.agent_id);
     expect(result.agentType).toBeUndefined();
+    // 2.1.311's /compact runs two internal agents: two such stops, distinct ids, each one native.
+    const internals = loadHookFixtures('SubagentStop').filter((record) => record.agent_type === '');
+    expect(new Set(internals.map((record) => record.agent_id)).size).toBe(internals.length);
+    for (const record of internals.slice(1)) {
+      expect(normalizer.normalize(record as ClaudeHookPayload).events).toEqual([
+        { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'SubagentStop' },
+      ]);
+    }
     // A started agent with an empty type still stops as delegation.
     normalizer.normalize(fakeClaudeHookPayload('SubagentStart', { agent_id: 'agent-blank', agent_type: '' }));
     expect(

@@ -1,0 +1,8 @@
+{
+  "asmVersion": 3,
+  "vendor": "claude",
+  "vendorVersion": "2.1.311",
+  "generatedAt": "2026-11-03T19:12:57Z",
+  "source": "Pinned linux-x64 Claude Code 2.1.311 census plus a reviewed snapshot of Anthropic's official hook reference.",
+  "evidence": "evidence.json"
+}

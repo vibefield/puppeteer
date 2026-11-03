@@ -1,0 +1,1233 @@
+{
+ "probeVersion": 1,
+ "vendor": "claude",
+ "vendorVersion": "2.1.311",
+ "capturedAt": "2026-11-03",
+ "lane": "Claude 2.1.311 adaptation — invocation grammar re-verification against the 2.1.308 record",
+ "artifact": {
+  "platform": "linux-x64",
+  "install": "standalone executable from downloads.claude.ai/claude-code-releases/2.1.311/linux-x64/claude (surface:download)",
+  "sha256": "86dc1fcc69498159eaf15f446613e847010f9036bfbbdffd4c49350be8489ada"
+ },
+ "help": {
+  "file": "help.txt",
+  "sha256": "fc9af56f65f8a84a9e7e98cd538ccac13f57d1cc0e22099666508198ba88d64d",
+  "options": 66,
+  "subcommands": 18,
+  "note": "Captured in a disposable environment (COLUMNS unset). Against 2.1.308 only the purge description changed (\"Delete a project's Claude Code data (transcripts, tasks, file history, and its entry in ~/.claude.json) from this computer only\"); every option and subcommand name and arity is unchanged. The 2.1.308 linux-x64 help is byte-identical to the 2.1.308 darwin-arm64 record."
+ },
+ "parseProbes": {
+  "method": "`claude <flags under test> mcp --help`, session-free. Usage \"claude mcp\" = the flags parse and leave mcp the first operand; the root usage = a flag took mcp as its value, or an unknown option sent the rest to commander's unknown list; exit 1 = commander's own error. Version and help forms exit while parsing.",
+  "harness": "packages/surface/vendors/claude/census/invocation-probes.mjs, one disposable environment per probe; also run on the 2.1.308 linux-x64 artifact (sha256 356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58, the promoted bytes) for comparison",
+  "unchangedFrom2_1_308": true,
+  "results": [
+   {
+    "argv": [
+     "--permission-mode",
+     "default",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--permission-mode",
+     "manual",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--permission-mode",
+     "bogusmode",
+     "mcp",
+     "--help"
+    ],
+    "exit": 1,
+    "reads": "error: option '--permission-mode <mode>' argument 'bogusmode' is invalid. Allowed choices are acceptEdits, auto, bypassPermissions, manual, dontAsk, plan."
+   },
+   {
+    "argv": [
+     "--bogus-xyz",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--verbose",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--model",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--model",
+     "--verbose",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--add-dir",
+     "a",
+     "b",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--add-dir",
+     "a",
+     "--verbose",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "-r",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--verbose=1",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--model=opus",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--model",
+     "--bogus-xyz",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "-r",
+     "--bogus-xyz",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "-cd",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "-dc",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "-d2e",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--debug-to-stderr",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--tmux=classic",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--tmux",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--system-prompt-file",
+     "x",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--append-system-prompt-file",
+     "x",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--remote",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--remote",
+     "--verbose",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--rc",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--rc",
+     "--verbose",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--pool",
+     "x",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--max-turns",
+     "3",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--permission-prompt-tool",
+     "x",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--prompt-suggestions",
+     "mcp",
+     "--help"
+    ],
+    "exit": 1,
+    "reads": "error: option '--prompt-suggestions [value]' argument 'mcp' is invalid. Allowed choices are true, false, 1, 0, yes, no, on, off."
+   },
+   {
+    "argv": [
+     "--prompt-suggestions",
+     "--verbose",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--output-format",
+     "mcp",
+     "--help"
+    ],
+    "exit": 1,
+    "reads": "error: option '--output-format <format>' argument 'mcp' is invalid. Allowed choices are text, json, stream-json."
+   },
+   {
+    "argv": [
+     "--output-format",
+     "json",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "-w",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "-w",
+     "--verbose",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--cloud",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--teleport",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--environment",
+     "x",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--from-pr",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--file",
+     "a",
+     "b",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--betas",
+     "a",
+     "--verbose",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "-r",
+     "-",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "-nfoo",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "-rfoo",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "-c-d",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--model",
+     "--",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "-V"
+    ],
+    "exit": 0,
+    "reads": "version"
+   },
+   {
+    "argv": [
+     "-V",
+     "--verbose"
+    ],
+    "exit": 0,
+    "reads": "version"
+   },
+   {
+    "argv": [
+     "--version",
+     "--verbose"
+    ],
+    "exit": 0,
+    "reads": "version"
+   },
+   {
+    "argv": [
+     "-vc"
+    ],
+    "exit": 0,
+    "reads": "version"
+   },
+   {
+    "argv": [
+     "fix",
+     "-v"
+    ],
+    "exit": 0,
+    "reads": "version"
+   },
+   {
+    "argv": [
+     "-p",
+     "-v"
+    ],
+    "exit": 0,
+    "reads": "version"
+   },
+   {
+    "argv": [
+     "-p",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help without commands"
+   },
+   {
+    "argv": [
+     "--model",
+     "opus",
+     "-v"
+    ],
+    "exit": 0,
+    "reads": "version"
+   },
+   {
+    "argv": [
+     "-h",
+     "mcp"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "mcp",
+     "-v"
+    ],
+    "exit": 1,
+    "reads": "error: unknown option '-v'"
+   },
+   {
+    "argv": [
+     "--add-dir",
+     "--verbose",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--add-dir=a",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--add-dir=a",
+     "b",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "root help"
+   },
+   {
+    "argv": [
+     "--desktop",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--client-data-url",
+     "x",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--fast-mode",
+     "on",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--fast-mode",
+     "bogus",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--allow-other-models",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--include-unsupported-models",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--host-auth-is-org-sign-in",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--proactivity",
+     "ask",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--proactivity",
+     "bogus",
+     "mcp",
+     "--help"
+    ],
+    "exit": 1,
+    "reads": "error: option '--proactivity <level>' argument 'bogus' is invalid. Allowed choices are ask, default, proactive."
+   },
+   {
+    "argv": [
+     "--runner-declares",
+     "x",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "project",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "project help"
+   },
+   {
+    "argv": [
+     "purge",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "purge help"
+   },
+   {
+    "argv": [
+     "project",
+     "purge",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "project purge help"
+   },
+   {
+    "argv": [
+     "drop-worktree-registrations",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "drop-worktree-registrations help"
+   },
+   {
+    "argv": [
+     "--effort",
+     "max",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--effort",
+     "bogus",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   },
+   {
+    "argv": [
+     "--resume",
+     "some-name",
+     "mcp",
+     "--help"
+    ],
+    "exit": 0,
+    "reads": "mcp help"
+   }
+  ]
+ },
+ "static": {
+  "method": "Read-only inspection of the digest-pinned executable. Each fact is bound to its anchor by digest and byte offset, and to an 8 KiB window around it by digest; no source text is retained. For 2.1.311 every 2.1.308 anchor was recovered from the promoted darwin-arm64 bytes by its digest, matched identifier-agnostically (minified names change every build) in the 2.1.311 linux-x64 artifact and in the 2.1.308 linux-x64 artifact (sha256 356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58, the promoted bytes), and the code around it compared modulo minified names; each fact below re-read unchanged.",
+  "facts": [
+   {
+    "id": "root-options",
+    "fact": "The root command is commander with .argument(\"[prompt]\") and .helpOption(\"-h, --help\"); every root option, listed and hidden (hideHelp), with its arity, is in one builder. Hidden ones rowed by the table: -d2e/--debug-to-stderr, --system-prompt-file, --append-system-prompt-file, --max-turns, --permission-prompt-tool, --remote, --pool, --rc, and now --client-data-url (listed in 2.1.283). Hidden and new since 2.1.283, unrowed (refused as unknown by policy): --fast-mode <on|off> (no parse-time choice check), --allow-other-models, --include-unsupported-models, --host-auth-is-org-sign-in, --proactivity <level> (choices ask, default, proactive, checked at parse), --runner-declares <names>. Listed and new: --desktop.",
+    "anchorSha256": "1097459d996c922e155a5c07bbcfb32b96ee3e9aa160cab5f0c2a549c41d6643",
+    "anchorBytes": 29,
+    "anchorByteOffset": 258968170,
+    "windowStart": 258966122,
+    "windowBytes": 8192,
+    "windowSha256": "bc6773a904d462fd426a6c14546dd768b18d168054408d1a5dd9a889ba208079"
+   },
+   {
+    "id": "desktop-option",
+    "fact": "--desktop is a listed boolean root option: \"Open in the Claude Desktop app instead of the terminal (with --continue or --resume <id> to pick the session)\".",
+    "anchorSha256": "575267657a5d736c7224a3b9c31a887590a99d6cbf9f3a98c7a16891ae8d7969",
+    "anchorBytes": 75,
+    "anchorByteOffset": 258984568,
+    "windowStart": 258982520,
+    "windowBytes": 8192,
+    "windowSha256": "bd5a621627f29ce730acf56708ea698b1764fe0cfc9193082cb78bb19d1ffe07"
+   },
+   {
+    "id": "proactivity-option",
+    "fact": "--proactivity <level> is a root option with commander choices (ask, default, proactive), hidden unless a feature gate lists it.",
+    "anchorSha256": "e29961cfffea5951769e57a2b9f4262d841f549a134c850bbad9f936a3b2e49c",
+    "anchorBytes": 51,
+    "anchorByteOffset": 258988324,
+    "windowStart": 258986276,
+    "windowBytes": 8192,
+    "windowSha256": "bf76aafa86187ecd42bd2953763c8b697f006edea185f6fa78b5c59177fba370"
+   },
+   {
+    "id": "runner-declares-option",
+    "fact": "--runner-declares <names> is a hidden root option taking one value.",
+    "anchorSha256": "bdecc998dafd66af1ee079a8356d08e274328937bed9e1269bb90b05e5608018",
+    "anchorBytes": 46,
+    "anchorByteOffset": 258990547,
+    "windowStart": 258988499,
+    "windowBytes": 8192,
+    "windowSha256": "58f24e1e0bda9f3dbf8a15d2039ee9f2cbc8c6bb25485eb9c84595698255b1b5"
+   },
+   {
+    "id": "fast-mode-option",
+    "fact": "--fast-mode <on|off> is a hidden root option; its parser maps anything else to undefined instead of refusing it.",
+    "anchorSha256": "ea6362bf62124d6a12a94361c85cb7e078eb18470c999578b9d39c4c9c851581",
+    "anchorBytes": 41,
+    "anchorByteOffset": 258982343,
+    "windowStart": 258980295,
+    "windowBytes": 8192,
+    "windowSha256": "6bcff3b021f6a5194cd68ff6234df82b5119b2950f018774139abf7f2a7c86f9"
+   },
+   {
+    "id": "client-data-url-option",
+    "fact": "--client-data-url <url> is still a root option taking one value (the parse probe reads mcp help); 2.1.308 no longer lists it in --help.",
+    "anchorSha256": "1fe0ded193d67d190ec3c0eda0f06d090d59f5f8f1a69b7bc3d9c3ec9ae66f24",
+    "anchorBytes": 43,
+    "anchorByteOffset": 258983193,
+    "windowStart": 258981145,
+    "windowBytes": 8192,
+    "windowSha256": "6323aa7d1b01c48ed2c71609b84dc8a60fc7d1e63b0940dc176f6a6aebf9ede4"
+   },
+   {
+    "id": "entry-fast-paths",
+    "fact": "Before commander: when any argv token is logs|attach|stop|kill|respawn|rm, backgroundSessionVerbIndex(argv, {behindRootOptions: CLAUDE_CODE_SESSION_KIND !== \"bg\"}) decides whether it is a background verb (background-verb-index); --bg/--background dispatch only through hasBackgroundFlag (background-flag-value-aware); either path refuses --desktop. remote-control|rc|remote|sync|bridge and self-hosted-runner still dispatch as argv[0] only, daemon after any --dangerously-skip-permissions/--allow-dangerously-skip-permissions, and the version fast path is an argv of exactly --version|-v|-V (with --verbose).",
+    "anchorSha256": "67b01d9caf190637a9c252b41ec480ecd1859140c1da3906112e0cf5199027bb",
+    "anchorBytes": 139,
+    "anchorByteOffset": 238602924,
+    "windowStart": 238600876,
+    "windowBytes": 8192,
+    "windowSha256": "13ed8eb5c016f51f4cea14ca619714e56248fb493615436e8434651ec79591a1"
+   },
+   {
+    "id": "background-verb-index",
+    "fact": "A background verb is the first operand (value-aware; after `--` the next token is the operand). At argv[0] it always dispatches. Behind other tokens it dispatches only when behindRootOptions holds (not inside a bg session), the verb does not directly follow `--`, the next token is an 8-hex job id (or respawn --all), and every preceding token is a safe root option (boolean flags such as --verbose, or a value option outside --exec|-m|--handle-uri); -p/--print, --bg, --routine, help, version and short clusters disqualify it. Otherwise the verb is an ordinary operand (a prompt).",
+    "anchorSha256": "da01d27d2fc626fb85f253e1d9b3d69eeb327cd8bd82ff1e67d061575e3ba483",
+    "anchorBytes": 110,
+    "anchorByteOffset": 240154436,
+    "windowStart": 240152388,
+    "windowBytes": 8192,
+    "windowSha256": "b6f9530c45acf0575c290aca70d8dad61cc92e30f6a458ff9711cd34589bd743"
+   },
+   {
+    "id": "background-flag-value-aware",
+    "fact": "--bg/--background count only as option tokens before `--`, skipping option values: `claude -- --bg` and `claude --model --bg` are not background launches (2.1.283 matched the token anywhere).",
+    "note": "2.1.311 adds cliFlagWords beside hasBackgroundFlag (the option tokens before `--`, a value-taking option joined to its value) and installs it as the debug logger's argv reader; hasBackgroundFlag itself is unchanged.",
+    "anchorSha256": "3e6ac198c137851610c5aaeadfa862bae829d94ebbf3237f4d169eeb8423fd93",
+    "anchorBytes": 58,
+    "anchorByteOffset": 240152613,
+    "windowStart": 240150565,
+    "windowBytes": 8192,
+    "windowSha256": "fdb9fa35eadeaf6d2f3dc3435ca9ac7b18747f45bd27b27b556805ed3c9f3368"
+   },
+   {
+    "id": "desktop-entry-scan",
+    "fact": "--desktop is read by a raw scan of argv before the first `--`, and the background, tmux, print, SDK, init-only, redirected-output, restricted, safe, bare, and restrict-personal-config paths refuse it.",
+    "anchorSha256": "acb0ebd82b6c6f26850816489057410340613c862b550a1fdc3dfb05f275cc80",
+    "anchorBytes": 89,
+    "anchorByteOffset": 238593695,
+    "windowStart": 238591647,
+    "windowBytes": 8192,
+    "windowSha256": "0e0c994ff251bad1dfb60196e77dd53d254f2beccbce8e50ea3d27208d0a5ac1"
+   },
+   {
+    "id": "desktop-root-action",
+    "fact": "The root command's action launches the Claude Desktop app when commander parsed --desktop (launchDesktopFromCli, with --continue/--resume): commander reads the option, so `-- --desktop` is a prompt and `--model --desktop` takes it as the model's value. The raw scan before `--` (desktop-entry-scan) is used only to refuse it on the background and tmux fast paths.",
+    "anchorSha256": "5bbe8c656e69dd4bf0b0eff915d80c1c7892eaab83bbf618029e54161f8569f2",
+    "anchorBytes": 39,
+    "anchorByteOffset": 258986353,
+    "windowStart": 258984305,
+    "windowBytes": 8192,
+    "windowSha256": "65cadb7c0ebc4fdb0d5dac39f902ea54cf7b8edc6616c634b430d7bb0d8419ff"
+   },
+   {
+    "id": "gh-standin-entry",
+    "fact": "argv[0] --gh-standin is the entry Claude's own per-session gh shim execs; used directly it exits \"gh: this command is run by the gh shim Claude Code writes for a session; it is not for direct use.\"",
+    "anchorSha256": "ee7d8cba2617ddd77d598c9b5c942e553697f16eb4667a9df82b434f53719d49",
+    "anchorBytes": 29,
+    "anchorByteOffset": 238587318,
+    "windowStart": 238585270,
+    "windowBytes": 8192,
+    "windowSha256": "2c2e11b99bd9602817b659c9feed1c1350152b4d9cc7c71d62f130ace9a943ae"
+   },
+   {
+    "id": "tmux-worktree-fast-path",
+    "fact": "(--tmux or --tmux=classic) together with -w/--worktree/--worktree=… anywhere in argv execs into a tmux (or iTerm2) session for the worktree, before commander.",
+    "anchorSha256": "282bf6a0b21ad13eaa6c886b1d943d461eec65790d472ecc00bc49af6e9e2346",
+    "anchorBytes": 32,
+    "anchorByteOffset": 238615394,
+    "windowStart": 238613346,
+    "windowBytes": 8192,
+    "windowSha256": "632d9dc04a2fe66ba46fe7c655bcbd0c4671be69bc2e1d0f1f290e17b61690b4"
+   },
+   {
+    "id": "bare-before-end",
+    "fact": "--bare anywhere before the first `--` sets CLAUDE_CODE_SIMPLE=1 before commander parses, whatever commander makes of the token; --safe-mode is read the same way (argv before `--`).",
+    "anchorSha256": "73cc3588e707c77163a460a716dc099c07f6c38ff2d7af2cb419f6c8ae93c14e",
+    "anchorBytes": 54,
+    "anchorByteOffset": 238616897,
+    "windowStart": 238614849,
+    "windowBytes": 8192,
+    "windowSha256": "9099dfdca80e0eed500294cd0834c200dcb5482d23b4477a1cdf9660f86a880b"
+   },
+   {
+    "id": "print-gates-subcommands",
+    "fact": "Subcommands are registered only when argv has no exact -p/--print option token (value-aware, before `--`) or names a cc:// address; otherwise the program parses with none, and a subcommand name is an operand.",
+    "anchorSha256": "e020e2d7289fce52abb348accdbd11b54ed4cd82241d54b5513aba3f4f1c33ef",
+    "anchorBytes": 47,
+    "anchorByteOffset": 259066069,
+    "windowStart": 259064021,
+    "windowBytes": 8192,
+    "windowSha256": "1520626359b87761f62038f54bdd1d70871e5babf37bc39f756c8196001bc760"
+   },
+   {
+    "id": "pre-parse-arities",
+    "fact": "Claude's own pre-parse arity sets (one value, variadic, optional value) used to skip values before commander; 2.1.308 adds the new hidden options to them.",
+    "anchorSha256": "84355d32a96102201d6f0d36463a9aca65ad17012c2968e3596310f8b71edc53",
+    "anchorBytes": 29,
+    "anchorByteOffset": 240151482,
+    "windowStart": 240149434,
+    "windowBytes": 8192,
+    "windowSha256": "d4d1d89a19ffb684321d641e308a732a79ffb1c2cb4596b8c06ba17d4bb068d5"
+   },
+   {
+    "id": "import-rewrite",
+    "fact": "`claude [options] import [codex|gemini|cursor|--dry-run|--yes[=…]]` is rewritten to `claude [options] -- \"/import …\"` (a session that runs /import) when the feature is on, before commander.",
+    "anchorSha256": "5a6ef0e0cbf3d4ff933f483176dc28643ea8f8429aff7e53be3e9641843b4251",
+    "anchorBytes": 44,
+    "anchorByteOffset": 250144503,
+    "windowStart": 250142455,
+    "windowBytes": 8192,
+    "windowSha256": "e978b2439d221238d5fcda7925558a2a9928374255c8368d5fd8198d0c465fe9"
+   },
+   {
+    "id": "permission-resolver",
+    "fact": "The session permission mode is the first of: --dangerously-skip-permissions (bypassPermissions, unless bypass is disabled), --permission-mode, the agent frontmatter, the settings defaultMode; so --dangerously-skip-permissions wins over any --permission-mode, and a --permission-mode overrides the settings defaultMode.",
+    "anchorSha256": "89b5fdae7d0ad8aba559da941707a0b4b3e5cf8aae7cf8dacf8fd17c530506a4",
+    "anchorBytes": 89,
+    "anchorByteOffset": 243564742,
+    "windowStart": 243562694,
+    "windowBytes": 8192,
+    "windowSha256": "69ded1edaa66fa46bde8bafa8d61bdd2fbe5508b6851e05921de082b3972fd5e"
+   },
+   {
+    "id": "settings-last-value",
+    "fact": "The eager settings load reads only the last --settings value.",
+    "anchorSha256": "ab83502d9316c2b653a85299cbcfc78fa7ef0f9471bfd1b8ad4c1d798e61b5de",
+    "anchorBytes": 34,
+    "anchorByteOffset": 243242103,
+    "windowStart": 243240055,
+    "windowBytes": 8192,
+    "windowSha256": "10cb023553e3c14c3cfbe7404f18e4b682966005991ab61ba13cacbc6a5ef7ad"
+   },
+   {
+    "id": "positional-options",
+    "fact": "The root program is created with enablePositionalOptions().",
+    "anchorSha256": "8dce7b2dab6a2b29acf2a323a6d54811fe6714391f02d4712fe6e3bc171243ea",
+    "anchorBytes": 56,
+    "anchorByteOffset": 258961846,
+    "windowStart": 258959798,
+    "windowBytes": 8192,
+    "windowSha256": "4b08af6b7066c8cf43135a81b4624fb86817e2c5e15d9cb5a3319714c1f70b21"
+   },
+   {
+    "id": "commander-defaults",
+    "fact": "The bundled commander's defaults: unknown options refused, excess operands allowed (dropped), combined short flag and optional value on.",
+    "anchorSha256": "fdfb418bc1f0096dd1a893142047215391da462f3a66d368c1dff32fefe35835",
+    "anchorBytes": 57,
+    "anchorByteOffset": 255730201,
+    "windowStart": 255728153,
+    "windowBytes": 8192,
+    "windowSha256": "442723ca022a83cbb7566e88a94756d1970b5582cb10f7546b8204344a375851"
+   },
+   {
+    "id": "display-only-bg-commands",
+    "fact": "attach <id|name>, logs <id|name>, stop|kill, respawn and rm are spliced into the help only; commander does not register them (their dispatch is background-verb-index).",
+    "anchorSha256": "49dcf9d71a1f7e31472c9fbc6f07d8b15ef7f341306df741e4b9352c3ce6479e",
+    "anchorBytes": 46,
+    "anchorByteOffset": 259049963,
+    "windowStart": 259047915,
+    "windowBytes": 8192,
+    "windowSha256": "980ec6bbc177100f0f053f212b54b8b1a76ce34ca370a241244e31fabdca0156"
+   },
+   {
+    "id": "purge-root-command",
+    "fact": "purge [path] is a root subcommand (formerly project purge) with --dry-run, -y/--yes, -i/--interactive and --all; it asks for confirmation unless -y, and tokens after `--` become its [path].",
+    "anchorSha256": "e9dfca00b3fb5f4737fd6978c52409c5addbdcb063dd57592f716fae4bed67e9",
+    "anchorBytes": 36,
+    "anchorByteOffset": 259052189,
+    "windowStart": 259050141,
+    "windowBytes": 8192,
+    "windowSha256": "3101a679a41e741c361c5e3bdefe31b9d53934fff5808ccd29f9fb5a286805cc"
+   },
+   {
+    "id": "project-purge-alias",
+    "fact": "project is registered hidden; its description says `claude project purge` is now `claude purge`, and project purge still runs with a notice.",
+    "anchorSha256": "60db8a25bd542366c0c2f840b1b1dadb95fed4318a33f33d0483839eb2c20c02",
+    "anchorBytes": 54,
+    "anchorByteOffset": 259052074,
+    "windowStart": 259050026,
+    "windowBytes": 8192,
+    "windowSha256": "d4036f1076278a4041756cfc5ab6da7f89e2bc6c7117d8b5389ff80aa2ab7812"
+   },
+   {
+    "id": "drop-worktree-registrations",
+    "fact": "drop-worktree-registrations is a hidden root subcommand beside the edit-* VS Code helpers, with a required --json flag and its request on stdin (\"used by the VS Code extension\").",
+    "anchorSha256": "3db80b28589a5501188bf0310314a122ec94a9cfb1b766ac18fa6704ca8f462e",
+    "anchorBytes": 52,
+    "anchorByteOffset": 255763617,
+    "windowStart": 255761569,
+    "windowBytes": 8192,
+    "windowSha256": "692c121ac9448467669dd88f1bfe26665ffbfcb584a2f52fc3bc36f80ed257ce"
+   },
+   {
+    "id": "interactive-validation",
+    "fact": "Without print mode the action exits with an error for --prompt-suggestions, --no-session-persistence, --include-partial-messages, --forward-subagent-text, --replay-user-messages and --input-format=stream-json; --json-schema is read only for a non-interactive or background session.",
+    "anchorSha256": "869381c3edc3ba55397fcf16ce9fe59ed263e633809a5aa2d6e3372042d38282",
+    "anchorBytes": 45,
+    "anchorByteOffset": 258744231,
+    "windowStart": 258742183,
+    "windowBytes": 8192,
+    "windowSha256": "1d80529baecf323556448db99b4f90a69ab4d259fd959f162c00336916e24e07"
+   },
+   {
+    "id": "cloud-default-hardcoded-off",
+    "fact": "cloudSessionsByDefault and the new sandboxVmByDefault are both hard-coded false at session start.",
+    "anchorSha256": "37070e43c930ad53c38758841e9091322d98d88a7ee1018db0d1f66da92cab25",
+    "anchorBytes": 28,
+    "anchorByteOffset": 258725395,
+    "windowStart": 258723347,
+    "windowBytes": 8192,
+    "windowSha256": "20faf77321419ae7391d31ac91aa35080a81df72b7ae9e275cd2682a7690da59"
+   }
+  ]
+ },
+ "runtime": {
+  "method": "Credential-less argv shapes whose dispatch changed in 2.1.308, each in a disposable HOME/CLAUDE_CONFIG_DIR/TMPDIR with no TTY, a 15 s bound and the fail-closed model endpoint, on 2.1.311 and on the 2.1.308 linux-x64 artifact (sha256 356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58, the promoted bytes). Only inert shapes run: a job id no job matches, purge in an empty project, the helper without its stdin request, the gh entry used directly. --desktop, --bg, Remote Control and cloud paths stay parse-only.",
+  "harness": "packages/surface/vendors/claude/census/invocation-probes.mjs",
+  "probes": [
+   {
+    "id": "R01",
+    "question": "a background verb behind a safe root option",
+    "argv": [
+     "--verbose",
+     "attach",
+     "1a2b3c4d"
+    ],
+    "exit": 1,
+    "reads": "No job matching '1a2b3c4d'. Run 'claude agents' to list running sessions."
+   },
+   {
+    "id": "R02",
+    "question": "a background verb after `--`",
+    "argv": [
+     "--",
+     "attach",
+     "1a2b3c4d"
+    ],
+    "exit": null,
+    "reads": "no exit within 15 s (non-TTY)",
+    "was2_1_308DarwinRecord": {
+     "exit": 1,
+     "reads": "session (no credential: Not logged in)"
+    },
+    "note": "Identical on 2.1.308 linux-x64 in this environment. The difference from the darwin-arm64 record is the host, not the release: the artifact found a credential the disposable environment does not hold (findings.md, 2.1.311), so the session did not stop at \"Not logged in\"; with the census's fail-closed model endpoint it waited without a TTY until the bound."
+   },
+   {
+    "id": "R03",
+    "question": "a background verb as argv[0]",
+    "argv": [
+     "attach",
+     "1a2b3c4d"
+    ],
+    "exit": 1,
+    "reads": "No job matching '1a2b3c4d'. Run 'claude agents' to list running sessions."
+   },
+   {
+    "id": "R04",
+    "question": "purge with an option",
+    "argv": [
+     "purge",
+     "--dry-run"
+    ],
+    "exit": null,
+    "reads": "no exit within 15 s (non-TTY)"
+   },
+   {
+    "id": "R05",
+    "question": "purge after `--`",
+    "argv": [
+     "--",
+     "purge"
+    ],
+    "exit": null,
+    "reads": "no exit within 15 s (non-TTY)"
+   },
+   {
+    "id": "R06",
+    "question": "tokens after `--` purge",
+    "argv": [
+     "--verbose",
+     "--",
+     "purge",
+     "--dry-run"
+    ],
+    "exit": 1,
+    "reads": "No Claude Code project state found for <root>/workspace/--dry-run under <root>/config."
+   },
+   {
+    "id": "R07",
+    "question": "the hidden VS Code worktree helper without --json",
+    "argv": [
+     "drop-worktree-registrations"
+    ],
+    "exit": 1,
+    "reads": "error: required option '--json' not specified"
+   },
+   {
+    "id": "R08",
+    "question": "the gh shim entry used directly",
+    "argv": [
+     "--gh-standin"
+    ],
+    "exit": 1,
+    "reads": "gh: this command is run by the gh shim Claude Code writes for a session; it is not for direct use."
+   }
+  ]
+ },
+ "live": {
+  "method": "The repository's own isolated rig (packages/adapter-claude/src/test-support/live-model.ts): a throwaway HOME and CLAUDE_CONFIG_DIR per probe (trust and the bypass consent pre-seeded), a loopback Messages API that answers \"ok\", ANTHROPIC_AUTH_TOKEN a placeholder, nonessential traffic off, command hooks appending to a throwaway log, the session in a node-pty the harness owns. Nothing of the owner's configuration or account is read or written. <managed hooks> is a settings file whose SessionStart, UserPromptSubmit, Stop and SessionEnd command hooks log each event.",
+  "reRun": false,
+  "note": "The 16 live sessions L01-L16 of the 2.1.283 record were not repeated on 2.1.308 or 2.1.311. Each rests on a static fact above whose anchor was relocated and re-read unchanged, and on parse probes that read identically; their findings carry forward on that evidence only.",
+  "inherited": [
+   "L01",
+   "L02",
+   "L03",
+   "L04",
+   "L05",
+   "L06",
+   "L07",
+   "L08",
+   "L09",
+   "L10",
+   "L11",
+   "L12",
+   "L13",
+   "L14",
+   "L15",
+   "L16"
+  ]
+ },
+ "adapterClassification": {
+  "method": "How packages/adapter-claude/src/launch/invocation-grammar.ts (CLAUDE_INVOCATION_GRAMMAR_VERSION 2.1.311) classifies each 2.1.308 change; 2.1.311 changes no option, subcommand, arity or dispatch rule, so the rows carry forward. The census test holds the table to help.txt in both directions; the table's option arities equal the CLI's own pre-parse arity sets (pre-parse-arities) row for row.",
+  "rows": [
+   {
+    "argv": "purge [options] [path]",
+    "row": "subcommand purge",
+    "class": "utility",
+    "dispatch": [
+     "command"
+    ],
+    "evidence": [
+     "purge-root-command",
+     "R04",
+     "R05",
+     "R06",
+     "parse probe purge --help"
+    ],
+    "note": "Read wherever commander takes the first operand, `--` included: a managed launch's `-- <prompt>` would hand purge its operands, so an accepted reading's first operand may never name a command subcommand."
+   },
+   {
+    "argv": "project",
+    "row": "subcommand project (hidden)",
+    "class": "utility",
+    "dispatch": [
+     "command"
+    ],
+    "evidence": [
+     "project-purge-alias",
+     "parse probes project --help, project purge --help"
+    ]
+   },
+   {
+    "argv": "drop-worktree-registrations",
+    "row": "subcommand drop-worktree-registrations (hidden)",
+    "class": "utility",
+    "dispatch": [
+     "command"
+    ],
+    "evidence": [
+     "drop-worktree-registrations",
+     "R07",
+     "parse probe drop-worktree-registrations --help"
+    ]
+   },
+   {
+    "argv": "attach|logs|stop|kill|respawn|rm",
+    "row": "subcommands with dispatch background-verb",
+    "class": "attach elsewhere; the others utility",
+    "dispatch": [
+     "background-verb"
+    ],
+    "evidence": [
+     "entry-fast-paths",
+     "background-verb-index",
+     "display-only-bg-commands",
+     "R01",
+     "R02",
+     "R03"
+    ],
+    "note": "argv[0] always; behind tokens only after safe root options, not directly after `--`, and before an 8-hex id (or respawn --all). The reader does not see CLAUDE_CODE_SESSION_KIND=bg and reads such a verb as dispatched: a passthrough."
+   },
+   {
+    "argv": "--bg|--background",
+    "row": "entry rule background (the token anywhere, `--` or not)",
+    "class": "elsewhere",
+    "evidence": [
+     "entry-fast-paths",
+     "background-flag-value-aware"
+    ],
+    "note": "Deliberately broader than 2.1.308: the reader is not version-gated, and 2.1.283 matched the token anywhere, so `-- --bg` and `--model --bg` (a prompt and a model value on 2.1.299+) stay passthroughs rather than managed launches an older release would start in the background."
+   },
+   {
+    "argv": "--desktop",
+    "row": "option --desktop, arity none",
+    "class": "elsewhere",
+    "evidence": [
+     "desktop-option",
+     "desktop-root-action",
+     "desktop-entry-scan",
+     "parse probe --desktop mcp --help"
+    ]
+   },
+   {
+    "argv": "--client-data-url <url>",
+    "row": "option --client-data-url (hidden)",
+    "class": "carried",
+    "evidence": [
+     "client-data-url-option",
+     "parse probe --client-data-url x mcp --help"
+    ]
+   },
+   {
+    "argv": "--fast-mode, --allow-other-models, --include-unsupported-models, --host-auth-is-org-sign-in, --proactivity, --runner-declares, argv[0] --gh-standin",
+    "row": "none",
+    "class": "rejected (this adapter does not know it)",
+    "evidence": [
+     "root-options",
+     "proactivity-option",
+     "runner-declares-option",
+     "fast-mode-option",
+     "gh-standin-entry",
+     "R08"
+    ],
+    "note": "Unrowed options are refused by policy (findings.md §7); whether any should be carried is open."
+   }
+  ]
+ }
+}

@@ -69,15 +69,15 @@ const MODE_CLAIMS = new Map([
 const CLAIM_CONFIDENCE = { [RUNTIME_CLAIM]: 'verified-headless', [INTERACTIVE_CLAIM]: 'verified-interactive' };
 
 /**
- * The reviewed official-reference snapshot. The page is mutable and already
- * mentions a later release in one Windows-only note, so the review records its
- * digest and reconciles every field with the pinned artifact.
+ * The reviewed official-reference snapshot. The page is mutable, so the review
+ * records its digest and reconciles every field with the pinned artifact. The
+ * 2.1.311 snapshot names no release after 2.1.309 (a Windows-only note).
  */
 const DOCS_SNAPSHOT = {
   url: 'https://code.claude.com/docs/en/hooks',
   format: 'markdown',
-  sha256: '3ce0f8a007da9192d076b08ca1aa9332b28c12f443189066e3534b1595eaeb47',
-  bytes: 281_780,
+  sha256: '524960c086d43f6e23950bf9d98f513259e2b6fbfd88b38622a5d020698fbc6e',
+  bytes: 284_286,
 };
 
 /**
@@ -98,14 +98,14 @@ const CONTRADICTIONS = [
     subject: 'StopFailure command hooks in print mode',
     reference: 'Silent on delivery timing; says hook output and exit code are ignored.',
     artifact:
-      'The committed captures show StopFailure arriving over HTTP on the credential-less and every API-error print path. Observed during adaptation but not recorded as a probe: a print-mode process exited before a node command forwarder (~100 ms to start) completed its StopFailure hook, while a shell `cat` hook completed and the HTTP hook arrived; the same bisect saw 2.1.226 await even a 1 s command hook and 2.1.283 not. A command-hook census can therefore miss StopFailure.',
+      'The committed captures show StopFailure arriving over HTTP on every API-error print path (and, through 2.1.308, on the credential-less print path, a lane 2.1.311 did not run). Observed during adaptation but not recorded as a probe: a print-mode process exited before a node command forwarder (~100 ms to start) completed its StopFailure hook, while a shell `cat` hook completed and the HTTP hook arrived; the same bisect saw 2.1.226 await even a 1 s command hook and 2.1.283 not. A command-hook census can therefore miss StopFailure.',
     model: 'StopFailure is runtime-verified through HTTP; the default transport stays http',
   },
   {
     subject: 'scratchpad_dir',
     reference: 'Common input field (2.1.257+), absent when the session has no scratchpad.',
     artifact:
-      'The runtime input builder adds it only when a scratchpad exists; the bundled SDK base schema omits it; no 2.1.308 census payload carried it.',
+      'The runtime input builder adds it only when a scratchpad exists; the bundled SDK base schema omits it; no 2.1.308 or 2.1.311 census payload carried it.',
     model: 'optional common string',
   },
   {
@@ -119,7 +119,7 @@ const CONTRADICTIONS = [
     subject: 'Stop.background_tasks, Stop.session_crons and Stop.last_assistant_message',
     reference: 'Shown in the Stop input example.',
     artifact:
-      'Optional in the bundled SDK schema; present in every captured 2.1.308 Stop payload (7 interactive, 1 resume), the two lists as empty arrays. Docs and runtime agree; only the schema marks them optional.',
+      'Optional in the bundled SDK schema; present in every captured 2.1.308 and 2.1.311 Stop payload (7 interactive, 1 resume each), the two lists as empty arrays. Docs and runtime agree; only the schema marks them optional.',
     model: 'optional, following the bundled schema; Stop requires only stop_hook_active',
   },
   {
@@ -145,7 +145,7 @@ const CONTRADICTIONS = [
     subject: 'effort',
     reference: 'Present on tool-context events when the model supports the effort parameter.',
     artifact:
-      'Absent from every interactive payload under the loopback model id; present on the credential-less headless StopFailure (model alias haiku).',
+      'Absent from every 2.1.311 census payload (the loopback model id; the credential-less headless lane did not run); present on the 2.1.308 credential-less headless StopFailure (model alias haiku).',
     model: 'optional common object',
   },
   {
@@ -259,8 +259,9 @@ const COMMON_RESULT_SCHEMA = {
 
 /**
  * Reviewed against https://code.claude.com/docs/en/hooks retrieved
- * 2026-10-25T02:31:24Z and reconciled with the hook input/output schemas
- * bundled in the pinned 2.1.308 executable.
+ * 2026-11-03T19:33:22Z and reconciled with the hook input/output schemas
+ * bundled in the pinned 2.1.311 executable (identical to 2.1.308's modulo
+ * minified identifiers, as are the runtime input builders).
  */
 const EVENT_SPECS = {
   SessionStart: {
@@ -886,6 +887,21 @@ function evidenceFor(...claims) {
   return { existence: claims, shape: claims };
 }
 
+/** The print-lane description for the modes this capture set holds. */
+function headlessLanes(modes) {
+  const lanes = [
+    ['init', '--init-only'],
+    ['headless', 'credential-less print'],
+    ['api-error-<status>', 'loopback API-error print'],
+  ].filter(([mode]) =>
+    mode === 'api-error-<status>' ? modes.some((m) => m.startsWith('api-error-')) : modes.includes(mode),
+  );
+  const names = lanes.map(([, name]) => name);
+  const list =
+    names.length > 1 ? `${names.slice(0, -1).join(', ')}${names.length > 2 ? ',' : ''} and ${names.at(-1)}` : names[0];
+  return `${list} lanes (${lanes.map(([mode]) => mode).join(', ')})`;
+}
+
 /** Capture modes present in the sanitized set, each mapped to the claim its lane supports. */
 function capturedModes(captureRoot) {
   const modes = readdirSync(captureRoot, { withFileTypes: true })
@@ -1016,7 +1032,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       transcript: {
         kind: 'transcript',
         notes:
-          'Durable JSONL is authoritative for message content; hook events remain authoritative for lifecycle. Besides user/assistant/system/attachment rows, 2.1.308 records per-request bookkeeping rows (api-request, api-request-shape, api-request-blob, atis-latch, cost-state) that are not conversation messages; api-request-blob rows carry message.role user or assistant without uuid or timestamp.',
+          'Durable JSONL is authoritative for message content; hook events remain authoritative for lifecycle. Besides user/assistant/system/attachment rows, 2.1.308 records per-request bookkeeping rows (api-request, api-request-shape, api-request-blob, atis-latch, cost-state) that are not conversation messages; api-request-blob rows carry message.role user or assistant without uuid or timestamp. 2.1.311 adds a tools-used side row (type, tools, sessionId; no uuid or timestamp).',
       },
       statusline: {
         kind: 'statusline',
@@ -1182,8 +1198,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
         record: 'sanitized-captures',
         artifact: artifactId,
         platform: artifactPlatform,
-        harness:
-          'Isolated --init-only, credential-less print, and loopback API-error print lanes (init, headless, api-error-<status>) recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs',
+        harness: `Isolated ${headlessLanes(modes)} recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs`,
         capturedAt,
       },
       ...(interactiveCaptured
@@ -1257,6 +1272,11 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       'No lane uses an account or credential. Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.',
       'Not reached by any lane: Setup outside --init-only, UserPromptExpansion, PermissionDenied (auto mode), TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate, WorktreeRemove, Elicitation, ElicitationResult, PostModelSwitch outside a /model switch, mcp_server on MCP tool events, scratchpad_dir, and PostToolUse(Bash) tool_response.bashEditDiff.',
       'The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim.',
+      ...(modes.includes('headless')
+        ? []
+        : [
+            'No credential-less headless lane: on the census host the artifact presented a credential the disposable environment does not hold, so that lane could not run without one (findings.md).',
+          ]),
     ],
   });
   writeGroundTruthArtifacts(modelRoot);
