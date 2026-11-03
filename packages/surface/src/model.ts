@@ -1177,7 +1177,8 @@ function validateEventVariants(
       }
       const alternatives = nodes.map((node) => {
         const violations: string[] = [];
-        validateSchemaNode(node, expected, field, violations);
+        // A matched node may itself reference the payload schema's $defs (a generated enum).
+        validateSchemaNode(node, expected, field, violations, schema ?? node);
         return violations;
       });
       if (alternatives.every((violations) => violations.length > 0)) {

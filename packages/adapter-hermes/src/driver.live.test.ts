@@ -15,6 +15,7 @@ import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { attestLiveAdapter } from '@vibefield/puppeteer-testing/live-attestation';
 import { describe, expect, it } from 'vitest';
 import { probeHermesVersion, resolveHermesExecutable } from './detection.js';
+import { HERMES_RELEASE_TAG, HERMES_SURFACE_VERSION } from './generated/detection.js';
 import { createHermesTuiSession } from './driver.js';
 import { resolveHermesPython } from './launch/gateway-host.js';
 import { waitFor } from './test-support/live-harness.js';
@@ -46,7 +47,10 @@ describe.runIf(live)('Hermes adapter through real native TUI (live)', () => {
     let resumed: Awaited<ReturnType<typeof createHermesTuiSession>> | undefined;
     let resumedProjection: ReturnType<typeof projectAgentEvents> | undefined;
     try {
-      expect(await probeHermesVersion(executable)).toEqual({ version: '0.20.0', releaseTag: '2026.8.3' });
+      expect(await probeHermesVersion(executable)).toEqual({
+        version: HERMES_SURFACE_VERSION,
+        releaseTag: HERMES_RELEASE_TAG,
+      });
       session = await createHermesTuiSession({
         cwd,
         host,

@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  RELEASES,
+  RELEASE_TAG,
   REQUIRED_FLAGS,
   REQUIRED_SUBCOMMANDS,
   SOURCE_REVISION,
   VERSION,
   canonicalizePlatform,
+  redactProbeRoots,
   sanitizeProcessTree,
   sanitizeVersionOutput,
   validateSourceContract,
@@ -15,17 +18,38 @@ describe('Hermes census contract', () => {
     expect(
       validateSourceContract({
         sourceRevision: SOURCE_REVISION,
-        releaseTag: 'v2026.8.3',
+        releaseTag: RELEASE_TAG,
         vendorVersion: VERSION,
       }),
     ).toEqual([]);
     expect(
       validateSourceContract({
         sourceRevision: 'deadbeef',
-        releaseTag: 'v2026.8.3',
+        releaseTag: RELEASE_TAG,
         vendorVersion: VERSION,
       }),
     ).toEqual([`source revision drifted from ${SOURCE_REVISION}`]);
+  });
+
+  it('maps each date tag to the product version its annotated tag and pyproject name', () => {
+    expect(VERSION).toBe('0.21.5');
+    expect(RELEASES['0.21.5']).toMatchObject({ releaseTag: 'v2026.9.24', releaseDate: '2026.9.24' });
+    expect(RELEASES['0.20.0']).toMatchObject({
+      releaseTag: 'v2026.8.3',
+      sourceRevision: '3c27eb6234bf91b8ceee9e9071591b31e9b148cb',
+    });
+    for (const [version, release] of Object.entries(RELEASES)) {
+      expect(release.releaseTag).toBe(`v${release.releaseDate}`);
+      expect(release.sourceRevision).toMatch(/^[0-9a-f]{40}$/);
+      expect(release.tagObject).toMatch(/^[0-9a-f]{40}$/);
+      expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+    }
+  });
+
+  it('redacts the probe checkout and environment from native diagnostics', () => {
+    expect(
+      redactProbeRoots('  cd /work/h0215 && /work/venv/bin/python -m pip install -e .', ['/work/h0215', '/work/venv']),
+    ).toBe('  cd <redacted:path> && <redacted:path>/bin/python -m pip install -e .');
   });
 
   it('redacts install directories and host paths from version output and process trees', () => {

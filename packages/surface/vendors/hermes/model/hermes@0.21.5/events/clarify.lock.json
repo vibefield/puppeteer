@@ -1,0 +1,161 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "clarify.lock",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Lock one answer of a batch clarify request (editable until every question is locked).",
+  "payloadSchema": {
+    "$ref": "#/$defs/ClarifyLockParams",
+    "$defs": {
+      "ClarifyLockParams": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "default": "",
+            "title": "Answer"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": ["request_id", "question_id"],
+        "title": "ClarifyLockParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/ClarifyLockResult",
+    "$defs": {
+      "ClarifyLockResult": {
+        "additionalProperties": false,
+        "description": "``remaining`` lists the qids still unanswered; the lock that empties it resolves the request.\n``expired``: the wait already ended (timeout / cancel) — not an error.",
+        "properties": {
+          "remaining": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Remaining"
+          },
+          "status": {
+            "$ref": "#/$defs/ClarifyLockStatus"
+          }
+        },
+        "required": ["status"],
+        "title": "ClarifyLockResult",
+        "type": "object"
+      },
+      "ClarifyLockStatus": {
+        "enum": ["ok", "expired"],
+        "title": "ClarifyLockStatus",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["clarify.lock"]
+      },
+      "params": {
+        "$ref": "#/$defs/ClarifyLockParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ClarifyLockParams": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "default": "",
+            "title": "Answer"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": ["request_id", "question_id"],
+        "title": "ClarifyLockParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

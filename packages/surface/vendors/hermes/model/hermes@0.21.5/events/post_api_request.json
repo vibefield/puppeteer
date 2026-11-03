@@ -1,0 +1,102 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "post_api_request",
+  "firstSeen": "0.21.5",
+  "lastVerified": "0.21.5",
+  "fixture": "captures/hermes@0.21.5/basic-turn/plugin-hooks.jsonl",
+  "channel": "plugin-hook",
+  "channels": ["plugin-hook", "shell-hook", "outbound-webhook"],
+  "transport": "hook-callback",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "api_call_count": {
+        "type": "integer"
+      },
+      "api_duration": {
+        "type": "number"
+      },
+      "api_mode": {
+        "type": "string"
+      },
+      "api_request_id": {
+        "type": "string"
+      },
+      "assistant_content_chars": {
+        "type": "integer"
+      },
+      "assistant_message": {
+        "type": "string"
+      },
+      "assistant_tool_call_count": {
+        "type": "integer"
+      },
+      "base_url": {
+        "type": "string"
+      },
+      "ended_at": {
+        "type": "number"
+      },
+      "finish_reason": {
+        "type": "string"
+      },
+      "first_chunk_at": {
+        "type": "number"
+      },
+      "message_count": {
+        "type": "integer"
+      },
+      "moa_references": {
+        "type": "null"
+      },
+      "model": {
+        "type": "string"
+      },
+      "platform": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "response": {
+        "type": "object"
+      },
+      "response_model": {
+        "type": "string"
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "started_at": {
+        "type": "number"
+      },
+      "task_id": {
+        "type": "string"
+      },
+      "telemetry_schema_version": {
+        "type": "string"
+      },
+      "turn_id": {
+        "type": "string"
+      },
+      "usage": {
+        "type": ["null", "object"]
+      }
+    }
+  },
+  "evidence": {
+    "existence": ["hermes-runtime-headless"],
+    "shape": ["hermes-runtime-headless"]
+  },
+  "schemaFidelity": {
+    "payload": "sampled",
+    "limitations": [
+      "The payload is the in-process plugin callback kwargs object, sampled from the census; shell-hook and outbound-webhook envelopes are retained in the source reference.",
+      "Arbitrary plugin return values and event-specific nested values remain unconstrained."
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "Outbound webhooks are a notify-only copy of the same hook name; the census sidecar registered them."
+}

@@ -1,0 +1,6 @@
+exit 1
+The ACP server can't start: its protocol packages are missing from this install.
+Run `hermes update` to reinstall dependencies. If that fails, run manually:
+  cd <redacted:path> && <redacted:path>/bin/python -m pip install -e '.[acp]'
+  (no pip in this venv: uv pip install -e '.[acp]')
+Details: No module named 'acp'

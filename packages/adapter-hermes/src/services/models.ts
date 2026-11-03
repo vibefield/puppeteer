@@ -48,7 +48,8 @@ export function createHermesModelService(options: NativeModelProbeOptions = {}):
   const profiles = createHermesProfileService(options);
   return defineModelService({
     // The gateway's session.create takes model, provider and reasoning_effort; session.resume takes none of them
-    // (exact source 0.20.0; 0.21.4 in draft/artifacts/resume-selection-2026-10-12), so a resumed session keeps its own.
+    // (exact source 0.20.0; 0.21.4 in draft/artifacts/resume-selection-2026-10-12; the 0.21.5 contract), so a resumed
+    // session keeps its own.
     provider: { id: 'hermes', label: 'Hermes', discovery: 'prelaunch', resumeSelection: false },
     async discover(context) {
       const env = nativeModelEnvironment(

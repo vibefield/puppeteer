@@ -1,0 +1,302 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "groups.log",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "A monotonic room-log delta after since_seq, bounded by count and page bytes.",
+  "payloadSchema": {
+    "$ref": "#/$defs/GroupsLogParams",
+    "$defs": {
+      "GroupsLogParams": {
+        "additionalProperties": false,
+        "properties": {
+          "include_disbanded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Include Disbanded"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Limit"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "room_id": {
+            "title": "Room Id",
+            "type": "string"
+          },
+          "since_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Since Seq"
+          }
+        },
+        "required": ["room_id"],
+        "title": "GroupsLogParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/GroupsLogResult",
+    "$defs": {
+      "GroupsLogResult": {
+        "additionalProperties": false,
+        "description": "``gateway/hosted_rooms.py::read_events`` page — also the ``page`` ``groups.replicate`` ingests.",
+        "properties": {
+          "authority": {
+            "$ref": "#/$defs/RoomAuthority"
+          },
+          "cursor": {
+            "title": "Cursor",
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/$defs/RoomEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "latest_seq": {
+            "title": "Latest Seq",
+            "type": "integer"
+          }
+        },
+        "required": ["events", "cursor", "latest_seq", "has_more", "authority"],
+        "title": "GroupsLogResult",
+        "type": "object"
+      },
+      "RoomAuthority": {
+        "additionalProperties": false,
+        "properties": {
+          "epoch": {
+            "title": "Epoch",
+            "type": "integer"
+          },
+          "gateway_id": {
+            "title": "Gateway Id",
+            "type": "string"
+          }
+        },
+        "required": ["gateway_id", "epoch"],
+        "title": "RoomAuthority",
+        "type": "object"
+      },
+      "RoomEvent": {
+        "additionalProperties": false,
+        "description": "``gateway/hosted_rooms.py::_event_from_row``.",
+        "properties": {
+          "actor": {
+            "$ref": "#/$defs/RoomActor"
+          },
+          "authority_epoch": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Authority Epoch"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "idempotent": {
+            "default": false,
+            "title": "Idempotent",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "room_id": {
+            "title": "Room Id",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": ["room_id", "seq", "event_id", "kind", "actor", "payload", "created_at"],
+        "title": "RoomEvent",
+        "type": "object"
+      },
+      "RoomActor": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": ["kind", "id"],
+        "title": "RoomActor",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["groups.log"]
+      },
+      "params": {
+        "$ref": "#/$defs/GroupsLogParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "GroupsLogParams": {
+        "additionalProperties": false,
+        "properties": {
+          "include_disbanded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Include Disbanded"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Limit"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "room_id": {
+            "title": "Room Id",
+            "type": "string"
+          },
+          "since_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Since Seq"
+          }
+        },
+        "required": ["room_id"],
+        "title": "GroupsLogParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

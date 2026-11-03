@@ -160,7 +160,7 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-hermes",
       "persona": "hermes",
       "groundTruth": "packages/surface/vendors/hermes/groundtruth.json",
-      "candidateVersion": "0.20.0",
+      "candidateVersion": "0.21.5",
       "status": "baseline-pending",
       "blockers": [
         "The protected four-platform locked installed-console reconstruction and adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."

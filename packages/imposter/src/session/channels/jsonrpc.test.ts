@@ -1,6 +1,6 @@
 import { PassThrough } from 'node:stream';
 import { describe, expect, it } from 'vitest';
-import { createAppServerChannel, requestFirstAnswer } from './jsonrpc.ts';
+import { createAppServerChannel, requestFirstAnswer, serverRequestId } from './jsonrpc.ts';
 
 /** One server-side channel and the client end that reads its requests and writes replies. */
 function client(log: string[] = []) {
@@ -62,5 +62,34 @@ describe('requestFirstAnswer', () => {
     controller.reply(controller.requests[1]!.id, { error: { code: -32601, message: 'no' } });
     viewer.reply(viewer.requests[1]!.id, { error: { code: -32601, message: 'no' } });
     await expect(refused).rejects.toThrow('no');
+  });
+});
+
+describe('vendor-spelled server request ids', () => {
+  it('mints prefixed string ids and settles a reply that echoes one', async () => {
+    const toClient = new PassThrough();
+    const toServer = new PassThrough();
+    const channel = createAppServerChannel({
+      input: toServer,
+      output: toClient,
+      jsonrpc: '2.0',
+      serve: async () => ({}),
+      requestId: serverRequestId('srq-'),
+    });
+    const frames: Array<{ id: unknown; method: string }> = [];
+    toClient.setEncoding('utf8');
+    toClient.on('data', (chunk: string) => {
+      for (const line of chunk.split('\n').filter(Boolean)) frames.push(JSON.parse(line) as never);
+    });
+    const answer = channel.request('approval', { session_id: 'live' });
+    await tick();
+    expect(frames).toEqual([expect.objectContaining({ id: 'srq-000000000001', method: 'approval' })]);
+    toServer.write(`${JSON.stringify({ jsonrpc: '2.0', id: 'srq-000000000001', result: { choice: 'deny' } })}\n`);
+    await expect(answer).resolves.toEqual({ choice: 'deny' });
+    channel.close();
+  });
+
+  it('keeps integer ids when the vendor declares no prefix', () => {
+    expect(serverRequestId(undefined)).toBeUndefined();
   });
 });

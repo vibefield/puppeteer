@@ -1,0 +1,104 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "todo.updated",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "Full todo snapshot after a todo tool ran.",
+  "payloadSchema": {
+    "$ref": "#/$defs/TodoUpdatedPayload",
+    "$defs": {
+      "TodoUpdatedPayload": {
+        "additionalProperties": false,
+        "description": "``tool_progress._normalize_todo_state`` — full task snapshot.",
+        "properties": {
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "todos": {
+            "items": {},
+            "title": "Todos",
+            "type": "array"
+          }
+        },
+        "required": ["todos", "revision"],
+        "title": "TodoUpdatedPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["todo.updated"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/TodoUpdatedPayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "TodoUpdatedPayload": {
+        "additionalProperties": false,
+        "description": "``tool_progress._normalize_todo_state`` — full task snapshot.",
+        "properties": {
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "todos": {
+            "items": {},
+            "title": "Todos",
+            "type": "array"
+          }
+        },
+        "required": ["todos", "revision"],
+        "title": "TodoUpdatedPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "unverified"
+}

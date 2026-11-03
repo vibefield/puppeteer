@@ -46,6 +46,17 @@ export class HermesGatewayNormalizer {
       turnId: currentTurnId,
       nativeEvent: frame,
     };
+    if (parsed.serverRequest) {
+      const { id, method } = parsed.serverRequest;
+      switch (method) {
+        case 'approval':
+          return this.record(this.interaction.requestPermission(id, parsed.payload), base);
+        case 'clarify':
+          return this.record(this.interaction.requestServerQuestion(id, parsed.payload), base);
+        default:
+          return this.record(normalizeHermesNative(method), base, 'retained-native');
+      }
+    }
     if (!parsed.type) {
       return this.record([hermesNativeEvent('untyped')], base, 'retained-native');
     }
@@ -87,6 +98,12 @@ export class HermesGatewayNormalizer {
         return this.record(this.interaction.requestQuestion(parsed.payload), base);
       case 'clarify.expire':
         return this.record(this.interaction.expireQuestion(parsed.payload), base);
+      case 'request.cancel': {
+        const events = this.interaction.cancelServerRequest(parsed.payload);
+        return events.length > 0
+          ? this.record(events, base)
+          : this.record(normalizeHermesNative(type), base, 'retained-native');
+      }
       default:
         return this.record(normalizeHermesNative(type), base, 'retained-native');
     }

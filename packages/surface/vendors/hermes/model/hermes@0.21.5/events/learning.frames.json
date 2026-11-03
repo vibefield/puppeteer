@@ -1,0 +1,401 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "learning.frames",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Pre-render the /journey timeline (frames + legend/summary) so the TUI walks it locally.",
+  "payloadSchema": {
+    "$ref": "#/$defs/LearningFramesParams",
+    "$defs": {
+      "LearningFramesParams": {
+        "additionalProperties": false,
+        "properties": {
+          "cols": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cols"
+          },
+          "frames": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Frames"
+          },
+          "rows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rows"
+          }
+        },
+        "title": "LearningFramesParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/LearningFramesResult",
+    "$defs": {
+      "LearningFramesResult": {
+        "additionalProperties": false,
+        "properties": {
+          "axis": {
+            "$ref": "#/$defs/LearningAxis"
+          },
+          "buckets": {
+            "items": {
+              "$ref": "#/$defs/LearningBucketRow"
+            },
+            "title": "Buckets",
+            "type": "array"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/$defs/LearningLegendItem"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "cols": {
+            "title": "Cols",
+            "type": "integer"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "frames": {
+            "items": {
+              "$ref": "#/$defs/LearningFrame"
+            },
+            "title": "Frames",
+            "type": "array"
+          },
+          "legend": {
+            "items": {
+              "$ref": "#/$defs/LearningLegendItem"
+            },
+            "title": "Legend",
+            "type": "array"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "summary": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Summary",
+            "type": "array"
+          }
+        },
+        "required": ["frames", "legend", "categories", "buckets", "summary", "axis", "count", "cols", "rows"],
+        "title": "LearningFramesResult",
+        "type": "object"
+      },
+      "LearningAxis": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": ["start", "end"],
+        "title": "LearningAxis",
+        "type": "object"
+      },
+      "LearningBucketRow": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Category"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Color"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "memories": {
+            "title": "Memories",
+            "type": "integer"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/$defs/LearningNodeRow"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "skills": {
+            "title": "Skills",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": ["index", "label", "date", "skills", "memories", "total", "nodes"],
+        "title": "LearningBucketRow",
+        "type": "object"
+      },
+      "LearningLegendItem": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Color"
+          },
+          "glyph": {
+            "title": "Glyph",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Style"
+          }
+        },
+        "required": ["glyph", "label"],
+        "title": "LearningLegendItem",
+        "type": "object"
+      },
+      "LearningFrame": {
+        "additionalProperties": false,
+        "description": "``agent.learning_graph_render.render_graph`` projection; ``grid`` rows are lists of\n``[text, styleKey, alpha?, hexOverride?]`` runs.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "grid": {
+            "items": {
+              "items": {},
+              "type": "array"
+            },
+            "title": "Grid",
+            "type": "array"
+          },
+          "labels": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "reveal": {
+            "title": "Reveal",
+            "type": "number"
+          },
+          "visible": {
+            "title": "Visible",
+            "type": "integer"
+          }
+        },
+        "required": ["reveal", "date", "visible", "grid"],
+        "title": "LearningFrame",
+        "type": "object"
+      },
+      "LearningNodeRow": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "fullLabel": {
+            "title": "Fulllabel",
+            "type": "string"
+          },
+          "glyph": {
+            "title": "Glyph",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "meta": {
+            "title": "Meta",
+            "type": "string"
+          },
+          "style": {
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": ["id", "glyph", "label", "fullLabel", "meta", "body", "style"],
+        "title": "LearningNodeRow",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["learning.frames"]
+      },
+      "params": {
+        "$ref": "#/$defs/LearningFramesParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "LearningFramesParams": {
+        "additionalProperties": false,
+        "properties": {
+          "cols": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cols"
+          },
+          "frames": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Frames"
+          },
+          "rows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rows"
+          }
+        },
+        "title": "LearningFramesParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

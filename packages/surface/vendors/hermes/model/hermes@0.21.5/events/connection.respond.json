@@ -1,0 +1,396 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "connection.respond",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Per-target outcomes from the card, and an optional Continue.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ConnectionRespondParams",
+    "$defs": {
+      "ConnectionRespondParams": {
+        "additionalProperties": false,
+        "properties": {
+          "op_id": {
+            "title": "Op Id",
+            "type": "string"
+          },
+          "owner": {
+            "discriminator": {
+              "mapping": {
+                "account": "#/components/schemas/AccountOwner",
+                "session": "#/components/schemas/SessionOwner"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/SessionOwner"
+              },
+              {
+                "$ref": "#/$defs/AccountOwner"
+              }
+            ],
+            "title": "Owner"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "result": {
+            "$ref": "#/$defs/ConnectionAnswer"
+          }
+        },
+        "required": ["owner", "op_id", "result"],
+        "title": "ConnectionRespondParams",
+        "type": "object"
+      },
+      "SessionOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "session",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "session_id"],
+        "title": "SessionOwner",
+        "type": "object"
+      },
+      "AccountOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "account",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type"],
+        "title": "AccountOwner",
+        "type": "object"
+      },
+      "ConnectionAnswer": {
+        "additionalProperties": false,
+        "description": "The card's answer: per-target outcomes and an optional Continue\n(``settled_by: \"continue\"``). Settlement is derived from target states afterwards.",
+        "properties": {
+          "settled_by": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectionSettleReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/$defs/ConnectionAnswerTarget"
+            },
+            "title": "Targets",
+            "type": "array"
+          }
+        },
+        "title": "ConnectionAnswer",
+        "type": "object"
+      },
+      "ConnectionSettleReason": {
+        "description": "``tools/connectors/contract.py::SettleReason``.",
+        "enum": ["all_resolved", "continue", "deadline", "interrupt"],
+        "title": "ConnectionSettleReason",
+        "type": "string"
+      },
+      "ConnectionAnswerTarget": {
+        "additionalProperties": false,
+        "description": "One row's answer from the card. ``env`` carries the credential values an install asked for\nthrough ``required_env``.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detail"
+          },
+          "env": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Env"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/$defs/ConnectionAnswerStatus"
+          }
+        },
+        "required": ["name", "status"],
+        "title": "ConnectionAnswerTarget",
+        "type": "object"
+      },
+      "ConnectionAnswerStatus": {
+        "description": "What the card says about one row: ``tools/connectors/mcp.py::apply_answer``.",
+        "enum": ["approved", "skipped"],
+        "title": "ConnectionAnswerStatus",
+        "type": "string"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/ConnectionRespondResult",
+    "$defs": {
+      "ConnectionRespondResult": {
+        "additionalProperties": false,
+        "properties": {
+          "settled": {
+            "title": "Settled",
+            "type": "boolean"
+          },
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": ["status", "settled"],
+        "title": "ConnectionRespondResult",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["connection.respond"]
+      },
+      "params": {
+        "$ref": "#/$defs/ConnectionRespondParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ConnectionRespondParams": {
+        "additionalProperties": false,
+        "properties": {
+          "op_id": {
+            "title": "Op Id",
+            "type": "string"
+          },
+          "owner": {
+            "discriminator": {
+              "mapping": {
+                "account": "#/components/schemas/AccountOwner",
+                "session": "#/components/schemas/SessionOwner"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/SessionOwner"
+              },
+              {
+                "$ref": "#/$defs/AccountOwner"
+              }
+            ],
+            "title": "Owner"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "result": {
+            "$ref": "#/$defs/ConnectionAnswer"
+          }
+        },
+        "required": ["owner", "op_id", "result"],
+        "title": "ConnectionRespondParams",
+        "type": "object"
+      },
+      "SessionOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "session",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "session_id"],
+        "title": "SessionOwner",
+        "type": "object"
+      },
+      "AccountOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "account",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type"],
+        "title": "AccountOwner",
+        "type": "object"
+      },
+      "ConnectionAnswer": {
+        "additionalProperties": false,
+        "description": "The card's answer: per-target outcomes and an optional Continue\n(``settled_by: \"continue\"``). Settlement is derived from target states afterwards.",
+        "properties": {
+          "settled_by": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectionSettleReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/$defs/ConnectionAnswerTarget"
+            },
+            "title": "Targets",
+            "type": "array"
+          }
+        },
+        "title": "ConnectionAnswer",
+        "type": "object"
+      },
+      "ConnectionSettleReason": {
+        "description": "``tools/connectors/contract.py::SettleReason``.",
+        "enum": ["all_resolved", "continue", "deadline", "interrupt"],
+        "title": "ConnectionSettleReason",
+        "type": "string"
+      },
+      "ConnectionAnswerTarget": {
+        "additionalProperties": false,
+        "description": "One row's answer from the card. ``env`` carries the credential values an install asked for\nthrough ``required_env``.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detail"
+          },
+          "env": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Env"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/$defs/ConnectionAnswerStatus"
+          }
+        },
+        "required": ["name", "status"],
+        "title": "ConnectionAnswerTarget",
+        "type": "object"
+      },
+      "ConnectionAnswerStatus": {
+        "description": "What the card says about one row: ``tools/connectors/mcp.py::apply_answer``.",
+        "enum": ["approved", "skipped"],
+        "title": "ConnectionAnswerStatus",
+        "type": "string"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

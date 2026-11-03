@@ -1,0 +1,279 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "connectors.list",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Connector catalog + connection state for one session or profile account owner.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ConnectorsListParams",
+    "$defs": {
+      "ConnectorsListParams": {
+        "additionalProperties": false,
+        "properties": {
+          "owner": {
+            "discriminator": {
+              "mapping": {
+                "account": "#/components/schemas/AccountOwner",
+                "session": "#/components/schemas/SessionOwner"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/SessionOwner"
+              },
+              {
+                "$ref": "#/$defs/AccountOwner"
+              }
+            ],
+            "title": "Owner"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "required": ["owner"],
+        "title": "ConnectorsListParams",
+        "type": "object"
+      },
+      "SessionOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "session",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "session_id"],
+        "title": "SessionOwner",
+        "type": "object"
+      },
+      "AccountOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "account",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type"],
+        "title": "AccountOwner",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/ConnectorsListResult",
+    "$defs": {
+      "ConnectorsListResult": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "connectors": {
+            "items": {
+              "$ref": "#/$defs/ConnectorRow"
+            },
+            "title": "Connectors",
+            "type": "array"
+          }
+        },
+        "required": ["available", "connectors"],
+        "title": "ConnectorsListResult",
+        "type": "object"
+      },
+      "ConnectorRow": {
+        "additionalProperties": false,
+        "properties": {
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "connection_status": {
+            "anyOf": [
+              {
+                "enum": ["pending", "active", "failed", "expired", "revoked", "inactive"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Status"
+          },
+          "connector": {
+            "title": "Connector",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "gateway_disabled_tools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Gateway Disabled Tools",
+            "type": "array"
+          },
+          "status_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reason"
+          }
+        },
+        "required": [
+          "connector",
+          "enabled",
+          "connected",
+          "connection_status",
+          "status_reason",
+          "gateway_disabled_tools"
+        ],
+        "title": "ConnectorRow",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["connectors.list"]
+      },
+      "params": {
+        "$ref": "#/$defs/ConnectorsListParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ConnectorsListParams": {
+        "additionalProperties": false,
+        "properties": {
+          "owner": {
+            "discriminator": {
+              "mapping": {
+                "account": "#/components/schemas/AccountOwner",
+                "session": "#/components/schemas/SessionOwner"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/SessionOwner"
+              },
+              {
+                "$ref": "#/$defs/AccountOwner"
+              }
+            ],
+            "title": "Owner"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "required": ["owner"],
+        "title": "ConnectorsListParams",
+        "type": "object"
+      },
+      "SessionOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "session",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "session_id"],
+        "title": "SessionOwner",
+        "type": "object"
+      },
+      "AccountOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "account",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type"],
+        "title": "AccountOwner",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

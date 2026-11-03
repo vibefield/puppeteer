@@ -1,0 +1,2 @@
+{"direction":"client","jsonrpc":"2.0","id":"anon-d4735e3a265e16ee","method":"session.resume","params":{"session_id":"anon-6483d2cfdcbeabd4","cwd":"/workspace"}}
+{"jsonrpc":"2.0","id":"anon-d4735e3a265e16ee","error":{"code":4000,"message":"<redacted:message>"}}

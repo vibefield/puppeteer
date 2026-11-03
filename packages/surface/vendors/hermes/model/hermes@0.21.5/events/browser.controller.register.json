@@ -1,0 +1,237 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "browser.controller.register",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Attach this connection as the browser controller for one session; fails closed (4403).",
+  "payloadSchema": {
+    "$ref": "#/$defs/BrowserControllerRegisterParams",
+    "$defs": {
+      "BrowserControllerRegisterParams": {
+        "additionalProperties": false,
+        "properties": {
+          "browser_profile_id": {
+            "title": "Browser Profile Id",
+            "type": "string"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Capabilities"
+          },
+          "controller_id": {
+            "title": "Controller Id",
+            "type": "string"
+          },
+          "principal_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Principal Id"
+          },
+          "protocol_version": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Protocol Version"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id", "controller_id", "browser_profile_id"],
+        "title": "BrowserControllerRegisterParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/BrowserControllerRegisterResult",
+    "$defs": {
+      "BrowserControllerRegisterResult": {
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "$ref": "#/$defs/ControllerScope"
+          }
+        },
+        "required": ["scope"],
+        "title": "BrowserControllerRegisterResult",
+        "type": "object"
+      },
+      "ControllerScope": {
+        "additionalProperties": false,
+        "properties": {
+          "browser_profile_id": {
+            "title": "Browser Profile Id",
+            "type": "string"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "controller_id": {
+            "title": "Controller Id",
+            "type": "string"
+          },
+          "principal_id": {
+            "title": "Principal Id",
+            "type": "string"
+          },
+          "profile_id": {
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "transport_family": {
+            "title": "Transport Family",
+            "type": "string"
+          }
+        },
+        "required": [
+          "principal_id",
+          "profile_id",
+          "session_id",
+          "controller_id",
+          "browser_profile_id",
+          "transport_family",
+          "capabilities"
+        ],
+        "title": "ControllerScope",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["browser.controller.register"]
+      },
+      "params": {
+        "$ref": "#/$defs/BrowserControllerRegisterParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "BrowserControllerRegisterParams": {
+        "additionalProperties": false,
+        "properties": {
+          "browser_profile_id": {
+            "title": "Browser Profile Id",
+            "type": "string"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Capabilities"
+          },
+          "controller_id": {
+            "title": "Controller Id",
+            "type": "string"
+          },
+          "principal_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Principal Id"
+          },
+          "protocol_version": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Protocol Version"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id", "controller_id", "browser_profile_id"],
+        "title": "BrowserControllerRegisterParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

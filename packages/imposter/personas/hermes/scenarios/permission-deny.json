@@ -7,7 +7,11 @@
         "emit": {
           "channel": "tui-gateway",
           "event": "tool.start",
-          "with": { "name": "terminal", "tool_id": "call_imposter", "context": "agent" }
+          "with": {
+            "name": "terminal",
+            "tool_id": "call_imposter",
+            "context": "agent"
+          }
         }
       }
     },
@@ -16,8 +20,15 @@
       "do": {
         "emit": {
           "channel": "tui-gateway",
-          "event": "approval.request",
-          "with": { "choices": ["once", "session", "always", "deny"] }
+          "event": "approval",
+          "request": true,
+          "with": {
+            "session_id": "$liveSessionId",
+            "request_id": "$uuid:approval",
+            "command": "rm -rf ./scratch",
+            "description": "delete in root path",
+            "choices": ["once", "session", "always", "deny"]
+          }
         }
       }
     },
@@ -46,7 +57,10 @@
         "emit": {
           "channel": "tui-gateway",
           "event": "message.complete",
-          "with": { "text": "permission denied", "status": "complete" }
+          "with": {
+            "text": "permission denied",
+            "status": "complete"
+          }
         }
       }
     }

@@ -1,0 +1,291 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "approval",
+  "firstSeen": "0.21.5",
+  "lastVerified": "0.21.5",
+  "fixture": "captures/hermes@0.21.5/permission-deny/rpc.jsonl",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "A dangerous command awaits the user's decision.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ApprovalRequestParams",
+    "$defs": {
+      "ApprovalRequestParams": {
+        "additionalProperties": true,
+        "description": "``tui_gateway/server.py::_approval_request_payload`` — the command is redacted server-side.",
+        "properties": {
+          "allow_permanent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Allow Permanent"
+          },
+          "allow_session": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Allow Session"
+          },
+          "choices": {
+            "items": {
+              "$ref": "#/$defs/ApprovalChoice"
+            },
+            "title": "Choices",
+            "type": "array"
+          },
+          "command": {
+            "default": "",
+            "title": "Command",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "gateway_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Gateway Session Id"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "smart_denied": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Smart Denied"
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Name"
+          }
+        },
+        "required": ["session_id", "request_id"],
+        "title": "ApprovalRequestParams",
+        "type": "object"
+      },
+      "ApprovalChoice": {
+        "enum": ["once", "session", "always", "deny"],
+        "title": "ApprovalChoice",
+        "type": "string"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/ApprovalResult",
+    "$defs": {
+      "ApprovalResult": {
+        "additionalProperties": false,
+        "properties": {
+          "all": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "All"
+          },
+          "choice": {
+            "$ref": "#/$defs/ApprovalChoice"
+          }
+        },
+        "required": ["choice"],
+        "title": "ApprovalResult",
+        "type": "object"
+      },
+      "ApprovalChoice": {
+        "enum": ["once", "session", "always", "deny"],
+        "title": "ApprovalChoice",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["approval"]
+      },
+      "params": {
+        "$ref": "#/$defs/ApprovalRequestParams"
+      }
+    },
+    "required": ["jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ApprovalRequestParams": {
+        "additionalProperties": true,
+        "description": "``tui_gateway/server.py::_approval_request_payload`` — the command is redacted server-side.",
+        "properties": {
+          "allow_permanent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Allow Permanent"
+          },
+          "allow_session": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Allow Session"
+          },
+          "choices": {
+            "items": {
+              "$ref": "#/$defs/ApprovalChoice"
+            },
+            "title": "Choices",
+            "type": "array"
+          },
+          "command": {
+            "default": "",
+            "title": "Command",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "gateway_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Gateway Session Id"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "smart_denied": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Smart Denied"
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Name"
+          }
+        },
+        "required": ["session_id", "request_id"],
+        "title": "ApprovalRequestParams",
+        "type": "object"
+      },
+      "ApprovalChoice": {
+        "enum": ["once", "session", "always", "deny"],
+        "title": "ApprovalChoice",
+        "type": "string"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-runtime-headless", "hermes-generated-contract"],
+    "shape": ["hermes-generated-contract", "hermes-runtime-headless"],
+    "result": ["hermes-generated-contract", "hermes-runtime-headless"],
+    "carrier": ["hermes-runtime-headless"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "Replaces the 0.20.0 approval.request event and approval.respond reply. The id is srq-<12 hex>; every attached client receives the frame, and the first response settles it. Puppeteer never answers: the native TUI does."
+}

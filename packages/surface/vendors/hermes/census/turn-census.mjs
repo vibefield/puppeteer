@@ -4,6 +4,11 @@
  * and a loopback OpenAI-compatible provider. Records JSON-RPC frames, provider
  * requests, plugin-hook dumps, and outbound webhook bodies under captures-raw/.
  *
+ * From 0.21 the gateway asks its client questions as server→client JSON-RPC
+ * requests (`approval`, `clarify`, ...) and the client answers with a response
+ * frame carrying the same `srq-` id. Like the native shared channel, the census
+ * advertises `client.capabilities {server_requests: true}` on `gateway.ready`.
+ *
  * usage:
  *   node turn-census.mjs --python <venv/bin/python> --checkout <tag-checkout> [--scenario basic-turn]
  */
@@ -86,8 +91,8 @@ export const SCENARIOS = {
         { delta: {}, finishReason: 'stop' },
       ],
     ],
-    onEvent: { 'approval.request': { method: 'approval.respond', params: { choice: 'deny' } } },
-    waitFor: ['approval.request', 'message.complete'],
+    onServerRequest: { approval: { choice: 'deny' } },
+    waitFor: ['message.complete'],
   },
   interrupt: {
     prompt: 'Start a long reply so the census can interrupt it.',
@@ -108,6 +113,8 @@ export const SCENARIOS = {
   'resume-turn': {
     prompt: 'Reply with exactly SURFACE_HERMES_RESUME and do not use tools.',
     resumeAfter: 'basic-turn',
+    // 0.20.0 ignored an unread `cwd`; the 0.21 contract rejects unknown params (4000).
+    rejectedResumeParams: { cwd: true },
     responses: [
       [
         { delta: { role: 'assistant' } },
@@ -348,6 +355,11 @@ function createGateway({ python, checkout, home, workspace, logPath, hookLog }) 
         }, 60_000);
       });
     },
+    respond(id, result) {
+      const payload = { jsonrpc: '2.0', id, result };
+      frames.push({ direction: 'client', ...payload });
+      child.stdin.write(`${JSON.stringify(payload)}\n`);
+    },
     waitFor(predicate, timeoutMs = 60_000) {
       const existing = frames.find((frame) => predicate(frame));
       if (existing) return Promise.resolve(existing);
@@ -415,13 +427,30 @@ export async function runScenario({ name, python, checkout, outputRoot, previous
   let storedSessionId;
   try {
     await gateway.waitFor((frame) => eventType(frame) === 'gateway.ready', 20_000);
+    await gateway.request('client.capabilities', { server_requests: true });
     let session;
     if (scenario.resumeAfter) {
       if (!reused?.storedSessionId) throw new Error(`resume-turn needs a completed ${scenario.resumeAfter}`);
-      session = await gateway.request('session.resume', {
-        session_id: reused.storedSessionId,
-        cwd: workspace,
-      });
+      if (scenario.rejectedResumeParams?.cwd) {
+        const start = gateway.frames.length;
+        const rejected = await gateway
+          .request('session.resume', { session_id: reused.storedSessionId, cwd: workspace })
+          .then(
+            () => undefined,
+            (error) => error,
+          );
+        if (!rejected) throw new Error('session.resume unexpectedly accepted an undeclared cwd');
+        // The refused exchange is negative evidence: keep it out of the native stream that replay
+        // validates as legal frames, and retain it beside that stream.
+        const probeId = gateway.frames[start]?.id;
+        const exchange = gateway.frames.filter((frame, index) => index >= start && frame.id === probeId);
+        for (const frame of exchange) gateway.frames.splice(gateway.frames.indexOf(frame), 1);
+        writeFileSync(
+          join(rawRoot, 'rejections.jsonl'),
+          `${exchange.map((frame) => JSON.stringify(frame)).join('\n')}\n`,
+        );
+      }
+      session = await gateway.request('session.resume', { session_id: reused.storedSessionId });
     } else {
       session = await gateway.request('session.create', { cwd: workspace, source: 'tui' });
     }
@@ -434,6 +463,19 @@ export async function runScenario({ name, python, checkout, outputRoot, previous
     if (scenario.interruptAfter) {
       await gateway.waitFor((frame) => eventType(frame) === scenario.interruptAfter, 20_000);
       await gateway.request('session.interrupt', { session_id: sessionId });
+    }
+    if (scenario.onServerRequest) {
+      for (const [method, result] of Object.entries(scenario.onServerRequest)) {
+        const frame = await gateway.waitFor(
+          (candidate) => candidate.method === method && typeof candidate.id === 'string' && !candidate.direction,
+          25_000,
+        );
+        gateway.respond(frame.id, result);
+        appendFileSync(
+          join(rawRoot, 'follow-ups.jsonl'),
+          `${JSON.stringify({ serverRequest: method, frame: frame.params, response: result })}\n`,
+        );
+      }
     }
     if (scenario.onEvent) {
       for (const [type, followUp] of Object.entries(scenario.onEvent)) {

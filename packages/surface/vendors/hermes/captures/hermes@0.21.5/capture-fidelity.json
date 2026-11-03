@@ -1,0 +1,14 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "hermes",
+  "vendorVersion": "0.21.5",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": [
+    "*/*.jsonl",
+    "*/session.json",
+    "*/capture.json"
+  ],
+  "limitations": [
+    "Native gateway, hook, webhook, provider, and session JSON records retain all keys, containers, primitive types, and record order while sensitive scalar values are redacted in place."
+  ]
+}

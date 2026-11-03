@@ -1,0 +1,176 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "skills.reload",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Re-scan skill dirs; the pre-rendered ``output`` is what /reload-skills prints.",
+  "payloadSchema": {
+    "$ref": "#/$defs/SkillsReloadParams",
+    "$defs": {
+      "SkillsReloadParams": {
+        "additionalProperties": false,
+        "description": "``session_id`` binds the rescan to that session's profile and workspace (project skills).",
+        "properties": {
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Id"
+          }
+        },
+        "title": "SkillsReloadParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/SkillsReloadResult",
+    "$defs": {
+      "SkillsReloadResult": {
+        "additionalProperties": false,
+        "properties": {
+          "output": {
+            "title": "Output",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/$defs/SkillsReloadDiff"
+          }
+        },
+        "required": ["output", "result"],
+        "title": "SkillsReloadResult",
+        "type": "object"
+      },
+      "SkillsReloadDiff": {
+        "additionalProperties": true,
+        "description": "``agent.skill_commands.reload_skills``.",
+        "properties": {
+          "added": {
+            "items": {
+              "$ref": "#/$defs/SkillCommandRef"
+            },
+            "title": "Added",
+            "type": "array"
+          },
+          "commands": {
+            "default": 0,
+            "title": "Commands",
+            "type": "integer"
+          },
+          "removed": {
+            "items": {
+              "$ref": "#/$defs/SkillCommandRef"
+            },
+            "title": "Removed",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "unchanged": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unchanged",
+            "type": "array"
+          }
+        },
+        "title": "SkillsReloadDiff",
+        "type": "object"
+      },
+      "SkillCommandRef": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": ["name"],
+        "title": "SkillCommandRef",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["skills.reload"]
+      },
+      "params": {
+        "$ref": "#/$defs/SkillsReloadParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "SkillsReloadParams": {
+        "additionalProperties": false,
+        "description": "``session_id`` binds the rescan to that session's profile and workspace (project skills).",
+        "properties": {
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Id"
+          }
+        },
+        "title": "SkillsReloadParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

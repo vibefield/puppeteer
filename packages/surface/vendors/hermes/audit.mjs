@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { loadModel, validateSanitizedPayload } from '@vibefield/puppeteer-surface';
 import { checkCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import {
+  RELEASE_DATE,
   RELEASE_TAG,
   REQUIRED_FLAGS,
   REQUIRED_SUBCOMMANDS,
@@ -152,7 +153,19 @@ export function auditHermes() {
       for (const [index, line] of readFileSync(rpcPath, 'utf8').split('\n').entries()) {
         if (!line.trim()) continue;
         const frame = JSON.parse(line);
-        if (frame.direction === 'client') {
+        if (frame.direction === 'client' && typeof frame.method !== 'string') {
+          // The census answering a server→client request (approval): its result is that request's.
+          const descriptor = requests.get(frame.id);
+          if (!descriptor) {
+            problems.push(`${scenario}/rpc.jsonl:${index + 1} response to an unseen server request`);
+            continue;
+          }
+          if (nativeShapeEvidence && descriptor.resultSchema && frame.result !== undefined) {
+            for (const failure of validateSanitizedPayload(descriptor.resultSchema, frame.result)) {
+              problems.push(`${scenario} ${descriptor.event} response: ${failure}`);
+            }
+          }
+        } else if (frame.direction === 'client') {
           const descriptor = descriptorFor(frame.method, 'client-to-agent', 'tui-gateway');
           if (!descriptor) {
             problems.push(`${scenario}/rpc.jsonl:${index + 1} unmodelled ${frame.method}`);
@@ -186,12 +199,46 @@ export function auditHermes() {
               problems.push(`${scenario} ${type} carrier: ${failure}`);
             }
           }
+        } else if (typeof frame.method === 'string' && frame.id != null) {
+          const descriptor = descriptorFor(frame.method, 'agent-to-client', 'tui-gateway');
+          if (!descriptor) {
+            problems.push(`${scenario}/rpc.jsonl:${index + 1} unmodelled server request ${frame.method}`);
+            continue;
+          }
+          requests.set(frame.id, descriptor);
+          if (nativeShapeEvidence && descriptor.payloadSchema) {
+            for (const failure of validateSanitizedPayload(descriptor.payloadSchema, frame.params ?? {})) {
+              problems.push(`${scenario} ${frame.method}: ${failure}`);
+            }
+          }
+          if (nativeShapeEvidence && descriptor.recordSchema) {
+            for (const failure of validateSanitizedPayload(descriptor.recordSchema, frame)) {
+              problems.push(`${scenario} ${frame.method} carrier: ${failure}`);
+            }
+          }
         } else if (frame.result && frame.id != null) {
           const descriptor = requests.get(frame.id);
           if (nativeShapeEvidence && descriptor?.resultSchema) {
             for (const failure of validateSanitizedPayload(descriptor.resultSchema, frame.result)) {
               problems.push(`${scenario} ${descriptor.event} result: ${failure}`);
             }
+          }
+        }
+      }
+      const rejectionPath = join(capturesRoot, scenario, 'rejections.jsonl');
+      if (existsSync(rejectionPath)) {
+        // Negative evidence: each refused request must be one its contract forbids, refused natively.
+        const exchange = readFileSync(rejectionPath, 'utf8')
+          .split('\n')
+          .filter((line) => line.trim())
+          .map((line) => JSON.parse(line));
+        for (const request of exchange.filter((frame) => typeof frame.method === 'string')) {
+          const descriptor = descriptorFor(request.method, 'client-to-agent', 'tui-gateway');
+          const refusal = exchange.find((frame) => frame.id === request.id && frame.error);
+          if (!descriptor || refusal?.error?.code !== 4000) {
+            problems.push(`${scenario}/rejections.jsonl: ${request.method} lacks its native 4000 refusal`);
+          } else if (validateSanitizedPayload(descriptor.payloadSchema, request.params ?? {}).length === 0) {
+            problems.push(`${scenario}/rejections.jsonl: ${request.method} was refused but satisfies its contract`);
           }
         }
       }
@@ -235,7 +282,7 @@ export function auditHermes() {
     }
     if (!existsSync(join(root, 'version.txt'))) continue;
     const versionText = readFileSync(join(root, 'version.txt'), 'utf8');
-    if (!versionText.includes(VERSION) || !versionText.includes('2026.8.3')) {
+    if (!versionText.includes(VERSION) || !versionText.includes(RELEASE_DATE)) {
       problems.push(`${platform}: version output does not identify ${VERSION}`);
     }
     const help = readFileSync(join(root, 'help.txt'), 'utf8');
