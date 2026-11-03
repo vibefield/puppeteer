@@ -1,0 +1,237 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/vcs.diff",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Get VCS diff — Retrieve the current git diff for the working tree or against the default branch.",
+  "payloadSchema": {
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "context": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "git",
+              "branch"
+            ],
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "query"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "description": "VCS diff",
+        "items": {
+          "$ref": "#/$defs/VcsFileDiff"
+        },
+        "type": "array"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "context": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "git",
+              "branch"
+            ],
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/vcs/diff"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "query",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "VcsFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "method": {
+            "enum": [
+              "GET"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "properties": {
+              "context": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "directory": {
+                "type": "string"
+              },
+              "mode": {
+                "enum": [
+                  "git",
+                  "branch"
+                ],
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/vcs/diff"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "query"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-file-delete"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-file-delete"
+    ],
+    "result": [
+      "opencode-generated-openapi",
+      "opencode-runtime-file-delete"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-file-delete"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/file-delete/http-roundtrip.jsonl",
+  "notes": "OpenAPI operationId vcs.diff; GET /vcs/diff."
+}

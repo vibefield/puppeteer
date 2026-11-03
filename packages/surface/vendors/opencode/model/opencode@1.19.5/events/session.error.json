@@ -1,0 +1,643 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "session.error",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "error": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ProviderAuthError"
+          },
+          {
+            "$ref": "#/$defs/UnknownError"
+          },
+          {
+            "$ref": "#/$defs/MessageOutputLengthError"
+          },
+          {
+            "$ref": "#/$defs/MessageAbortedError"
+          },
+          {
+            "$ref": "#/$defs/StructuredOutputError"
+          },
+          {
+            "$ref": "#/$defs/ContextOverflowError"
+          },
+          {
+            "$ref": "#/$defs/ContentFilterError"
+          },
+          {
+            "$ref": "#/$defs/APIError"
+          }
+        ]
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      }
+    },
+    "type": "object",
+    "$defs": {
+      "ProviderAuthError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "providerID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "providerID",
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ProviderAuthError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "UnknownError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "UnknownError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "MessageOutputLengthError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "MessageOutputLengthError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "MessageAbortedError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "MessageAbortedError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "StructuredOutputError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "retries": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "message",
+              "retries"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "StructuredOutputError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "ContextOverflowError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "responseBody": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ContextOverflowError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "ContentFilterError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ContentFilterError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "APIError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "isRetryable": {
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string"
+              },
+              "metadata": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "responseBody": {
+                "type": "string"
+              },
+              "responseHeaders": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "statusCode": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "message",
+              "isRetryable"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "APIError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ProviderAuthError"
+              },
+              {
+                "$ref": "#/$defs/UnknownError"
+              },
+              {
+                "$ref": "#/$defs/MessageOutputLengthError"
+              },
+              {
+                "$ref": "#/$defs/MessageAbortedError"
+              },
+              {
+                "$ref": "#/$defs/StructuredOutputError"
+              },
+              {
+                "$ref": "#/$defs/ContextOverflowError"
+              },
+              {
+                "$ref": "#/$defs/ContentFilterError"
+              },
+              {
+                "$ref": "#/$defs/APIError"
+              }
+            ]
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "session.error"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "ProviderAuthError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "providerID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "providerID",
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ProviderAuthError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "UnknownError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "UnknownError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "MessageOutputLengthError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "properties": {},
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "MessageOutputLengthError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "MessageAbortedError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "MessageAbortedError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "StructuredOutputError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "retries": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "message",
+              "retries"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "StructuredOutputError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "ContextOverflowError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "responseBody": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ContextOverflowError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "ContentFilterError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "ContentFilterError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "APIError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "isRetryable": {
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string"
+              },
+              "metadata": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "responseBody": {
+                "type": "string"
+              },
+              "responseHeaders": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "statusCode": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "message",
+              "isRetryable"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "APIError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/abort-stream/events.jsonl"
+}

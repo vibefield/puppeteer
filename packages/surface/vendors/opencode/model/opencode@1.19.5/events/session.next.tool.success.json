@@ -1,0 +1,295 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "session.next.tool.success",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "assistantMessageID": {
+        "pattern": "^msg_",
+        "type": "string"
+      },
+      "callID": {
+        "type": "string"
+      },
+      "content": {
+        "items": {
+          "$ref": "#/$defs/LLMToolContent"
+        },
+        "type": "array"
+      },
+      "outputPaths": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "provider": {
+        "additionalProperties": false,
+        "properties": {
+          "executed": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "$ref": "#/$defs/LLMProviderMetadata"
+          }
+        },
+        "required": [
+          "executed"
+        ],
+        "type": "object"
+      },
+      "result": {},
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      },
+      "structured": {
+        "type": "object"
+      },
+      "timestamp": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "timestamp",
+      "sessionID",
+      "assistantMessageID",
+      "callID",
+      "structured",
+      "content",
+      "provider"
+    ],
+    "type": "object",
+    "$defs": {
+      "LLMToolContent": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ToolTextContent"
+          },
+          {
+            "$ref": "#/$defs/ToolFileContent"
+          }
+        ]
+      },
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      },
+      "ToolTextContent": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "type": "object"
+      },
+      "ToolFileContent": {
+        "additionalProperties": false,
+        "properties": {
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "assistantMessageID": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "callID": {
+            "type": "string"
+          },
+          "content": {
+            "items": {
+              "$ref": "#/$defs/LLMToolContent"
+            },
+            "type": "array"
+          },
+          "outputPaths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "provider": {
+            "additionalProperties": false,
+            "properties": {
+              "executed": {
+                "type": "boolean"
+              },
+              "metadata": {
+                "$ref": "#/$defs/LLMProviderMetadata"
+              }
+            },
+            "required": [
+              "executed"
+            ],
+            "type": "object"
+          },
+          "result": {},
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "structured": {
+            "type": "object"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "sessionID",
+          "assistantMessageID",
+          "callID",
+          "structured",
+          "content",
+          "provider"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "session.next.tool.success"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "LLMToolContent": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ToolTextContent"
+          },
+          {
+            "$ref": "#/$defs/ToolFileContent"
+          }
+        ]
+      },
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      },
+      "ToolTextContent": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "type": "object"
+      },
+      "ToolFileContent": {
+        "additionalProperties": false,
+        "properties": {
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified"
+}

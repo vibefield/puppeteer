@@ -1,0 +1,221 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/v2.session.question.reply",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Reply to pending question request — Answer a pending question request owned by a session.",
+  "payloadSchema": {
+    "properties": {
+      "body": {
+        "$ref": "#/$defs/QuestionV2Reply"
+      },
+      "method": {
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "requestID": {
+            "pattern": "^que",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestID",
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionV2Reply": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "description": "User answers in order of questions (each answer is an array of selected labels)",
+            "items": {
+              "$ref": "#/$defs/QuestionV2Answer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "answers"
+        ],
+        "type": "object"
+      },
+      "QuestionV2Answer": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    }
+  },
+  "resultSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "requestID": {
+            "pattern": "^que",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestID",
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/session/:sessionID/question/:requestID/reply"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/QuestionV2Reply"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "requestID": {
+                "pattern": "^que",
+                "type": "string"
+              },
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestID",
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/session/:sessionID/question/:requestID/reply"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params",
+          "body"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionV2Reply": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "description": "User answers in order of questions (each answer is an array of selected labels)",
+            "items": {
+              "$ref": "#/$defs/QuestionV2Answer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "answers"
+        ],
+        "type": "object"
+      },
+      "QuestionV2Answer": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.question.reply; POST /api/session/{sessionID}/question/{requestID}/reply."
+}

@@ -1,0 +1,289 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "session.next.prompted",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "delivery": {
+        "enum": [
+          "steer",
+          "queue"
+        ],
+        "type": "string"
+      },
+      "messageID": {
+        "pattern": "^msg_",
+        "type": "string"
+      },
+      "prompt": {
+        "$ref": "#/$defs/Prompt"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "timestamp",
+      "sessionID",
+      "messageID",
+      "prompt",
+      "delivery"
+    ],
+    "type": "object",
+    "$defs": {
+      "Prompt": {
+        "additionalProperties": false,
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/$defs/PromptAgentAttachment"
+            },
+            "type": "array"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/PromptFileAttachment"
+            },
+            "type": "array"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "PromptAgentAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "PromptFileAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      },
+      "PromptSource": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "type": "number"
+          },
+          "start": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "text"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "delivery": {
+            "enum": [
+              "steer",
+              "queue"
+            ],
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "prompt": {
+            "$ref": "#/$defs/Prompt"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "sessionID",
+          "messageID",
+          "prompt",
+          "delivery"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "session.next.prompted"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "Prompt": {
+        "additionalProperties": false,
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/$defs/PromptAgentAttachment"
+            },
+            "type": "array"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/PromptFileAttachment"
+            },
+            "type": "array"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "PromptAgentAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "PromptFileAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/PromptSource"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "mime"
+        ],
+        "type": "object"
+      },
+      "PromptSource": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "type": "number"
+          },
+          "start": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "text"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified"
+}

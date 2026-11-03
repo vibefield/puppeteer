@@ -1,0 +1,626 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/v2.integration.attempt.status",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Get OAuth attempt status — Poll the current status of an OAuth attempt.",
+  "payloadSchema": {
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "attemptID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attemptID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "location": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/IntegrationAttemptStatus"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationInfo"
+          }
+        },
+        "required": [
+          "location",
+          "data"
+        ],
+        "type": "object"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "attemptID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attemptID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "location": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/integration/attempt/:attemptID"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "IntegrationAttemptStatus": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "enum": [
+                  "pending"
+                ],
+                "type": "string"
+              },
+              "time": {
+                "additionalProperties": false,
+                "properties": {
+                  "created": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "enum": [
+                          "NaN"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "-Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity",
+                          "-Infinity",
+                          "NaN"
+                        ],
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "expires": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "enum": [
+                          "NaN"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "-Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity",
+                          "-Infinity",
+                          "NaN"
+                        ],
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "created",
+                  "expires"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "status",
+              "time"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "enum": [
+                  "complete"
+                ],
+                "type": "string"
+              },
+              "time": {
+                "additionalProperties": false,
+                "properties": {
+                  "created": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "enum": [
+                          "NaN"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "-Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity",
+                          "-Infinity",
+                          "NaN"
+                        ],
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "expires": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "enum": [
+                          "NaN"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "-Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity",
+                          "-Infinity",
+                          "NaN"
+                        ],
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "created",
+                  "expires"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "status",
+              "time"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "failed"
+                ],
+                "type": "string"
+              },
+              "time": {
+                "additionalProperties": false,
+                "properties": {
+                  "created": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "enum": [
+                          "NaN"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "-Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity",
+                          "-Infinity",
+                          "NaN"
+                        ],
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "expires": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "enum": [
+                          "NaN"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "-Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity",
+                          "-Infinity",
+                          "NaN"
+                        ],
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "created",
+                  "expires"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "status",
+              "message",
+              "time"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "enum": [
+                  "expired"
+                ],
+                "type": "string"
+              },
+              "time": {
+                "additionalProperties": false,
+                "properties": {
+                  "created": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "enum": [
+                          "NaN"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "-Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity",
+                          "-Infinity",
+                          "NaN"
+                        ],
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "expires": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "enum": [
+                          "NaN"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "-Infinity"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          "Infinity",
+                          "-Infinity",
+                          "NaN"
+                        ],
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "created",
+                  "expires"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "status",
+              "time"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "LocationInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "project": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "directory"
+            ],
+            "type": "object"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory",
+          "project"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "method": {
+            "enum": [
+              "GET"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "attemptID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "attemptID"
+            ],
+            "type": "object"
+          },
+          "query": {
+            "properties": {
+              "location": {
+                "additionalProperties": false,
+                "properties": {
+                  "directory": {
+                    "type": "string"
+                  },
+                  "workspace": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/integration/attempt/:attemptID"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.integration.attempt.status; GET /api/integration/attempt/{attemptID}."
+}

@@ -103,7 +103,7 @@ describe('OpenCode CLI mode', () => {
     const session = await createSession(origin, root);
     const viewer = start(['--opencode', 'attach', origin, '--dir', root, '--session', session.id, '--pure'], root);
     await waitFor(() => (viewer.stdout().includes('session.hydrated') ? true : undefined), 'attached hydration');
-    expect(viewer.stdout()).toContain(`IMPOSTER · opencode 1.18.16 · ${session.id}`);
+    expect(viewer.stdout()).toContain(`IMPOSTER · opencode 1.19.5 · ${session.id}`);
     expect(viewer.stdout()).toContain('sse terminal');
 
     viewer.child.stdin!.write('\x1b[200~hello from attach\x1b[201~\r');

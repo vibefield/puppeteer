@@ -1,4 +1,4 @@
-/** OpenCode 1.18.16 HTTP/SSE facts projected onto the evidence-backed monitor SPI. */
+/** OpenCode 1.19.5 HTTP/SSE facts projected onto the evidence-backed monitor SPI. */
 
 import { createHash, randomUUID } from 'node:crypto';
 import type { ActorRunRef, AgentStructuredQuestion, MonitorMetricFamily } from '@vibefield/puppeteer-core';

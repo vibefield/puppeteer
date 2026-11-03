@@ -1,0 +1,121 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "question.replied",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "answers": {
+        "items": {
+          "$ref": "#/$defs/QuestionAnswer"
+        },
+        "type": "array"
+      },
+      "requestID": {
+        "pattern": "^que",
+        "type": "string"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      }
+    },
+    "required": [
+      "sessionID",
+      "requestID",
+      "answers"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionAnswer": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/$defs/QuestionAnswer"
+            },
+            "type": "array"
+          },
+          "requestID": {
+            "pattern": "^que",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID",
+          "requestID",
+          "answers"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "question.replied"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionAnswer": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-question-reply"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-question-reply"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-question-reply"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/question-reply/events.jsonl"
+}

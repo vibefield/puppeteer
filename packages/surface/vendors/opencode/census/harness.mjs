@@ -931,8 +931,27 @@ function routeCarrier(path) {
   };
 }
 
+/**
+ * `serve --port 0` prefers 4096, so a restarted backend usually reappears at
+ * the same origin. After an aborted SSE subscription to the stopped backend,
+ * Node's per-origin fetch pool can fail the next request with ECONNRESET
+ * before the new backend ever sees it. Retry only that pre-response failure.
+ */
+async function loopbackFetch(url, init) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await fetch(url, init);
+    } catch (error) {
+      const code = error?.cause?.code;
+      const stale = code === 'ECONNRESET' || code === 'UND_ERR_SOCKET';
+      if (!stale || attempt >= 3 || init?.signal?.aborted) throw error;
+      await delay(250);
+    }
+  }
+}
+
 async function apiRequest(trace, baseURL, password, directory, method, path, body) {
-  const response = await fetch(instanceURL(baseURL, path, directory), {
+  const response = await loopbackFetch(instanceURL(baseURL, path, directory), {
     method,
     headers: {
       authorization: authHeader(password),
@@ -1008,7 +1027,7 @@ async function waitForDurableIdle(trace, baseURL, password, directory, sessionID
 }
 
 async function fetchOpenApi(baseURL, password) {
-  const response = await fetch(new URL('/doc', baseURL), {
+  const response = await loopbackFetch(new URL('/doc', baseURL), {
     headers: { authorization: authHeader(password) },
   });
   if (!response.ok) throw new Error(`GET /doc failed with ${response.status}`);
@@ -1038,7 +1057,7 @@ function eventStream(baseURL, password, directory) {
 
   const running = (async () => {
     try {
-      const response = await fetch(instanceURL(baseURL, '/event', directory), {
+      const response = await loopbackFetch(instanceURL(baseURL, '/event', directory), {
         headers: { accept: 'text/event-stream', authorization: authHeader(password) },
         signal: abort.signal,
       });

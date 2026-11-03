@@ -1,0 +1,91 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "question.rejected",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "requestID": {
+        "pattern": "^que",
+        "type": "string"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      }
+    },
+    "required": [
+      "sessionID",
+      "requestID"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "requestID": {
+            "pattern": "^que",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID",
+          "requestID"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "question.rejected"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-question-reject"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-question-reject"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-question-reject"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/question-reject/events.jsonl"
+}

@@ -6,7 +6,8 @@ import { REDACTED_EPOCH_MS, checkCaptureDirectory, defaultRules } from '@vibefie
 import { opencodeRules } from './privacy.mjs';
 
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
-const capturesRoot = join(vendorRoot, 'captures', 'opencode@1.18.16');
+const VERSION = '1.19.5';
+const capturesRoot = join(vendorRoot, 'captures', `opencode@${VERSION}`);
 const scenarios = [
   'turn',
   'session-lifecycle',
@@ -57,7 +58,7 @@ function partStatuses(scenario: string, tool: string): string[] {
     .filter(Boolean);
 }
 
-describe('OpenCode 1.18.16 census fixtures', () => {
+describe(`OpenCode ${VERSION} census fixtures`, () => {
   it('preserves the native event envelope and unique vendor event IDs', () => {
     for (const scenario of scenarios) {
       const captured = events(scenario);

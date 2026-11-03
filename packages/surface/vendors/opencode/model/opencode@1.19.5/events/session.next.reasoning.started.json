@@ -1,0 +1,123 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "session.next.reasoning.started",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "assistantMessageID": {
+        "pattern": "^msg_",
+        "type": "string"
+      },
+      "providerMetadata": {
+        "$ref": "#/$defs/LLMProviderMetadata"
+      },
+      "reasoningID": {
+        "type": "string"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "timestamp",
+      "sessionID",
+      "assistantMessageID",
+      "reasoningID"
+    ],
+    "type": "object",
+    "$defs": {
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "assistantMessageID": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "providerMetadata": {
+            "$ref": "#/$defs/LLMProviderMetadata"
+          },
+          "reasoningID": {
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "sessionID",
+          "assistantMessageID",
+          "reasoningID"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "session.next.reasoning.started"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "LLMProviderMetadata": {
+        "additionalProperties": {
+          "type": "object"
+        },
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -188,10 +188,12 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-opencode",
       "persona": "opencode",
       "groundTruth": "packages/surface/vendors/opencode/groundtruth.json",
-      "candidateVersion": "1.18.16",
+      "candidateVersion": "1.19.5",
       "status": "baseline-pending",
       "blockers": [
-        "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."
+        "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform.",
+        "OpenCode 1.19.5 artifacts are acquired, hashed and censused only for linux-x64; darwin-arm64, darwin-x64 and windows-x64 have no 1.19.5 artifact identity yet.",
+        "OpenCode 2.x (@opencode/cli, tags v2.0.0-v2.2.5) is a separate protocol family: no `attach`, a `/api/*` HttpApi with sequenced v2 events, and different npm packages. The github-stable detector reports it because v2 releases are non-prerelease, while acquisition covers only the 1.x opencode-<platform> packages; draft/OPENCODE-2-MIGRATION-PLAN.md records the unstarted migration."
       ]
     },
     {

@@ -1,12 +1,168 @@
 # OpenCode Surface Findings
 
 > Candidate status: **ASM v3 modeled; adapter/Imposter/runtime candidate
-> complete; pinned darwin-arm64 survey complete**, pinned to OpenCode
-> **1.18.16**.
+> complete; pinned linux-x64 survey complete**, pinned to OpenCode
+> **1.19.5**. The previous candidate, 1.18.16 (darwin-arm64), stays in the
+> tree under `model/`, `captures/`, `probes/` and `references/opencode@1.18.16`.
 > These findings are evidence for an adapter candidate; they do not declare
 > runtime support. The protected real-native-TUI matrix is implemented, but
 > promotion remains gated on successful immutable-artifact runs on all four
 > required platforms.
+>
+> §0 records the 1.19.5 advance: the choice between upstream's 1.x and 2.x
+> lines, and the drift review against 1.18.16. §1–§15 describe the
+> 1.x HTTP/SSE surface. They were first established on 1.18.16 and were
+> captured again on 1.19.5 linux-x64 except where a section says otherwise.
+
+## 0. 1.19.5 advance: release line and drift review
+
+### 0.1 Which upstream line is current stable
+
+OpenCode now ships two stable lines in parallel. The evidence was gathered on
+2026-11-03 from npm registry metadata, `git ls-remote`, raw source at exact
+tags, the opencode.ai installers, and GitHub release-asset redirects:
+
+- **1.x** is `opencode-ai` / `opencode-<platform>`, with `latest` = 1.19.5,
+  published 2026-10-28. It is built from branch `v1` (tag `v1.19.5` =
+  `810c0eba1a7348036f8bdf61e6632d0c36c6876c`). The 1.x publish script marks
+  each GitHub release `--latest`, and
+  `releases/latest/download/opencode-linux-x64.tar.gz` resolves to the v1.19.5
+  asset. `https://opencode.ai/install` redirects to `refs/heads/v1/install`,
+  which "only installs OpenCode 1" and refuses a 2.x version.
+- **2.x** is `@opencode/cli` / `@opencode/cli-<platform>`, with `latest` =
+  2.2.5, published 2026-10-30. The first release, 2.0.0, came out on
+  2026-09-11, and the two lines have shipped in parallel since then. 2.x is
+  built from `dev`. Its GitHub releases are created non-prerelease with
+  `--latest=false`. It installs through `/v2/install`,
+  `opencode upgrade --major`, Homebrew `opencode-v2` and AUR `opencode-beta`.
+  At v2.2.5 `packages/opencode/` is gone and the CLI lives in `packages/cli`.
+
+A read-only probe of the linux-x64 2.2.5 binary (isolated home, no model)
+showed a different integration family. It has no `attach` command, and the TUI
+joins a background service or an explicit `--server`. `serve` publishes
+an `/api/*` HttpApi (138 paths) instead of the 1.x instance routes. SSE moves
+to `/api/event`, with `{id,created,type,location,data,durable:{aggregateID,seq,version}}`
+records. The message/part event family becomes
+`session.execution/step/text/tool.*`, and questions become `form.*`. Version
+output becomes `opencode v2.2.5`. Only Basic auth through
+`OPENCODE_SERVER_PASSWORD` survives unchanged. The adapter's transport,
+normalization, launch and detection would all need to be rebuilt, so 2.x
+cannot be an in-line candidate. This candidate therefore advances
+to **1.19.5**, the newest release of the line the adapter implements and
+upstream's GitHub-Latest/default-install line.
+`draft/OPENCODE-2-MIGRATION-PLAN.md` holds the evidence and the migration
+work, and `support/agents.json` carries a blocker for it.
+
+Detection is left as it was. The `github-stable` detector takes the first
+non-prerelease tag in API order, and because v2 releases are non-prerelease it
+may report a 2.x version that the 1.x acquisition URLs cannot fetch. That is a
+true upstream signal, not a detector fault to hide.
+
+### 0.2 Artifact and probes
+
+The linux-x64 artifact came through `surface:download`/`surface:acquire`:
+`opencode-linux-x64-1.19.5.tgz` → extracted ELF x86-64 `opencode`, 214,386,864
+bytes, sha256 `7df4e4136301f16589b0f30bf91a61380fca5f8ef22dd36570f5ebe1d4ec802c`,
+version output `1.19.5`. No other platform was acquired or executed.
+`--help`, `serve --help` and `attach --help` match 1.18.16 apart from the
+version, and `import <file>` no longer advertises a URL source. Every serve
+and attach flag the adapter uses (`--hostname`, `--port`, `--dir`,
+`--session`, `--pure`) is unchanged.
+
+### 0.3 Generated schema drift
+
+`references/opencode@1.19.5/openapi.json` is `packages/sdk/openapi.json` at
+the exact tag (sha256 `d224c1a7…`). The runtime `/doc` (1,107,898 bytes,
+sha256 `df260865…`) matches it apart from the source copy's `x-codeSamples`.
+Against 1.18.16 the path set (162), the schema set (472), and every SSE event
+and HTTP operation are unchanged. The ASM again has 188 HTTP operations and
+90 SSE types. Only six documents changed, all **additive-unconsumed**:
+
+- `config.get/update` and `global.config.get/update` gained the model
+  `reasoning_options` and changed `ProviderConfig.options.chunkTimeout` from
+  an integer to `integer | false`. Two descriptions changed: `headerTimeout`
+  and `autoupdate`, which is now notify-only: "Updates are never installed
+  automatically".
+- `global.upgrade` now requires `target` (a semver).
+- `server.heartbeat` changed evidence only (§0.5).
+
+### 0.4 Source drift relevant to the adapter
+
+`v1.18.16..v1.19.5` touches 87 files under `packages/opencode/src`. A review
+of the ones on a Puppeteer rail found:
+
+- `tool/edit.ts`, `tool/write.ts` and `tool/tool.ts` are byte-identical. In
+  `tool/apply_patch.ts`, `files[].movePath` is now omitted instead of
+  `undefined`. JSON output is identical, so the workspace-tools contract is
+  unchanged apart from that file's digest.
+- `session/retry.ts` adds 25% jitter and a five-retry cap
+  (`RETRY_MAX_RETRIES`). The `session.status {type:retry}` carrier is
+  unchanged, and the cap is unverified because the census makes one 429.
+- `session/prompt.ts` keeps looping after a step with `finish: "unknown"`, as
+  it already did for `tool-calls`. No census scenario produces `unknown`.
+- `tool/task.ts` now fails the parent `task` tool with
+  `Subagent failed (task_id: …)` when the child assistant ends in error or a
+  child tool errors. The adapter already maps that carrier to `tool.failed`.
+  The branch is unverified (no failing-child scenario).
+- `session/tools.ts` keeps the original `time.start` on repeated running
+  updates. `session/compaction.ts` changes default tail selection and prompt
+  layout but not the compaction events.
+- The `account/`, database-migration and `storage/schema.ts` changes do not
+  touch the account tables `services/profiles.ts` reads. That is a source
+  reading only, with no probe on 1.19.5.
+
+### 0.5 Runtime census drift
+
+The census ran all 27 scenarios against the linux-x64 artifact: 25 headless
+and the two native-attach scenarios. A scripted PTY operator pressed
+*Allow always* → *Confirm* in the real `opencode attach` TUI. It sent Right,
+Enter, Enter, timed off the harness's own operator prompt, per the 1.19.5
+`packages/tui/src/routes/session/permission.tsx` bindings. In both attach
+captures the HTTP trace contains no permission reply request. A
+signature comparison against the 1.18.16 captures (semantic event sequence
+with ambient catalog/plugin/heartbeat records ignored, provider-request count,
+durable message count) gives:
+
+- 13 scenarios are identical. Every scenario keeps its provider-request and
+  durable-message counts.
+- The remaining differences are scheduling, not protocol. Asynchronous
+  `session.updated` + user `message.updated` pairs (title/summary
+  bookkeeping) land at different points. In `abort-tool` the running
+  tool update with metadata arrives before the abort rather than after, and
+  `session.error` still precedes the completed carrier. In
+  `reconnect-rehydrate` more deltas arrive before the observer disconnects.
+- No 1.19.5 headless scenario lasted a full heartbeat interval, so
+  `server.heartbeat` is now runtime-verified only by the attach captures
+  (`verified-interactive`). It was `verified-headless` on 1.18.16.
+
+Classification: **additive-unconsumed / no consumed-surface drift**. The
+adapter's fixture-backed normalization, monitor and history suites pass
+unchanged against the 1.19.5 captures. Only native-ID literals were updated
+for the new pseudonyms. `pnpm surface:replay` passes: 3,423 frames, 209
+results, digest `ee55ce57…`.
+`pnpm surface:reconcile` classifies the candidate `unsafe-or-unknown` because
+only linux-x64 is acquired and nothing has been promoted. That is the expected
+quarantine for a baseline-pending candidate.
+
+### 0.6 Linux finding: same-origin backend restart
+
+`serve --port 0` prefers port 4096 on both 1.18.16 and 1.19.5. A backend
+started after another one stopped therefore usually comes back at the same
+origin. On linux-x64, once an SSE subscription to the stopped backend had been
+aborted, Node's per-origin fetch pool failed a later request to the new
+backend with `ECONNRESET` before that backend received it. A standalone probe
+reproduced this only when the origin was reused: occupying 4096 moved the new
+backend to a random port and the failure disappeared.
+
+The census harness's `exact-resume` scenario and the adapter's opt-in
+`opencode.live.test.ts` resume step both failed this way. It is not version
+drift: the 1.18.16 linux-x64 artifact fails the same live test. The adapter
+transport now retries exactly once on that pre-response socket failure
+(`transport/loopback-fetch.ts`). With that retry, the live proof (private
+backend, structured prompt, HTTP/SSE observation, real native TUI in a PTY,
+and native resume) passes on linux-x64 1.19.5. That local run is not a
+protected-lane receipt.
+
 
 ## 1. Candidate identity
 
@@ -14,21 +170,22 @@
 | ------------------------ | ------------------------------------------------------------------ |
 | Vendor                   | `opencode`                                                         |
 | Display name             | OpenCode                                                           |
-| Candidate version        | `1.18.16`                                                          |
+| Candidate version        | `1.19.5` (previous: `1.18.16`)                                     |
 | Official repository      | <https://github.com/anomalyco/opencode>                            |
-| Exact source tag         | `v1.18.16`                                                         |
-| Exact source revision    | `a3647eb025c7615159d417dcc49fc39fdaeba65b`                         |
-| Probed platform          | `darwin-arm64`                                                     |
-| Extracted binary SHA-256 | `a41776bf64c75786d6baf531b840ffb873c090d7c44793ae2dd4b1896de56a1f` |
-| Binary format/signature  | Mach-O arm64; ad-hoc linker-signed                                 |
-| Generated `/doc` size    | 1,104,963 bytes                                                    |
-| Generated `/doc` SHA-256 | `b593ff30487920943ce01c5fd08b9d54bed656752afbe1a5ff4c504e2c42e338` |
+| Exact source tag         | `v1.19.5`                                                          |
+| Exact source revision    | `810c0eba1a7348036f8bdf61e6632d0c36c6876c`                         |
+| Probed platform          | `linux-x64` (1.18.16: `darwin-arm64`)                              |
+| Extracted binary SHA-256 | `7df4e4136301f16589b0f30bf91a61380fca5f8ef22dd36570f5ebe1d4ec802c` |
+| Binary format            | ELF 64-bit x86-64, dynamically linked                              |
+| Generated `/doc` size    | 1,107,898 bytes                                                    |
+| Generated `/doc` SHA-256 | `df2608651a542d5778ac933e5544cf9c15008dc7bc10358ca903084451fa9826` |
+| 1.18.16 binary SHA-256   | `a41776bf64c75786d6baf531b840ffb873c090d7c44793ae2dd4b1896de56a1f` |
 | Census transport         | loopback HTTP REST + SSE                                           |
 | Model traffic            | fake local OpenAI-compatible provider; no account or token use     |
 
 Acquisition used the governed Surface downloader and the official platform
 package tarball. The recorded binary probes are under
-`probes/opencode@1.18.16`; verbatim census output remains gitignored under
+`probes/opencode@1.19.5` (and `probes/opencode@1.18.16` for the previous candidate); verbatim census output remains gitignored under
 `captures-raw`, and the committed JSONL carriers pass both the shared privacy
 detector and OpenCode-specific rules.
 
@@ -77,8 +234,10 @@ than substituting a fake terminal host. Against the exact darwin-arm64
 the real TUI through a PTY, submitted through the normalized prompt service,
 observed completion over HTTP/SSE, and confirmed that the TUI rendered the
 same controlled response. The resulting promotion receipt is bound to the
-executable digest. This local proof validates the lane; it is not a substitute
-for the four required protected workflow results.
+executable digest. On 2026-11-03 the same test passed locally against the
+linux-x64 1.19.5 artifact, after the same-origin restart fix in §0.6, without a
+receipt. Neither local proof is a substitute for the four required protected
+workflow results.
 
 ## 4. Confirmed HTTP/SSE carrier
 
@@ -95,8 +254,8 @@ select an instance with the `directory` query parameter (or the
 }
 ```
 
-OpenCode-generated event IDs are present in 1.18.16 and are unique in every
-captured stream. They provide a live-connection deduplication key. The server
+OpenCode-generated event IDs are present in 1.18.16 and 1.19.5 and are unique
+in every captured stream. They provide a live-connection deduplication key. The server
 does not expose a proven replay cursor, so a reconnect must rehydrate durable
 messages/status and reconcile buffered live events rather than claim a
 gap-free resume.
@@ -218,10 +377,10 @@ output truncation to the model-facing `output` string. That boolean does not
 describe `filediff.patch`, `files[].patch`, or `metadata.diff`. Treating it as
 patch completeness silently invents a relationship the native source does not
 contain. The digest-pinned contract in
-`references/opencode@1.18.16/source/workspace-tools.json` now records the exact
-tool inputs, completed metadata fields, preview production, truncation meaning,
-and watcher variants; the runtime file scenarios independently establish that
-those source paths occur in 1.18.16.
+`references/opencode@1.19.5/source/workspace-tools.json` (and its 1.18.16
+predecessor) records the exact tool inputs, completed metadata fields, preview
+production, truncation meaning, and watcher variants. The runtime file scenarios
+independently establish that those source paths occur in each pinned release.
 
 Every mutating assistant step carried a pre-mutation snapshot hash on
 `step-start`, a different post-mutation hash on `step-finish`, and a subsequent
@@ -260,6 +419,7 @@ turns.
 The generated schema also declares a standalone `SnapshotPart`. Exact-release
 source inspection found no runtime insertion path for that part: 1.18.16 puts
 snapshot hashes on `step-start` and `step-finish` and emits `patch` separately.
+The `v1.18.16..v1.19.5` session diff adds no snapshot producer.
 The ASM therefore keeps `part.type=snapshot` unverified rather than fabricating
 a capture for a schema-only branch.
 
@@ -600,10 +760,12 @@ terminal removal event.
 
 ## 14. ASM v3 and mapping implications
 
-The generated ASM at `model/opencode@1.18.16/` contains 278 native documents:
-188 namespaced OpenAPI operations (`http/<operationId>`) and 90 exact SSE event
-types. Runtime evidence verifies 21 HTTP operations and 24 SSE types headlessly;
-the remaining 233 documents are explicitly unverified. The `always` branch of
+The generated ASM at `model/opencode@1.19.5/` (like `model/opencode@1.18.16/`)
+contains 278 native documents: 188 namespaced OpenAPI operations
+(`http/<operationId>`) and 90 exact SSE event types. Runtime evidence verifies
+21 HTTP operations and 24 SSE types. In 1.19.5 that is 44 headlessly, plus
+`server.heartbeat`, which only the attach captures observed (§0.5). The
+remaining 233 documents are explicitly unverified. The `always` branch of
 `permission.replied` is independently `verified-interactive` even though the
 event itself also has stronger headless existence/shape evidence from its
 `once` and `reject` branches.
@@ -612,8 +774,8 @@ The pinned `/doc` `Event` union declares 89 SSE types. Runtime also emitted
 `server.heartbeat`, so the generator retains it as a capture-backed runtime-only
 event instead of laundering it through generated-schema evidence. The model
 audit validates 2,775 SSE carriers, 209 HTTP requests, 209 correlated HTTP
-results, both privacy policies, 29 digest-pinned evidence records, and a fresh
-278-document regeneration from `/doc`.
+results, both privacy policies, 31 digest-pinned evidence records (1.19.5), and
+a fresh 278-document regeneration from `/doc`.
 
 The native ASM is now contract. The first adapter implements the portable
 effects below from these captures; question, file, and snapshot
@@ -659,13 +821,14 @@ path, but does not justify inventing a capacity for an unknown model.
 
 ## 15. Survey scope and deferred platform expansion
 
-The behavioral survey and complete adapter-through-native-TUI proof are
-currently scoped to the probed `darwin-arm64` artifact. Support on darwin-x64,
-linux-x64, and windows-x64 still requires successful governed acquisition,
-immutable hashes, exact launch/turn receipts, and drift review in the protected
-matrix; none is inferred from the arm64 run.
+The 1.19.5 behavioral survey and the local adapter-through-native-TUI proof
+cover only the probed `linux-x64` artifact. The 1.18.16 survey covered only
+`darwin-arm64`. 1.19.5 support on darwin-arm64, darwin-x64 and windows-x64
+still requires governed acquisition, immutable hashes, exact launch/turn
+receipts and drift review in the protected matrix. None of it is inferred from
+the linux-x64 run or from the 1.18.16 darwin-arm64 run.
 
 The standalone snapshot part is a settled exact-release limitation, not a
-missing synthetic probe: it has no runtime producer in 1.18.16 and remains
+missing synthetic probe: it has no runtime producer in 1.18.16 or 1.19.5 and remains
 `unverified`. Other unobserved schema branches likewise remain `unverified`
 until a real runtime producer is captured.

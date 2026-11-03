@@ -40,7 +40,7 @@ describe.runIf(live)('OpenCode adapter through real native TUI (live)', () => {
     let resumed: Awaited<ReturnType<typeof createOpenCodeTuiSession>> | undefined;
     let resumedProjection: ReturnType<typeof projectAgentEvents> | undefined;
     try {
-      expect(await probeOpenCodeVersion(executable)).toBe('1.18.16');
+      expect(await probeOpenCodeVersion(executable)).toBe('1.19.5');
       session = await createOpenCodeTuiSession({
         cwd,
         host,

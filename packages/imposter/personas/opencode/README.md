@@ -1,6 +1,6 @@
 # OpenCode Imposter persona
 
-This persona impersonates OpenCode 1.18.16 on its native loopback REST and SSE
+This persona impersonates OpenCode 1.19.5 on its native loopback REST and SSE
 surface. Native paths and operation ids live in `http-serve.json`; the shared
 transport contains no OpenCode route names. All requests, successful results,
 SSE properties, and complete `{id,type,properties}` carriers validate against

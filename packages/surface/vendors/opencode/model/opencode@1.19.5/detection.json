@@ -1,0 +1,23 @@
+{
+  "executables": [
+    "opencode"
+  ],
+  "envVar": "PUPPETEER_OPENCODE_BIN",
+  "versionFlag": "--version",
+  "versionOutput": "1.19.5",
+  "versionPattern": "^(\\d+\\.\\d+\\.\\d+)$",
+  "helpFlag": "--help",
+  "probedFlags": {
+    "serve": "serve --help",
+    "attach": "attach --help"
+  },
+  "launchFlags": {
+    "serve": "serve",
+    "hostname": "--hostname",
+    "port": "--port",
+    "attach": "attach",
+    "directory": "--dir",
+    "session": "--session",
+    "pure": "--pure"
+  }
+}

@@ -20,39 +20,39 @@ import { projectJsonSchema } from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 
-const VERSION = '1.18.16';
-const PLATFORM = 'darwin-arm64';
+const VERSION = '1.19.5';
+const PLATFORM = 'linux-x64';
 const ARTIFACT_ID = `opencode-${VERSION}-${PLATFORM}`;
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete']);
 const INTERACTIVE_SCENARIOS = new Set(['attach-exact-resume', 'attach-permission-always']);
 const CAPTURED_AT = {
-  'abort-stream': '2026-08-11T04:45:25.264Z',
-  'abort-tool': '2026-08-11T04:45:34.390Z',
-  'agent-part': '2026-08-11T06:51:18.359Z',
-  'attach-exact-resume': '2026-08-11T07:18:00.868Z',
-  'attach-permission-always': '2026-08-11T05:05:34.164Z',
-  'auto-compaction': '2026-08-11T06:00:30.080Z',
-  'background-task': '2026-08-11T06:45:27.498Z',
-  'detach-task': '2026-08-11T06:45:16.713Z',
-  'exact-resume': '2026-08-11T04:56:30.098Z',
-  'file-delete': '2026-08-11T06:31:04.089Z',
-  'file-edit': '2026-08-11T06:31:06.819Z',
-  'file-part': '2026-08-11T07:01:18.440Z',
-  'file-write': '2026-08-11T06:31:05.993Z',
-  'manual-compaction': '2026-08-11T05:53:20.004Z',
-  'overflow-compaction': '2026-08-11T06:37:52.297Z',
-  'permission-accept': '2026-08-10T07:31:38.386Z',
-  'permission-reject': '2026-08-10T07:33:01.938Z',
-  'provider-error': '2026-08-11T04:45:54.406Z',
-  'provider-retry': '2026-08-11T04:45:43.535Z',
-  'question-reject': '2026-08-10T07:33:36.468Z',
-  'question-reply': '2026-08-10T07:33:19.838Z',
-  'reconnect-rehydrate': '2026-08-11T04:56:19.470Z',
-  'session-lifecycle': '2026-08-11T07:10:18.767Z',
-  'subtask-part': '2026-08-11T06:17:34.203Z',
-  'task-child': '2026-08-11T06:14:05.678Z',
-  turn: '2026-08-10T07:31:18.479Z',
-  'unknown-context': '2026-08-11T06:55:14.225Z',
+  'abort-stream': '2026-11-03T19:19:44.692Z',
+  'abort-tool': '2026-11-03T19:19:53.173Z',
+  'agent-part': '2026-11-03T19:18:41.198Z',
+  'attach-exact-resume': '2026-11-03T19:27:52.397Z',
+  'attach-permission-always': '2026-11-03T19:27:19.525Z',
+  'auto-compaction': '2026-11-03T19:20:41.944Z',
+  'background-task': '2026-11-03T19:18:49.823Z',
+  'detach-task': '2026-11-03T19:18:59.621Z',
+  'exact-resume': '2026-11-03T19:26:55.243Z',
+  'file-delete': '2026-11-03T19:18:15.537Z',
+  'file-edit': '2026-11-03T19:18:06.153Z',
+  'file-part': '2026-11-03T19:17:47.837Z',
+  'file-write': '2026-11-03T19:17:57.093Z',
+  'manual-compaction': '2026-11-03T19:20:33.516Z',
+  'overflow-compaction': '2026-11-03T19:20:50.189Z',
+  'permission-accept': '2026-11-03T19:19:09.991Z',
+  'permission-reject': '2026-11-03T19:19:18.813Z',
+  'provider-error': '2026-11-03T19:20:09.675Z',
+  'provider-retry': '2026-11-03T19:20:01.523Z',
+  'question-reject': '2026-11-03T19:19:35.618Z',
+  'question-reply': '2026-11-03T19:19:27.184Z',
+  'reconnect-rehydrate': '2026-11-03T19:20:18.536Z',
+  'session-lifecycle': '2026-11-03T19:17:38.658Z',
+  'subtask-part': '2026-11-03T19:18:32.518Z',
+  'task-child': '2026-11-03T19:18:24.243Z',
+  turn: '2026-11-03T19:17:19.470Z',
+  'unknown-context': '2026-11-03T19:20:58.345Z',
 };
 const VARIANT_PATHS = new Map([
   ['file.watcher.updated', ['event']],
@@ -661,7 +661,7 @@ if (includeEvidence) {
     harness: 'packages/surface/vendors/opencode/census/harness.mjs',
     capturedAt: CAPTURED_AT[scenario] ?? artifact.capturedAt,
     notes: INTERACTIVE_SCENARIOS.has(scenario)
-      ? 'Native attach TUI interaction on the shared backend.'
+      ? 'Native attach TUI interaction on the shared backend; a scripted PTY operator pressed the TUI keys, and SSE/HTTP carriers record the outcome.'
       : `Hermetic headless census scenario: ${scenario}.`,
   }));
   const modelRecord = {
@@ -763,12 +763,12 @@ if (includeEvidence) {
       },
     ],
     limitations: [
-      'Artifact integrity and runtime probes are pinned only for darwin-arm64.',
+      'Artifact integrity and runtime probes are pinned only for linux-x64; darwin-arm64, darwin-x64, and windows-x64 1.19.5 artifacts were not acquired or executed.',
       'OpenAPI/source-only branches remain unverified until a controlled runtime capture exercises them.',
       'Workspace patch strings are indentation-normalized presentation previews and are not guaranteed to be directly applicable unified diffs.',
       'Tool metadata `truncated` describes model-facing output truncation, not patch completeness.',
       'The SSE carrier exposes no observed replay cursor; durable REST rehydration is required after a gap.',
-      'Native attach was captured on an exact fresh session, but not yet combined with a backend-restart resume.',
+      'Native attach permission choices were entered by a scripted PTY operator rather than a person; the TUI was still the only replying client, and the HTTP trace contains no permission reply request.',
     ],
   });
 }
