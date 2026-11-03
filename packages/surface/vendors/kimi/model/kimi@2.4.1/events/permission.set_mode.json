@@ -1,0 +1,58 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "2.4.1",
+  "event": "permission.set_mode",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["manual", "yolo", "auto"]
+      }
+    },
+    "required": ["agentId", "mode"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["permission.set_mode"]
+      },
+      "agentId": {
+        "type": "string"
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["manual", "yolo", "auto"]
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "agentId", "mode", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+    "carrier": ["kimi-runtime-headless", "kimi-exact-release-source"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/kimi@2.4.1/basic-turn/wire.jsonl"
+}

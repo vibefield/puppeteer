@@ -11,8 +11,9 @@ Options:
   -y, --yolo                    Start in Ask When Needed mode: routine edits and commands run
                                 automatically; risky actions, questions, and plans still ask.
                                 (default: false)
-  --auto                        Start in Never Ask mode: never interrupts you; everything runs and
-                                is decided automatically. (default: false)
+  --auto                        Start in Never Ask mode: everything runs and is decided
+                                automatically; only plans in Plan mode wait for your review.
+                                (default: false)
   -m, --model <model>           LLM model alias to use for this invocation. Defaults to
                                 default_model in config.toml.
   -p, --prompt <prompt>         Run one prompt non-interactively and print the response.
@@ -45,7 +46,9 @@ Commands:
   doctor                        Validate Kimi Code configuration files.
   vis [options] [sessionId]     Launch the session visualizer in your browser.
   install-desktop               Print the Kimi Code desktop app page and open it in your browser.
+  app [path]                    Open a new chat in the Kimi Code desktop app for this directory.
   migrate [options]             Migrate data from a legacy kimi-cli installation into kimi-code.
+  import-sessions               Import recent Claude Code and Codex sessions into Kimi Code.
   upgrade|update [options]      Upgrade Kimi Code to the latest version.
 
 Documentation:        https://moonshotai.github.io/kimi-code/

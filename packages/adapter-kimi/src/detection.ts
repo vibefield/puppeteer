@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 
-export const KIMI_SURFACE_VERSION = '0.34.0';
+export const KIMI_SURFACE_VERSION = '2.4.1';
 export const KIMI_EXECUTABLE_ENV = 'PUPPETEER_KIMI_BIN';
 export const KIMI_DEFAULT_EXECUTABLE = 'kimi';
 

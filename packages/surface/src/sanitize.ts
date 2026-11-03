@@ -393,7 +393,9 @@ function inspect(
       issues.push(`${location}: raw UUID at ${key} (UUIDv7 encodes capture wall-clock time)`);
     }
     if (
-      ((rules.idKey.test(key) && !safeOrdinalId(value, key)) ||
+      // A vendor-declared structural value is kept under any key by the
+      // redactor (`sanitizeString`), so the detector must accept it there too.
+      ((rules.idKey.test(key) && !safeOrdinalId(value, key) && !rules.structuralEnumValue.test(value)) ||
         rules.pathKey.test(key) ||
         rules.urlKey.test(key) ||
         (rules.sensitiveTextKey.test(key) && !safeStructuralEnum(value, key, rules)) ||

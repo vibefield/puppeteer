@@ -1,0 +1,36 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "2.4.1",
+  "event": "session_index.entry",
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
+  "channel": "session-index",
+  "channels": ["session-index"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "sessionId": {
+        "type": "string"
+      },
+      "sessionDir": {
+        "type": "string"
+      },
+      "workDir": {
+        "type": "string"
+      }
+    },
+    "required": ["sessionId", "sessionDir", "workDir"]
+  },
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/kimi@2.4.1/basic-turn/session-index.jsonl"
+}

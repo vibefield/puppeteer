@@ -189,7 +189,7 @@ describe.skipIf(!posix)('persona spawner', () => {
       const joined = plane.sessions.find((session) => session.sessionId === sessionId)!;
       expect(joined).toMatchObject({
         vendor: 'kimi',
-        nativeBehavior: { title: expect.stringContaining('Kimi Code 0.34.0') },
+        nativeBehavior: { title: expect.stringContaining('Kimi Code 2.4.1') },
         scenarioDriver: { state: 'ready' },
       });
       expect(joined.nativeEvents).toEqual(

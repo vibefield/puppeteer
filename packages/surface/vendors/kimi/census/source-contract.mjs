@@ -1,17 +1,24 @@
 /**
- * Curated ASM-subset projection of the exact Kimi Code 0.34.0 release source.
+ * Curated ASM-subset projection of the exact Kimi Code 2.4.1 release source.
  *
  * `extract-source-reference.mjs` refuses to emit a reference unless the
- * checkout revision, generated wire manifest, persisted/transient inventory,
- * protocol version, hook inventory, and CLI declarations all match. The
+ * checkout revision, generated wire manifest, durable record inventory,
+ * per-record top-level fields and requiredness, protocol version, hook
+ * inventory, engine-journal inventory, and CLI declarations all match. The
  * resulting tracked reference also pins every contributing source file by
  * SHA-256. The model generator consumes that reference instead of carrying a
  * second hand-written copy of these schemas.
+ *
+ * 2.4.1's manifest is drained from EVENT2_REGISTRY: every listed type is
+ * durable, so the 0.34.0 persisted/transient split no longer exists. Nested
+ * shapes the manifest leaves as bare type names (ContentPart, ToolCall,
+ * TokenUsage, AgentTaskInfo, ...) are projected from the digest-pinned files in
+ * `sourceFiles` below.
  */
 
-export const VERSION = '0.34.0';
-export const SOURCE_COMMIT = 'f0614c53e59f7e1e257412063b059b9eb82764cf';
-export const SOURCE_TAG = '@moonshot-ai/kimi-code@0.34.0';
+export const VERSION = '2.4.1';
+export const SOURCE_COMMIT = '2c73f3f50af4fa7f2540ca0d2e33b07a1408e3a7';
+export const SOURCE_TAG = '@moonshot-ai/kimi-code@2.4.1';
 export const WIRE_PROTOCOL_VERSION = '1.5';
 
 export const string = (values) => ({ type: 'string', ...(values ? { enum: values } : {}) });
@@ -42,14 +49,24 @@ export const promptOrigins = [
   'retry',
 ];
 
-const urlValue = object({ url: string(), id: string() }, ['url']);
+const urlValue = (extra = {}) => object({ url: string(), id: string(), ...extra }, ['url']);
 export const contentPartSchema = {
   anyOf: [
-    object({ type: string(['text']), text: string() }, ['type', 'text']),
-    object({ type: string(['think']), think: string(), encrypted: string() }, ['type', 'think']),
-    object({ type: string(['image_url']), imageUrl: urlValue }, ['type', 'imageUrl']),
-    object({ type: string(['audio_url']), audioUrl: urlValue }, ['type', 'audioUrl']),
-    object({ type: string(['video_url']), videoUrl: urlValue }, ['type', 'videoUrl']),
+    object({ type: string(['text']), text: string(), meta: object() }, ['type', 'text']),
+    object(
+      {
+        type: string(['think']),
+        think: string(),
+        encrypted: string(),
+        detailsIndex: number(),
+        hidden: boolean,
+        reasoningKey: string(),
+      },
+      ['type', 'think'],
+    ),
+    object({ type: string(['image_url']), imageUrl: urlValue({ name: string() }) }, ['type', 'imageUrl']),
+    object({ type: string(['audio_url']), audioUrl: urlValue() }, ['type', 'audioUrl']),
+    object({ type: string(['video_url']), videoUrl: urlValue({ name: string() }) }, ['type', 'videoUrl']),
   ],
 };
 
@@ -67,12 +84,8 @@ const promptOriginFields = {
   commandArgs: string(),
   variant: string(),
   ownerPromptId: string(),
-  disclosure: object({ kind: string(['date']), renderGeneration: number(), localDate: string(), timeZone: string() }, [
-    'kind',
-    'renderGeneration',
-    'localDate',
-    'timeZone',
-  ]),
+  // 2.4.1 types InjectionOrigin.disclosure as `unknown`.
+  disclosure: {},
   phase: string(['input', 'output']),
   isError: boolean,
   name: string(),
@@ -87,6 +100,10 @@ const promptOriginFields = {
   count: number(),
   event: string(),
   blocked: boolean,
+  inTurn: boolean,
+  clientMetadata: array(object()),
+  skillActivations: array(object()),
+  attachments: array(object({ name: string(), mediaType: string(), size: number(), path: string() })),
 };
 const originBranch = (kind, required = [], fields = {}) =>
   object({ kind: string([kind]), ...fields }, ['kind', ...required]);
@@ -122,9 +139,14 @@ export const promptOriginSchema = object(promptOriginFields, ['kind'], {
     }),
     originBranch('cron_missed', ['count'], { count: number() }),
     originBranch('hook_result', ['event'], { event: string() }),
-    originBranch('retry'),
+    originBranch('retry', [], { trigger: string() }),
   ],
 });
+
+export const tokenUsageSchema = object(
+  { inputOther: number(), output: number(), inputCacheRead: number(), inputCacheCreation: number(), raw: object() },
+  ['inputOther', 'output', 'inputCacheRead', 'inputCacheCreation'],
+);
 
 const toolCallSchema = object(
   {
@@ -133,6 +155,7 @@ const toolCallSchema = object(
     name: string(),
     arguments: { anyOf: [string(), { type: 'null' }] },
     extras: object(),
+    rawId: string(),
     _streamIndex: { anyOf: [number(), string()] },
   },
   ['type', 'id', 'name', 'arguments'],
@@ -155,14 +178,13 @@ export const contextMessageSchema = object(
     providerMessageId: string(),
     origin: promptOriginSchema,
     isError: boolean,
+    toolCallDisplays: object(),
     note: string(),
+    usage: tokenUsageSchema,
+    llmTiming: object({ llmFirstTokenLatencyMs: number(), llmStreamDurationMs: number() }),
+    durationMs: number(),
   },
   ['role', 'content', 'toolCalls'],
-);
-
-export const tokenUsageSchema = object(
-  { inputOther: number(), output: number(), inputCacheRead: number(), inputCacheCreation: number() },
-  ['inputOther', 'output', 'inputCacheRead', 'inputCacheCreation'],
 );
 
 const errorSchema = object(
@@ -170,7 +192,7 @@ const errorSchema = object(
   ['code', 'message', 'retryable'],
 );
 const toolResultSchema = object(
-  { output: { anyOf: [string(), array(contentPartSchema)] }, isError: boolean, note: string() },
+  { output: { anyOf: [string(), array(contentPartSchema)] }, isError: boolean, note: string(), durationMs: number() },
   ['output'],
 );
 const loopEventFields = {
@@ -185,6 +207,7 @@ const loopEventFields = {
   name: string(),
   args: {},
   extras: object(),
+  display: object(),
   result: toolResultSchema,
   finishReason: string(),
   usage: tokenUsageSchema,
@@ -194,6 +217,7 @@ const loopEventFields = {
   llmServerFirstTokenMs: number(),
   llmServerDecodeMs: number(),
   llmClientConsumeMs: number(),
+  llmClientBlockedMs: number(),
   messageId: string(),
   providerFinishReason: string(['completed', 'tool_calls', 'truncated', 'filtered', 'paused', 'other']),
   rawFinishReason: string(),
@@ -213,7 +237,9 @@ export const loopEventSchema = object(loopEventFields, ['type'], {
   ],
 });
 
+const agentId = string();
 const compactionMetrics = {
+  agentId,
   tokensBefore: number(),
   tokensAfter: number(),
   summaryOutputTokens: number(),
@@ -221,49 +247,72 @@ const compactionMetrics = {
   keptHeadUserMessageCount: number(),
   droppedCount: number(),
   legacyTail: boolean,
+  wireLines: object({ start: integer({ minimum: 0 }), end: integer({ minimum: 0 }) }, ['start', 'end']),
 };
 const budgetLimits = object({ tokenBudget: number(), turnBudget: number(), wallClockBudgetMs: number() });
 const goalStatus = string(['active', 'paused', 'blocked', 'complete']);
 const goalActor = string(['user', 'model', 'runtime', 'system']);
+const taskStatus = string(['running', 'completed', 'failed', 'timed_out', 'killed', 'lost']);
 const taskInfo = object(
   {
     taskId: string(),
     kind: string(['process', 'question', 'agent']),
     description: string(),
-    status: string(['running', 'completed', 'failed', 'timed_out', 'killed', 'lost']),
+    status: taskStatus,
     detached: boolean,
     startedAt: number(),
     endedAt: nullableNumber,
     stopReason: string(),
     terminalNotificationSuppressed: boolean,
+    resumeReminded: boolean,
     timeoutMs: number(),
     command: string(),
     pid: number(),
     exitCode: nullableNumber,
+    parentToolCallId: string(),
     questionCount: number(),
     toolCallId: string(),
     agentId: string(),
     subagentType: string(),
     model: string(),
     thinkingEffort: string(),
+    stopCode: string(),
   },
   ['taskId', 'kind', 'description', 'status', 'startedAt', 'endedAt'],
 );
+const mcpTransport = string(['stdio', 'http', 'sse']);
+const tokenCount = (extra = {}, required = []) =>
+  object({ agentId, length: number(), tokens: number(), ...extra }, ['agentId', 'length', 'tokens', ...required]);
+const profileFields = {
+  agentId,
+  modelAlias: string(),
+  profileName: string(),
+  thinkingEffort: string(),
+  systemPrompt: string(),
+  environmentDisclosure: object({ cwd: string() }, ['cwd']),
+  renderGeneration: number(),
+  agentsMdPaths: array(string()),
+  disallowedTools: array(string()),
+};
 
+// Every record below is durable in 2.4.1 (EVENT2_REGISTRY drains only
+// `static durable = true` classes). Top-level fields and requiredness are
+// checked against the generated manifest by the extractor.
 export const persistedSchemas = {
-  'config.update': object({
-    modelAlias: string(),
-    profileName: string(),
-    thinkingEffort: string(),
-    thinkingLevel: string(),
-    systemPrompt: string(),
-    environmentDisclosure: object(),
-    renderGeneration: number(),
-    agentsMdPaths: array(string()),
-    disallowedTools: array(string()),
-  }),
-  'context.append_loop_event': object({ event: loopEventSchema }, ['event']),
-  'context.append_message': object({ message: contextMessageSchema }, ['message']),
+  'changeNotifier.snapshot': object(
+    {
+      agentId,
+      agentsMdHash: { anyOf: [string(), { type: 'null' }] },
+      agentsMdFiles: { anyOf: [object(), { type: 'null' }] },
+      skillsHash: { anyOf: [string(), { type: 'null' }] },
+      subagentNames: { anyOf: [array(string()), { type: 'null' }] },
+      modelPool: { anyOf: [object(), { type: 'null' }] },
+    },
+    ['agentId', 'agentsMdHash', 'skillsHash', 'subagentNames'],
+  ),
+  'config.update': object({ ...profileFields, thinkingLevel: string() }, ['agentId']),
+  'context.append_loop_event': object({ agentId, event: loopEventSchema }, ['agentId', 'event']),
+  'context.append_message': object({ agentId, message: contextMessageSchema }, ['agentId', 'message']),
   'context.apply_compaction': object(
     {
       ...compactionMetrics,
@@ -275,21 +324,75 @@ export const persistedSchemas = {
     [],
     {
       anyOf: [
-        object({ summary: string(), compactedCount: number() }, ['summary', 'compactedCount']),
-        object({ contextSummary: string(), compactedCount: number() }, ['contextSummary', 'compactedCount']),
-        object({ summary: contextMessageSchema, count: number() }, ['summary', 'count']),
+        object({ agentId, summary: string(), compactedCount: number() }, ['agentId', 'summary', 'compactedCount']),
+        object({ agentId, contextSummary: string(), compactedCount: number() }, [
+          'agentId',
+          'contextSummary',
+          'compactedCount',
+        ]),
+        object({ agentId, summary: contextMessageSchema, count: number() }, ['agentId', 'summary', 'count']),
       ],
     },
   ),
-  'context.clear': object(),
-  'context.undo': object({ count: integer({ exclusiveMinimum: 0, maximum: Number.MAX_SAFE_INTEGER }) }, ['count']),
-  forked: object(),
-  'full_compaction.begin': object({ instruction: string(), source: string(['manual', 'auto']) }, ['source']),
-  'full_compaction.cancel': object(),
-  'full_compaction.complete': object(),
-  'goal.clear': object(),
+  'context.clear': object({ agentId }, ['agentId']),
+  'context.undo': object({ agentId, count: integer({ exclusiveMinimum: 0, maximum: Number.MAX_SAFE_INTEGER }) }, [
+    'agentId',
+    'count',
+  ]),
+  'cron.add': object(
+    {
+      task: object(
+        {
+          id: string(),
+          cron: string(),
+          prompt: string(),
+          createdAt: number(),
+          recurring: boolean,
+          lastFiredAt: number(),
+          tags: object(),
+        },
+        ['id', 'cron', 'prompt', 'createdAt'],
+      ),
+    },
+    ['task'],
+  ),
+  'cron.cursor': object({ id: string(), lastFiredAt: number() }, ['id', 'lastFiredAt']),
+  'cron.delete': object({ ids: array(string()) }, ['ids']),
+  'file_history.checkpoint': object({ agentId, turnId: number(), phase: string(['start', 'end']), entries: object() }, [
+    'agentId',
+    'turnId',
+    'entries',
+  ]),
+  'file_history.tracked': object(
+    {
+      agentId,
+      turnId: number(),
+      path: string(),
+      entry: object(
+        {
+          key: { anyOf: [string(), { type: 'null' }] },
+          version: number(),
+          contentHash: string(),
+          size: number(),
+          oversize: boolean,
+          mtimeMs: number(),
+        },
+        ['key', 'version'],
+      ),
+    },
+    ['agentId', 'turnId', 'path', 'entry'],
+  ),
+  forked: object({ agentId }, ['agentId']),
+  'full_compaction.begin': object({ agentId, instruction: string(), source: string(['manual', 'auto']) }, [
+    'agentId',
+    'source',
+  ]),
+  'full_compaction.cancel': object({ agentId }, ['agentId']),
+  'full_compaction.complete': object({ agentId }, ['agentId']),
+  'goal.clear': object({ agentId }, ['agentId']),
   'goal.create': object(
     {
+      agentId,
       goalId: string(),
       objective: string(),
       completionCriterion: string(),
@@ -298,33 +401,38 @@ export const persistedSchemas = {
       actor: goalActor,
       budgetLimits,
     },
-    ['goalId', 'objective'],
+    ['agentId', 'goalId', 'objective'],
   ),
-  'goal.update': object({
-    goalId: string(),
-    status: goalStatus,
-    reason: string(),
-    turnsUsed: number(),
-    tokensUsed: number(),
-    wallClockMs: number(),
-    wallClockResumedAt: number({ minimum: 0 }),
-    budgetLimits,
-    actor: goalActor,
-  }),
+  'goal.update': object(
+    {
+      agentId,
+      goalId: string(),
+      status: goalStatus,
+      reason: string(),
+      turnsUsed: number(),
+      tokensUsed: number(),
+      wallClockMs: number(),
+      wallClockResumedAt: number({ minimum: 0 }),
+      budgetLimits,
+      actor: goalActor,
+    },
+    ['agentId'],
+  ),
   'interaction.request': object(
     {
+      agentId,
       id: string(),
       kind: string(['approval', 'question', 'user_tool']),
       toolCallId: string(),
-      agentId: string(),
       request: {},
     },
-    ['id', 'kind', 'request'],
+    ['agentId', 'id', 'kind', 'request'],
   ),
-  'interaction.resolved': object({ id: string(), response: {} }, ['id', 'response']),
-  'interruptionReminder.recorded': object({ turnId: integer({ minimum: 0 }) }, ['turnId']),
+  'interaction.resolved': object({ agentId, id: string(), response: {} }, ['agentId', 'id', 'response']),
+  'interruptionReminder.recorded': object({ agentId, turnId: integer({ minimum: 0 }) }, ['agentId', 'turnId']),
   'llm.request': object(
     {
+      agentId,
       kind: string(['loop', 'compaction']),
       provider: string(),
       model: string(),
@@ -342,22 +450,44 @@ export const persistedSchemas = {
       messageCount: number({ minimum: 0 }),
       turnStep: string(),
       attempt: string(),
-      projection: string(['strict', 'media-degraded', 'media-stripped']),
+      projection: string([
+        'strict',
+        'media-degraded',
+        'media-stripped',
+        'strict-media-degraded',
+        'strict-media-stripped',
+      ]),
       droppedCount: number(),
     },
-    ['kind', 'provider', 'model', 'toolSelect', 'systemPromptHash', 'toolsHash', 'messageCount'],
+    ['agentId', 'kind', 'provider', 'model', 'toolSelect', 'systemPromptHash', 'toolsHash', 'messageCount'],
   ),
   'llm.tools_snapshot': object(
     {
+      agentId,
       hash: string(),
       tools: array(
         object({ name: string(), description: string(), parameters: object() }, ['name', 'description', 'parameters']),
       ),
     },
-    ['hash', 'tools'],
+    ['agentId', 'hash', 'tools'],
+  ),
+  'mcp.server_failed': object({ agentId, serverName: string(), transport: mcpTransport, error: string() }, [
+    'agentId',
+    'serverName',
+    'transport',
+  ]),
+  'mcp.server_failure_resolved': object(
+    {
+      agentId,
+      serverName: string(),
+      transport: mcpTransport,
+      resolution: string(['recovered', 'needs-auth', 'disabled', 'removed']),
+    },
+    ['agentId', 'serverName', 'transport', 'resolution'],
   ),
   'mcp.tools_discovered': object(
     {
+      agentId,
       serverName: string(),
       hash: string(),
       tools: array(),
@@ -370,10 +500,11 @@ export const persistedSchemas = {
         ]),
       ),
     },
-    ['serverName', 'hash', 'tools', 'enabledNames'],
+    ['agentId', 'serverName', 'hash', 'tools', 'enabledNames'],
   ),
   'permission.record_approval_result': object(
     {
+      agentId,
       turnId: number(),
       toolCallId: string(),
       toolName: string(),
@@ -389,78 +520,199 @@ export const persistedSchemas = {
         ['decision'],
       ),
     },
-    ['turnId', 'toolCallId', 'toolName', 'action', 'result'],
+    ['agentId', 'turnId', 'toolCallId', 'toolName', 'action', 'result'],
   ),
-  'permission.set_mode': object({ mode: string(['manual', 'yolo', 'auto']) }, ['mode']),
-  'plan_mode.cancel': object({ id: string() }),
-  'plan_mode.enter': object({ id: string() }, ['id']),
-  'plan_mode.exit': object({ id: string() }),
-  'plan.revision': object({ id: string(), version: number(), path: string(), sha256: string(), bytes: number() }, [
-    'id',
-    'version',
-    'path',
-    'sha256',
-    'bytes',
+  'permission.set_mode': object({ agentId, mode: string(['manual', 'yolo', 'auto']) }, ['agentId', 'mode']),
+  'plan_mode.cancel': object({ agentId, id: string() }, ['agentId']),
+  'plan_mode.enter': object({ agentId, id: string() }, ['agentId', 'id']),
+  'plan_mode.exit': object({ agentId, id: string() }, ['agentId']),
+  'plan.revision': object(
+    { agentId, id: string(), version: number(), key: string(), sha256: string(), bytes: number() },
+    ['agentId', 'id', 'version', 'key', 'sha256', 'bytes'],
+  ),
+  'plugin.session_start': object({ agentId, content: { anyOf: [string(), { type: 'null' }] } }, ['agentId', 'content']),
+  'profile.bind': object({ ...profileFields, activeToolNames: array(string()), subagents: array(string()) }, [
+    'agentId',
+    'thinkingEffort',
+    'systemPrompt',
+    'disallowedTools',
   ]),
-  'profile.bind': object(
+  'prompt.aborted': object({ agentId, promptId: string(), abortedAt: string() }, ['agentId', 'promptId', 'abortedAt']),
+  'prompt.completed': object(
+    { agentId, promptId: string(), finishedAt: string(), reason: string(['completed', 'failed', 'blocked']) },
+    ['agentId', 'promptId', 'finishedAt', 'reason'],
+  ),
+  'prompt.steered': object(
     {
-      modelAlias: string(),
-      profileName: string(),
-      thinkingEffort: string(),
-      systemPrompt: string(),
-      environmentDisclosure: object(),
-      renderGeneration: number(),
-      agentsMdPaths: array(string()),
-      activeToolNames: array(string()),
-      disallowedTools: array(string()),
-      subagents: array(string()),
+      agentId,
+      activePromptId: string(),
+      promptIds: array(string()),
+      content: array(contentPartSchema),
+      steeredAt: string(),
+      messageId: string(),
     },
-    ['thinkingEffort', 'systemPrompt', 'disallowedTools'],
+    ['agentId', 'activePromptId', 'promptIds', 'content', 'steeredAt'],
   ),
-  'swarm_mode.enter': object({ trigger: string(['manual', 'task', 'tool']) }, ['trigger']),
-  'swarm_mode.exit': object(),
-  'task.started': object({ info: taskInfo }, ['info']),
-  'task.terminated': object({ info: taskInfo, outputTail: string() }, ['info']),
+  'runtime.set_binding': object({ agentId, workspaceId: string(), runtimeId: string() }, [
+    'agentId',
+    'workspaceId',
+    'runtimeId',
+  ]),
+  // Subagent mirror records are written into the parent journal and carry the
+  // child's id rather than an `agentId` field.
+  'subagent.cancelled': object({ subagentId: string() }, ['subagentId']),
+  'subagent.completed': object(
+    { subagentId: string(), resultSummary: string(), usage: tokenUsageSchema, contextTokens: number() },
+    ['subagentId', 'resultSummary'],
+  ),
+  'subagent.failed': object({ subagentId: string(), error: string() }, ['subagentId', 'error']),
+  'subagent.spawned': object(
+    {
+      subagentId: string(),
+      subagentName: string(),
+      parentToolCallId: string(),
+      parentToolCallUuid: string(),
+      parentAgentId: string(),
+      callerAgentId: string(),
+      description: string(),
+      swarmIndex: number(),
+      runInBackground: boolean,
+      model: string(),
+      thinkingEffort: string(),
+      taskId: string(),
+    },
+    ['subagentId', 'subagentName', 'parentToolCallId', 'runInBackground'],
+  ),
+  'subagent.started': object({ subagentId: string() }, ['subagentId']),
+  'swarm_mode.enter': object({ agentId, trigger: string(['manual', 'task', 'tool']) }, ['agentId', 'trigger']),
+  'swarm_mode.exit': object({ agentId }, ['agentId']),
+  'task.started': object({ agentId, info: taskInfo }, ['agentId', 'info']),
+  'task.terminated': object({ agentId, info: taskInfo, outputTail: string() }, ['agentId', 'info']),
+  'task.waitDelivered': object({ agentId, keys: array(string()) }, ['agentId', 'keys']),
+  'token_counting.measured': tokenCount(),
+  'token_counting.rebased': tokenCount({ measured: boolean }, ['measured']),
+  'token_counting.truncated': tokenCount(),
+  'token_counting.turn_recorded': tokenCount({ turnId: number() }, ['turnId']),
   'tools.register_user_tool': object(
-    { name: string(), description: string(), parameters: object(), disclosure: string(['inline', 'deferred']) },
-    ['name', 'description', 'parameters'],
+    {
+      agentId,
+      name: string(),
+      description: string(),
+      parameters: object(),
+      disclosure: string(['inline', 'deferred']),
+    },
+    ['agentId', 'name', 'description', 'parameters'],
   ),
-  'tools.reset_active_tools': object(),
-  'tools.set_active_tools': object({ names: array(string()) }, ['names']),
-  'tools.unregister_user_tool': object({ name: string() }, ['name']),
-  'tools.update_store': object({ key: string(), value: {} }, ['key', 'value']),
-  'turn.cancel': object({
-    turnId: number(),
-    target: string(['active', 'queued']),
-    reason: string(['user_cancelled', 'aborted']),
-  }),
+  'tools.reset_active_tools': object({ agentId }, ['agentId']),
+  'tools.set_active_tools': object({ agentId, names: array(string()) }, ['agentId', 'names']),
+  'tools.unregister_user_tool': object({ agentId, name: string() }, ['agentId', 'name']),
+  'tools.update_store': object({ agentId, key: string(), value: {} }, ['agentId', 'key', 'value']),
+  'tower_mode.enter': object({ agentId, sessionId: string() }, ['agentId']),
+  'tower_mode.exit': object({ agentId }, ['agentId']),
+  'turn.cancel': object(
+    {
+      agentId,
+      turnId: number(),
+      target: string(['active', 'queued']),
+      reason: string(['user_cancelled', 'aborted']),
+    },
+    ['agentId'],
+  ),
   'turn.ended': object(
     {
+      agentId,
       turnId: number(),
       reason: string(['completed', 'cancelled', 'failed', 'blocked']),
       error: errorSchema,
       durationMs: number(),
+      stopReason: string(),
+      traceId: string(),
     },
-    ['turnId', 'reason'],
+    ['agentId', 'turnId', 'reason'],
   ),
-  'turn.prompt': object({ input: array(contentPartSchema), origin: promptOriginSchema }, ['input', 'origin']),
-  'turn.steer': object({ input: array(contentPartSchema), origin: promptOriginSchema }, ['input', 'origin']),
-  'usage.record': object({ model: string(), usage: tokenUsageSchema, usageScope: string(['session', 'turn']) }, [
-    'model',
-    'usage',
-  ]),
+  'turn.prompt': object(
+    { agentId, input: array(contentPartSchema), origin: promptOriginSchema, promptId: string(), turnId: number() },
+    ['agentId', 'input', 'origin'],
+  ),
+  'turn.steer': object(
+    {
+      agentId,
+      input: array(contentPartSchema),
+      origin: promptOriginSchema,
+      messageId: string(),
+      promptIds: array(string()),
+      turnId: number(),
+    },
+    ['agentId', 'input', 'origin'],
+  ),
+  'turn.step.interrupted': object(
+    { agentId, turnId: number(), step: number(), stepId: string(), reason: string(), message: string() },
+    ['agentId', 'turnId', 'step', 'reason'],
+  ),
+  'turn.step.retrying': object(
+    {
+      agentId,
+      turnId: number(),
+      step: number(),
+      stepId: string(),
+      failedAttempt: number(),
+      nextAttempt: number(),
+      maxAttempts: number(),
+      delayMs: number(),
+      errorName: string(),
+      errorMessage: string(),
+      statusCode: number(),
+    },
+    [
+      'agentId',
+      'turnId',
+      'step',
+      'failedAttempt',
+      'nextAttempt',
+      'maxAttempts',
+      'delayMs',
+      'errorName',
+      'errorMessage',
+    ],
+  ),
+  'usage.record': object(
+    { agentId, model: string(), usage: tokenUsageSchema, usageScope: string(['session', 'turn']) },
+    ['agentId', 'model', 'usage'],
+  ),
 };
 
-export const transientTypes = [
-  'cron.add',
-  'cron.cursor',
-  'cron.delete',
-  'permission.rules.add',
-  'skill.activate',
-  'token_counting.measured',
-  'token_counting.rebased',
-  'token_counting.truncated',
-];
+// 2.4.1 has no transient manifest entries; these 0.34.0 operations were retired.
+export const transientTypes = [];
+export const retiredTypes = ['permission.rules.add', 'skill.activate'];
+
+/**
+ * Durable records outside the generated manifest. The loop engine's journal
+ * (`src/agent/loop/machine/storeJournal.ts`) appends `agent.<event>` records
+ * from `src/human/agent/events.ts` with a `kind` discriminator, and undo
+ * (`src/wire/tree/fork.ts`) appends an `agent.switched` branch edge plus a
+ * paired legacy `context.undo` and a `context.undone` marker.
+ */
+export const engineJournalTypes = ['agent.message.appended', 'agent.turn.started', 'agent.turn.ended'];
+export const supplementalSchemas = {
+  'agent.message.appended': object({ kind: string(), message: object() }, ['kind', 'message']),
+  'agent.turn.started': object({ kind: string(), turnId: integer(), queueItemId: string() }, ['kind', 'turnId']),
+  'agent.turn.ended': object(
+    { kind: string(), turnId: integer(), outcome: string(['done', 'failed', 'aborted']), errorMessage: string() },
+    ['kind', 'turnId', 'outcome'],
+  ),
+  'agent.switched': object(
+    {
+      agentId,
+      branch: string(),
+      reason: string(),
+      base: object({ branch: string(), line: number() }, ['branch', 'line']),
+      turns: number(),
+      legacyUndoLine: number(),
+    },
+    ['agentId', 'branch', 'base'],
+  ),
+  'context.undone': object({ agentId, turns: number(), fromTurnId: number() }, ['agentId', 'turns']),
+};
 
 export const hookEvents = [
   'PreToolUse',
@@ -501,6 +753,7 @@ const hook = (event, fields = {}, required = []) =>
     ...required,
   ]);
 const permissionFields = {
+  id: string(),
   agent_id: string(),
   turn_id: number(),
   tool_call_id: string(),
@@ -526,6 +779,7 @@ export const hookSchemas = {
     ['tool_name', 'tool_input', 'tool_call_id', 'error'],
   ),
   PermissionRequest: hook('PermissionRequest', permissionFields, [
+    'agent_id',
     'turn_id',
     'tool_call_id',
     'tool_name',
@@ -543,7 +797,7 @@ export const hookSchemas = {
       selected_label: string(),
       error: string(),
     },
-    ['turn_id', 'tool_call_id', 'tool_name', 'action', 'display', 'tool_input', 'decision'],
+    ['agent_id', 'turn_id', 'tool_call_id', 'tool_name', 'action', 'display', 'tool_input', 'decision'],
   ),
   UserPromptSubmit: hook('UserPromptSubmit', { prompt: array(contentPartSchema), is_steer: boolean }, [
     'prompt',
@@ -594,6 +848,7 @@ export const hookSchemas = {
     'Notification',
     {
       sink: string(['context']),
+      agent_id: string(),
       notification_type: string(),
       title: string(),
       body: string(),
@@ -601,7 +856,7 @@ export const hookSchemas = {
       source_kind: string(),
       source_id: string(),
     },
-    ['sink', 'notification_type', 'title', 'body', 'severity', 'source_kind', 'source_id'],
+    ['sink', 'agent_id', 'notification_type', 'title', 'body', 'severity', 'source_kind', 'source_id'],
   ),
 };
 
@@ -624,29 +879,35 @@ export const sourceFiles = [
   'apps/kimi-code/src/cli/commands.ts',
   'apps/kimi-code/src/cli/options.ts',
   'packages/agent-core-v2/docs/wire-manifest.d.ts',
-  'packages/agent-core-v2/src/agent/contextMemory/contextOps.ts',
+  'packages/agent-core-v2/src/_base/utils/workdir-slug.ts',
   'packages/agent-core-v2/src/agent/contextMemory/loopEventFold.ts',
   'packages/agent-core-v2/src/agent/contextMemory/types.ts',
-  'packages/agent-core-v2/src/agent/externalHooks/externalHooksService.ts',
-  'packages/agent-core-v2/src/agent/fullCompaction/fullCompaction.ts',
   'packages/agent-core-v2/src/agent/fullCompaction/types.ts',
-  'packages/agent-core-v2/src/agent/llmRequester/llmRequestOps.ts',
-  'packages/agent-core-v2/src/agent/loop/turnEvents.ts',
-  'packages/agent-core-v2/src/agent/permissionPolicy/types.ts',
-  'packages/agent-core-v2/src/agent/prompt/promptService.ts',
+  'packages/agent-core-v2/src/agent/loop/loopService.ts',
+  'packages/agent-core-v2/src/agent/loop/machine/storeJournal.ts',
+  'packages/agent-core-v2/src/agent/permissionRules/permissionRules.ts',
+  'packages/agent-core-v2/src/agent/task/task.ts',
   'packages/agent-core-v2/src/agent/task/types.ts',
   'packages/agent-core-v2/src/agent/toolApproval/toolApprovalService.ts',
   'packages/agent-core-v2/src/agent/tools/agent/subagent-task.ts',
   'packages/agent-core-v2/src/agent/tools/ask-user-question/question-background-task.ts',
   'packages/agent-core-v2/src/agent/tools/os/bash/process-task.ts',
-  'packages/agent-core-v2/src/agent/externalHooks/types.ts',
-  'packages/agent-core-v2/src/app/externalHooksRunner/externalHooksRunnerService.ts',
-  'packages/agent-core-v2/src/app/externalHooksRunner/runner.ts',
-  'packages/agent-core-v2/src/kosong/contract/message.ts',
-  'packages/agent-core-v2/src/kosong/contract/provider.ts',
-  'packages/agent-core-v2/src/kosong/contract/usage.ts',
-  'packages/agent-core-v2/src/session/externalHooks/externalHooksService.ts',
-  'packages/agent-core-v2/src/session/sessionLifecycleHooks/sessionLifecycleHooks.ts',
+  'packages/agent-core-v2/src/agent/undo/undoService.ts',
+  'packages/agent-core-v2/src/features/externalHooks/agent/agentExternalHooksService.ts',
+  'packages/agent-core-v2/src/features/externalHooks/app/externalHooksRunnerService.ts',
+  'packages/agent-core-v2/src/features/externalHooks/internal/runHook.ts',
+  'packages/agent-core-v2/src/features/externalHooks/internal/types.ts',
+  'packages/agent-core-v2/src/features/externalHooks/session/sessionExternalHooksService.ts',
+  'packages/agent-core-v2/src/human/agent/events.ts',
+  'packages/agent-core-v2/src/human/llm/finish-reason.ts',
+  'packages/agent-core-v2/src/human/llm/message.ts',
+  'packages/agent-core-v2/src/human/llm/thinking.ts',
+  'packages/agent-core-v2/src/human/llm/usage.ts',
+  'packages/agent-core-v2/src/llm-adapter/contract/message.ts',
   'packages/agent-core-v2/src/session/subagent/subagent.ts',
+  'packages/agent-core-v2/src/tool/toolInputDisplay.ts',
+  'packages/agent-core-v2/src/wire/human.ts',
   'packages/agent-core-v2/src/wire/migration/migration.ts',
+  'packages/agent-core-v2/src/wire/tree/fork.ts',
+  'packages/agent-core-v2/src/wire/tree/tree.ts',
 ];

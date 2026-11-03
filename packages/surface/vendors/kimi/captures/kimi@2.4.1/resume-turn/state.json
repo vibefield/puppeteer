@@ -1,0 +1,17 @@
+{
+  "id": "session_a11a5ed02537eb0ef2315bac4c67f023d798",
+  "version": 2,
+  "cwd": "/workspace",
+  "archived": false,
+  "agents": {
+    "main": {
+      "homedir": "/workspace/redacted-file",
+      "type": "main"
+    }
+  },
+  "custom": {},
+  "lastTurnReason": "completed",
+  "createdAt": 1767225600000,
+  "updatedAt": 1767225600000,
+  "isCustomTitle": false
+}

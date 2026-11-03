@@ -8,28 +8,54 @@
  * The workflow records those per-artifact distinctions in capture-fidelity.json.
  */
 
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkCaptureDirectory, defaultRules, extendRules, sanitizeRecord } from '@vibefield/puppeteer-surface/sanitize';
+import {
+  REDACTED_EPOCH_MS,
+  checkCaptureDirectory,
+  defaultRules,
+  extendRules,
+  sanitizeRecord,
+} from '@vibefield/puppeteer-surface/sanitize';
 import { KIMI_CANDIDATE_VERSION } from './census/harness.mjs';
 import { writeCaptureFidelity } from '../../scripts/capture-fidelity.mjs';
 
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
+const REDACTED_ISO = new Date(REDACTED_EPOCH_MS).toISOString();
 
 export const kimiRules = extendRules(
   {
     idKey: /^(?:hash|systemPromptHash|toolsHash|promptCacheKey)$/,
     timestampKey: /^(?:created|created_at)$/,
     pathKey: /^(?:agentsMdPaths|homedir|sessionDir|workDir)$/,
-    sensitiveTextKey: /^(?:arguments|description|systemPrompt|think)$/,
+    // 2.4.1 moved the date disclosure into injection origins (`origin.disclosure`).
+    sensitiveTextKey: /^(?:arguments|description|systemPrompt|think|localDate|timeZone)$/,
     sensitiveContainer: /^(?:args|environmentDisclosure|tool_output)$/,
+    // Native structural identifiers, not host facts: `main`/`agent-<n>` name the
+    // journal directory (`agents/<id>/wire.jsonl`, already disclosed by the
+    // fixture path) and the parent/child join; `local` is the runtime binding.
+    // A `wd_<slug>_a11a5ed0…` value is a workdir key whose hash was aliased below.
+    structuralEnumValue: /^(?:main|agent-\d{1,4}|local|wd_[a-z0-9._-]{1,40}_a11a5ed0[0-9a-f]{4})$/,
     unsafeTextPatterns: [
       /\/private\/var\/folders\/[^\s"']+/,
       /\/private\/tmp\/puppeteer-kimi-census-[^\s"']+/,
       /\bsk-not-a-real-key\b/,
+      // ISO wall-clock strings (`finishedAt`, `abortedAt`, engine `meta.createdAt`) are pinned below.
+      new RegExp(`^(?!${REDACTED_ISO.replaceAll('.', '\\.')}$)\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$`),
     ],
   },
+  defaultRules,
+);
+
+/**
+ * What the repository-wide capture gate applies to committed Kimi captures: the
+ * shared defaults plus only the closed structural-identifier allowance above
+ * (`main`, `agent-<n>`, `local`, and an aliased workdir key).
+ */
+export const kimiRepositoryGateRules = extendRules(
+  { structuralEnumValue: kimiRules.structuralEnumValue },
   defaultRules,
 );
 
@@ -46,14 +72,38 @@ function parseJsonLines(path) {
     });
 }
 
+const WORKDIR_KEY = /^wd_([a-z0-9._-]{1,40})_([0-9a-f]{12})$/;
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+
+/**
+ * Pin ISO-8601 wall-clock strings to the shared redacted epoch, and keep Kimi's
+ * `wd_<slug>_<sha256-12>` workdir-key shape. The hash covers the
+ * harness temp path, so it is replaced with a marker-prefixed digest of itself;
+ * the slug is the bounded basename slug Kimi derives (`workspace` here).
+ */
+function pinNativeShapes(value) {
+  if (Array.isArray(value)) return value.map(pinNativeShapes);
+  if (value === null || typeof value !== 'object') {
+    if (typeof value !== 'string') return value;
+    if (ISO_INSTANT.test(value)) return REDACTED_ISO;
+    const match = WORKDIR_KEY.exec(value);
+    if (!match || match[2].startsWith('a11a5ed0')) return value;
+    return `wd_${match[1]}_a11a5ed0${createHash('sha256').update(match[2]).digest('hex').slice(0, 4)}`;
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, pinNativeShapes(child)]));
+}
+
 function writeJson(path, value) {
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(sanitizeRecord(value, kimiRules), null, 2)}\n`);
+  writeFileSync(path, `${JSON.stringify(sanitizeRecord(pinNativeShapes(value), kimiRules), null, 2)}\n`);
 }
 
 function writeJsonLines(path, records) {
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${records.map((record) => JSON.stringify(sanitizeRecord(record, kimiRules))).join('\n')}\n`);
+  writeFileSync(
+    path,
+    `${records.map((record) => JSON.stringify(sanitizeRecord(pinNativeShapes(record), kimiRules))).join('\n')}\n`,
+  );
 }
 
 function filesNamed(directory, name) {
@@ -83,7 +133,11 @@ export function sanitizeKimiCaptureSet(input, output, version = KIMI_CANDIDATE_V
     const mainWires = wires.filter((path) => /(?:^|[\\/])agents[\\/]main[\\/]wire\.jsonl$/.test(path));
     const agentWires = wires.filter((path) => !mainWires.includes(path));
     const wire = exactlyOne(mainWires, 'main wire journal');
-    const state = exactlyOne(filesNamed(source, 'state.json'), 'session state');
+    // 2.4.1 also writes `<session>/notify/state.json`; the session state sits beside `agents/`.
+    const state = exactlyOne(
+      filesNamed(source, 'state.json').filter((path) => existsSync(join(dirname(path), 'agents'))),
+      'session state',
+    );
     const index = exactlyOne(filesNamed(source, 'session_index.jsonl'), 'session index');
 
     writeJsonLines(join(destination, 'wire.jsonl'), parseJsonLines(wire));

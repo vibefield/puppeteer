@@ -1,8 +1,8 @@
 import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 
-export const KIMI_CONTRACT = 'kimi-wire@1.5+surface@0.34.0';
+export const KIMI_CONTRACT = 'kimi-wire@1.5+surface@2.4.1';
 
-/** Claims are bounded by the pinned 0.34.0 Surface and its exact release source. */
+/** Claims are bounded by the pinned 2.4.1 Surface and its exact release source. */
 export const KIMI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   {
     family: 'status',
@@ -61,7 +61,7 @@ export const KIMI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     source: 'kimi-permission-and-plan-mode-records',
     contractVersion: KIMI_CONTRACT,
     limitations: [
-      'manual, yolo, and auto permission modes are runtime verified.',
+      'auto is runtime verified by the print-mode census; manual and yolo are exact-source-backed.',
       'Plan-mode transitions are exact-source-backed but not pinned-runtime verified.',
       'Kimi has no verified Accept Edit mode equivalent.',
     ],
@@ -75,7 +75,8 @@ export const KIMI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     contractVersion: KIMI_CONTRACT,
     limitations: [
       'Child journal presence, activity, model, effort, and usage are observable.',
-      'A universal child-stop record is not verified.',
+      'Parent-journal subagent.spawned/started/completed are runtime verified for a foreground child.',
+      'subagent.failed and subagent.cancelled stop records are exact-source-backed but not pinned-runtime verified.',
     ],
   },
   {

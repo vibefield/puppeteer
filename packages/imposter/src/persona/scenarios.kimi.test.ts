@@ -60,8 +60,9 @@ describe('Kimi native persona', () => {
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line) as Record<string, unknown>);
-    expect(records.slice(0, 13).map((record) => record.type)).toEqual([
+    expect(records.slice(0, 15).map((record) => record.type)).toEqual([
       'metadata',
+      'runtime.set_binding',
       'profile.bind',
       'permission.set_mode',
       'turn.prompt',
@@ -74,7 +75,18 @@ describe('Kimi native persona', () => {
       'context.append_loop_event',
       'context.append_loop_event',
       'turn.ended',
+      'prompt.completed',
     ]);
+    // 2.4.1 stamps the owning agent on every agent-scoped record.
+    expect(records.filter((record) => record.type !== 'metadata').every((record) => record.agentId === 'main')).toBe(
+      true,
+    );
+    const prompts = records.filter((record) => record.type === 'turn.prompt');
+    expect(prompts.map((record) => record.turnId)).toEqual([0, 1]);
+    const completed = records.filter((record) => record.type === 'prompt.completed');
+    expect(completed.map((record) => record.promptId)).toEqual(prompts.map((record) => record.promptId));
+    expect(new Set(prompts.map((record) => record.promptId)).size).toBe(2);
+    expect(String(prompts[0]!.promptId)).toMatch(/^msg_/);
     const loop = records.find(
       (record) => (record.event as Record<string, unknown> | undefined)?.type === 'content.part',
     )!;

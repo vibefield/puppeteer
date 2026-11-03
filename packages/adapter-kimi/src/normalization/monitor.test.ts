@@ -55,7 +55,7 @@ function capturedBatches(
   relativePath: string,
   agentId: string,
 ): AdapterMonitorObservationBatch[] {
-  const path = new URL(`../../../surface/vendors/kimi/captures/kimi@0.34.0/${relativePath}`, import.meta.url);
+  const path = new URL(`../../../surface/vendors/kimi/captures/kimi@2.4.1/${relativePath}`, import.meta.url);
   const raw = readFileSync(path, 'utf8');
   const batches: AdapterMonitorObservationBatch[] = [];
   let cursor = 0;
@@ -94,7 +94,7 @@ describe('KimiMonitorEvidence', () => {
     );
   });
 
-  it('projects pinned 0.34.0 root and child captures without copying retained payloads', () => {
+  it('projects pinned 2.4.1 root and child captures without copying retained payloads', () => {
     const projector = evidence();
     const root = capturedBatches(projector, 'basic-turn/wire.jsonl', 'main');
     const child = capturedBatches(projector, 'subagent-turn/agents/agent-0.jsonl', 'agent-0');
@@ -126,6 +126,49 @@ describe('KimiMonitorEvidence', () => {
       ]),
     );
     expect(JSON.stringify([root, child])).not.toContain('<redacted:');
+  });
+
+  it('stops a captured foreground child from its parent-journal subagent.completed record', () => {
+    const projector = evidence();
+    const parent = capturedBatches(projector, 'subagent-turn/wire.jsonl', 'main');
+    const child = capturedBatches(projector, 'subagent-turn/agents/agent-0.jsonl', 'agent-0');
+    const delegation = parent
+      .flatMap(({ updates }) => updates)
+      .filter(({ family }) => family === 'delegation')
+      .map((update) => (update as unknown as { value: { state: string; actor: Record<string, unknown> } }).value);
+    expect(delegation.map(({ state }) => state)).toEqual(['active', 'active', 'stopped']);
+    expect(delegation.at(-1)?.actor).toMatchObject({
+      nativeAgentId: 'agent-0',
+      nativeAgentType: 'coder',
+      parentRunKey: `${SESSION}:root`,
+    });
+    const spawned = parent.find(({ updates }) =>
+      updates.some(
+        (update) => update.family === 'model' && 'key' in update && update.key.startsWith('configured:actor:'),
+      ),
+    );
+    expect(spawned).toMatchObject({ quality: 'exact', completeness: 'complete' });
+    // Child journal records tailed after the parent's stop cannot reopen the actor.
+    expect(
+      child
+        .flatMap(({ updates }) => updates)
+        .filter(({ family }) => family === 'delegation')
+        .every((update) => (update as unknown as { value: { state: string } }).value.state === 'stopped'),
+    ).toBe(true);
+  });
+
+  it('marks source-only subagent failure and cancellation as provisional', () => {
+    const projector = evidence();
+    for (const type of ['subagent.failed', 'subagent.cancelled']) {
+      expect(projector.recordBatch(observed({ type, subagentId: `child-${type}` }), AT)).toMatchObject({
+        quality: 'unknown',
+        completeness: 'partial',
+        provisional: true,
+        updates: [
+          expect.objectContaining({ family: 'delegation', value: expect.objectContaining({ state: 'stopped' }) }),
+        ],
+      });
+    }
   });
 
   it('separates configured model/modes from applied model and effort observations', () => {

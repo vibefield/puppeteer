@@ -6,10 +6,16 @@ import { fileURLToPath } from 'node:url';
 import { loadModel, validatePayload } from '@vibefield/puppeteer-surface';
 import { checkCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import { buildSourceReference } from './census/extract-source-reference.mjs';
-import { hookEvents, hookSchemas, persistedSchemas, transientTypes } from './census/source-contract.mjs';
+import {
+  hookEvents,
+  hookSchemas,
+  persistedSchemas,
+  supplementalSchemas,
+  transientTypes,
+} from './census/source-contract.mjs';
 import { kimiRules } from './sanitize-captures.mjs';
 
-const version = '0.34.0';
+const version = '2.4.1';
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
 const capturesRoot = join(vendorRoot, 'captures', `kimi@${version}`);
 const model = loadModel(vendorRoot);
@@ -95,14 +101,19 @@ sameJson(
   sourceReference.wire.transient.map((entry) => entry.type),
   transientTypes,
 );
+sameJson(
+  'supplemental source schema projection',
+  sourceReference.wire.supplemental.payloadSchemas,
+  supplementalSchemas,
+);
 if (
-  sourceReference.wire.totalOperationTypes !== 48 ||
-  sourceReference.wire.persistedOperationTypes !== 40 ||
-  sourceReference.wire.transientOperationTypes !== 8
+  sourceReference.wire.totalOperationTypes !== 67 ||
+  sourceReference.wire.persistedOperationTypes !== 67 ||
+  sourceReference.wire.transientOperationTypes !== 0
 ) {
-  problems.push('source operation counts must be 40 persisted + 8 transient = 48 total');
+  problems.push('source record counts must be 67 durable manifest records and no transient entries');
 }
-for (const [name, schema] of Object.entries(persistedSchemas)) {
+for (const [name, schema] of Object.entries({ ...persistedSchemas, ...supplementalSchemas })) {
   sameJson(`${name} payloadSchema`, events.get(name)?.payloadSchema, schema);
 }
 for (const [name, schema] of Object.entries(hookSchemas)) {
@@ -163,7 +174,9 @@ for (const descriptor of model.events) {
     if (variant.confidence.startsWith('verified') && !observed) {
       problems.push(`${descriptor.event}: verified variant has no matching capture: ${JSON.stringify(variant.match)}`);
     } else if (!variant.confidence.startsWith('verified') && observed) {
-      problems.push(`${descriptor.event}: captured variant remains ${variant.confidence}: ${JSON.stringify(variant.match)}`);
+      problems.push(
+        `${descriptor.event}: captured variant remains ${variant.confidence}: ${JSON.stringify(variant.match)}`,
+      );
     }
   }
 }

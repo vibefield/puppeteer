@@ -1,0 +1,24 @@
+{
+  "vendor": "kimi",
+  "vendorVersion": "2.4.1",
+  "rawCaptureRoot": "captures-raw/kimi@2.4.1",
+  "digestAlgorithm": "sha256-path-content-v1",
+  "sha256": "8a379db80a14187791caa76fcd8cd3e4bad0157962c93bce8cd87096336eed4d",
+  "files": 157,
+  "scenarios": [
+    "background-task",
+    "basic-turn",
+    "hook-block-prompt",
+    "hook-deny-tool",
+    "interrupt-stream",
+    "malformed-stream",
+    "provider-error",
+    "provider-retry",
+    "resume-turn",
+    "subagent-turn",
+    "tool-nonzero",
+    "tool-success"
+  ],
+  "captureStartedAt": "2026-11-03T19:17:30.683Z",
+  "captureEndedAt": "2026-11-03T19:19:12.187Z"
+}

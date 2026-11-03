@@ -1,0 +1,97 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "2.4.1",
+  "event": "agent.switched",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "branch": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "base": {
+        "type": "object",
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "line": {
+            "type": "number"
+          }
+        },
+        "required": ["branch", "line"]
+      },
+      "turns": {
+        "type": "number"
+      },
+      "legacyUndoLine": {
+        "type": "number"
+      }
+    },
+    "required": ["agentId", "branch", "base"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["agent.switched"]
+      },
+      "agentId": {
+        "type": "string"
+      },
+      "branch": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "base": {
+        "type": "object",
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "line": {
+            "type": "number"
+          }
+        },
+        "required": ["branch", "line"]
+      },
+      "turns": {
+        "type": "number"
+      },
+      "legacyUndoLine": {
+        "type": "number"
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "agentId", "branch", "base", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"],
+    "carrier": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified"
+}

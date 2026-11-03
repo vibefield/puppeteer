@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 const scriptPath = fileURLToPath(import.meta.url);
 const vendorRoot = dirname(dirname(scriptPath));
 
-export const KIMI_CANDIDATE_VERSION = '0.34.0';
+export const KIMI_CANDIDATE_VERSION = '2.4.1';
 
 export const KIMI_HOOK_EVENTS = [
   'PreToolUse',
@@ -302,10 +302,23 @@ export const SCENARIOS = {
       ],
     ],
   },
+  // 0.34.0 hung on this stream until the harness deadline. 2.4.1 ends the
+  // step with `finishReason: "error"`, persists `turn.step.retrying`, and
+  // retries the request, so the scenario supplies the recovery response.
   'malformed-stream': {
     prompt: 'Exercise the controlled malformed provider stream.',
-    expectedExitCodes: [1],
-    responses: [{ malformed: true }],
+    responses: [
+      { malformed: true },
+      [
+        { delta: { role: 'assistant' } },
+        { delta: { content: 'SURFACE_KIMI_MALFORMED_RECOVERED' } },
+        {
+          delta: {},
+          finishReason: 'stop',
+          usage: { prompt_tokens: 30, completion_tokens: 8, total_tokens: 38 },
+        },
+      ],
+    ],
   },
   'subagent-turn': {
     prompt: 'Use Agent once so a foreground subagent replies with the census marker, then report completion.',

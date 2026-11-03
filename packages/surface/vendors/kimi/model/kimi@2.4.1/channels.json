@@ -1,0 +1,28 @@
+{
+  "channels": {
+    "argv": {
+      "kind": "argv-env",
+      "notes": "Native Kimi process launch and KIMI_CODE_HOME selection."
+    },
+    "terminal": {
+      "kind": "terminal",
+      "notes": "Native TUI presentation and guarded input; terminal text is not semantic truth."
+    },
+    "wire": {
+      "kind": "native-log",
+      "notes": "Append-only sessions/<workspace>/<session>/agents/<agent>/wire.jsonl protocol 1.5."
+    },
+    "session-state": {
+      "kind": "native-state",
+      "notes": "Replace-in-place state.json session metadata."
+    },
+    "session-index": {
+      "kind": "native-index",
+      "notes": "Append-only session_index.jsonl beneath KIMI_CODE_HOME."
+    },
+    "hook-command": {
+      "kind": "hook-command",
+      "notes": "Configured external hooks receive one JSON document on stdin."
+    }
+  }
+}
