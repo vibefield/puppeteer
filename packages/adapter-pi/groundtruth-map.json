@@ -3,7 +3,7 @@
   "provider": "pi",
   "adapterPackage": "@vibefield/puppeteer-adapter-pi",
   "groundTruth": "packages/surface/vendors/pi/groundtruth.json",
-  "groundTruthSha256": "4d8aaab8603ec20a5753a58b22376a555b5d67b2df820cc726bbef9a4ea1547e",
+  "groundTruthSha256": "44abdbb97d906e60a71b7c5e2d64657d46c6f0997a0c64901025fb9257753378",
   "semanticEvents": [
     "compaction",
     "message",

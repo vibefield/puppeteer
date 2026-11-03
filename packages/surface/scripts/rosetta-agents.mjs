@@ -97,7 +97,15 @@ export const ROSETTA_AGENT_CONFIGS = Object.freeze({
       effort: '--thinking',
       name: '--name',
     },
-    privacy: { sensitiveTextKey: /^(?:timestamp)$/i, pathKey: /^(?:parentSession)$/i },
+    // 1.5.0 persists the system prompt as a role=system message (and on compaction.systemMessage): every
+    // `sections` value is prompt text (`sections.cwd` stays a path), and tool descriptions and parameter schemas can
+    // carry extension-authored text, so only tool names and schema keys/types survive. `argumentsError` embeds the
+    // raw model-sent arguments.
+    privacy: {
+      sensitiveTextKey: /^(?:timestamp|description|argumentsError)$/i,
+      sensitiveContainer: /^(?:sections|parameters)$/i,
+      pathKey: /^(?:parentSession)$/i,
+    },
   }),
 });
 

@@ -200,7 +200,7 @@
         "id": "pi-captures",
         "path": "packages/surface/vendors/pi/captures/pi@1.5.0",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "828f46e25e036454f4bf3d432db400a2c72d02f53df79c900eb5499a58b0fd80"
+        "sha256": "f29c00d71bb7657129f773284594e990b51c78f91c50bb940052fef6e303549d"
       },
       {
         "id": "pi-references",
