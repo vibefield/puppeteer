@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 export const CODEX_LIVE_MODEL = 'puppeteer-codex-live';
 export const CODEX_LIVE_RESPONSE_MARKER = 'SURFACE_CODEX_TUI_OK';
+export const CODEX_LIVE_COMMAND_MARKER = 'SURFACE_CODEX_APPROVED_COMMAND';
 export const CODEX_LIVE_API_KEY = 'sk-puppeteer-not-a-real-key';
 
 export interface CodexLiveModelRequest {
@@ -90,9 +91,12 @@ export function isolatedCodexLiveEnvironment(root: string, home: string): Record
 }
 
 /** Deterministic local implementation of the one Responses API turn this proof needs. */
-export async function startCodexLoopbackProvider(): Promise<CodexLiveModelProvider> {
+export async function startCodexLoopbackProvider(
+  options: { requestApproval?: boolean } = {},
+): Promise<CodexLiveModelProvider> {
   const requests: CodexLiveModelRequest[] = [];
   let turn = 0;
+  let modelTurns = 0;
   const server = createServer((request, response) => {
     let raw = '';
     request.setEncoding('utf8');
@@ -113,15 +117,33 @@ export async function startCodexLoopbackProvider(): Promise<CodexLiveModelProvid
       }
 
       turn += 1;
+      if (kind === 'turn') modelTurns += 1;
       const text =
         kind === 'thread-title' ? JSON.stringify({ title: 'Verify Codex native TUI' }) : CODEX_LIVE_RESPONSE_MARKER;
-      const item = {
-        type: 'message',
-        role: 'assistant',
-        id: `msg_puppeteer_${turn}`,
-        status: 'completed',
-        content: [{ type: 'output_text', text, annotations: [] }],
-      };
+      const tools = (body as { tools?: { type?: string; name?: string }[] }).tools;
+      const codeMode = tools?.some((tool) => tool.type === 'custom' && tool.name === 'exec');
+      const command = JSON.stringify({
+        cmd: `echo ${CODEX_LIVE_COMMAND_MARKER}`,
+        sandbox_permissions: 'require_escalated',
+        justification: 'Verify native TUI approval routing with a harmless echo command',
+      });
+      const item =
+        options.requestApproval && kind === 'turn' && modelTurns === 1
+          ? {
+              id: `fc_puppeteer_${turn}`,
+              call_id: `call_puppeteer_${turn}`,
+              status: 'completed',
+              ...(codeMode
+                ? { type: 'custom_tool_call', name: 'exec', input: `await tools.exec_command(${command})` }
+                : { type: 'function_call', name: 'exec_command', arguments: command }),
+            }
+          : {
+              type: 'message',
+              role: 'assistant',
+              id: `msg_puppeteer_${turn}`,
+              status: 'completed',
+              content: [{ type: 'output_text', text, annotations: [] }],
+            };
       const send = (type: string, data: Record<string, unknown>): void => {
         response.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`);
       };

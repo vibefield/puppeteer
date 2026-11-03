@@ -43,23 +43,24 @@ export interface CodexApprovalRequest {
   requestId: number | string;
   /**
    * Present only where Codex's own TUI is shown the same request
-   * (`unhandled: 'defer'`). Aborted once the request settled without this
-   * decision — the person answered in the TUI, the turn ended, the connection
-   * closed, or the session was disposed — so a host UI can close. A decision
+   * (`unhandled: 'defer'`). Aborted once the request settled — Codex resolved
+   * it, the turn ended, the connection closed, or the session was disposed —
+   * so a host UI can close. A decision
    * returned after the abort is dropped, never sent.
    */
   signal?: AbortSignal | undefined;
 }
 
 /**
- * What answers a person-facing request when the host supplied no decision handler.
+ * Who answers requests when the host supplied no approval decision handler.
  *
  * - `deny` (the default): this client refuses it at once. Right only where it is
  *   the app-server's sole client (the headless driver); leaving the request open
  *   there would hang the turn.
- * - `defer`: this client never replies. For a composition in which Codex's own
- *   TUI is attached to the same thread on the same app-server: the TUI is sent
- *   the same request and asks the person. The request settles from Codex's
+ * - `defer`: this client replies only through an explicit approval policy.
+ *   For a composition in which Codex's own TUI is attached to the same thread
+ *   on the same app-server: the TUI is sent
+ *   the same request and asks the person. A permission wait settles from Codex's
  *   `serverRequest/resolved`, which carries no decision.
  *
  * `defer` also declares the request shared, so a host decision races the
@@ -97,20 +98,14 @@ const CAPABILITY_METHODS = new Set([
 ]);
 
 /**
- * Requests a person answers: the approvals, and the prompts Codex's TUI holds
- * for the person (codex-rs/tui `app/pending_interactive_replay.rs`,
- * rust-v0.164.0: request-permissions, request_user_input and MCP
- * elicitations). The app-server sends each through the thread-scoped sender
- * (`bespoke_event_handling.rs`), so every subscribed connection receives it.
- * The remaining capability requests are the client's to supply, not the
- * person's, and keep their error answer.
+ * Only permission requests produce permission events. A passive client also
+ * leaves questions, authentication, dynamic tools, and unknown capabilities
+ * unanswered; thread status reports native input waits separately.
  */
-const PERSON_FACING_METHODS = new Set([
+const PERMISSION_METHODS = new Set([
   ...REVIEW_DECISION_METHODS,
   ...ACCEPT_DECLINE_METHODS,
   'item/permissions/requestApproval',
-  'item/tool/requestUserInput',
-  'mcpServer/elicitation/request',
 ]);
 
 /** The tool an approval gates, named as `normalization/tool.ts` names the item it runs. */
@@ -201,10 +196,15 @@ export class CodexApprovalService {
     id: number | string,
   ): Promise<Record<string, unknown> | typeof NO_REPLY> {
     if (this.options.isDisposed()) throw new Error('codex session is disposed');
+    const shared = this.options.unhandled === 'defer';
+    if (!PERMISSION_METHODS.has(method) || (!shared && !isApprovalRequest(method))) {
+      if (shared) return NO_REPLY;
+      throw new UnsupportedServerRequestError(method);
+    }
     const requestId = String(id);
+    if (shared && this.pending.has(requestId)) return NO_REPLY;
     const nativeEvent = { method, params, id };
     // Codex's own TUI is sent this request too, and Codex acts on the first reply.
-    const shared = this.options.unhandled === 'defer' && PERSON_FACING_METHODS.has(method);
     // An approve/deny decision answers an approval only. A shared prompt of any
     // other kind is the person's: an error reply would refuse it for them.
     const decide = shared && !isApprovalRequest(method) ? undefined : this.options.decide;
@@ -244,8 +244,9 @@ export class CodexApprovalService {
       return NO_REPLY;
     }
     if (this.pending.get(requestId) !== entry) return NO_REPLY;
-    this.pending.delete(requestId);
-    return this.resolve(method, requestId, decision, nativeEvent);
+    // Sending a response does not identify which client's decision won. Keep
+    // the wait until Codex resolves it, and do not invent its outcome.
+    return approvalResponse(method, decision);
   }
 
   /**

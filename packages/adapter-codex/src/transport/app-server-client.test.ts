@@ -30,6 +30,29 @@ function fake(): Fake {
 const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
 
 describe('AppServerClient', () => {
+  it.each(['resolve', 'reject'])(
+    'suppresses a late handler %s after another client resolves the request',
+    async (outcome) => {
+      const f = fake();
+      const client = new AppServerClient(f.transport);
+      let resolve!: (value: unknown) => void;
+      let reject!: (error: Error) => void;
+      client.onServerRequest(
+        () =>
+          new Promise((res, rej) => {
+            resolve = res;
+            reject = rej;
+          }),
+      );
+      f.deliver({ id: 0, method: 'item/commandExecution/requestApproval', params: {} });
+      f.deliver({ method: 'serverRequest/resolved', params: { threadId: 't', requestId: 0 } });
+      if (outcome === 'resolve') resolve({ decision: 'accept' });
+      else reject(new Error('late policy failure'));
+      await tick();
+      expect(f.sent).toEqual([]);
+      await client.close();
+    },
+  );
   it('correlates a request with its response', async () => {
     const f = fake();
     const c = new AppServerClient(f.transport);

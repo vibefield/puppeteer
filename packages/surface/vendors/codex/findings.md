@@ -1016,9 +1016,47 @@ reaching the observer) is not captured; VibeField's QA wave censuses it.
 - **A looping cursor ends the history walk as complete.** An empty page, or a `nextCursor` already followed, still
   ends the walk without `incomplete`. Whether a server that claims more history but loops should be reported is open;
   real codex has not been seen to do either.
-- **A prompt beside the TUI reads as a permission wait.** The observer leaves `request_user_input`, MCP elicitations
-  and `request_permissions` to the person as it does an approval, and publishes each as a pending permission named by
-  its method: Core's question events are not produced for them, and their resolution names no answer.
-  `request_user_input` is unavailable in Default mode (C1d above), so it arises only in a mode that offers it.
+- **Question details remain native.** The observer leaves `request_user_input` and MCP elicitations to the TUI.
+  Thread status reports their input wait; the observer does not mislabel them as permissions (see C9).
 - **Unverified branches:** `functionCallOutput`, `agentMessage.questions`, `partial_answer`, `TurnError.misalignment`,
   `modelProvider/authRecovery*`, `thread/readState/changed`, `thread/prediction/updated`, `item/fileChange/patchUpdated`.
+
+# C9 — Native TUI monitoring follow-up (2026-11-03)
+
+The private app-server plus `codex resume <thread> --remote <endpoint>` composition
+continues to preserve the native terminal experience and structured monitoring.
+The observer's existing paginated history reader, compatibility fallback, history
+limits, partial-history diagnostics, and replay barrier remain in use.
+
+The observer now leaves every non-permission server request unanswered, including
+authentication, dynamic tools, and unknown capabilities. Command, file, and
+permission requests are observed only for the selected thread; legacy
+`conversationId` and current `threadId` are both recognized. The headless driver
+continues to deny approvals by default and reject unsupported capabilities.
+Explicit host approval callbacks retain their abort signal, but their proposed
+decision is not proof that they won the race: only `serverRequest/resolved` clears
+the wait, with an unknown outcome. The transport also suppresses any reply or error
+from a handler that finishes after another client resolves the request.
+
+Root and child `thread/status/changed` updates now report active, idle, system-error,
+`waitingOnApproval`, and `waitingOnUserInput` states. Questions stay in the native
+TUI and are not published as permission requests. Permanent attachment failures
+surface immediately; transient retries and unanswered resumes have a deadline.
+Passive discovery can still wait for a new thread's first persisted prompt.
+
+Terminal automation acceptance alone no longer produces a confirmed prompt
+receipt. Submissions are serialized and confirmed by a matching future native
+user-message item and its turn id. Replayed history is excluded, and duplicate
+live item ids are ignored. Missing echoes, slash commands without a user-message
+echo, paste-only input, and observation loss return `uncertain`. This is text
+correlation; the headless driver's `clientUserMessageId` provides stronger causal
+correlation.
+
+The native proof in `packages/adapter-codex/src/native-tui.live.test.ts` now holds a
+harmless command pending, answers through the real terminal, and verifies both
+acceptance (command output present) and decline (command never executed), alongside
+prompt echoes and durable resume. It uses isolated profiles, real PTYs, and a
+loopback fake Responses provider. Run with `CODEX_NATIVE_TUI_LIVE=1` and an absolute
+`PUPPETEER_CODEX_BIN`; `CODEX_NATIVE_TUI_TRANSPORT=unix` or `websocket` selects the
+transport. Local macOS proofs do not certify Windows/Linux or promote the support
+baseline.

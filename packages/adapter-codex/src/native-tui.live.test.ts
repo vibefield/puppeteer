@@ -18,13 +18,14 @@ import { createCodexTuiSession } from './launch/tui-session.js';
 import type { AppServerTransportKind } from './transport/app-server-process.js';
 import {
   CODEX_LIVE_MODEL,
+  CODEX_LIVE_COMMAND_MARKER,
   CODEX_LIVE_RESPONSE_MARKER,
   isolatedCodexLiveEnvironment,
   startCodexLoopbackProvider,
   writeCodexLiveConfiguration,
 } from './test-support/live-model.js';
 import { removeCodexLiveRoot, requireCodexLiveExecutable } from './test-support/live-profile.js';
-import { CodexLivePtyHost, waitFor } from './test-support/live-pty-host.js';
+import { CodexLivePtyHost, delay, waitFor } from './test-support/live-pty-host.js';
 
 const live = process.env.CODEX_NATIVE_TUI_LIVE === '1';
 
@@ -60,6 +61,119 @@ async function bounded<T>(operation: Promise<T>, label: string, timeoutMs = 20_0
 }
 
 describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
+  it.each(['accept', 'decline'] as const)(
+    'leaves approval to the real native TUI: %s',
+    async (decision) => {
+      const executable = requireCodexLiveExecutable('CODEX_NATIVE_TUI_LIVE');
+      const root = realpathSync.native(mkdtempSync(join(realpathSync.native(tmpdir()), 'puppeteer-codex-approval-')));
+      const codexHome = join(root, 'codex-home');
+      const cwd = join(root, 'workspace');
+      mkdirSync(cwd, { recursive: true });
+      const provider = await startCodexLoopbackProvider({ requestApproval: true });
+      writeCodexLiveConfiguration(codexHome, cwd, provider.baseUrl);
+      const environment = isolatedCodexLiveEnvironment(root, codexHome);
+      const host = new CodexLivePtyHost();
+      let session: Awaited<ReturnType<typeof createCodexTuiSession>> | undefined;
+      let projection: ReturnType<typeof projectAgentEvents> | undefined;
+      try {
+        const appServerTransport = requestedAppServerTransport();
+        session = await bounded(
+          createCodexTuiSession({
+            cwd,
+            executable,
+            host,
+            env: environment,
+            appServerEnv: environment,
+            ...(appServerTransport ? { appServerTransport } : {}),
+            model: CODEX_LIVE_MODEL,
+            sandbox: 'read-only',
+            approvalPolicy: 'on-request',
+          }),
+          'native approval composition',
+        );
+        projection = projectAgentEvents(session);
+        const receipt = await session.services.prompt.submit({ text: 'Run the harmless echo approval probe.' });
+        expect(receipt).toMatchObject({ status: 'confirmed', turnId: expect.any(String) });
+        await waitFor(
+          () =>
+            projection!.envelopes.some(
+              ({ event }) => event.type === 'interaction:permission-requested' || event.type === 'turn:completed',
+            ),
+          'structured approval observation',
+        );
+        expect(projection.envelopes.some(({ event }) => event.type === 'interaction:permission-requested')).toBe(true);
+        await waitFor(
+          () => host.output(session!.runtimeSessionId).includes('Would you like to run the following command'),
+          'native approval prompt',
+        );
+        // A passive observer must leave the request pending, including while the
+        // person at the terminal takes time to read it.
+        await delay(500);
+        expect(projection.envelopes.some(({ event }) => event.type === 'interaction:permission-resolved')).toBe(false);
+        await host.automateTerminal(session.runtimeSessionId, {
+          kind: 'text',
+          text: decision === 'accept' ? 'y\r' : 'n\r',
+        });
+        await waitFor(
+          () => projection!.envelopes.some(({ event }) => event.type === 'turn:completed'),
+          'turn after native approval',
+        );
+        expect(
+          projection.envelopes.some(
+            ({ event }) => event.type === 'interaction:permission-resolved' && event.outcome === 'unknown',
+          ),
+        ).toBe(true);
+        const commands = projection.envelopes.flatMap(({ nativeEvent }) => {
+          const event = nativeEvent as
+            | { method?: string; params?: { item?: { type?: string; status?: string; aggregatedOutput?: string } } }
+            | undefined;
+          return event?.method === 'item/completed' && event.params?.item?.type === 'commandExecution'
+            ? [event.params.item]
+            : [];
+        });
+        expect(commands).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ status: decision === 'accept' ? 'completed' : 'declined' }),
+          ]),
+        );
+        if (decision === 'accept')
+          expect(commands.some((command) => command.aggregatedOutput?.includes(CODEX_LIVE_COMMAND_MARKER))).toBe(true);
+        else
+          expect(commands.every((command) => !command.aggregatedOutput?.includes(CODEX_LIVE_COMMAND_MARKER))).toBe(
+            true,
+          );
+      } catch (cause) {
+        throw new Error(
+          `Native approval (${decision}) diagnostics: requests=${JSON.stringify(
+            provider.requests.map((request) => {
+              const body = request.body as {
+                tools?: { type?: string; name?: string; tools?: { name?: string }[] }[];
+                input?: { type?: string; output?: unknown }[];
+              };
+              return {
+                kind: request.kind,
+                tools: body.tools?.map((tool) => ({
+                  type: tool.type,
+                  name: tool.name,
+                  nested: tool.tools?.map((nested) => nested.name),
+                })),
+                outputs: body.input?.filter((item) => item.type?.endsWith('_output')),
+              };
+            }),
+          )} events=${JSON.stringify(projection?.envelopes.map(({ event }) => event.type))} tui=${JSON.stringify(session ? host.output(session.runtimeSessionId).slice(-6000) : '')}`,
+          { cause },
+        );
+      } finally {
+        projection?.dispose();
+        await session?.dispose();
+        await host.dispose();
+        await provider.close();
+        await removeCodexLiveRoot(root);
+      }
+    },
+    90_000,
+  );
+
   it('shares one exact thread across app-server, structured observation, TUI, and resume', async () => {
     const executable = requireCodexLiveExecutable('CODEX_NATIVE_TUI_LIVE');
     // The native spelling: Codex reports its rollout path without Windows 8.3 short names (RUNNER~1).
@@ -100,7 +214,10 @@ describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
       const receipt = await session.services.prompt.submit({
         text: `Reply with exactly ${CODEX_LIVE_RESPONSE_MARKER} and do not use tools.`,
       });
-      expect(receipt, host.output(session.runtimeSessionId)).toEqual({ status: 'confirmed' });
+      expect(receipt, host.output(session.runtimeSessionId)).toMatchObject({
+        status: 'confirmed',
+        turnId: expect.any(String),
+      });
       try {
         await waitFor(
           () => projection!.envelopes.some(({ event }) => event.type === 'turn:completed'),

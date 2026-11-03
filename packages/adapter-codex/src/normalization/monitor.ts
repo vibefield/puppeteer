@@ -100,6 +100,59 @@ function childActivity(itemType: string | undefined): { kind: 'responding' | 're
   return { kind: 'tool', line: 'Subagent using a tool' };
 }
 
+/** Runtime status supplements item events, including waits owned by another client. */
+function threadStatusUpdates(threadId: string, value: unknown, actor?: ActorRunRef): MonitorFamilyUpdate[] {
+  const status = rec(value);
+  const type = str(status?.type);
+  if (!type || !['active', 'idle', 'notLoaded', 'systemError'].includes(type)) return [];
+  const flags = type === 'active' && Array.isArray(status?.activeFlags) ? status.activeFlags : [];
+  const updates: MonitorFamilyUpdate[] = [];
+  for (const [flag, interactionKind, detail] of [
+    ['waitingOnApproval', 'permission', 'Waiting for approval in Codex'],
+    ['waitingOnUserInput', 'free-form', 'Waiting for input in Codex'],
+  ] as const) {
+    const key = `thread:${threadId}:${flag}`;
+    updates.push(
+      flags.includes(flag)
+        ? upsert('status', key, {
+            kind: 'interaction',
+            interactionId: key,
+            interactionKind,
+            state: 'pending',
+            detail,
+            ...(actor ? { actor } : {}),
+          })
+        : retract('status', key),
+    );
+  }
+  const activityKey = `thread:${threadId}:activity`;
+  updates.push(
+    type === 'active'
+      ? upsert('status', activityKey, {
+          kind: 'activity',
+          activityKind: 'responding',
+          active: true,
+          line: 'Codex turn running',
+          ...(actor ? { actor } : {}),
+        })
+      : retract('status', activityKey),
+  );
+  const failureKey = `thread:${threadId}:systemError`;
+  updates.push(
+    type === 'systemError'
+      ? upsert('status', failureKey, {
+          kind: 'failure',
+          failureId: failureKey,
+          state: 'active',
+          detail: 'Codex reported a thread system error',
+          recoverable: true,
+          ...(actor ? { actor } : {}),
+        })
+      : retract('status', failureKey),
+  );
+  return updates;
+}
+
 export interface CodexMonitorEvidenceOptions {
   nativeSessionId: () => string | undefined;
   modelDisplayName?: (modelId: string) => string | undefined;
@@ -247,6 +300,7 @@ export class CodexMonitorEvidence {
     const pending = this.pendingModelNames;
     this.pendingModelNames = undefined;
     const updates: MonitorFamilyUpdate[] = [];
+
     for (const [key, value] of pending ?? []) {
       const displayName = this.options.modelDisplayName?.(value.providerModelId);
       if (displayName && displayName !== value.displayName) {
@@ -285,6 +339,7 @@ export class CodexMonitorEvidence {
     const actor = threadId && parentThreadId ? this.registerChild(threadId, parentThreadId, role) : undefined;
     const root = !actor;
     const updates: MonitorFamilyUpdate[] = [];
+    if (threadId) updates.push(...threadStatusUpdates(threadId, thread?.status, actor));
 
     const cwd = str(response?.cwd) ?? str(thread?.cwd);
     if (root && cwd) updates.push(upsert('environment', 'root', { kind: 'environment', cwd }));
@@ -454,6 +509,7 @@ export class CodexMonitorEvidence {
       }
 
       case 'thread/status/changed': {
+        updates.push(...threadStatusUpdates(notificationThreadId!, params.status, actor));
         if (!actor) break;
         const status = str(rec(params.status)?.type);
         updates.push(
