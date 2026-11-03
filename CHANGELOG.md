@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/vibefield/puppeteer/compare/v0.3.2...v0.3.3) (2026-11-02)
+
+
+### Bug Fixes
+
+* **views:** preserve swarm geometry and terminal lifecycle ([#55](https://github.com/vibefield/puppeteer/issues/55)) ([0987664](https://github.com/vibefield/puppeteer/commit/0987664de381f90f3bed3a4623209844f8161d2b))
+
 ## [0.3.2](https://github.com/vibefield/puppeteer/compare/v0.3.1...v0.3.2) (2026-10-29)
 
 

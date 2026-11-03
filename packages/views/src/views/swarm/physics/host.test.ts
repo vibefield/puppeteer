@@ -28,7 +28,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { type BubbleState, readSwarmFrame } from './frame.js';
-import { FRAME_COUNT_INDEX, type SwarmPhysicsParameters } from './world.js';
+import { FRAME_COUNT_INDEX, FRAME_HEADER_FLOATS, type SwarmPhysicsParameters } from './world.js';
 import { createSwarmPhysicsHost, type SwarmPhysicsHost } from './host.js';
 import {
   isSwarmFrame,
@@ -389,5 +389,25 @@ describe('dispose', () => {
     expect(bus.events.length).toBe(settled);
     expect(bus.received()).toBe(delivered);
     expect(bus.held.length).toBe(0);
+  });
+});
+
+describe('the terminal wall across the worker boundary', () => {
+  it('keeps paused bodies still, then eases the latest target after resume', () => {
+    const bus = harness();
+    init(bus, ['a']);
+    const at = bus.lastFrame();
+    bus.send({ type: 'pause' });
+    bus.send({ type: 'updateFloor', floor: 280 });
+    bus.send({ type: 'updateFloor', floor: 320 });
+    bus.tick(5000);
+    expect(bus.lastFrame()).toEqual(at);
+    bus.send({ type: 'resume' });
+    bus.tick(40);
+    expect(bus.lastFrame()![FRAME_HEADER_FLOATS + 1]).toBeGreaterThan(190);
+    for (let tick = 0; tick < 100; tick += 1) bus.tick(40);
+    expect(bus.lastFrame()![FRAME_HEADER_FLOATS + 1]).toBeCloseTo(160, 0);
+    expect(tables(bus)).toHaveLength(1);
+    bus.host.dispose();
   });
 });

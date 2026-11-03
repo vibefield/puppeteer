@@ -37,6 +37,7 @@ export type SwarmPhysicsCommand =
       agents: readonly SwarmAgentSpec[];
       parameters: SwarmPhysicsParameters;
       bounds: SwarmBounds;
+      floor?: number;
       obstacles: readonly SwarmObstacleRect[];
       /** Carried because the stage knows it and the renderer will want it. It
        * changes NOTHING about the simulation today, and that is a decision
@@ -49,6 +50,7 @@ export type SwarmPhysicsCommand =
   | { type: 'updateAgents'; agents: readonly SwarmAgentSpec[] }
   | { type: 'updateParameters'; parameters: SwarmPhysicsParameters }
   | { type: 'updateBounds'; bounds: SwarmBounds }
+  | { type: 'updateFloor'; floor: number }
   | { type: 'updateObstacles'; obstacles: readonly SwarmObstacleRect[] }
   /**
    * The view is told to hold still (MV-W4: the host's animations switch off, or

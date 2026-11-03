@@ -21,6 +21,8 @@ export interface PaneFrameModel {
   readout?: { model: string; effort?: string; configured: boolean };
   /** The share of the context window in use; absent while the provider says nothing. */
   context?: { percent: number; hot: boolean };
+  /** Cancellation is available only while the host observes an active turn. */
+  turnActive?: boolean;
   /**
    * Stop while the agent runs, resume once its process has ended; a shell has
    * no verb. `key` is the stop's key as its title names it.
@@ -128,6 +130,7 @@ export function paneFrameModel({ session, agent, remoteDevice, fallbackCwd, nowM
   if (session.exited || !agent.alive) {
     model.verb = { kind: 'resume' };
   } else if (agent.status === 'working') {
+    model.turnActive = true;
     const since = agent.statusSince === undefined ? Number.NaN : Date.parse(agent.statusSince);
     model.verb = {
       kind: 'stop',

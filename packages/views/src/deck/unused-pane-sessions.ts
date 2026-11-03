@@ -1,15 +1,21 @@
-/** Ownership receipt for shells born through this deck's new-pane door.
- * A restored/attached session is never inferred to be unused. Input history
- * must cover the session lifetime, including periods without a mounted pane. */
+/** Delivery receipt for shells eligible for owner-side conditional release.
+ * Eligibility comes from the terminal owner's lifetime input fact. Keep the
+ * receipt through detach and RPC failure; release it only after acknowledgement. */
 export class UnusedPaneSessions<Session extends { id: string } = { id: string }> {
   #attached = new Map<string, Session>();
   readonly #pending = new Map<string, Session>();
-  readonly #receipts = new Set<string>();
   readonly #born = new Set<string>();
+  /** Register only when the terminal owner currently declares the shell unused. */
   created(sessionId: string): void {
-    if (this.#receipts.has(sessionId)) return;
-    this.#receipts.add(sessionId);
     this.#born.add(sessionId);
+  }
+  /** A host's atomic placement succeeded. Record it before a render: a close
+   * batched with that replacement may be the next attachment list we see.
+   * This never grants ownership to a restored or previously used session. */
+  placed(session: Session): void {
+    if (!this.#born.has(session.id)) return;
+    this.#pending.delete(session.id);
+    this.#attached.set(session.id, session);
   }
   /** Follow committed attachments, including replacements that never close a pane.
    * Do not call with an empty list on host unmount: hiding a deck is not detaching it.
@@ -17,34 +23,30 @@ export class UnusedPaneSessions<Session extends { id: string } = { id: string }>
   update(
     sessions: readonly Session[],
     used: (session: Session) => boolean,
-    busy: (session: Session) => boolean = () => false,
+    _busy: (session: Session) => boolean = () => false,
   ): readonly Session[] {
     const next = new Map(sessions.map((session) => [session.id, session]));
     for (const session of next.values()) {
       this.#pending.delete(session.id);
       if (used(session)) this.release(session.id);
     }
-    const detached: Session[] = [];
     for (const session of this.#attached.values()) {
       if (next.has(session.id) || !this.#born.has(session.id)) continue;
       if (used(session)) this.release(session.id);
-      else if (busy(session)) this.#pending.set(session.id, session);
-      else if (this.closed(session.id, [], false)) detached.push(session);
+      else this.#pending.set(session.id, session);
     }
     this.#attached = next;
-    return detached;
+    return [...this.#pending.values()];
   }
-  /** Startup jobs temporarily protect an unattached shell, without consuming its receipt.
-   * The host follows native metadata after detach until the shell becomes idle. */
-  observe(session: Session, used: boolean, busy: boolean): readonly Session[] {
+  /** Accepted input discharges local delivery; startup/attachment safety belongs
+   * to the native conditional release, which can inspect every client. */
+  observe(session: Session, used: boolean, _busy: boolean): readonly Session[] {
     if (this.#attached.has(session.id)) this.#attached.set(session.id, session);
     if (used) this.release(session.id);
     if (!this.#pending.has(session.id)) return [];
-    if (busy) return [];
-    this.release(session.id);
     return [session];
   }
-  /** An explicit launcher handoff owns disposal now; don't also reap its shell. */
+  /** Acknowledged owner adoption (or authoritative use) discharges this receipt. */
   release(sessionId: string): void {
     this.#born.delete(sessionId);
     this.#pending.delete(sessionId);
@@ -60,7 +62,8 @@ export class UnusedPaneSessions<Session extends { id: string } = { id: string }>
       return false;
     }
     if (remainingSessionIds.includes(sessionId)) return false;
-    this.release(sessionId);
+    const session = this.#attached.get(sessionId);
+    if (session !== undefined) this.#pending.set(sessionId, session);
     return true;
   }
 }

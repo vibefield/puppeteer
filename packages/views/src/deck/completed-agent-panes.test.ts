@@ -26,6 +26,18 @@ const flush = async () => {
 };
 
 describe('completed agent panes', () => {
+  it.each([null, 'application-terminated', 'user-terminated'])(
+    'returns a host-ended session to a shell despite %s native metadata',
+    async (exitOutcome) => {
+      const f = fixture();
+      f.controller.update([{ ...ended, exited: exitOutcome !== null, exitOutcome, endedByHost: true }], f.ports);
+      f.resolve(shell);
+      await flush();
+      expect(f.ports.replaceSession).toHaveBeenCalledExactlyOnceWith('agent', shell);
+      expect(f.ports.releaseSession).toHaveBeenCalledExactlyOnceWith('agent', 'exited');
+    },
+  );
+
   it('creates one shell for mirrored panes and repeated metadata, then releases only the ended PTY', async () => {
     const f = fixture();
     f.controller.update([ended, ended], f.ports);
@@ -36,7 +48,7 @@ describe('completed agent panes', () => {
     f.resolve(shell);
     await flush();
     expect(f.ports.replaceSession).toHaveBeenCalledWith('agent', shell);
-    expect(f.ports.releaseSession).toHaveBeenCalledExactlyOnceWith('agent');
+    expect(f.ports.releaseSession).toHaveBeenCalledExactlyOnceWith('agent', 'exited');
     f.controller.update([ended], f.ports);
     expect(f.ports.createShell).toHaveBeenCalledTimes(1);
   });
@@ -66,7 +78,7 @@ describe('completed agent panes', () => {
       if (reason === 'compare-failed') f.ports.replaceSession.mockReturnValue(false);
       f.resolve(shell);
       await flush();
-      expect(f.ports.releaseSession).toHaveBeenCalledExactlyOnceWith('shell');
+      expect(f.ports.releaseSession).toHaveBeenCalledExactlyOnceWith('shell', 'unused');
       if (reason !== 'compare-failed') expect(f.ports.replaceSession).not.toHaveBeenCalled();
     },
   );
@@ -81,7 +93,12 @@ describe('completed agent panes', () => {
     f.resolve(shell);
     await flush();
     expect(f.ports.replaceSession).toHaveBeenCalledExactlyOnceWith('agent', nextShell);
-    expect(f.ports.releaseSession.mock.calls.flat().sort()).toEqual(['agent', 'shell']);
+    expect(f.ports.releaseSession.mock.calls).toEqual(
+      expect.arrayContaining([
+        ['agent', 'exited'],
+        ['shell', 'unused'],
+      ]),
+    );
   });
 
   it('leaves the original attached on failed birth and does not loop on metadata updates', async () => {
@@ -98,14 +115,21 @@ describe('completed agent panes', () => {
 
   it('reports a failed release without spawning again or terminating the fresh shell', async () => {
     const f = fixture();
-    f.ports.releaseSession.mockRejectedValue(new Error('release refused'));
+    f.ports.releaseSession.mockRejectedValueOnce(new Error('release refused'));
     f.controller.update([ended], f.ports);
     f.resolve(shell);
     await flush();
     expect(f.ports.onError).toHaveBeenCalledTimes(1);
     f.controller.update([ended], f.ports);
     expect(f.ports.createShell).toHaveBeenCalledTimes(1);
-    expect(f.ports.releaseSession).toHaveBeenCalledExactlyOnceWith('agent');
+    await flush();
+    expect(f.ports.releaseSession.mock.calls).toEqual([
+      ['agent', 'exited'],
+      ['agent', 'exited'],
+    ]);
+    expect(f.ports.replaceSession).toHaveBeenCalledTimes(1);
+    f.controller.retryCleanup(f.ports);
+    expect(f.ports.releaseSession).toHaveBeenCalledTimes(2);
   });
   it('releases the successful birth if the host replacement throws', async () => {
     const f = fixture();
@@ -116,7 +140,7 @@ describe('completed agent panes', () => {
     f.controller.update([ended], f.ports);
     f.resolve(shell);
     await flush();
-    expect(f.ports.releaseSession).toHaveBeenCalledExactlyOnceWith('shell');
+    expect(f.ports.releaseSession).toHaveBeenCalledExactlyOnceWith('shell', 'unused');
     expect(f.ports.onError).toHaveBeenCalledExactlyOnceWith(failure);
   });
 });

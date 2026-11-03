@@ -93,6 +93,24 @@ Files, all under `apps/godview/src/renderer/views/swarm/`:
 | `gpu/shaders/*.wgsl`      | `field`, `glow`, `body`, `text`                                                               |
 | `../../monitor/unread.ts` | Which idle agents have a reply the user has not looked at                                     |
 
+### A full field and a moving wall
+
+Swarm requests `stageAllocation: 'full'` in its SDK manifest. A host with an overlapping terminal pane keeps
+its canvas and physics world at the full stage size, and publishes the pane's target edge as `stage.insets.bottom`.
+Other hosts may keep their existing allocation and send a zero bottom inset. No host reads the view's DOM.
+
+The bottom collision wall and the centre's pull ease toward `height - insets.bottom` with a critically damped
+spring (ω = 12 s⁻¹). Retargeting keeps velocity; it never translates bodies or their render interpolation.
+While the wall moves, physics substeps at no more than 1/120 s so a low configured physics rate cannot drive
+it through a bubble in one solve. The first world is seeded at the initial floor; subsequent pane changes only
+retarget it. Crowd fitting uses the target available height, with the existing radius spring. Motion off holds
+both bodies and wall still; resuming starts the clock afresh. Worker demotion replays the latest floor target.
+
+Actual window resizing still measures, resizes the GPU backing store and draws in the same paint cycle,
+including ResizeObserver delivery after the animation callback and while motion is disabled. A canvas resized
+without a draw must never be presented stretched into the field's new box. Frame coordinates stay in the same
+world space throughout, so in-flight worker frames remain valid across pane changes.
+
 ### Drawn states
 
 Five drawn states, from the proposals record (pass 9), all at the physics radius:

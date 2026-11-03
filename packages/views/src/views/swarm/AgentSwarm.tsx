@@ -314,6 +314,10 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   const bloom = useSpawnBloom(spawnMenu, {
     container: containerRef,
     readChrome: () => stageRef.current.obstacles,
+    readField: () => ({
+      w: containerRef.current?.clientWidth ?? 0,
+      h: Math.max(0, (containerRef.current?.clientHeight ?? 0) - stageRef.current.insets.bottom),
+    }),
     bodies: () =>
       orderRef.current.map((body): BloomBody => ({
         x: body.x,
@@ -337,7 +341,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
           idleRadius: parametersRef.current.radiusIdle * fitRef.current,
           field: {
             width: containerRef.current?.clientWidth ?? 0,
-            height: containerRef.current?.clientHeight ?? 0,
+            height: Math.max(0, (containerRef.current?.clientHeight ?? 0) - stageRef.current.insets.bottom),
           },
           now: performance.now(),
           nowMs: Date.now(),
@@ -447,8 +451,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       rendererRef.current = current;
       setFailure(undefined);
       commandsRef.current.report({ renderer: 'webgpu' });
-      const container = containerRef.current;
-      if (container) current.resize(container.clientWidth, container.clientHeight, window.devicePixelRatio || 1);
+      stillDrawRef.current?.();
       void current.lost.then((info) => {
         if (!alive || rendererRef.current !== current) return;
         console.warn('[swarm] WebGPU device lost, rebuilding', info.message);
@@ -480,7 +483,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   const fitNow = (): number => {
     const container = containerRef.current;
     const width = container?.clientWidth ?? 0;
-    const height = container?.clientHeight ?? 0;
+    const height = Math.max(0, (container?.clientHeight ?? 0) - stageRef.current.insets.bottom);
     if (width <= 0 || height <= 0) return fitRef.current;
     const parameters = parametersRef.current;
     const shares = workingShares(agentsRef.current);
@@ -592,6 +595,10 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       }
     };
 
+    let width = container.clientWidth;
+    let height = container.clientHeight;
+    let sizedRenderer: SwarmRenderer | undefined;
+
     // The view's own physics (MV-D7): in the worker it brings, or in this thread where none can load.
     const driver = createSwarmPhysicsDriver({
       onEvent: (event) => {
@@ -627,24 +634,13 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         agents: agentSpecs(),
         parameters: physicsParameters(parametersRef.current),
         bounds: { width: container.clientWidth, height: container.clientHeight },
+        floor: Math.max(0, container.clientHeight - stageRef.current.insets.bottom),
         obstacles: stageRef.current.obstacles,
         reducedMotion: switchesRef.current.reducedMotion,
       });
     };
     initRef.current = init;
     init();
-
-    let width = container.clientWidth;
-    let height = container.clientHeight;
-    const updateBounds = (): void => {
-      width = container.clientWidth;
-      height = container.clientHeight;
-      rendererRef.current?.resize(width, height, window.devicePixelRatio || 1);
-      driver.post({ type: 'updateBounds', bounds: { width, height } });
-      if (initialisedRef.current) refitIfMoved();
-    };
-    const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(updateBounds);
-    resizeObserver?.observe(container);
 
     const accentOf = (value: string): Rgba => {
       const cached = colourCacheRef.current.get(value);
@@ -657,15 +653,31 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     let dpr = window.devicePixelRatio || 1;
     const started = performance.now();
     const render = (time: number, deltaMs: number): void => {
+      // Layout may have changed before rAF, or afterwards before ResizeObserver. In either case the backing
+      // store, projection and bodies must agree before the browser presents this paint.
+      const nextWidth = container.clientWidth;
+      const nextHeight = container.clientHeight;
+      if (nextWidth <= 0 || nextHeight <= 0) return;
+      const resized = nextWidth !== width || nextHeight !== height;
+      if (resized) {
+        width = nextWidth;
+        height = nextHeight;
+        if (initialisedRef.current) {
+          driver.post({ type: 'updateBounds', bounds: { width, height } });
+          refreshModels(time, true);
+        }
+      }
+      const nextDpr = window.devicePixelRatio || 1;
+      if (resized || nextDpr !== dpr || sizedRenderer !== rendererRef.current) {
+        dpr = nextDpr;
+        sizedRenderer = rendererRef.current;
+        sizedRenderer?.resize(width, height, dpr);
+      }
       // The inline physics advance in the frame they are drawn in; a worker keeps its own clock.
       driver.pump(time);
-      const delta = Math.min(1000 / 30, Math.max(1000 / 120, deltaMs));
+      // A resize's extra paint does not advance the visual springs a second time in this display frame.
+      const delta = deltaMs === 0 ? 0 : Math.min(1000 / 30, Math.max(1000 / 120, deltaMs));
       const currentParameters = parametersRef.current;
-      const nextDpr = window.devicePixelRatio || 1;
-      if (nextDpr !== dpr) {
-        dpr = nextDpr;
-        rendererRef.current?.resize(width, height, dpr);
-      }
       const models = modelsRef.current;
       if (models.agents !== agentsRef.current || time - models.at >= MODEL_REFRESH_MS)
         refreshModels(time, models.agents !== agentsRef.current);
@@ -917,6 +929,11 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       });
     };
 
+    // Observer delivery follows rAF: draw now, so a resized backing store is never presented without its frame.
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(() => render(performance.now(), 0));
+    resizeObserver?.observe(container);
+
     return () => {
       if (fading !== undefined) fadeScheduler.cancel(fading);
       loop.dispose();
@@ -970,8 +987,16 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     // one whose row is back while it leaves is put back where it stands. Before the physics hear the rows: a leaving
     // body keeps its place until it has gone.
     const now = performance.now();
-    const { departing, returned } = departuresAfter(departingRef.current, modelsRef.current.byId, ids, now, (id) =>
-      visualsRef.current.has(id),
+    const rowIds = new Set(agents.map((agent) => agent.id));
+    const { departing, returned } = departuresAfter(
+      departingRef.current,
+      modelsRef.current.byId,
+      ids,
+      now,
+      (id) => visualsRef.current.has(id),
+      // A board row can beat its launch or exit handoff. Its final visual id
+      // takes the existing body; the provisional body must not depart beside it.
+      (model) => rowIds.has(model.rowId),
     );
     departingRef.current = departing;
     for (const [id, departure] of returned) putBack(id, departure, now);
@@ -993,6 +1018,10 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     if (stageSentRef.current === stage) return;
     stageSentRef.current = stage;
     driver.post({ type: 'updateObstacles', obstacles: stage.obstacles });
+    driver.post({
+      type: 'updateFloor',
+      floor: Math.max(0, (containerRef.current?.clientHeight ?? stage.height) - stage.insets.bottom),
+    });
     refitIfMoved();
   }, [stage]);
 
@@ -1198,6 +1227,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   const style = {
     cursor,
     '--mv-swarm-orange': palette.swarm.orange,
+    '--mv-swarm-bottom-inset': `${Math.max(0, stage.insets.bottom)}px`,
   } as CSSProperties;
   const className = [
     'vf-monitor-swarm',
