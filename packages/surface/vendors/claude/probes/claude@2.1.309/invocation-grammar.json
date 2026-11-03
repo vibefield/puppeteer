@@ -1,0 +1,824 @@
+{
+  "probeVersion": 1,
+  "vendor": "claude",
+  "vendorVersion": "2.1.309",
+  "capturedAt": "2026-11-02T21:59:36.569Z",
+  "lane": "Claude 2.1.309 adaptation \u2014 invocation grammar re-verification against the 2.1.308 record",
+  "artifact": {
+    "platform": "darwin-arm64",
+    "install": "standalone executable from downloads.claude.ai/claude-code-releases/2.1.309/darwin-arm64/claude (surface:download)",
+    "sha256": "5eadc0009cdcdbc0d06e58110d7b2baf88ced6088b1c33a60a21217fe410619c",
+    "bytes": 275923296
+  },
+  "help": {
+    "file": "help.txt",
+    "sha256": "b10f5c36adfe3285f6c5a0d18284f466e6c4486499de56ef62745e13312a7fbc",
+    "options": 66,
+    "subcommands": 18,
+    "note": "Byte-identical to probes/claude@2.1.308/help.txt, including at the captured COLUMNS settings of that record."
+  },
+  "parseProbes": {
+    "method": "`claude <flags under test> mcp --help`, session-free. Usage \"claude mcp\" = the flags parse and leave mcp the first operand; the root usage = a flag took mcp as its value, or an unknown option sent the rest to commander's unknown list; exit 1 = commander's own error. Version and help forms exit while parsing.",
+    "harness": "packages/surface/vendors/claude/census/invocation-probes.mjs --previous probes/claude@2.1.308/invocation-grammar.json",
+    "unchangedFrom2_1_308": 76,
+    "results": [
+      {
+        "argv": [
+          "--permission-mode",
+          "default",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--permission-mode",
+          "manual",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--permission-mode",
+          "bogusmode",
+          "mcp",
+          "--help"
+        ],
+        "exit": 1,
+        "reads": "error: option '--permission-mode <mode>' argument 'bogusmode' is invalid. Allowed choices are acceptEdits, auto, bypassPermissions, manual, dontAsk, plan."
+      },
+      {
+        "argv": [
+          "--bogus-xyz",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--model",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--model",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--add-dir",
+          "a",
+          "b",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--add-dir",
+          "a",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-r",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--verbose=1",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--model=opus",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--model",
+          "--bogus-xyz",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-r",
+          "--bogus-xyz",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "-cd",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "-dc",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-d2e",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--debug-to-stderr",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--tmux=classic",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--tmux",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--system-prompt-file",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--append-system-prompt-file",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--remote",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--remote",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--rc",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--rc",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--pool",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--max-turns",
+          "3",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--permission-prompt-tool",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--prompt-suggestions",
+          "mcp",
+          "--help"
+        ],
+        "exit": 1,
+        "reads": "error: option '--prompt-suggestions [value]' argument 'mcp' is invalid. Allowed choices are true, false, 1, 0, yes, no, on, off."
+      },
+      {
+        "argv": [
+          "--prompt-suggestions",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--output-format",
+          "mcp",
+          "--help"
+        ],
+        "exit": 1,
+        "reads": "error: option '--output-format <format>' argument 'mcp' is invalid. Allowed choices are text, json, stream-json."
+      },
+      {
+        "argv": [
+          "--output-format",
+          "json",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-w",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "-w",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--cloud",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--teleport",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--environment",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--from-pr",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--file",
+          "a",
+          "b",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--betas",
+          "a",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-r",
+          "-",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-nfoo",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-rfoo",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-c-d",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--model",
+          "--",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-V"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "-V",
+          "--verbose"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "--version",
+          "--verbose"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "-vc"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "fix",
+          "-v"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "-p",
+          "-v"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "-p",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help without commands"
+      },
+      {
+        "argv": [
+          "--model",
+          "opus",
+          "-v"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "-h",
+          "mcp"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "mcp",
+          "-v"
+        ],
+        "exit": 1,
+        "reads": "error: unknown option '-v'"
+      },
+      {
+        "argv": [
+          "--add-dir",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--add-dir=a",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--add-dir=a",
+          "b",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--desktop",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--client-data-url",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--fast-mode",
+          "on",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--fast-mode",
+          "bogus",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--allow-other-models",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--include-unsupported-models",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--host-auth-is-org-sign-in",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--proactivity",
+          "ask",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--proactivity",
+          "bogus",
+          "mcp",
+          "--help"
+        ],
+        "exit": 1,
+        "reads": "error: option '--proactivity <level>' argument 'bogus' is invalid. Allowed choices are ask, default, proactive."
+      },
+      {
+        "argv": [
+          "--runner-declares",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "project",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "project help"
+      },
+      {
+        "argv": [
+          "purge",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "purge help"
+      },
+      {
+        "argv": [
+          "project",
+          "purge",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "project purge help"
+      },
+      {
+        "argv": [
+          "drop-worktree-registrations",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "drop-worktree-registrations help"
+      },
+      {
+        "argv": [
+          "--effort",
+          "max",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--effort",
+          "bogus",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--resume",
+          "some-name",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      }
+    ]
+  },
+  "runtime": {
+    "method": "Credential-less argv shapes whose dispatch changed, each in a disposable HOME/CLAUDE_CONFIG_DIR/TMPDIR with no TTY and a 15 s bound, on 2.1.308 and on the 2.1.283 artifact. Only inert shapes run: a job id no job matches, purge in an empty project, the helper without its stdin request, the gh entry used directly. --desktop, --bg, Remote Control and cloud paths stay parse-only.",
+    "harness": "packages/surface/vendors/claude/census/invocation-probes.mjs",
+    "unchangedFrom2_1_308": 8,
+    "probes": [
+      {
+        "id": "R01",
+        "argv": [
+          "--verbose",
+          "attach",
+          "1a2b3c4d"
+        ],
+        "question": "a background verb behind a safe root option",
+        "exit": 1,
+        "reads": "No job matching '1a2b3c4d'. Run 'claude agents' to list running sessions."
+      },
+      {
+        "id": "R02",
+        "argv": [
+          "--",
+          "attach",
+          "1a2b3c4d"
+        ],
+        "question": "a background verb after `--`",
+        "exit": 1,
+        "reads": "session (no credential: Not logged in)"
+      },
+      {
+        "id": "R03",
+        "argv": [
+          "attach",
+          "1a2b3c4d"
+        ],
+        "question": "a background verb as argv[0]",
+        "exit": 1,
+        "reads": "No job matching '1a2b3c4d'. Run 'claude agents' to list running sessions."
+      },
+      {
+        "id": "R04",
+        "argv": [
+          "purge",
+          "--dry-run"
+        ],
+        "question": "purge with an option",
+        "exit": null,
+        "reads": "no exit within 15 s (non-TTY)"
+      },
+      {
+        "id": "R05",
+        "argv": [
+          "--",
+          "purge"
+        ],
+        "question": "purge after `--`",
+        "exit": null,
+        "reads": "no exit within 15 s (non-TTY)"
+      },
+      {
+        "id": "R06",
+        "argv": [
+          "--verbose",
+          "--",
+          "purge",
+          "--dry-run"
+        ],
+        "question": "tokens after `--` purge",
+        "exit": 1,
+        "reads": "No Claude Code project state found for <root>/workspace/--dry-run under <root>/config."
+      },
+      {
+        "id": "R07",
+        "argv": [
+          "drop-worktree-registrations"
+        ],
+        "question": "the hidden VS Code worktree helper without --json",
+        "exit": 1,
+        "reads": "error: required option '--json' not specified"
+      },
+      {
+        "id": "R08",
+        "argv": [
+          "--gh-standin"
+        ],
+        "question": "the gh shim entry used directly",
+        "exit": 1,
+        "reads": "gh: this command is run by the gh shim Claude Code writes for a session; it is not for direct use."
+      }
+    ]
+  }
+}

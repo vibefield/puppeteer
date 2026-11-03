@@ -243,7 +243,7 @@ describe('interactive hook fixtures', () => {
   });
 });
 
-describe('2.1.308 hook surface', () => {
+describe('2.1.309 hook surface', () => {
   const probeRoot = join(selected.surfaceRoot, 'vendors', 'claude', 'probes', `claude@${selected.version}`);
 
   it('models exactly the hook-event inventory the pinned executable carries', () => {

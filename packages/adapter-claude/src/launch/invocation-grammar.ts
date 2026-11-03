@@ -15,11 +15,12 @@
  *
  * Every row is evidence-bound to one CLI version: the census test holds the table to the
  * captured `claude --help` in both directions. Evidence per row, and the probes behind the
- * classes: packages/surface/vendors/claude/findings.md §7 (2.1.283) with its 2.1.308 changes, and
- * probes/claude@2.1.308/invocation-grammar.json.
+ * classes: packages/surface/vendors/claude/findings.md §7 (2.1.283) with its 2.1.308 changes.
+ * 2.1.309 re-ran those probes and the help text was byte-identical, so this table did not change
+ * (probes/claude@2.1.309/invocation-grammar.json).
  */
 
-/** The Claude Code version whose grammar this table is. */
+/** The Claude Code version whose grammar this table is. 2.1.309 re-verified it unchanged. */
 export const CLAUDE_INVOCATION_GRAMMAR_VERSION = '2.1.308';
 
 /**

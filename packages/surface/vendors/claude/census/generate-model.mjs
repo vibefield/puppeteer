@@ -69,15 +69,17 @@ const MODE_CLAIMS = new Map([
 const CLAIM_CONFIDENCE = { [RUNTIME_CLAIM]: 'verified-headless', [INTERACTIVE_CLAIM]: 'verified-interactive' };
 
 /**
- * The reviewed official-reference snapshot. The page is mutable and already
- * mentions a later release in one Windows-only note, so the review records its
- * digest and reconciles every field with the pinned artifact.
+ * The reviewed official-reference snapshot. The page is mutable, so the review
+ * records its digest and reconciles every field with the pinned artifact.
+ * Re-fetched for 2.1.309 on 2026-11-02 (`Accept: text/markdown`): the same 33
+ * event headings, and the one version note is the Windows Git Bash failure
+ * message, whose pre-2.1.309 wording the page now quotes as historical.
  */
 const DOCS_SNAPSHOT = {
   url: 'https://code.claude.com/docs/en/hooks',
   format: 'markdown',
-  sha256: '3ce0f8a007da9192d076b08ca1aa9332b28c12f443189066e3534b1595eaeb47',
-  bytes: 281_780,
+  sha256: '8e4d5d8c03b5a4cd0e6fe15cc8d71d782a5acc29cf738c584337d024ff1e4ca1',
+  bytes: 284_268,
 };
 
 /**
@@ -105,7 +107,7 @@ const CONTRADICTIONS = [
     subject: 'scratchpad_dir',
     reference: 'Common input field (2.1.257+), absent when the session has no scratchpad.',
     artifact:
-      'The runtime input builder adds it only when a scratchpad exists; the bundled SDK base schema omits it; no 2.1.308 census payload carried it.',
+      'The runtime input builder adds it only when a scratchpad exists; the bundled SDK base schema omits it; no 2.1.308 or 2.1.309 census payload carried it.',
     model: 'optional common string',
   },
   {
@@ -119,7 +121,7 @@ const CONTRADICTIONS = [
     subject: 'Stop.background_tasks, Stop.session_crons and Stop.last_assistant_message',
     reference: 'Shown in the Stop input example.',
     artifact:
-      'Optional in the bundled SDK schema; present in every captured 2.1.308 Stop payload (7 interactive, 1 resume), the two lists as empty arrays. Docs and runtime agree; only the schema marks them optional.',
+      'Optional in the bundled SDK schema; present in every captured 2.1.308 and 2.1.309 Stop payload (7 interactive, 1 resume), the two lists as empty arrays. Docs and runtime agree; only the schema marks them optional.',
     model: 'optional, following the bundled schema; Stop requires only stop_hook_active',
   },
   {
@@ -1016,7 +1018,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       transcript: {
         kind: 'transcript',
         notes:
-          'Durable JSONL is authoritative for message content; hook events remain authoritative for lifecycle. Besides user/assistant/system/attachment rows, 2.1.308 records per-request bookkeeping rows (api-request, api-request-shape, api-request-blob, atis-latch, cost-state) that are not conversation messages; api-request-blob rows carry message.role user or assistant without uuid or timestamp.',
+          'Durable JSONL is authoritative for message content; hook events remain authoritative for lifecycle. Besides user/assistant/system/attachment rows, 2.1.308 and 2.1.309 record per-request bookkeeping rows (api-request, api-request-shape, api-request-blob, atis-latch, cost-state) that are not conversation messages; api-request-blob rows carry message.role user or assistant without uuid or timestamp.',
       },
       statusline: {
         kind: 'statusline',

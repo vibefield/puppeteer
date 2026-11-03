@@ -1,0 +1,421 @@
+{
+  "probeVersion": 1,
+  "vendor": "claude",
+  "vendorVersion": "2.1.309",
+  "capturedAt": "2026-11-02T22:07:33.243Z",
+  "lane": "Claude 2.1.309 adaptation \u2014 live re-run of what blinds a managed session without a flag",
+  "artifact": {
+    "platform": "darwin-arm64",
+    "install": "standalone executable from downloads.claude.ai/claude-code-releases/2.1.309/darwin-arm64/claude (surface:download)",
+    "sha256": "5eadc0009cdcdbc0d06e58110d7b2baf88ced6088b1c33a60a21217fe410619c",
+    "bytes": 275923296
+  },
+  "static": {
+    "note": "Not re-derived. The 2.1.308 static anchors are byte offsets in that executable; they do not transfer to this digest. Live sessions below are the 2.1.309 evidence."
+  },
+  "live": {
+    "method": "packages/surface/vendors/claude/census/switch-probes.mjs. Each probe is one native TUI session in a disposable environment against the loopback model. Managed settings use the adapter shape. Whether a tool ran is read from the workspace.",
+    "sessions": 16,
+    "comparedWith": "probes/claude@2.1.308/hook-switches.json live.probes",
+    "notes": "F06 and F09 reached the same turn hooks as 2.1.308, then the harness killed the session at its exit timeout, so F06 did not record SessionEnd. Every other probe matches that record, ignoring the was2_1_283 comparison objects that this re-run does not repeat.",
+    "probes": [
+      {
+        "id": "F01",
+        "question": "CLAUDE_CODE_SIMPLE=1 in the environment, no flag",
+        "environment": {
+          "CLAUDE_CODE_SIMPLE": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F02",
+        "question": "CLAUDE_CODE_SIMPLE=0 (read as off): the positive control",
+        "environment": {
+          "CLAUDE_CODE_SIMPLE": "0"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F03",
+        "question": "CLAUDE_CODE_SAFE_MODE=true, no flag",
+        "environment": {
+          "CLAUDE_CODE_SAFE_MODE": "true"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F04",
+        "question": "CLAUDE_CODE_RESTRICTED=1, no flag",
+        "environment": {
+          "CLAUDE_CODE_RESTRICTED": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F05",
+        "question": "disableAllHooks: true in the user settings",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "disableAllHooks": true
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F06",
+        "question": "disableAllHooks: true in the user settings and false in the managed --settings",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "disableAllHooks": true
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {
+          "disableAllHooks": false
+        },
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "killed by the harness after its timeout"
+      },
+      {
+        "id": "F07",
+        "question": "disableAllHooks: true in the user settings with --setting-sources project,local",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "disableAllHooks": true
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "settingSources": "project,local",
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F08",
+        "question": "disableAllHooks: true in the project settings",
+        "environment": {},
+        "personSettings": {
+          "user": {},
+          "project": {
+            "disableAllHooks": true
+          }
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F09",
+        "question": "allowedHttpHookUrls in the user settings that excludes the bridge",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "allowedHttpHookUrls": [
+              "https://example.invalid/*"
+            ]
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [
+          "SessionStart/command/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "killed by the harness after its timeout"
+      },
+      {
+        "id": "F10",
+        "question": "httpHookAllowedEnvVars: [] in the user settings",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "httpHookAllowedEnvVars": []
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/wrong",
+          "Stop/http/wrong",
+          "SessionEnd/http/wrong"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F11",
+        "question": "both lists in the user settings, the managed --settings restating each with the bridge entry added",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "allowedHttpHookUrls": [
+              "https://example.invalid/*"
+            ],
+            "httpHookAllowedEnvVars": []
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": "<lists restated with the bridge entry>",
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F12",
+        "question": "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG=1: managed hooks, the person hooks, and their status line",
+        "environment": {
+          "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F13",
+        "question": "managed PreToolUse answered HTTP 500: does the allowed tool call still run",
+        "environment": {},
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHttp500": [
+          "PreToolUse"
+        ],
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "PreToolUse/http/bearer",
+          "PostToolUse/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 2,
+        "toolRan": true,
+        "exit": "/exit"
+      },
+      {
+        "id": "F14",
+        "question": "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG=1 and managed PreToolUse answered HTTP 500",
+        "environment": {
+          "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHttp500": [
+          "PreToolUse"
+        ],
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "PreToolUse/http/bearer",
+          "PostToolUse/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 2,
+        "toolRan": true,
+        "exit": "/exit"
+      },
+      {
+        "id": "F15",
+        "question": "the person's own PreToolUse HTTP hook answered HTTP 500: does the tool call run",
+        "environment": {},
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "personHttp500": [
+          "PreToolUse"
+        ],
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "PreToolUse/http/bearer",
+          "PostToolUse/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "PreToolUse",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 2,
+        "toolRan": true,
+        "exit": "/exit"
+      },
+      {
+        "id": "F16",
+        "question": "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG=1 and the person's own PreToolUse HTTP hook answered HTTP 500",
+        "environment": {
+          "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "personHttp500": [
+          "PreToolUse"
+        ],
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "PreToolUse/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "PreToolUse",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 2,
+        "toolRan": false,
+        "exit": "/exit"
+      }
+    ]
+  }
+}

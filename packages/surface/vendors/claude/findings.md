@@ -1,5 +1,69 @@
 # Phase 0 — Hook Surface Findings
 
+## 2.1.309 adaptation candidate (2026-11-02)
+
+Claude Code **2.1.309** is the upstream stable release this candidate targets. The exact
+darwin-arm64 standalone artifact (`downloads.claude.ai/claude-code-releases/2.1.309/darwin-arm64/claude`)
+reports `2.1.309 (Claude Code)`, is 275923296 bytes, and has SHA-256
+`5eadc0009cdcdbc0d06e58110d7b2baf88ced6088b1c33a60a21217fe410619c`. Its `--help`
+(`probes/claude@2.1.309/help.txt`) is byte-identical to the 2.1.308 help (SHA-256 `b10f5c36…7fbc`).
+The promoted support pointer stays **2.1.308**. This candidate is staged, not promoted: only
+darwin-arm64 has artifact and runtime evidence here.
+
+### What changed
+
+The hook-event string array is the same 33 names in the same order (content SHA-256
+`a4b2b443…84c9`); only its byte offsets moved. The subagent status channel is unchanged: full
+task snapshot, 16 token samples, timestamps not included, nominal interval 5000 ms. The anchor
+`Skipping subagentStatusLine execution` now sits at offset 255417658. The census saw the same
+**24 of 33** events. StopFailure still maps headless → `authentication_failed`, 400 → `unknown`,
+401 → `authentication_failed`, 429 → `rate_limit`, 500 and 529 → `server_error`. Transcript
+record types and key sets match 2.1.308; this run has 202 session rows and 14 `api-request`
+rows where that run had 201 and 13. Invocation parse probes (76) and runtime probes (8) match
+the 2.1.308 record, so `CLAUDE_INVOCATION_GRAMMAR_VERSION` stays `2.1.308`.
+
+The official hook page was re-fetched (`Accept: text/markdown`, 284268 bytes, SHA-256
+`8e4d5d8c…4ca1`, 2026-11-02T22:00:32Z). It still has the same 33 event headings. The one
+version note is Windows-only: before 2.1.309 the Git Bash failure message said a hook without
+`"shell": "powershell"` counted only exit 0 or 2; the page now describes the later wording.
+FileChanged's watch list is documented as `|`-split literal filenames. StopFailure's documented
+`error` list is still the 12 values, without the binary's `verification_required`. These census
+lanes were not run on Windows.
+
+### Method
+
+Same lanes as the 2.1.308 section, in `census/isolation.mjs`, with no account, credential, or
+billed model. The pinned artifact is the one above. Reproduce with:
+
+```sh
+node packages/surface/vendors/claude/census/harness.mjs --artifact <claude> --version 2.1.309
+node packages/surface/vendors/claude/sanitize-captures.mjs packages/surface/vendors/claude/captures-raw/claude@2.1.309 packages/surface/vendors/claude/captures/claude@2.1.309
+node packages/surface/vendors/claude/census/invocation-probes.mjs --artifact <claude> --previous packages/surface/vendors/claude/probes/claude@2.1.308/invocation-grammar.json --output <file>
+node packages/surface/vendors/claude/census/switch-probes.mjs --artifact <claude> --output <file>
+node packages/surface/vendors/claude/census/generate-model.mjs --artifact <claude> --version 2.1.309 --captured-at 2026-11-02T21:59:36.569Z --retrieved-at 2026-11-02T22:00:32.121Z
+```
+
+The recorded census sanitized to 103 capture lines. Interactive delivery was 63 hook calls, 0
+without the bearer. Two earlier interactive runs abandoned the file-watch gate at 10 s and then
+ran `cd`, which drops a cwd-scoped FileChanged watch, so those runs never recorded FileChanged.
+The recorded run waited and observed it (`event: change`) together with ConfigChange. The gate
+in `interactive-lane.mjs` is 30 s so a late delivery is not discarded by that `cd`.
+
+Live switch probes F01–F16 (`probes/claude@2.1.309/hook-switches.json`) match the 2.1.308 live
+record, apart from F06 and F09: those sessions had already delivered the same turn hooks, and
+the harness then killed them at its exit timeout, so F06 did not record SessionEnd. F12 still
+does not blind managed hooks, the person's hooks, or their status line. F16 still fails closed
+when the person's own PreToolUse HTTP hook returns 500. The 2.1.308 static byte-offset anchors
+were not re-derived; they belong to that executable.
+
+### Adapter
+
+Projections were regenerated (`CLAUDE_SURFACE_VERSION` 2.1.309; 33 events, 24 runtime-verified)
+and the ground-truth map was re-locked to this ground truth. The partition is unchanged:
+PostModelSwitch semantic, PreModelSwitch observed-or-controlled, none unmapped. PreModelSwitch
+stays `timeout-blocks` and out of the default passive registration. The hook model otherwise
+follows the 2.1.308 section below.
+
 ## 2.1.308 adaptation candidate (2026-10-25)
 
 Claude Code **2.1.308** is the upstream stable release this candidate targets. The exact
@@ -9,7 +73,8 @@ reports `2.1.308 (Claude Code)` and has SHA-256
 (`probes/claude@2.1.308/help.txt`, SHA-256 `b10f5c36…7fbc`) is identical at COLUMNS 80, 200 and
 unset. The identity, probes, reviewed hook reference, sanitized captures, and generated ASM v3
 tree are digest-bound in `model/claude@2.1.308/evidence.json`. Only darwin-arm64 has artifact
-and runtime evidence, so this is a candidate, not promoted support.
+and runtime evidence, so this is a candidate, not promoted support. The protected promotion
+later moved currentVersion to 2.1.308; the section above is the next candidate.
 
 ### Method
 
