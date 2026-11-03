@@ -16,6 +16,7 @@ import { createCodexObserver } from './observer.js';
 import { CODEX_HISTORY_LIMITS } from './thread-history.js';
 import * as rolloutContext from './rollout-context.js';
 import type { Transport } from '../transport/app-server-client.js';
+import { CodexModelProviderRefusedError } from '../transport/model-provider-error.js';
 
 /**
  * Which app-server generation the fake answers as. `paginated` is rust-v0.151.0 and later
@@ -265,6 +266,31 @@ describe('createCodexObserver attach resilience', () => {
       { timeout: 2000 },
     );
     await new Promise((r) => setTimeout(r, 600)); // longer than the first backoffs
+    expect(t.resumeAttempts()).toBe(1);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('publishes the refusal of a thread the native TUI picked, as well as rejecting its attach', async () => {
+    const t = controllable(0, {}, { resumeError: providerNotConfigured });
+    const obs = await createCodexObserver({ transport: t.transport });
+    const projection = projectAgentEvents(obs);
+
+    const outcome = await obs.attachThread('th-picked').then(
+      () => 'attached',
+      (error: unknown) => error,
+    );
+    expect(outcome).toBeInstanceOf(CodexModelProviderRefusedError);
+    expect(projection.envelopes.map(({ event }) => event)).toContainEqual(
+      expect.objectContaining({
+        type: 'adapter:native-event',
+        nativeType: 'thread.resume.refused',
+        diagnostic: {
+          code: 'codex-model-provider-refused',
+          message: 'This Codex thread uses model provider "fake", which is no longer configured.',
+        },
+      }),
+    );
     expect(t.resumeAttempts()).toBe(1);
     projection.dispose();
     await obs.dispose();

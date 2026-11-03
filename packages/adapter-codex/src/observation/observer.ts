@@ -120,7 +120,11 @@ export interface CodexObserver {
   readonly events: AgentAdapterEventSource;
   /** Fires once a thread is picked up and its live stream is open. */
   onThread(listener: (info: CodexThreadInfo) => void): () => void;
-  /** Bind a thread discovered by a native TUI resume request. */
+  /**
+   * Bind a thread discovered by a native TUI resume request. Rejects with
+   * `CodexModelProviderRefusedError` when Codex refuses the thread for its model
+   * provider, after publishing the `codex-model-provider-refused` diagnostic.
+   */
   attachThread(threadId: string): Promise<void>;
   dispose(): Promise<void>;
 }
@@ -414,6 +418,20 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     for (const l of threadListeners) l({ threadId, path: threadPath });
   }
 
+  /** No caller awaits a passive or TUI-requested attach, so a provider refusal is published, not only thrown. */
+  function publishProviderRefusal(threadId: string, error: CodexModelProviderRefusedError): void {
+    apply(
+      {
+        type: 'adapter:native-event',
+        adapter: 'codex',
+        nativeType: 'thread.resume.refused',
+        diagnostic: { code: 'codex-model-provider-refused', message: error.message },
+      },
+      'runtime',
+      { threadId, refusal: error.refusal },
+    );
+  }
+
   client.onNotification((method, params) => {
     if (!attached) {
       const notificationParams = params ?? {};
@@ -429,17 +447,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         if (tid && (!opts.selectThread || opts.selectThread(tid))) {
           void attach(tid, thread).catch((error: unknown) => {
             if (!(error instanceof CodexModelProviderRefusedError)) throw error;
-            // No caller awaits a passive attach, so the refusal is published rather than thrown.
-            apply(
-              {
-                type: 'adapter:native-event',
-                adapter: 'codex',
-                nativeType: 'thread.resume.refused',
-                diagnostic: { code: 'codex-model-provider-refused', message: error.message },
-              },
-              'runtime',
-              { threadId: tid, refusal: error.refusal },
-            );
+            publishProviderRefusal(tid, error);
           });
         }
       }
@@ -595,7 +603,11 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       threadListeners.add(listener);
       return () => threadListeners.delete(listener);
     },
-    attachThread: (threadId) => attach(threadId, undefined),
+    attachThread: (threadId) =>
+      attach(threadId, undefined).catch((error: unknown) => {
+        if (error instanceof CodexModelProviderRefusedError) publishProviderRefusal(threadId, error);
+        throw error;
+      }),
     async dispose() {
       approvals.settleAll('unknown', { lifecycle: 'dispose' });
       disposed = true; // stop the attach retry loop if it is still running
