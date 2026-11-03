@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 
-export const PI_SURFACE_VERSION = '0.84.3';
+export const PI_SURFACE_VERSION = '1.5.0';
 export const PI_EXECUTABLE_ENV = 'PUPPETEER_PI_BIN';
 export const PI_DEFAULT_EXECUTABLE = 'pi';
 

@@ -32,7 +32,7 @@ specifications versus historical material.
 [![Hermes Agent: baseline pending 0.20.0](https://img.shields.io/badge/Hermes_Agent-baseline_pending_0.20.0-lightgrey)](packages/surface/vendors/hermes/groundtruth.json)
 [![Kimi Code: baseline pending 0.34.0](https://img.shields.io/badge/Kimi_Code-baseline_pending_0.34.0-lightgrey)](packages/surface/vendors/kimi/groundtruth.json)
 [![OpenCode: baseline pending 1.18.16](https://img.shields.io/badge/OpenCode-baseline_pending_1.18.16-lightgrey)](packages/surface/vendors/opencode/groundtruth.json)
-[![Pi: baseline pending 0.84.3](https://img.shields.io/badge/Pi-baseline_pending_0.84.3-lightgrey)](packages/surface/vendors/pi/groundtruth.json)
+[![Pi: baseline pending 1.5.0](https://img.shields.io/badge/Pi-baseline_pending_1.5.0-lightgrey)](packages/surface/vendors/pi/groundtruth.json)
 <!-- agent-support:end -->
 
 `verified` means the claim-addressable ASM v2+ model and exact artifacts passed the

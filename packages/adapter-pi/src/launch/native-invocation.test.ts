@@ -34,6 +34,18 @@ describe('Pi native invocation normalization', () => {
     ).toEqual({ status: 'accepted', options: { sessionDir: resolve('/repo/explicit') } });
   });
 
+  it('refuses --provider without --model, which Pi 1.5.0 exits on', () => {
+    expect(normalizePiNativeInvocation(invocation(['--provider', 'openai']))).toEqual({
+      status: 'rejected',
+      reason: 'Pi requires --model with --provider',
+      argument: '--provider',
+    });
+    expect(normalizePiNativeInvocation(invocation(['--provider', 'openai', '--model', 'gpt-next']))).toEqual({
+      status: 'accepted',
+      options: { provider: 'openai', model: 'gpt-next' },
+    });
+  });
+
   it('owns and restores an isolated imposter state root', () => {
     const root = resolve('/tmp/pi-imposter');
     const normalized = normalizePiNativeInvocation(

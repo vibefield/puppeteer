@@ -16,7 +16,13 @@ const invoke = (argv: string[], implementation: AgentNativeInvocation['implement
 const matrix: Record<'utility' | 'one-shot' | 'elsewhere' | 'reject', string[][]> & {
   mapped: [string[], Record<string, unknown>][];
 } = {
-  utility: [['--help'], ['auth', '--help'], ['--export', 'session.jsonl'], ['--list-models', 'sonnet']],
+  utility: [
+    ['--help'],
+    ['auth', '--help'],
+    ['mcp', 'list'],
+    ['--export', 'session.jsonl', 'out.html'],
+    ['--list-models', 'sonnet'],
+  ],
   'one-shot': [
     ['-p', 'hello'],
     ['--mode', 'json'],

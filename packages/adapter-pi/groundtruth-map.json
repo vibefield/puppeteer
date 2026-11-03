@@ -3,23 +3,24 @@
   "provider": "pi",
   "adapterPackage": "@vibefield/puppeteer-adapter-pi",
   "groundTruth": "packages/surface/vendors/pi/groundtruth.json",
-  "groundTruthSha256": "47b6eaf893037278acff5269bf0781b0e449e3da03ac093cf7b929ff9dd6cf17",
+  "groundTruthSha256": "4d8aaab8603ec20a5753a58b22376a555b5d67b2df820cc726bbef9a4ea1547e",
   "semanticEvents": [
     "compaction",
     "message",
     "model_change",
     "session",
-    "thinking_level_change"
+    "thinking_level_change",
+    "usage"
   ],
   "observedOrControlledEvents": [],
   "unmapped": {
-    "count": 37,
-    "sha256": "be11e00830b035800b74b222c1e108bd9bea9385254b29591e6837391a01a8d9",
+    "count": 38,
+    "sha256": "0726c6b653599d8be26acf5fa757f6ffd379a22aec9a82f2c3f3bf6cee225988",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
-    "groundTruth": 42,
-    "semantic": 5,
+    "groundTruth": 44,
+    "semantic": 6,
     "observedOrControlled": 0
   }
 }

@@ -1,0 +1,73 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "pi",
+  "vendorVersion": "1.5.0",
+  "artifacts": [
+    {
+      "id": "pi-1.5.0-rosetta-fixture-corpus",
+      "kind": "controlled-fixture-corpus",
+      "versionOutput": "1.5.0",
+      "platform": "linux-x64",
+      "capturedAt": "2026-11-03T19:35:32Z",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:c5e26f710e3758b4c563d0af16ce28c722943d99616b8432a6be295f3ef2da3a"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/earendil-works/pi",
+      "revision": "v1.5.0",
+      "relation": "exact-release"
+    }
+  ],
+  "records": [
+    {
+      "id": "pi-captures",
+      "path": "packages/surface/vendors/pi/captures/pi@1.5.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "828f46e25e036454f4bf3d432db400a2c72d02f53df79c900eb5499a58b0fd80"
+    },
+    {
+      "id": "pi-references",
+      "path": "packages/surface/vendors/pi/references/pi@1.5.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "94b46688d1cbd2b3c70b575c8d9333d66bea48abc7b2299fe9927c56e2780a93"
+    }
+  ],
+  "claims": [
+    {
+      "id": "pi-rosetta-runtime",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "pi-captures",
+      "artifact": "pi-1.5.0-rosetta-fixture-corpus",
+      "platform": "linux-x64",
+      "harness": "rosetta controlled mock-provider farm",
+      "capturedAt": "2026-11-03T19:35:32Z",
+      "notes": "Type-preserving session native journal captures."
+    },
+    {
+      "id": "pi-rosetta-observed",
+      "kind": "generated-schema",
+      "confidence": "verified-headless",
+      "record": "pi-references",
+      "artifact": "pi-1.5.0-rosetta-fixture-corpus",
+      "sourceReference": 0,
+      "platform": "linux-x64",
+      "harness": "rosetta controlled mock-provider farm",
+      "capturedAt": "2026-11-03T19:35:32Z",
+      "notes": "Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence."
+    },
+    {
+      "id": "pi-rosetta-contract",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "record": "pi-references",
+      "artifact": "pi-1.5.0-rosetta-fixture-corpus",
+      "sourceReference": 0,
+      "notes": "Digest-pinned complete Rosetta stream/shape inventory for pi@1.5.0; writer-only and zero-occurrence records establish a reviewable contract lead, not runtime occurrence."
+    }
+  ]
+}

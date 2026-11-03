@@ -40,7 +40,7 @@ describe.skipIf(process.platform === 'win32')('Rosetta persona spawners', () => 
     {
       vendor: 'pi',
       label: 'Pi native surface',
-      version: '0.84.3',
+      version: '1.5.0',
       event: 'message',
       channel: 'session',
       bootEvent: 'session',
