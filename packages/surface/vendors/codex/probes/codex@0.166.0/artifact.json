@@ -1,0 +1,63 @@
+{
+  "codex": "0.166.0",
+  "platform": "linux-x64",
+  "release": {
+    "tag": "rust-v0.166.0",
+    "commit": "6ff1e1ca3b30fc8b914720681fcf5fe62e95f856"
+  },
+  "package": {
+    "download": "https://github.com/openai/codex/releases/download/rust-v0.166.0/codex-package-x86_64-unknown-linux-musl.tar.gz",
+    "sha256": "1d44b28bc4ac9937d7d3532264baa68a507ce364956a0d4ebb856f331cdee254",
+    "bytes": 199694962,
+    "releaseAssetDigest": null,
+    "releaseAssetDigestNote": "Not compared: the GitHub REST API that publishes asset digests was unreachable from the survey environment.",
+    "layout": "codex-package.json layoutVersion 1, entrypoint bin/codex, execServer bin/codex-exec-server (new at 0.166.0), resourcesDir codex-resources (now also voice/), pathDir codex-path, target x86_64-unknown-linux-musl"
+  },
+  "executable": {
+    "file": "bin/codex",
+    "sha256": "b8a11fedf24b2dfb59a70c9e52b030f9a508dcd49cd2dd0d41956f4c785156b8",
+    "bytes": 319346888,
+    "versionOutput": "codex-cli 0.166.0"
+  },
+  "companions": [
+    {
+      "file": "bin/codex-code-mode-host",
+      "sha256": "657f4e902726e05867c937b583049d5997e057f8cd0ab40450633c9c9ef8d630",
+      "bytes": 77997328
+    }
+  ],
+  "packagedNotRequired": [
+    {
+      "file": "bin/codex-exec-server",
+      "sha256": "79e4b41b564bc3190146389ecc95d6c05ba2a20d6503e025e5fcafb47db05849",
+      "bytes": 84922184,
+      "role": "The standalone remote executor the package now advertises (codex-package.json execServer); the census and probes do not start it."
+    },
+    {
+      "file": "codex-resources/bwrap",
+      "sha256": "77360cb751ccedc5971391444ac86a8a33c15b04d6b4a6fe45f5d25496e62c4c",
+      "role": "The bundled bubblewrap Codex falls back to when none is on PATH (the configWarning every linux census start receives)."
+    }
+  ],
+  "standaloneAcquisition": "pnpm surface:download extracts bin/codex alone from the same tarball; its digest equals executable.sha256. Without the companion the exec tool fails (findings C8).",
+  "baseline": {
+    "codex": "0.164.0",
+    "platform": "linux-x64",
+    "package": "codex-package-x86_64-unknown-linux-musl.tar.gz",
+    "packageSha256": "3ec55053109608d5038f7e50750f7d25f768dfd740fef071aa710e2559b63aac",
+    "executableSha256": "b93f6811d3f653f0fb83be4050d857fb9abbb111dfa2ce160563327daff7f306",
+    "note": "Re-acquired for a same-platform comparison only; its executable digest equals the promoted linux-x64 digest in support/agents.json. Nothing from it is committed beyond these digests and the comparisons in README.md."
+  },
+  "help": {
+    "root": {
+      "file": "codex-help.txt",
+      "sha256": "70d960401dfe708743865b6338dfe986663345b58cca9ca67308d041e90f4053",
+      "identicalTo": "0.164.0 on linux-x64; differs from the darwin-arm64 0.164.0 fixture only by the `app` row, which is compiled for macOS and Windows alone"
+    },
+    "resume": {
+      "file": "codex-resume-help.txt",
+      "sha256": "a69d53b274c25b7ca50fad2c5ed62bd538097033fa4092dc0b2587e8f0a50edb",
+      "identicalTo": "0.164.0 (and 0.157.1)"
+    }
+  }
+}

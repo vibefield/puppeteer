@@ -368,6 +368,37 @@ function fileChangePayloadRefinements(method) {
   ];
 }
 
+// Model-provider admission (rust-v0.166.0, findings C9): these client requests can be refused with
+// JSON-RPC -32600 whose `data` is a `ModelProviderError` (app-server config_manager.rs
+// `load_for_resume` / `check_thread_model_provider_for_input`, request_processors/config_errors.rs).
+// The ASM has no error-schema field, so the generated definition is named in the event's notes; the
+// refusals themselves are measured in probes/codex@<version>/provider-mismatch-results.json. Read from
+// source at the tag, so the list is reviewed here rather than inferred from the schema.
+const MODEL_PROVIDER_ADMISSION = new Set([
+  'thread/resume',
+  'turn/start',
+  'turn/steer',
+  'review/start',
+  'thread/compact/start',
+  'thread/queue/start',
+  'thread/goal/set',
+]);
+const modelProviderErrorSchema = existsSync(join(schemaDir, 'v2', 'ModelProviderError.json'))
+  ? read('v2/ModelProviderError.json')
+  : undefined;
+const modelProviderErrorVariants = (modelProviderErrorSchema?.oneOf ?? [])
+  .map((variant) => variant.properties?.type?.enum?.[0])
+  .filter((type) => typeof type === 'string');
+function modelProviderAdmissionNote(method, transport, direction) {
+  if (!modelProviderErrorSchema || transport !== 'jsonrpc-request' || direction !== 'client-to-agent') return undefined;
+  if (!MODEL_PROVIDER_ADMISSION.has(method)) return undefined;
+  return (
+    'Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is ' +
+    `\`ModelProviderError\` (generated v2/ModelProviderError.json: ${modelProviderErrorVariants.join(' | ')}); ` +
+    'it lasts until the provider configuration changes.'
+  );
+}
+
 const write = (method, meta, transport, direction, root) => {
   const fixture = observed.get(method);
   const schema = payloadSchema(meta.params, root);
@@ -429,7 +460,9 @@ const write = (method, meta, transport, direction, root) => {
           notes:
             'Exact-release source: add/delete `diff` values are complete file content; update is a unified diff; a move appends `\\n\\nMoved to: <move_path>`.',
         }
-      : {}),
+      : modelProviderAdmissionNote(method, transport, direction)
+        ? { notes: modelProviderAdmissionNote(method, transport, direction) }
+        : {}),
   };
   if (confidence === 'verified-headless') verified += 1;
   const path = join(out, 'events', eventDocumentPath(method));

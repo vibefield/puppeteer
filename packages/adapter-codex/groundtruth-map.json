@@ -3,7 +3,7 @@
   "provider": "codex",
   "adapterPackage": "@vibefield/puppeteer-adapter-codex",
   "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
-  "groundTruthSha256": "8cec784801cde33709e07b74dd949037d7ba47bb229004bf883c0c48982f3936",
+  "groundTruthSha256": "547806ebcf479c656203d3a39d63ac87655a5b74b9a21f76de03cab3c5f7c27c",
   "semanticEvents": [
     "account/login/completed",
     "account/rateLimits/updated",
@@ -63,12 +63,12 @@
     "turn/start"
   ],
   "unmapped": {
-    "count": 218,
-    "sha256": "5a26e3cbe6f49aaec2e99b86ea6ad135f347f98ae7b5236f248bb573bcf652c6",
+    "count": 222,
+    "sha256": "5eb38726a313d7e0d41b7f665a2f99a1635207c9d3a431f5ad9a4ca22e9862b5",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
-    "groundTruth": 272,
+    "groundTruth": 276,
     "semantic": 26,
     "observedOrControlled": 28
   }

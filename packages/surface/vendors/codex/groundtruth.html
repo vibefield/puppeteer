@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="generator" content="@vibefield/puppeteer-surface groundtruth" /><title>codex@0.164.0 ground truth</title><style>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="generator" content="@vibefield/puppeteer-surface groundtruth" /><title>codex@0.166.0 ground truth</title><style>
 :root{color-scheme:light;--bg:#f4f2ec;--paper:#fff;--paper2:#f7f6f2;--ink:#25272b;--muted:#6c7077;--line:#ddd9cf;--accent:#9f4c28;--teal:#176b61;--blue:#355b8c;--amber:#8a6418;--red:#a13f45;--shadow:0 12px 36px rgba(30,32,36,.07)}
 :root[data-theme=dark]{color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#141619;--paper:#1d2024;--paper2:#25292e;--ink:#e8e6e0;--muted:#a1a6ad;--line:#383c42;--accent:#da815a;--teal:#63b7a9;--blue:#83a8da;--amber:#d2ad58;--red:#df858a;--shadow:0 14px 40px rgba(0,0,0,.25)}}
 *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:1rem}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}code,pre,input,select{font-family:"SFMono-Regular",Consolas,monospace}a{color:var(--teal);text-decoration:none}a:hover{text-decoration:underline}.shell{width:min(1420px,100%);margin:auto;padding:2.5rem 1.5rem 6rem}.hero,.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}.hero{padding:2rem;margin-bottom:1.25rem}.hero-row,.section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font:700 11px/1.3 "SFMono-Regular",monospace;color:var(--accent)}h1,h2{margin:.28rem 0 0;line-height:1.12}h1{font-size:clamp(2rem,5vw,4.2rem);letter-spacing:-.04em}h2{font-size:1.45rem}.version{color:var(--muted);font-weight:450}.theme{border:1px solid var(--line);background:var(--paper2);color:var(--ink);border-radius:999px;padding:.45rem .75rem;cursor:pointer}.lede{max-width:75ch;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7rem;margin-top:1.5rem}.stat{padding:.85rem;background:var(--paper2);border:1px solid var(--line);border-radius:9px}.stat strong{display:block;font-size:1.35rem}.stat span,.count{color:var(--muted);font-size:.82rem}.nav{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.2rem}.nav a{border:1px solid var(--line);border-radius:999px;padding:.35rem .7rem;background:var(--paper2)}.panel{padding:1.5rem;margin:1.25rem 0}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}td pre{margin:0;white-space:pre-wrap;font-size:.76rem}.channel-kind,.relation-kind,.direction,.confidence{display:inline-flex;padding:.12rem .42rem;border-radius:5px;background:var(--paper2);border:1px solid var(--line);font-size:.75rem}.verified-headless{color:var(--teal)}.verified-interactive{color:var(--blue)}.unverified{color:var(--amber)}.lanes{display:grid;gap:.7rem;margin-top:1rem}.lane{display:grid;grid-template-columns:180px 1fr;border:1px solid var(--line);border-radius:9px;overflow:hidden}.lane>header{padding:.7rem;background:var(--paper2);display:flex;flex-direction:column}.lane>header span{color:var(--muted);font-size:.78rem}.lane-track{display:flex;align-items:center;gap:.4rem;padding:.7rem;overflow:auto}.behavior-node{display:flex;flex-direction:column;min-width:145px;padding:.55rem .65rem;border:1px solid var(--line);border-left:3px solid currentColor;border-radius:7px;background:var(--paper)}.behavior-node small{color:var(--muted)}.behavior-node code{font-size:.66rem}.flow-arrow{color:var(--muted)}details>summary{cursor:pointer}.relation-table{margin-top:1rem}.toolbar{display:flex;align-items:end;gap:.65rem;flex-wrap:wrap;margin:1rem 0}.toolbar label{display:flex;flex-direction:column;gap:.2rem}.toolbar label span{color:var(--muted);font-size:.75rem}.toolbar input,.toolbar select,.toolbar button{min-height:38px;border:1px solid var(--line);border-radius:7px;background:var(--paper2);color:var(--ink);padding:.4rem .6rem}.toolbar input{width:min(330px,70vw)}.toolbar button{cursor:pointer}.event-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.event-card{border:1px solid var(--line);border-radius:9px;background:var(--paper2);scroll-margin-top:1rem}.event-card[hidden]{display:none}.event-card>details>summary{display:flex;justify-content:space-between;align-items:center;gap:.7rem;padding:.75rem}.event-name{font:600 .86rem "SFMono-Regular",monospace;overflow-wrap:anywhere}.event-meta{display:flex;gap:.35rem}.event-body{padding:.1rem .8rem .8rem;border-top:1px solid var(--line)}dl{margin:.7rem 0}dl>div{display:grid;grid-template-columns:90px 1fr;gap:.5rem}dt{color:var(--muted)}dd{margin:0}.evidence-refs{display:flex;gap:.3rem;flex-wrap:wrap;margin:.65rem 0}.evidence-ref{font:500 .7rem "SFMono-Regular",monospace;border:1px solid var(--line);border-radius:999px;padding:.15rem .4rem}.schema,.variants,.refinements{margin:.55rem 0}.schema pre{max-height:520px;overflow:auto;padding:.75rem;border:1px solid var(--line);border-radius:7px;background:var(--paper);font-size:.73rem}.variant{padding:.45rem 0;border-bottom:1px solid var(--line)}.refinement{margin:.6rem 0;padding:.65rem;border:1px solid var(--line);border-radius:7px;background:var(--paper)}.refinement header{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap}.refinement header>span:not(.confidence){color:var(--muted)}.refinement p,.refinement ul{font-size:.82rem}.claim-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-top:.7rem}.claim-card{border:1px solid var(--line);border-radius:8px;padding:.7rem;scroll-margin-top:1rem}.claim-card header{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.claim-card header>span:nth-child(2){color:var(--muted)}.claim-card p{color:var(--muted)}.empty{text-align:center;color:var(--muted);padding:2rem}.source{margin-top:1rem;color:var(--muted);font-size:.82rem;overflow-wrap:anywhere}
 @media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}.event-list,.claim-list{grid-template-columns:1fr}.lane{grid-template-columns:1fr}.hero-row,.section-heading{align-items:stretch}.event-card>details>summary{align-items:flex-start;flex-direction:column}.event-meta{flex-wrap:wrap}}
-</style></head><body><main class="shell"><header class="hero"><div class="hero-row"><div><span class="eyebrow">Agent surface ground truth</span><h1>codex <span class="version">0.164.0</span></h1><p class="lede">One canonical, evidence-backed description of the agent's native transports, events, payload contracts, and behavior topology.</p></div><button class="theme" type="button">Toggle theme</button></div><div class="stats"><div class="stat"><strong>272</strong><span>events</span></div><div class="stat"><strong>3</strong><span>channels</span></div><div class="stat"><strong>36</strong><span>behavior nodes</span></div><div class="stat"><strong>54</strong><span>relations</span></div><div class="stat"><strong>4</strong><span>evidence claims</span></div></div><nav class="nav"><a href="#channels">Channels</a><a href="#behavior">Behavior</a><a href="#events">Events</a><a href="#evidence">Evidence</a></nav><p class="source"><code>puppeteer-groundtruth/1</code> · ASM v3 · generated 2026-10-25 · GENERATED by packages/surface/vendors/codex/census/generate-model.mjs. Shapes are the vendor&#39;s own `codex app-server generate-json-schema` output; confidence is from the hermetic census in packages/surface/vendors/codex/census/harness.mjs; kind-dependent file-change semantics come from the digest-pinned exact-release source contract (packages/surface/vendors/codex/findings.md C1d). Never hand-edit: regenerate.</p></header><section id="channels" class="panel"><div class="section-heading"><div><span class="eyebrow">Transport map</span><h2>Channels</h2></div><span class="count">3</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Kind</th><th>Contract</th></tr></thead><tbody><tr><td><code>argv</code></td><td><span class="channel-kind">argv-env</span></td><td><pre>{
+</style></head><body><main class="shell"><header class="hero"><div class="hero-row"><div><span class="eyebrow">Agent surface ground truth</span><h1>codex <span class="version">0.166.0</span></h1><p class="lede">One canonical, evidence-backed description of the agent's native transports, events, payload contracts, and behavior topology.</p></div><button class="theme" type="button">Toggle theme</button></div><div class="stats"><div class="stat"><strong>276</strong><span>events</span></div><div class="stat"><strong>3</strong><span>channels</span></div><div class="stat"><strong>36</strong><span>behavior nodes</span></div><div class="stat"><strong>54</strong><span>relations</span></div><div class="stat"><strong>4</strong><span>evidence claims</span></div></div><nav class="nav"><a href="#channels">Channels</a><a href="#behavior">Behavior</a><a href="#events">Events</a><a href="#evidence">Evidence</a></nav><p class="source"><code>puppeteer-groundtruth/1</code> · ASM v3 · generated 2026-11-03 · GENERATED by packages/surface/vendors/codex/census/generate-model.mjs. Shapes are the vendor&#39;s own `codex app-server generate-json-schema` output; confidence is from the hermetic census in packages/surface/vendors/codex/census/harness.mjs; kind-dependent file-change semantics come from the digest-pinned exact-release source contract (packages/surface/vendors/codex/findings.md C1d). Never hand-edit: regenerate.</p></header><section id="channels" class="panel"><div class="section-heading"><div><span class="eyebrow">Transport map</span><h2>Channels</h2></div><span class="count">3</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Kind</th><th>Contract</th></tr></thead><tbody><tr><td><code>argv</code></td><td><span class="channel-kind">argv-env</span></td><td><pre>{
   &quot;notes&quot;: &quot;The adapter launches `codex app-server` and configures it with repeated `-c key=value`. There is no session id at spawn: the thread id arrives on thread/started (C0 §3).&quot;
 }</pre></td></tr><tr><td><code>appserver</code></td><td><span class="channel-kind">app-server</span></td><td><pre>{
   &quot;notes&quot;: &quot;NDJSON over stdio, JSON-RPC-2.0-SHAPED but not conformant: `jsonrpc` is omitted on server output and merely tolerated on input, and the generated JSONRPCRequest requires only id+method. A strict JSON-RPC library will not work unmodified (C1b finding 5).&quot;
 }</pre></td></tr><tr><td><code>terminal</code></td><td><span class="channel-kind">terminal</span></td><td><pre>{
   &quot;notes&quot;: &quot;The native ratatui TUI, attached over `--remote` (C0 §8). Semantics are never derived from it (ADR-003); it exists so a human can watch.&quot;
-}</pre></td></tr></tbody></table></div></section><section id="behavior" class="panel"><div class="section-heading"><div><span class="eyebrow">Native topology</span><h2>Codex app-server native protocol lifecycle</h2></div><span class="count">36 nodes · 54 relations</span></div><p class="lede">Observable app-server methods and payload-discriminated item lifecycles for codex-cli 0.164.0. Repeated item/started and item/completed nodes are distinguished by native item.type, not normalized categories. The history lane is the controller-owned attach the adapter performs (thread/start, empty thread/inject_items, thread/resume) and its history reads; client requests appear there as nodes because Codex&#39;s deprecationNotice answers the request shape, not a server-side lifecycle. Node confidence applies to the event plus selector claim, not merely to the shared method name.</p><div class="lanes"><section class="lane"><header><strong>Thread</strong><code>thread</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-thread-started" title="thread/started"><span>thread/started</span><small>thread/started</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-settings-updated" title="thread/settings/updated"><span>thread/settings/updated</span><small>thread/settings/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-status-changed" title="May repeat asynchronously throughout a turn; not a single exclusive lifecycle node."><span>thread/status/changed</span><small>thread/status/changed</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-closed" title="thread/closed"><span>thread/closed</span><small>thread/closed</small></a></div></section><section class="lane"><header><strong>History hydration</strong><code>history</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-thread-inject_items" title="The observer materializes a controller-owned thread with one empty text item before attaching."><span>thread/inject_items (empty text item)</span><small>thread/inject_items</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-resume" title="Without excludeTurns the result hydrates the full history, which 0.158.0+ deprecates for paginated threads."><span>thread/resume</span><small>thread/resume</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-read" title="thread/read"><span>thread/read · includeTurns</span><small>thread/read</small><code>{&quot;includeTurns&quot;:true}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-resume" title="thread/resume"><span>thread/resume · excludeTurns</span><small>thread/resume</small><code>{&quot;excludeTurns&quot;:true}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-turns-list" title="itemsView &#39;full&#39; carries every persisted item of each completed turn; the default &#39;summary&#39; is &#39;only a display summary&#39; (the schema&#39;s TurnItemsView), and in the 0.164.0 survey probe it answered [userMessage, agentMessage] for a turn whose full items were [userMessage, fileChange, agentMessage]."><span>thread/turns/list</span><small>thread/turns/list</small></a></div></section><section class="lane"><header><strong>Turn</strong><code>turn</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-turn-started" title="turn/started"><span>turn/started</span><small>turn/started</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-turn-diff-updated" title="The aggregated turn diff; repeats after later events in the same turn."><span>turn/diff/updated</span><small>turn/diff/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-turn-completed" title="turn/completed"><span>turn/completed</span><small>turn/completed</small></a></div></section><section class="lane"><header><strong>Native items</strong><code>items</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · userMessage</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;userMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · userMessage</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;userMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-started" title="item/started"><span>item/started · reasoning</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;reasoning&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-completed" title="item/completed"><span>item/completed · reasoning</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;reasoning&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · commandExecution</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;commandExecution&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="Already carries the complete change list: path, kind and the kind-dependent diff text."><span>item/started · fileChange</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;fileChange&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · fileChange</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;fileChange&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · commandExecution</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;commandExecution&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · agentMessage</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;agentMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-agentMessage-delta" title="item/agentMessage/delta"><span>item/agentMessage/delta</span><small>item/agentMessage/delta</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · agentMessage</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;agentMessage&quot;}</code></a></div></section><section class="lane"><header><strong>Server requests</strong><code>approval</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-item-commandExecution-requestApproval" title="item/commandExecution/requestApproval"><span>item/commandExecution/requestApproval</span><small>item/commandExecution/requestApproval</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-serverRequest-resolved" title="serverRequest/resolved"><span>serverRequest/resolved</span><small>serverRequest/resolved</small></a></div></section><section class="lane"><header><strong>Context maintenance</strong><code>maintenance</code></header><div class="lane-track"><a class="behavior-node confidence-unverified" href="#event-item-started" title="Native item start for compaction; declared by the schema but not exercised in the pinned census."><span>item/started · contextCompaction</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;contextCompaction&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-completed" title="Native item completion for compaction; declared by the schema but not exercised in the pinned census."><span>item/completed · contextCompaction</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;contextCompaction&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-compacted" title="Deprecated completion notification retained by the native schema."><span>thread/compacted</span><small>thread/compacted</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-tokenUsage-updated" title="thread/tokenUsage/updated"><span>thread/tokenUsage/updated</span><small>thread/tokenUsage/updated</small></a></div></section><section class="lane"><header><strong>Ambient notifications</strong><code>ambient</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-remoteControl-status-changed" title="remoteControl/status/changed"><span>remoteControl/status/changed</span><small>remoteControl/status/changed</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-mcpServer-startupStatus-updated" title="mcpServer/startupStatus/updated"><span>mcpServer/startupStatus/updated</span><small>mcpServer/startupStatus/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-deprecationNotice" title="Carries no threadId: it answers the connection, ahead of the result of the request that hydrated full history."><span>deprecationNotice</span><small>deprecationNotice</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-warning" title="warning"><span>warning</span><small>warning</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-goal-cleared" title="thread/goal/cleared"><span>thread/goal/cleared</span><small>thread/goal/cleared</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-account-rateLimits-updated" title="account/rateLimits/updated"><span>account/rateLimits/updated</span><small>account/rateLimits/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-error" title="error"><span>error</span><small>error</small></a></div></section></div><details class="relation-table"><summary>Relation ledger</summary><div class="table-wrap"><table><thead><tr><th>From</th><th>Kind</th><th>To</th><th>Label</th><th>Confidence</th></tr></thead><tbody><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>thread-settings</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>thread-status</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-status</code></td><td><span class="relation-kind">loop</span></td><td><code>thread-status</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>user-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>user-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>reasoning-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>reasoning-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>approval-request</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-request</code></td><td><span class="relation-kind">sequence</span></td><td><code>approval-resolved</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-resolved</code></td><td><span class="relation-kind">sequence</span></td><td><code>command-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-complete</code></td><td>no approval</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>message-delta</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>message-delta</code></td><td><span class="relation-kind">loop</span></td><td><code>message-delta</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>message-delta</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>agent-message-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-complete</code></td><td>no delta observed</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">sequence</span></td><td><code>rate-limits</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td>after tool usage</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">conditional</span></td><td><code>turn-complete</code></td><td>final usage</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>rate-limits</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>rate-limits</code></td><td><span class="relation-kind">conditional</span></td><td><code>turn-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">loop</span></td><td><code>turn-start</code></td><td>next turn</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>thread-closed</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>turn-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>compact-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>compact-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>thread-compacted</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>remote-status</code></td><td><span class="relation-kind">sequence</span></td><td><code>thread-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>mcp-startup</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>warning</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>error</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>file-change-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>file-change-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>file-change-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>file-change-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-diff</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-diff</code></td><td><span class="relation-kind">loop</span></td><td><code>turn-diff</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>file-change-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-diff</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>history-materialize</code></td><td>controller-owned attach</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-materialize</code></td><td><span class="relation-kind">sequence</span></td><td><code>history-resume</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-resume</code></td><td><span class="relation-kind">conditional</span></td><td><code>deprecation-notice</code></td><td>full-history hydration (no excludeTurns); the notice precedes the result</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-resume</code></td><td><span class="relation-kind">async</span></td><td><code>goal-cleared</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-resume</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>history-read-full</code></td><td>history read of an existing thread</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-read-full</code></td><td><span class="relation-kind">conditional</span></td><td><code>deprecation-notice</code></td><td>includeTurns: true; the notice precedes the result</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-resume-paged</code></td><td><span class="relation-kind">sequence</span></td><td><code>history-turns-page</code></td><td>the paginated replacement; no deprecationNotice</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-resume-paged</code></td><td><span class="relation-kind">async</span></td><td><code>goal-cleared</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr></tbody></table></div></details></section><section id="events" class="panel"><div class="section-heading"><div><span class="eyebrow">Wire catalog</span><h2>Events</h2></div><span id="event-count" class="count">272</span></div><div class="toolbar"><label><span>Search</span><input id="event-search" type="search" placeholder="event, channel, transport…" /></label><label><span>Direction</span><select id="direction-filter"><option value="">all</option><option value="agent-to-client">agent-to-client</option><option value="client-to-agent">client-to-agent</option></select></label><label><span>Confidence</span><select id="confidence-filter"><option value="">all</option><option>verified-headless</option><option>verified-interactive</option><option>unverified</option></select></label><button id="expand-visible" type="button">Expand visible</button><button id="collapse-events" type="button">Collapse</button></div><div id="event-list" class="event-list"><article id="event-account-bedrock-checkGovCloudRequirements" class="event-card" data-search="account/bedrock/checkgovcloudrequirements client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">account/bedrock/checkGovCloudRequirements</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Carrier schema</summary><pre>{
+}</pre></td></tr></tbody></table></div></section><section id="behavior" class="panel"><div class="section-heading"><div><span class="eyebrow">Native topology</span><h2>Codex app-server native protocol lifecycle</h2></div><span class="count">36 nodes · 54 relations</span></div><p class="lede">Observable app-server methods and payload-discriminated item lifecycles for codex-cli 0.166.0. Repeated item/started and item/completed nodes are distinguished by native item.type, not normalized categories. The history lane is the controller-owned attach the adapter performs (thread/start, empty thread/inject_items, thread/resume) and its history reads; client requests appear there as nodes because Codex&#39;s deprecationNotice answers the request shape, not a server-side lifecycle. Node confidence applies to the event plus selector claim, not merely to the shared method name.</p><div class="lanes"><section class="lane"><header><strong>Thread</strong><code>thread</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-thread-started" title="thread/started"><span>thread/started</span><small>thread/started</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-settings-updated" title="thread/settings/updated"><span>thread/settings/updated</span><small>thread/settings/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-status-changed" title="May repeat asynchronously throughout a turn; not a single exclusive lifecycle node."><span>thread/status/changed</span><small>thread/status/changed</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-closed" title="thread/closed"><span>thread/closed</span><small>thread/closed</small></a></div></section><section class="lane"><header><strong>History hydration</strong><code>history</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-thread-inject_items" title="The observer materializes a controller-owned thread with one empty text item before attaching."><span>thread/inject_items (empty text item)</span><small>thread/inject_items</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-resume" title="Without excludeTurns the result hydrates the full history, which 0.158.0+ deprecates for paginated threads."><span>thread/resume</span><small>thread/resume</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-read" title="thread/read"><span>thread/read · includeTurns</span><small>thread/read</small><code>{&quot;includeTurns&quot;:true}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-resume" title="thread/resume"><span>thread/resume · excludeTurns</span><small>thread/resume</small><code>{&quot;excludeTurns&quot;:true}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-turns-list" title="itemsView &#39;full&#39; carries every persisted item of each completed turn; the default &#39;summary&#39; is &#39;only a display summary&#39; (the schema&#39;s TurnItemsView), and in the 0.164.0 survey probe it answered [userMessage, agentMessage] for a turn whose full items were [userMessage, fileChange, agentMessage]."><span>thread/turns/list</span><small>thread/turns/list</small></a></div></section><section class="lane"><header><strong>Turn</strong><code>turn</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-turn-started" title="turn/started"><span>turn/started</span><small>turn/started</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-turn-diff-updated" title="The aggregated turn diff; repeats after later events in the same turn."><span>turn/diff/updated</span><small>turn/diff/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-turn-completed" title="turn/completed"><span>turn/completed</span><small>turn/completed</small></a></div></section><section class="lane"><header><strong>Native items</strong><code>items</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · userMessage</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;userMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · userMessage</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;userMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-started" title="item/started"><span>item/started · reasoning</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;reasoning&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-completed" title="item/completed"><span>item/completed · reasoning</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;reasoning&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · commandExecution</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;commandExecution&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="Already carries the complete change list: path, kind and the kind-dependent diff text."><span>item/started · fileChange</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;fileChange&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · fileChange</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;fileChange&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · commandExecution</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;commandExecution&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-started" title="item/started"><span>item/started · agentMessage</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;agentMessage&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-agentMessage-delta" title="item/agentMessage/delta"><span>item/agentMessage/delta</span><small>item/agentMessage/delta</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-item-completed" title="item/completed"><span>item/completed · agentMessage</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;agentMessage&quot;}</code></a></div></section><section class="lane"><header><strong>Server requests</strong><code>approval</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-item-commandExecution-requestApproval" title="item/commandExecution/requestApproval"><span>item/commandExecution/requestApproval</span><small>item/commandExecution/requestApproval</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-serverRequest-resolved" title="serverRequest/resolved"><span>serverRequest/resolved</span><small>serverRequest/resolved</small></a></div></section><section class="lane"><header><strong>Context maintenance</strong><code>maintenance</code></header><div class="lane-track"><a class="behavior-node confidence-unverified" href="#event-item-started" title="Native item start for compaction; declared by the schema but not exercised in the pinned census."><span>item/started · contextCompaction</span><small>item/started</small><code>{&quot;item.type&quot;:&quot;contextCompaction&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-item-completed" title="Native item completion for compaction; declared by the schema but not exercised in the pinned census."><span>item/completed · contextCompaction</span><small>item/completed</small><code>{&quot;item.type&quot;:&quot;contextCompaction&quot;}</code></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-thread-compacted" title="Deprecated completion notification retained by the native schema."><span>thread/compacted</span><small>thread/compacted</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-tokenUsage-updated" title="thread/tokenUsage/updated"><span>thread/tokenUsage/updated</span><small>thread/tokenUsage/updated</small></a></div></section><section class="lane"><header><strong>Ambient notifications</strong><code>ambient</code></header><div class="lane-track"><a class="behavior-node confidence-verified-headless" href="#event-remoteControl-status-changed" title="remoteControl/status/changed"><span>remoteControl/status/changed</span><small>remoteControl/status/changed</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-mcpServer-startupStatus-updated" title="mcpServer/startupStatus/updated"><span>mcpServer/startupStatus/updated</span><small>mcpServer/startupStatus/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-deprecationNotice" title="Carries no threadId: it answers the connection, ahead of the result of the request that hydrated full history."><span>deprecationNotice</span><small>deprecationNotice</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-warning" title="warning"><span>warning</span><small>warning</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-thread-goal-cleared" title="thread/goal/cleared"><span>thread/goal/cleared</span><small>thread/goal/cleared</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-verified-headless" href="#event-account-rateLimits-updated" title="account/rateLimits/updated"><span>account/rateLimits/updated</span><small>account/rateLimits/updated</small></a><span class="flow-arrow">→</span><a class="behavior-node confidence-unverified" href="#event-error" title="error"><span>error</span><small>error</small></a></div></section></div><details class="relation-table"><summary>Relation ledger</summary><div class="table-wrap"><table><thead><tr><th>From</th><th>Kind</th><th>To</th><th>Label</th><th>Confidence</th></tr></thead><tbody><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>thread-settings</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>thread-status</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-status</code></td><td><span class="relation-kind">loop</span></td><td><code>thread-status</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>user-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>user-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>reasoning-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>reasoning-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>reasoning-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>approval-request</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-request</code></td><td><span class="relation-kind">sequence</span></td><td><code>approval-resolved</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>approval-resolved</code></td><td><span class="relation-kind">sequence</span></td><td><code>command-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>command-complete</code></td><td>no approval</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>command-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>message-delta</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>message-delta</code></td><td><span class="relation-kind">loop</span></td><td><code>message-delta</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>message-delta</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>agent-message-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>agent-message-complete</code></td><td>no delta observed</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">sequence</span></td><td><code>rate-limits</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td>after tool usage</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>token-usage</code></td><td><span class="relation-kind">conditional</span></td><td><code>turn-complete</code></td><td>final usage</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>rate-limits</code></td><td><span class="relation-kind">conditional</span></td><td><code>agent-message-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>rate-limits</code></td><td><span class="relation-kind">conditional</span></td><td><code>turn-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>agent-message-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">loop</span></td><td><code>turn-start</code></td><td>next turn</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>thread-closed</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>turn-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>compact-start</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>compact-complete</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>thread-compacted</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>compact-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>remote-status</code></td><td><span class="relation-kind">sequence</span></td><td><code>thread-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>mcp-startup</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>warning</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">async</span></td><td><code>error</code></td><td></td><td><span class="confidence unverified">unverified</span></td></tr><tr><td><code>user-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>file-change-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>file-change-start</code></td><td><span class="relation-kind">sequence</span></td><td><code>file-change-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>file-change-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-diff</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-diff</code></td><td><span class="relation-kind">loop</span></td><td><code>turn-diff</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>file-change-complete</code></td><td><span class="relation-kind">sequence</span></td><td><code>token-usage</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-diff</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-complete</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>thread-start</code></td><td><span class="relation-kind">conditional</span></td><td><code>history-materialize</code></td><td>controller-owned attach</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-materialize</code></td><td><span class="relation-kind">sequence</span></td><td><code>history-resume</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-resume</code></td><td><span class="relation-kind">conditional</span></td><td><code>deprecation-notice</code></td><td>full-history hydration (no excludeTurns); the notice precedes the result</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-resume</code></td><td><span class="relation-kind">async</span></td><td><code>goal-cleared</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-resume</code></td><td><span class="relation-kind">sequence</span></td><td><code>turn-start</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>turn-complete</code></td><td><span class="relation-kind">conditional</span></td><td><code>history-read-full</code></td><td>history read of an existing thread</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-read-full</code></td><td><span class="relation-kind">conditional</span></td><td><code>deprecation-notice</code></td><td>includeTurns: true; the notice precedes the result</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-resume-paged</code></td><td><span class="relation-kind">sequence</span></td><td><code>history-turns-page</code></td><td>the paginated replacement; no deprecationNotice</td><td><span class="confidence verified-headless">verified-headless</span></td></tr><tr><td><code>history-resume-paged</code></td><td><span class="relation-kind">async</span></td><td><code>goal-cleared</code></td><td></td><td><span class="confidence verified-headless">verified-headless</span></td></tr></tbody></table></div></details></section><section id="events" class="panel"><div class="section-heading"><div><span class="eyebrow">Wire catalog</span><h2>Events</h2></div><span id="event-count" class="count">276</span></div><div class="toolbar"><label><span>Search</span><input id="event-search" type="search" placeholder="event, channel, transport…" /></label><label><span>Direction</span><select id="direction-filter"><option value="">all</option><option value="agent-to-client">agent-to-client</option><option value="client-to-agent">client-to-agent</option></select></label><label><span>Confidence</span><select id="confidence-filter"><option value="">all</option><option>verified-headless</option><option>verified-interactive</option><option>unverified</option></select></label><button id="expand-visible" type="button">Expand visible</button><button id="collapse-events" type="button">Collapse</button></div><div id="event-list" class="event-list"><article id="event-account-bedrock-checkGovCloudRequirements" class="event-card" data-search="account/bedrock/checkgovcloudrequirements client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">account/bedrock/checkGovCloudRequirements</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Carrier schema</summary><pre>{
   &quot;properties&quot;: {
     &quot;id&quot;: {
       &quot;$ref&quot;: &quot;#/$defs/RequestId&quot;
@@ -498,6 +498,93 @@
           &quot;type&quot;: &quot;integer&quot;
         }
       ]
+    }
+  },
+  &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
+}</pre></details></div></details></article><article id="event-account-gcp-setup" class="event-card" data-search="account/gcp/setup client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">account/gcp/setup</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;properties&quot;: {
+    &quot;credentialFile&quot;: {
+      &quot;description&quot;: &quot;Absolute path to a credential file on the app-server host. Omit or pass `null` to clear the active user configuration&#39;s override and use ADC. If another configuration layer would still supply a credential file, setup fails without saving changes.&quot;,
+      &quot;type&quot;: [
+        &quot;string&quot;,
+        &quot;null&quot;
+      ]
+    },
+    &quot;location&quot;: {
+      &quot;description&quot;: &quot;Vertex AI location. Omission or null selects `global`.&quot;,
+      &quot;type&quot;: [
+        &quot;string&quot;,
+        &quot;null&quot;
+      ]
+    },
+    &quot;projectId&quot;: {
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;projectId&quot;
+  ],
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;properties&quot;: {
+    &quot;id&quot;: {
+      &quot;$ref&quot;: &quot;#/$defs/RequestId&quot;
+    },
+    &quot;method&quot;: {
+      &quot;enum&quot;: [
+        &quot;account/gcp/setup&quot;
+      ],
+      &quot;title&quot;: &quot;Account/gcp/setupRequestMethod&quot;,
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;params&quot;: {
+      &quot;$ref&quot;: &quot;#/$defs/GcpSetupParams&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;id&quot;,
+    &quot;method&quot;,
+    &quot;params&quot;
+  ],
+  &quot;title&quot;: &quot;Account/gcp/setupRequest&quot;,
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;$defs&quot;: {
+    &quot;RequestId&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: &quot;integer&quot;
+        }
+      ]
+    },
+    &quot;GcpSetupParams&quot;: {
+      &quot;properties&quot;: {
+        &quot;credentialFile&quot;: {
+          &quot;description&quot;: &quot;Absolute path to a credential file on the app-server host. Omit or pass `null` to clear the active user configuration&#39;s override and use ADC. If another configuration layer would still supply a credential file, setup fails without saving changes.&quot;,
+          &quot;type&quot;: [
+            &quot;string&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;location&quot;: {
+          &quot;description&quot;: &quot;Vertex AI location. Omission or null selects `global`.&quot;,
+          &quot;type&quot;: [
+            &quot;string&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;projectId&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;projectId&quot;
+      ],
+      &quot;type&quot;: &quot;object&quot;
     }
   },
   &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
@@ -2294,6 +2381,138 @@
           &quot;type&quot;: &quot;integer&quot;
         }
       ]
+    }
+  },
+  &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
+}</pre></details></div></details></article><article id="event-accountSession-list" class="event-card" data-search="accountsession/list client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">accountSession/list</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;properties&quot;: {
+    &quot;refreshWorkspaceMetadata&quot;: {
+      &quot;type&quot;: &quot;boolean&quot;
+    }
+  },
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;properties&quot;: {
+    &quot;id&quot;: {
+      &quot;$ref&quot;: &quot;#/$defs/RequestId&quot;
+    },
+    &quot;method&quot;: {
+      &quot;enum&quot;: [
+        &quot;accountSession/list&quot;
+      ],
+      &quot;title&quot;: &quot;AccountSession/listRequestMethod&quot;,
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;params&quot;: {
+      &quot;$ref&quot;: &quot;#/$defs/AccountSessionsListParams&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;id&quot;,
+    &quot;method&quot;,
+    &quot;params&quot;
+  ],
+  &quot;title&quot;: &quot;AccountSession/listRequest&quot;,
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;$defs&quot;: {
+    &quot;RequestId&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: &quot;integer&quot;
+        }
+      ]
+    },
+    &quot;AccountSessionsListParams&quot;: {
+      &quot;properties&quot;: {
+        &quot;refreshWorkspaceMetadata&quot;: {
+          &quot;type&quot;: &quot;boolean&quot;
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
+    }
+  },
+  &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
+}</pre></details></div></details></article><article id="event-accountSession-switch" class="event-card" data-search="accountsession/switch client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">accountSession/switch</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;properties&quot;: {
+    &quot;accountId&quot;: {
+      &quot;description&quot;: &quot;Workspace to select within that login; this is not a user identifier.&quot;,
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;allowBrowserLogin&quot;: {
+      &quot;description&quot;: &quot;Allow Core to start browser sign-in if this session needs SSO for the workspace.&quot;,
+      &quot;type&quot;: &quot;boolean&quot;
+    },
+    &quot;sessionId&quot;: {
+      &quot;description&quot;: &quot;Opaque active-login identifier returned by accountSession/list.&quot;,
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;accountId&quot;,
+    &quot;sessionId&quot;
+  ],
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;properties&quot;: {
+    &quot;id&quot;: {
+      &quot;$ref&quot;: &quot;#/$defs/RequestId&quot;
+    },
+    &quot;method&quot;: {
+      &quot;enum&quot;: [
+        &quot;accountSession/switch&quot;
+      ],
+      &quot;title&quot;: &quot;AccountSession/switchRequestMethod&quot;,
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;params&quot;: {
+      &quot;$ref&quot;: &quot;#/$defs/AccountSessionsSwitchParams&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;id&quot;,
+    &quot;method&quot;,
+    &quot;params&quot;
+  ],
+  &quot;title&quot;: &quot;AccountSession/switchRequest&quot;,
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;$defs&quot;: {
+    &quot;RequestId&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: &quot;integer&quot;
+        }
+      ]
+    },
+    &quot;AccountSessionsSwitchParams&quot;: {
+      &quot;properties&quot;: {
+        &quot;accountId&quot;: {
+          &quot;description&quot;: &quot;Workspace to select within that login; this is not a user identifier.&quot;,
+          &quot;type&quot;: &quot;string&quot;
+        },
+        &quot;allowBrowserLogin&quot;: {
+          &quot;description&quot;: &quot;Allow Core to start browser sign-in if this session needs SSO for the workspace.&quot;,
+          &quot;type&quot;: &quot;boolean&quot;
+        },
+        &quot;sessionId&quot;: {
+          &quot;description&quot;: &quot;Opaque active-login identifier returned by accountSession/list.&quot;,
+          &quot;type&quot;: &quot;string&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;accountId&quot;,
+        &quot;sessionId&quot;
+      ],
+      &quot;type&quot;: &quot;object&quot;
     }
   },
   &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
@@ -5047,7 +5266,7 @@
     }
   },
   &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
-}</pre></details></div></details></article><article id="event-configWarning" class="event-card" data-search="configwarning agent-to-client jsonrpc-notification unverified appserver" data-direction="agent-to-client" data-confidence="unverified"><details><summary><span class="event-name">configWarning</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+}</pre></details></div></details></article><article id="event-configWarning" class="event-card" data-search="configwarning agent-to-client jsonrpc-notification verified-headless appserver" data-direction="agent-to-client" data-confidence="verified-headless"><details><summary><span class="event-name">configWarning</span><span class="event-meta"><span class="direction">agent-to-client</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-notification</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;semantic&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;properties&quot;: {
     &quot;details&quot;: {
       &quot;description&quot;: &quot;Optional extra guidance or error details.&quot;,
@@ -5133,11 +5352,16 @@
     },
     &quot;params&quot;: {
       &quot;$ref&quot;: &quot;#/$defs/ConfigWarningNotification&quot;
+    },
+    &quot;emittedAtMs&quot;: {
+      &quot;type&quot;: &quot;number&quot;,
+      &quot;minimum&quot;: 1000000000000
     }
   },
   &quot;required&quot;: [
     &quot;method&quot;,
-    &quot;params&quot;
+    &quot;params&quot;,
+    &quot;emittedAtMs&quot;
   ],
   &quot;title&quot;: &quot;ConfigWarningNotification&quot;,
   &quot;type&quot;: &quot;object&quot;,
@@ -5721,6 +5945,8 @@
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -6010,6 +6236,8 @@
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -10245,7 +10473,7 @@
           &quot;default&quot;: &quot;unknown&quot;
         },
         &quot;sourcePath&quot;: {
-          &quot;$ref&quot;: &quot;#/$defs/AbsolutePathBuf&quot;
+          &quot;$ref&quot;: &quot;#/$defs/LegacyAppPathString&quot;
         },
         &quot;startedAt&quot;: {
           &quot;format&quot;: &quot;int64&quot;,
@@ -10348,8 +10576,7 @@
       ],
       &quot;type&quot;: &quot;string&quot;
     },
-    &quot;AbsolutePathBuf&quot;: {
-      &quot;description&quot;: &quot;A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.&quot;,
+    &quot;LegacyAppPathString&quot;: {
       &quot;type&quot;: &quot;string&quot;
     },
     &quot;HookRunStatus&quot;: {
@@ -10465,7 +10692,7 @@
           &quot;default&quot;: &quot;unknown&quot;
         },
         &quot;sourcePath&quot;: {
-          &quot;$ref&quot;: &quot;#/$defs/AbsolutePathBuf&quot;
+          &quot;$ref&quot;: &quot;#/$defs/LegacyAppPathString&quot;
         },
         &quot;startedAt&quot;: {
           &quot;format&quot;: &quot;int64&quot;,
@@ -10568,8 +10795,7 @@
       ],
       &quot;type&quot;: &quot;string&quot;
     },
-    &quot;AbsolutePathBuf&quot;: {
-      &quot;description&quot;: &quot;A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.&quot;,
+    &quot;LegacyAppPathString&quot;: {
       &quot;type&quot;: &quot;string&quot;
     },
     &quot;HookRunStatus&quot;: {
@@ -10665,7 +10891,7 @@
           &quot;default&quot;: &quot;unknown&quot;
         },
         &quot;sourcePath&quot;: {
-          &quot;$ref&quot;: &quot;#/$defs/AbsolutePathBuf&quot;
+          &quot;$ref&quot;: &quot;#/$defs/LegacyAppPathString&quot;
         },
         &quot;startedAt&quot;: {
           &quot;format&quot;: &quot;int64&quot;,
@@ -10768,8 +10994,7 @@
       ],
       &quot;type&quot;: &quot;string&quot;
     },
-    &quot;AbsolutePathBuf&quot;: {
-      &quot;description&quot;: &quot;A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.&quot;,
+    &quot;LegacyAppPathString&quot;: {
       &quot;type&quot;: &quot;string&quot;
     },
     &quot;HookRunStatus&quot;: {
@@ -10885,7 +11110,7 @@
           &quot;default&quot;: &quot;unknown&quot;
         },
         &quot;sourcePath&quot;: {
-          &quot;$ref&quot;: &quot;#/$defs/AbsolutePathBuf&quot;
+          &quot;$ref&quot;: &quot;#/$defs/LegacyAppPathString&quot;
         },
         &quot;startedAt&quot;: {
           &quot;format&quot;: &quot;int64&quot;,
@@ -10988,8 +11213,7 @@
       ],
       &quot;type&quot;: &quot;string&quot;
     },
-    &quot;AbsolutePathBuf&quot;: {
-      &quot;description&quot;: &quot;A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.&quot;,
+    &quot;LegacyAppPathString&quot;: {
       &quot;type&quot;: &quot;string&quot;
     },
     &quot;HookRunStatus&quot;: {
@@ -11017,11 +11241,18 @@
 }</pre></details></div></details></article><article id="event-hooks-list" class="event-card" data-search="hooks/list client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">hooks/list</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;properties&quot;: {
     &quot;cwds&quot;: {
-      &quot;description&quot;: &quot;When empty, defaults to the current session working directory.&quot;,
+      &quot;description&quot;: &quot;Working directories to inspect when no thread is specified. An empty list uses the session cwd.&quot;,
       &quot;items&quot;: {
         &quot;type&quot;: &quot;string&quot;
       },
       &quot;type&quot;: &quot;array&quot;
+    },
+    &quot;threadId&quot;: {
+      &quot;description&quot;: &quot;List a loaded thread&#39;s hooks, including its selected environments. Omit `cwds` in this mode.&quot;,
+      &quot;type&quot;: [
+        &quot;string&quot;,
+        &quot;null&quot;
+      ]
     }
   },
   &quot;type&quot;: &quot;object&quot;,
@@ -11064,11 +11295,18 @@
     &quot;HooksListParams&quot;: {
       &quot;properties&quot;: {
         &quot;cwds&quot;: {
-          &quot;description&quot;: &quot;When empty, defaults to the current session working directory.&quot;,
+          &quot;description&quot;: &quot;Working directories to inspect when no thread is specified. An empty list uses the session cwd.&quot;,
           &quot;items&quot;: {
             &quot;type&quot;: &quot;string&quot;
           },
           &quot;type&quot;: &quot;array&quot;
+        },
+        &quot;threadId&quot;: {
+          &quot;description&quot;: &quot;List a loaded thread&#39;s hooks, including its selected environments. Omit `cwds` in this mode.&quot;,
+          &quot;type&quot;: [
+            &quot;string&quot;,
+            &quot;null&quot;
+          ]
         }
       },
       &quot;type&quot;: &quot;object&quot;
@@ -15863,6 +16101,7 @@
   &quot;type&quot;: &quot;object&quot;,
   &quot;$defs&quot;: {
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -16645,6 +16884,14 @@
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -16765,7 +17012,28 @@
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;UserInput&quot;: {
       &quot;oneOf&quot;: [
@@ -17920,6 +18188,7 @@
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -18702,6 +18971,14 @@
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -18822,7 +19099,28 @@
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;UserInput&quot;: {
       &quot;oneOf&quot;: [
@@ -22049,6 +22347,7 @@
   &quot;type&quot;: &quot;object&quot;,
   &quot;$defs&quot;: {
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -22831,6 +23130,14 @@
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -22951,7 +23258,28 @@
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;UserInput&quot;: {
       &quot;oneOf&quot;: [
@@ -24106,6 +24434,7 @@
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -24888,6 +25217,14 @@
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -25008,7 +25345,28 @@
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;UserInput&quot;: {
       &quot;oneOf&quot;: [
@@ -31591,6 +31949,13 @@
       &quot;format&quot;: &quot;int32&quot;,
       &quot;type&quot;: &quot;integer&quot;
     },
+    &quot;outputDrainTimedOut&quot;: {
+      &quot;description&quot;: &quot;Whether output collection hit its post-exit deadline before seeing EOF or reaching the requested byte cap on either stream. Older servers omit this field.&quot;,
+      &quot;type&quot;: [
+        &quot;boolean&quot;,
+        &quot;null&quot;
+      ]
+    },
     &quot;processHandle&quot;: {
       &quot;description&quot;: &quot;Client-supplied, connection-scoped `processHandle` from `process/spawn`.&quot;,
       &quot;type&quot;: &quot;string&quot;
@@ -31650,6 +32015,13 @@
           &quot;description&quot;: &quot;Process exit code.&quot;,
           &quot;format&quot;: &quot;int32&quot;,
           &quot;type&quot;: &quot;integer&quot;
+        },
+        &quot;outputDrainTimedOut&quot;: {
+          &quot;description&quot;: &quot;Whether output collection hit its post-exit deadline before seeing EOF or reaching the requested byte cap on either stream. Older servers omit this field.&quot;,
+          &quot;type&quot;: [
+            &quot;boolean&quot;,
+            &quot;null&quot;
+          ]
         },
         &quot;processHandle&quot;: {
           &quot;description&quot;: &quot;Client-supplied, connection-scoped `processHandle` from `process/spawn`.&quot;,
@@ -33725,7 +34097,7 @@
     }
   },
   &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
-}</pre></details></div></details></article><article id="event-review-start" class="event-card" data-search="review/start client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">review/start</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+}</pre></details></div></details></article><article id="event-review-start" class="event-card" data-search="review/start client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">review/start</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><p>Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;properties&quot;: {
     &quot;delivery&quot;: {
       &quot;anyOf&quot;: [
@@ -33737,7 +34109,7 @@
         }
       ],
       &quot;default&quot;: null,
-      &quot;description&quot;: &quot;Where to run the review: inline (default) on the current thread or detached on a new thread (returned in `reviewThreadId`). Detached delivery is deprecated and emits `deprecationNotice`. Use `thread/start` followed by an inline review for a separate review thread.&quot;
+      &quot;description&quot;: &quot;Reviews run inline on the supplied thread. Omit this field or pass `inline`. To review on a separate thread, start a thread first and use its id.&quot;
     },
     &quot;target&quot;: {
       &quot;$ref&quot;: &quot;#/$defs/ReviewTarget&quot;
@@ -33754,8 +34126,7 @@
   &quot;$defs&quot;: {
     &quot;ReviewDelivery&quot;: {
       &quot;enum&quot;: [
-        &quot;inline&quot;,
-        &quot;detached&quot;
+        &quot;inline&quot;
       ],
       &quot;type&quot;: &quot;string&quot;
     },
@@ -33899,7 +34270,7 @@
             }
           ],
           &quot;default&quot;: null,
-          &quot;description&quot;: &quot;Where to run the review: inline (default) on the current thread or detached on a new thread (returned in `reviewThreadId`). Detached delivery is deprecated and emits `deprecationNotice`. Use `thread/start` followed by an inline review for a separate review thread.&quot;
+          &quot;description&quot;: &quot;Reviews run inline on the supplied thread. Omit this field or pass `inline`. To review on a separate thread, start a thread first and use its id.&quot;
         },
         &quot;target&quot;: {
           &quot;$ref&quot;: &quot;#/$defs/ReviewTarget&quot;
@@ -33916,8 +34287,7 @@
     },
     &quot;ReviewDelivery&quot;: {
       &quot;enum&quot;: [
-        &quot;inline&quot;,
-        &quot;detached&quot;
+        &quot;inline&quot;
       ],
       &quot;type&quot;: &quot;string&quot;
     },
@@ -35333,7 +35703,7 @@
     }
   },
   &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
-}</pre></details></div></details></article><article id="event-thread-compact-start" class="event-card" data-search="thread/compact/start client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/compact/start</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+}</pre></details></div></details></article><article id="event-thread-compact-start" class="event-card" data-search="thread/compact/start client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/compact/start</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><p>Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;properties&quot;: {
     &quot;threadId&quot;: {
       &quot;type&quot;: &quot;string&quot;
@@ -35744,6 +36114,10 @@ When the count reaches zero, timeout accounting resumes for the thread.</dd></di
       ],
       &quot;description&quot;: &quot;Override where approval requests are routed for review on this thread and subsequent turns.&quot;
     },
+    &quot;attachToSource&quot;: {
+      &quot;description&quot;: &quot;Persist the fork as an attached thread of its resolved source, hidden from ordinary lists. The source cannot be deleted while attached threads exist. Requires a paginated source and local storage; incompatible with ephemeral and deferGoalContinuation. Omitted or false creates an ordinary fork.&quot;,
+      &quot;type&quot;: &quot;boolean&quot;
+    },
     &quot;baseInstructions&quot;: {
       &quot;type&quot;: [
         &quot;string&quot;,
@@ -36009,6 +36383,10 @@ When the count reaches zero, timeout accounting resumes for the thread.</dd></di
             }
           ],
           &quot;description&quot;: &quot;Override where approval requests are routed for review on this thread and subsequent turns.&quot;
+        },
+        &quot;attachToSource&quot;: {
+          &quot;description&quot;: &quot;Persist the fork as an attached thread of its resolved source, hidden from ordinary lists. The source cannot be deleted while attached threads exist. Requires a paginated source and local storage; incompatible with ephemeral and deferGoalContinuation. Omitted or false creates an ordinary fork.&quot;,
+          &quot;type&quot;: &quot;boolean&quot;
         },
         &quot;baseInstructions&quot;: {
           &quot;type&quot;: [
@@ -36424,7 +36802,7 @@ When the count reaches zero, timeout accounting resumes for the thread.</dd></di
     }
   },
   &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
-}</pre></details></div></details></article><article id="event-thread-goal-set" class="event-card" data-search="thread/goal/set client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/goal/set</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+}</pre></details></div></details></article><article id="event-thread-goal-set" class="event-card" data-search="thread/goal/set client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/goal/set</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><p>Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;properties&quot;: {
     &quot;objective&quot;: {
       &quot;type&quot;: [
@@ -37237,6 +37615,13 @@ This is used by external helpers to pause timeout accounting while a user approv
         &quot;null&quot;
       ]
     },
+    &quot;attachedToThreadId&quot;: {
+      &quot;description&quot;: &quot;Return only persistent threads attached to this thread, including empty threads. Mutually exclusive with parentThreadId and ancestorThreadId. Omitting this filter keeps attached threads hidden from ordinary listings.&quot;,
+      &quot;type&quot;: [
+        &quot;string&quot;,
+        &quot;null&quot;
+      ]
+    },
     &quot;cursor&quot;: {
       &quot;description&quot;: &quot;Opaque pagination cursor returned by a previous call.&quot;,
       &quot;type&quot;: [
@@ -37455,6 +37840,13 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;description&quot;: &quot;Optional archived filter; when set to true, only archived threads are returned. If false or null, only non-archived threads are returned.&quot;,
           &quot;type&quot;: [
             &quot;boolean&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;attachedToThreadId&quot;: {
+          &quot;description&quot;: &quot;Return only persistent threads attached to this thread, including empty threads. Mutually exclusive with parentThreadId and ancestorThreadId. Omitting this filter keeps attached threads hidden from ordinary listings.&quot;,
+          &quot;type&quot;: [
+            &quot;string&quot;,
             &quot;null&quot;
           ]
         },
@@ -37703,6 +38095,67 @@ This is used by external helpers to pause timeout accounting while a user approv
           ]
         }
       },
+      &quot;type&quot;: &quot;object&quot;
+    }
+  },
+  &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
+}</pre></details></div></details></article><article id="event-thread-memory-read" class="event-card" data-search="thread/memory/read client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/memory/read</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+  &quot;properties&quot;: {
+    &quot;threadId&quot;: {
+      &quot;description&quot;: &quot;The thread must already be started or resumed.&quot;,
+      &quot;type&quot;: &quot;string&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;threadId&quot;
+  ],
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
+}</pre></details><details class="schema"><summary>Carrier schema</summary><pre>{
+  &quot;properties&quot;: {
+    &quot;id&quot;: {
+      &quot;$ref&quot;: &quot;#/$defs/RequestId&quot;
+    },
+    &quot;method&quot;: {
+      &quot;enum&quot;: [
+        &quot;thread/memory/read&quot;
+      ],
+      &quot;title&quot;: &quot;Thread/memory/readRequestMethod&quot;,
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;params&quot;: {
+      &quot;$ref&quot;: &quot;#/$defs/ThreadMemoryReadParams&quot;
+    }
+  },
+  &quot;required&quot;: [
+    &quot;id&quot;,
+    &quot;method&quot;,
+    &quot;params&quot;
+  ],
+  &quot;title&quot;: &quot;Thread/memory/readRequest&quot;,
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;$defs&quot;: {
+    &quot;RequestId&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;type&quot;: &quot;string&quot;
+        },
+        {
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: &quot;integer&quot;
+        }
+      ]
+    },
+    &quot;ThreadMemoryReadParams&quot;: {
+      &quot;properties&quot;: {
+        &quot;threadId&quot;: {
+          &quot;description&quot;: &quot;The thread must already be started or resumed.&quot;,
+          &quot;type&quot;: &quot;string&quot;
+        }
+      },
+      &quot;required&quot;: [
+        &quot;threadId&quot;
+      ],
       &quot;type&quot;: &quot;object&quot;
     }
   },
@@ -39215,7 +39668,7 @@ This is used by external helpers to pause timeout accounting while a user approv
     }
   },
   &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
-}</pre></details></div></details></article><article id="event-thread-queue-start" class="event-card" data-search="thread/queue/start client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/queue/start</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+}</pre></details></div></details></article><article id="event-thread-queue-start" class="event-card" data-search="thread/queue/start client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">thread/queue/start</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><p>Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;properties&quot;: {
     &quot;queuedSubmissionId&quot;: {
       &quot;type&quot;: [
@@ -40671,6 +41124,7 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -41453,6 +41907,14 @@ This is used by external helpers to pause timeout accounting while a user approv
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -41573,7 +42035,28 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;TurnItemsView&quot;: {
       &quot;oneOf&quot;: [
@@ -41625,6 +42108,8 @@ This is used by external helpers to pause timeout accounting while a user approv
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -45846,7 +46331,7 @@ This is used by external helpers to pause timeout accounting while a user approv
     }
   },
   &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
-}</pre></details></div></details></article><article id="event-thread-resume" class="event-card" data-search="thread/resume client-to-agent jsonrpc-request verified-headless appserver" data-direction="client-to-agent" data-confidence="verified-headless"><details><summary><span class="event-name">thread/resume</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;result&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+}</pre></details></div></details></article><article id="event-thread-resume" class="event-card" data-search="thread/resume client-to-agent jsonrpc-request verified-headless appserver" data-direction="client-to-agent" data-confidence="verified-headless"><details><summary><span class="event-name">thread/resume</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;result&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><p>Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;description&quot;: &quot;There are three ways to resume a thread: 1. By thread_id: load the thread from disk by thread_id and resume it. 2. By history: instantiate the thread from memory and resume it. 3. By path: load the thread from disk by path and resume it.\n\nFor non-running threads, the precedence is: history &gt; non-empty path &gt; thread_id. If using history or a non-empty path for a non-running thread, the thread_id param will be ignored.\n\nIf thread_id identifies a running thread, app-server rejoins that thread and treats a non-empty path as a consistency check against the active rollout path. Empty string path values are treated as absent.\n\nPrefer using thread_id whenever possible.&quot;,
   &quot;properties&quot;: {
     &quot;approvalPolicy&quot;: {
@@ -48595,6 +49080,7 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -49377,6 +49863,14 @@ This is used by external helpers to pause timeout accounting while a user approv
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -49497,7 +49991,28 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;TurnItemsView&quot;: {
       &quot;oneOf&quot;: [
@@ -49644,6 +50159,8 @@ This is used by external helpers to pause timeout accounting while a user approv
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -52846,6 +53363,16 @@ This is used by external helpers to pause timeout accounting while a user approv
     &quot;threadId&quot;: {
       &quot;type&quot;: &quot;string&quot;
     },
+    &quot;threadSource&quot;: {
+      &quot;anyOf&quot;: [
+        {
+          &quot;$ref&quot;: &quot;#/$defs/ThreadSource&quot;
+        },
+        {
+          &quot;type&quot;: &quot;null&quot;
+        }
+      ]
+    },
     &quot;turnTrigger&quot;: {
       &quot;type&quot;: [
         &quot;string&quot;,
@@ -52863,6 +53390,9 @@ This is used by external helpers to pause timeout accounting while a user approv
     &quot;ReasoningEffort&quot;: {
       &quot;description&quot;: &quot;A non-empty reasoning effort value advertised by the model.&quot;,
       &quot;minLength&quot;: 1,
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;ThreadSource&quot;: {
       &quot;type&quot;: &quot;string&quot;
     }
   },
@@ -52939,6 +53469,16 @@ This is used by external helpers to pause timeout accounting while a user approv
         &quot;threadId&quot;: {
           &quot;type&quot;: &quot;string&quot;
         },
+        &quot;threadSource&quot;: {
+          &quot;anyOf&quot;: [
+            {
+              &quot;$ref&quot;: &quot;#/$defs/ThreadSource&quot;
+            },
+            {
+              &quot;type&quot;: &quot;null&quot;
+            }
+          ]
+        },
         &quot;turnTrigger&quot;: {
           &quot;type&quot;: [
             &quot;string&quot;,
@@ -52956,6 +53496,9 @@ This is used by external helpers to pause timeout accounting while a user approv
     &quot;ReasoningEffort&quot;: {
       &quot;description&quot;: &quot;A non-empty reasoning effort value advertised by the model.&quot;,
       &quot;minLength&quot;: 1,
+      &quot;type&quot;: &quot;string&quot;
+    },
+    &quot;ThreadSource&quot;: {
       &quot;type&quot;: &quot;string&quot;
     }
   },
@@ -56797,6 +57340,7 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -57579,6 +58123,14 @@ This is used by external helpers to pause timeout accounting while a user approv
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -57699,7 +58251,28 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;TurnItemsView&quot;: {
       &quot;oneOf&quot;: [
@@ -57751,6 +58324,8 @@ This is used by external helpers to pause timeout accounting while a user approv
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -60291,6 +60866,7 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -61073,6 +61649,14 @@ This is used by external helpers to pause timeout accounting while a user approv
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -61193,7 +61777,28 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;TurnItemsView&quot;: {
       &quot;oneOf&quot;: [
@@ -61245,6 +61850,8 @@ This is used by external helpers to pause timeout accounting while a user approv
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -63253,6 +63860,7 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -64035,6 +64643,14 @@ This is used by external helpers to pause timeout accounting while a user approv
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -64155,7 +64771,28 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;TurnItemsView&quot;: {
       &quot;oneOf&quot;: [
@@ -64207,6 +64844,8 @@ This is used by external helpers to pause timeout accounting while a user approv
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -66216,6 +66855,7 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -66998,6 +67638,14 @@ This is used by external helpers to pause timeout accounting while a user approv
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -67118,7 +67766,28 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;TurnItemsView&quot;: {
       &quot;oneOf&quot;: [
@@ -67164,6 +67833,8 @@ This is used by external helpers to pause timeout accounting while a user approv
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -69269,6 +69940,7 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -70051,6 +70723,14 @@ This is used by external helpers to pause timeout accounting while a user approv
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -70171,7 +70851,28 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;TurnItemsView&quot;: {
       &quot;oneOf&quot;: [
@@ -70217,6 +70918,8 @@ This is used by external helpers to pause timeout accounting while a user approv
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -71668,6 +72371,7 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -72450,6 +73154,14 @@ This is used by external helpers to pause timeout accounting while a user approv
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -72570,7 +73282,28 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;TurnItemsView&quot;: {
       &quot;oneOf&quot;: [
@@ -72616,6 +73349,8 @@ This is used by external helpers to pause timeout accounting while a user approv
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -74462,7 +75197,7 @@ This is used by external helpers to pause timeout accounting while a user approv
     }
   },
   &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
-}</pre></details></div></details></article><article id="event-turn-start" class="event-card" data-search="turn/start client-to-agent jsonrpc-request verified-headless appserver" data-direction="client-to-agent" data-confidence="verified-headless"><details><summary><span class="event-name">turn/start</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;result&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+}</pre></details></div></details></article><article id="event-turn-start" class="event-card" data-search="turn/start client-to-agent jsonrpc-request verified-headless appserver" data-direction="client-to-agent" data-confidence="verified-headless"><details><summary><span class="event-name">turn/start</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;result&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><p>Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-runtime-headless">codex-runtime-headless</a><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;properties&quot;: {
     &quot;additionalContext&quot;: {
       &quot;additionalProperties&quot;: {
@@ -74718,6 +75453,13 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;properties&quot;: {
         &quot;kind&quot;: {
           &quot;$ref&quot;: &quot;#/$defs/AdditionalContextKind&quot;
+        },
+        &quot;name&quot;: {
+          &quot;description&quot;: &quot;Optional name for untrusted context, used to label its tool output.&quot;,
+          &quot;type&quot;: [
+            &quot;string&quot;,
+            &quot;null&quot;
+          ]
         },
         &quot;value&quot;: {
           &quot;type&quot;: &quot;string&quot;
@@ -75593,6 +76335,7 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -76375,6 +77118,14 @@ This is used by external helpers to pause timeout accounting while a user approv
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -76495,7 +77246,28 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;TurnItemsView&quot;: {
       &quot;oneOf&quot;: [
@@ -76541,6 +77313,8 @@ This is used by external helpers to pause timeout accounting while a user approv
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -78127,6 +78901,13 @@ This is used by external helpers to pause timeout accounting while a user approv
         &quot;kind&quot;: {
           &quot;$ref&quot;: &quot;#/$defs/AdditionalContextKind&quot;
         },
+        &quot;name&quot;: {
+          &quot;description&quot;: &quot;Optional name for untrusted context, used to label its tool output.&quot;,
+          &quot;type&quot;: [
+            &quot;string&quot;,
+            &quot;null&quot;
+          ]
+        },
         &quot;value&quot;: {
           &quot;type&quot;: &quot;string&quot;
         }
@@ -79003,6 +79784,7 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -79785,6 +80567,14 @@ This is used by external helpers to pause timeout accounting while a user approv
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -79905,7 +80695,28 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;TurnItemsView&quot;: {
       &quot;oneOf&quot;: [
@@ -79951,6 +80762,8 @@ This is used by external helpers to pause timeout accounting while a user approv
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -81402,6 +82215,7 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;type&quot;: &quot;object&quot;
     },
     &quot;ThreadItem&quot;: {
+      &quot;description&quot;: &quot;A thread item and its recorded lifecycle times. The payload stays flat on the wire.&quot;,
       &quot;oneOf&quot;: [
         {
           &quot;properties&quot;: {
@@ -82184,6 +82998,14 @@ This is used by external helpers to pause timeout accounting while a user approv
               ],
               &quot;default&quot;: null
             },
+            &quot;generationId&quot;: {
+              &quot;default&quot;: null,
+              &quot;description&quot;: &quot;Image generation identifier for the generated image, when provided by the image backend.&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
             &quot;id&quot;: {
               &quot;type&quot;: &quot;string&quot;
             },
@@ -82304,7 +83126,28 @@ This is used by external helpers to pause timeout accounting while a user approv
           &quot;title&quot;: &quot;ContextCompactionThreadItem&quot;,
           &quot;type&quot;: &quot;object&quot;
         }
-      ]
+      ],
+      &quot;properties&quot;: {
+        &quot;completedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item completed, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        },
+        &quot;startedAtMs&quot;: {
+          &quot;default&quot;: null,
+          &quot;description&quot;: &quot;Unix timestamp in milliseconds when the item started, if recorded.&quot;,
+          &quot;format&quot;: &quot;int64&quot;,
+          &quot;type&quot;: [
+            &quot;integer&quot;,
+            &quot;null&quot;
+          ]
+        }
+      },
+      &quot;type&quot;: &quot;object&quot;
     },
     &quot;TurnItemsView&quot;: {
       &quot;oneOf&quot;: [
@@ -82350,6 +83193,8 @@ This is used by external helpers to pause timeout accounting while a user approv
             &quot;rateLimitExceeded&quot;,
             &quot;flexUnavailable&quot;,
             &quot;serverOverloaded&quot;,
+            &quot;modelNotFound&quot;,
+            &quot;policyCapacityUnavailable&quot;,
             &quot;cyberPolicy&quot;,
             &quot;misalignmentPolicyViolation&quot;,
             &quot;tooManyDenials&quot;,
@@ -83645,7 +84490,7 @@ This is used by external helpers to pause timeout accounting while a user approv
     }
   },
   &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
-}</pre></details></div></details></article><article id="event-turn-steer" class="event-card" data-search="turn/steer client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">turn/steer</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
+}</pre></details></div></details></article><article id="event-turn-steer" class="event-card" data-search="turn/steer client-to-agent jsonrpc-request unverified appserver" data-direction="client-to-agent" data-confidence="unverified"><details><summary><span class="event-name">turn/steer</span><span class="event-meta"><span class="direction">client-to-agent</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>appserver</code></a></dd></div><div><dt>Transport</dt><dd>jsonrpc-request</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;exact&quot;,&quot;carrier&quot;:&quot;exact&quot;}</code></dd></div></dl><p>Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-codex-generated-schema">codex-generated-schema</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;properties&quot;: {
     &quot;additionalContext&quot;: {
       &quot;additionalProperties&quot;: {
@@ -83708,6 +84553,13 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;properties&quot;: {
         &quot;kind&quot;: {
           &quot;$ref&quot;: &quot;#/$defs/AdditionalContextKind&quot;
+        },
+        &quot;name&quot;: {
+          &quot;description&quot;: &quot;Optional name for untrusted context, used to label its tool output.&quot;,
+          &quot;type&quot;: [
+            &quot;string&quot;,
+            &quot;null&quot;
+          ]
         },
         &quot;value&quot;: {
           &quot;type&quot;: &quot;string&quot;
@@ -84081,6 +84933,13 @@ This is used by external helpers to pause timeout accounting while a user approv
       &quot;properties&quot;: {
         &quot;kind&quot;: {
           &quot;$ref&quot;: &quot;#/$defs/AdditionalContextKind&quot;
+        },
+        &quot;name&quot;: {
+          &quot;description&quot;: &quot;Optional name for untrusted context, used to label its tool output.&quot;,
+          &quot;type&quot;: [
+            &quot;string&quot;,
+            &quot;null&quot;
+          ]
         },
         &quot;value&quot;: {
           &quot;type&quot;: &quot;string&quot;
@@ -84990,7 +85849,7 @@ This is used by external helpers to pause timeout accounting while a user approv
     }
   },
   &quot;$schema&quot;: &quot;http://json-schema.org/draft-07/schema#&quot;
-}</pre></details></div></details></article></div><p id="empty-events" class="empty" hidden>No events match these filters.</p></section><section id="evidence" class="panel"><div class="section-heading"><div><span class="eyebrow">Provenance</span><h2>Evidence</h2></div><span class="count">v2 · 4 claims</span></div><details open><summary>Immutable source references</summary><div class="table-wrap"><table><thead><tr><th>#</th><th>Relation</th><th>Repository</th><th>Revision</th><th>Details</th></tr></thead><tbody><tr><td>0</td><td>exact-release</td><td>https://github.com/openai/codex</td><td><code>rust-v0.164.0</code></td><td><pre>{}</pre></td></tr></tbody></table></div></details><details open><summary>Digest-pinned records</summary><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kind</th><th>Path</th><th>Digest</th></tr></thead><tbody><tr><td><code>sanitized-captures</code></td><td>capture-set</td><td><code>packages/surface/vendors/codex/captures/codex@0.164.0</code></td><td><code>sha256:47fa6926da66d1e48f3be2850633f9af89f09f1112d621f82ef944093d9f8b67</code></td></tr><tr><td><code>agent-surface-model</code></td><td>model-tree</td><td><code>packages/surface/vendors/codex/model/codex@0.164.0</code></td><td><code>sha256:9f2d9d1634a16e4519a9f7df3da9fa8104e0531c1f48fedacb7e363998b3cc88</code></td></tr><tr><td><code>binary-probes</code></td><td>probe-set</td><td><code>packages/surface/vendors/codex/probes/codex@0.164.0</code></td><td><code>sha256:3885221323d3a6036d72490396108079252cbb8a980dc5fbd20ad4f55177cd98</code></td></tr><tr><td><code>source-file-changes</code></td><td>source-contract</td><td><code>packages/surface/vendors/codex/references/codex@0.164.0/source</code></td><td><code>sha256:c01ef5db9773e7053c38285d89d2c0fd11ddb05351628f165b9a6acb1c3356f8</code></td></tr></tbody></table></div></details><details><summary>Claim index</summary><div class="claim-list"><article id="claim-codex-runtime-headless" class="claim-card"><header><code>codex-runtime-headless</code><span>runtime-capture</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>sanitized-captures</dd></div><div><dt>Artifact</dt><dd>codex-0.164.0-darwin-arm64</dd></div><div><dt>Captured</dt><dd>2026-10-25T04:50:59.033Z</dd></div></dl><p>Run against the extracted release package: bin/codex beside bin/codex-code-mode-host. Every scenario met its declared expectations; a degraded run writes nothing to the capture directory.</p></article><article id="claim-codex-generated-schema" class="claim-card"><header><code>codex-generated-schema</code><span>generated-schema</span><span class="confidence unverified">unverified</span></header><dl><div><dt>Record</dt><dd>—</dd></div><div><dt>Artifact</dt><dd>codex-0.164.0-darwin-arm64</dd></div><div><dt>Captured</dt><dd>—</dd></div></dl></article><article id="claim-codex-binary-probe" class="claim-card"><header><code>codex-binary-probe</code><span>binary-probe</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>binary-probes</dd></div><div><dt>Artifact</dt><dd>codex-0.164.0-darwin-arm64</dd></div><div><dt>Captured</dt><dd>2026-10-25T04:44:09.137Z</dd></div></dl><p>Session-free parse and config-loader probes, root and resume help, the runtime meaning of FileUpdateChange.diff per kind, the 64 KiB command-output cap in replayed history, what config/read and the mcp commands make of an auth = &quot;ema_auth&quot; server without an account, and the S1-S35 invocation landing re-measured in isolated homes against a loopback model.</p></article><article id="claim-codex-file-change-source" class="claim-card"><header><code>codex-file-change-source</code><span>exact-source</span><span class="confidence unverified">unverified</span></header><dl><div><dt>Record</dt><dd>source-file-changes</dd></div><div><dt>Artifact</dt><dd>—</dd></div><div><dt>Captured</dt><dd>—</dd></div></dl><p>Digest-pinned exact-release source establishes the kind-dependent meaning of FileUpdateChange.diff, move suffix encoding, and deterministic path ordering; source alone does not prove runtime occurrence.</p></article></div></details></section></main><script>
+}</pre></details></div></details></article></div><p id="empty-events" class="empty" hidden>No events match these filters.</p></section><section id="evidence" class="panel"><div class="section-heading"><div><span class="eyebrow">Provenance</span><h2>Evidence</h2></div><span class="count">v2 · 4 claims</span></div><details open><summary>Immutable source references</summary><div class="table-wrap"><table><thead><tr><th>#</th><th>Relation</th><th>Repository</th><th>Revision</th><th>Details</th></tr></thead><tbody><tr><td>0</td><td>exact-release</td><td>https://github.com/openai/codex</td><td><code>rust-v0.166.0</code></td><td><pre>{}</pre></td></tr></tbody></table></div></details><details open><summary>Digest-pinned records</summary><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kind</th><th>Path</th><th>Digest</th></tr></thead><tbody><tr><td><code>sanitized-captures</code></td><td>capture-set</td><td><code>packages/surface/vendors/codex/captures/codex@0.166.0</code></td><td><code>sha256:5cd4f2396a7ef76693f934f7256440f405943107bc572e0b71df37dfe4f92696</code></td></tr><tr><td><code>agent-surface-model</code></td><td>model-tree</td><td><code>packages/surface/vendors/codex/model/codex@0.166.0</code></td><td><code>sha256:1b0f0c45599a199fc8456c587c0163994fa3a26ad5edd064436037b44ef0b50f</code></td></tr><tr><td><code>binary-probes</code></td><td>probe-set</td><td><code>packages/surface/vendors/codex/probes/codex@0.166.0</code></td><td><code>sha256:eb7627ec0604b224478dc92d3947990e8b2c414d5118cf3387d4876203102aa2</code></td></tr><tr><td><code>source-file-changes</code></td><td>source-contract</td><td><code>packages/surface/vendors/codex/references/codex@0.166.0/source</code></td><td><code>sha256:b620605edb89e5ffcb5bbd3c4f03a0070fe1e923e01cf391563f240abb7e0dd2</code></td></tr></tbody></table></div></details><details><summary>Claim index</summary><div class="claim-list"><article id="claim-codex-runtime-headless" class="claim-card"><header><code>codex-runtime-headless</code><span>runtime-capture</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>sanitized-captures</dd></div><div><dt>Artifact</dt><dd>codex-0.166.0-linux-x64</dd></div><div><dt>Captured</dt><dd>2026-11-03T19:11:05.410Z</dd></div></dl><p>Run against the extracted release package: bin/codex beside bin/codex-code-mode-host. Every scenario met its declared expectations; a degraded run writes nothing to the capture directory.</p></article><article id="claim-codex-generated-schema" class="claim-card"><header><code>codex-generated-schema</code><span>generated-schema</span><span class="confidence unverified">unverified</span></header><dl><div><dt>Record</dt><dd>—</dd></div><div><dt>Artifact</dt><dd>codex-0.166.0-linux-x64</dd></div><div><dt>Captured</dt><dd>—</dd></div></dl></article><article id="claim-codex-binary-probe" class="claim-card"><header><code>codex-binary-probe</code><span>binary-probe</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>binary-probes</dd></div><div><dt>Artifact</dt><dd>codex-0.166.0-linux-x64</dd></div><div><dt>Captured</dt><dd>2026-11-03T19:18:10.000Z</dd></div></dl><p>Session-free parse and config-loader probes, root and resume help, the runtime meaning of FileUpdateChange.diff per kind, the 64 KiB command-output cap in replayed history, and the model-provider admission refusals (ModelProviderError data on thread/resume and turn/start), in isolated homes against a loopback model. The S1-S35 invocation landing and the ema_auth probe were not re-run at 0.166.0 (findings C9).</p></article><article id="claim-codex-file-change-source" class="claim-card"><header><code>codex-file-change-source</code><span>exact-source</span><span class="confidence unverified">unverified</span></header><dl><div><dt>Record</dt><dd>source-file-changes</dd></div><div><dt>Artifact</dt><dd>—</dd></div><div><dt>Captured</dt><dd>—</dd></div></dl><p>Digest-pinned exact-release source establishes the kind-dependent meaning of FileUpdateChange.diff, move suffix encoding, and deterministic path ordering; source alone does not prove runtime occurrence.</p></article></div></details></section></main><script>
 const root=document.documentElement;let saved;try{saved=localStorage.getItem('surface-theme')}catch{}if(saved)root.dataset.theme=saved;
 document.querySelector('.theme').addEventListener('click',()=>{const dark=root.dataset.theme==='dark'||(!root.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);root.dataset.theme=dark?'light':'dark';try{localStorage.setItem('surface-theme',root.dataset.theme)}catch{}});
 const search=document.querySelector('#event-search'),direction=document.querySelector('#direction-filter'),confidence=document.querySelector('#confidence-filter'),cards=[...document.querySelectorAll('.event-card')],count=document.querySelector('#event-count'),empty=document.querySelector('#empty-events');
