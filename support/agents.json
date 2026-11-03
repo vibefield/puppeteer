@@ -95,7 +95,8 @@
             "artifactSha256": "sha256:6f267830b029ee25d9339864aa867cd45de9f8fd4c5ea007d2e63c13a0c66d36"
           }
         ]
-      }
+      },
+      "candidateVersion": "0.166.0"
     },
     {
       "id": "copilot",

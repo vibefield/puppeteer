@@ -1,0 +1,41 @@
+{
+  "codex": "0.166.0",
+  "probe": "probes/codex@0.166.0/history-truncation-probe.mjs",
+  "artifact": {
+    "versionOutput": "codex-cli 0.166.0",
+    "executableSha256": "b8a11fedf24b2dfb59a70c9e52b030f9a508dcd49cd2dd0d41956f4c785156b8"
+  },
+  "printedBytes": 100000,
+  "live": {
+    "status": "completed",
+    "exitCode": 0,
+    "aggregatedOutput": {
+      "bytes": 100000,
+      "sha256": "6d1cf22d7cc09b08",
+      "leadingRun": 100000,
+      "trailingRun": 0,
+      "marker": null
+    }
+  },
+  "turnsListFull": {
+    "status": "completed",
+    "aggregatedOutput": {
+      "bytes": 65536,
+      "sha256": "8bcec2ac544b4524",
+      "leadingRun": 32743,
+      "trailingRun": 32743,
+      "marker": "\n... command output truncated for persistence ...\n"
+    }
+  },
+  "threadReadIncludeTurns": {
+    "status": "completed",
+    "aggregatedOutput": {
+      "bytes": 65536,
+      "sha256": "8bcec2ac544b4524",
+      "leadingRun": 32743,
+      "trailingRun": 32743,
+      "marker": "\n... command output truncated for persistence ...\n"
+    }
+  },
+  "deprecationNotices": 1
+}

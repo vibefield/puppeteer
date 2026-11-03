@@ -492,6 +492,47 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     await obs.dispose();
   });
 
+  it("leaves the root turn running when a Guardian reviewer's forwarded abort arrives", async () => {
+    // rust-v0.165.0 #56124 (PrivateSessionEvent, bespoke_event_handling.rs): a private reviewer's
+    // turn abort reaches the parent's subscribers as turn/completed under the reviewer's own thread
+    // id, which no thread/started announced. It must not end the parent's turn (findings C9).
+    const t = controllable(0);
+    const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
+    const projection = projectAgentEvents(obs);
+    t.deliver({
+      jsonrpc: '2.0',
+      method: 'turn/started',
+      params: { threadId: 'th-owned', turn: { id: 'root-turn', items: [], status: 'inProgress' } },
+    });
+    // The root turn starts once its prompt is known (normalization/turn.ts).
+    t.deliver({
+      jsonrpc: '2.0',
+      method: 'item/completed',
+      params: {
+        threadId: 'th-owned',
+        turnId: 'root-turn',
+        item: { type: 'userMessage', id: 'u1', clientId: null, content: [{ type: 'text', text: 'review this' }] },
+      },
+    });
+    expect(projection.state.activeTurn).toBeDefined();
+    const events: string[] = [];
+    obs.events.onCandidate(({ event }) => events.push(event.type));
+
+    t.deliver({
+      jsonrpc: '2.0',
+      method: 'turn/completed',
+      params: {
+        threadId: 'th-guardian-review',
+        turn: { id: 'review-turn', items: [], status: 'interrupted', error: null },
+      },
+    });
+
+    expect(events).toEqual([]);
+    expect(projection.state.activeTurn).toBeDefined();
+    projection.dispose();
+    await obs.dispose();
+  });
+
   it('routes controller-owned approval requests through the supplied policy', async () => {
     const t = controllable(0);
     const onApproval = vi.fn(() => 'approved' as const);

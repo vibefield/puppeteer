@@ -1,0 +1,123 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "codex",
+  "vendorVersion": "0.166.0",
+  "artifacts": [
+    {
+      "id": "codex-0.166.0-linux-x64",
+      "platform": "linux-x64",
+      "channel": "stable",
+      "acquiredAt": "2026-11-03T19:10:05.000Z",
+      "versionOutput": "codex-cli 0.166.0",
+      "sourceUrl": "https://github.com/openai/codex/releases/download/rust-v0.166.0/codex-package-x86_64-unknown-linux-musl.tar.gz",
+      "package": {
+        "file": "codex-package-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "sha256:1d44b28bc4ac9937d7d3532264baa68a507ce364956a0d4ebb856f331cdee254",
+        "bytes": 199694962,
+        "digestSource": "Computed from the downloaded release asset; the asset digest GitHub publishes was not compared (the GitHub REST API was unreachable from the survey environment)."
+      },
+      "executable": "bin/codex",
+      "companions": [
+        {
+          "path": "bin/codex-code-mode-host",
+          "sha256": "sha256:657f4e902726e05867c937b583049d5997e057f8cd0ab40450633c9c9ef8d630",
+          "bytes": 77997328,
+          "role": "Runs the exec tool's JavaScript isolate; required by every tool scenario of the census (findings C8)."
+        }
+      ],
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:b8a11fedf24b2dfb59a70c9e52b030f9a508dcd49cd2dd0d41956f4c785156b8"
+      },
+      "artifactKind": "standalone-executable",
+      "acquisitionKey": "codex@0.166.0@linux-x64@sha256:b8a11fedf24b2dfb59a70c9e52b030f9a508dcd49cd2dd0d41956f4c785156b8"
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/openai/codex",
+      "revision": "rust-v0.166.0",
+      "relation": "exact-release"
+    }
+  ],
+  "claims": [
+    {
+      "id": "codex-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "codex-0.166.0-linux-x64",
+      "platform": "linux-x64",
+      "harness": "packages/surface/vendors/codex/census/harness.mjs --package-root <extracted codex-package-x86_64-unknown-linux-musl.tar.gz>",
+      "capturedAt": "2026-11-03T19:11:05.410Z",
+      "notes": "Run against the extracted release package: bin/codex beside bin/codex-code-mode-host. Every scenario met its declared expectations; a degraded run writes nothing to the capture directory."
+    },
+    {
+      "id": "codex-generated-schema",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "artifact": "codex-0.166.0-linux-x64",
+      "sourceReference": 0,
+      "harness": "codex app-server generate-json-schema --experimental"
+    },
+    {
+      "id": "codex-binary-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "codex-0.166.0-linux-x64",
+      "platform": "linux-x64",
+      "harness": "probes/codex@0.166.0: parse-probe.mjs, config-probe.mjs, file-change-probe.mjs, history-truncation-probe.mjs",
+      "capturedAt": "2026-11-03T19:18:10.000Z",
+      "notes": "Session-free parse and config-loader probes, root and resume help, the runtime meaning of FileUpdateChange.diff per kind, and the 64 KiB command-output cap in replayed history, in isolated homes against a loopback model. The S1-S35 invocation landing and the ema_auth probe were not re-run at 0.166.0 (findings C9)."
+    },
+    {
+      "id": "codex-file-change-source",
+      "kind": "exact-source",
+      "confidence": "unverified",
+      "record": "source-file-changes",
+      "sourceReference": 0,
+      "notes": "Digest-pinned exact-release source establishes the kind-dependent meaning of FileUpdateChange.diff, move suffix encoding, and deterministic path ordering; source alone does not prove runtime occurrence."
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/codex/captures/codex@0.166.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "5cd4f2396a7ef76693f934f7256440f405943107bc572e0b71df37dfe4f92696"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/codex/model/codex@0.166.0",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "31852f6afdaa1392d0c3e0a80da260410944177fc3d68aab711432f9f6fc5bdb"
+    },
+    {
+      "id": "binary-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/codex/probes/codex@0.166.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "14ed600ef9d1ec2d76f1f2832280f8c8dfa6a3d685fde4bfbc4c9102f73e8532"
+    },
+    {
+      "id": "source-file-changes",
+      "kind": "source-contract",
+      "path": "packages/surface/vendors/codex/references/codex@0.166.0/source",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "b620605edb89e5ffcb5bbd3c4f03a0070fe1e923e01cf391563f240abb7e0dd2"
+    }
+  ],
+  "limitations": [
+    "The hermetic census and the binary probes ran on linux-x64 only (the earlier census platform was darwin-arm64). darwin-arm64, darwin-x64 and windows-x64 are not acquired for this candidate; the protected workflow acquires and attests them.",
+    "The exec tool needs the package's codex-code-mode-host beside bin/codex. The artifact identity digests bin/codex; the companion digest is recorded here and in the census run, but the acquisition schema has no companion-file concept yet (findings C8).",
+    "On linux-x64 without a system bubblewrap, every app-server start sends one configWarning (Codex falls back to the bundled codex-resources/bwrap); it is a platform branch, present at 0.164.0 on the same platform, not 0.166.0 drift (findings C9).",
+    "The reviewed 0.164.0 behavior graph is retained unchanged: the 0.166.0 census reproduces every scenario's method, result and item-type sequence on the same platform; other schema-only methods remain unverified until dedicated runtime scenarios establish their ordering.",
+    "History scenarios run on one connection with the thread loaded; a cold resume from the rollout after an app-server restart is not part of the census."
+  ]
+}
