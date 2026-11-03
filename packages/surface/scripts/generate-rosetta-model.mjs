@@ -26,6 +26,8 @@ function filesUnder(root, directory = root) {
     .sort();
 }
 
+const ROSETTA_DYNAMIC_KEY = '<dynamic>';
+
 export function rosettaShapeToJsonSchema(shape) {
   if (!shape || typeof shape !== 'object') return {};
   switch (shape.kind) {
@@ -44,7 +46,11 @@ export function rosettaShapeToJsonSchema(shape) {
     case 'any_of':
       return { anyOf: (shape.variants ?? []).map(rosettaShapeToJsonSchema) };
     case 'object': {
-      const fields = shape.fields && typeof shape.fields === 'object' ? shape.fields : {};
+      const all = shape.fields && typeof shape.fields === 'object' ? shape.fields : {};
+      // Rosetta folds arbitrary map keys (ids, paths, configured names) into one `<dynamic>` field; it describes the
+      // map's values, not a property literally named `<dynamic>`.
+      const dynamic = all[ROSETTA_DYNAMIC_KEY];
+      const fields = Object.fromEntries(Object.entries(all).filter(([name]) => name !== ROSETTA_DYNAMIC_KEY));
       const properties = Object.fromEntries(
         Object.entries(fields)
           .sort(([left], [right]) => left.localeCompare(right))
@@ -58,7 +64,7 @@ export function rosettaShapeToJsonSchema(shape) {
         type: 'object',
         ...(Object.keys(properties).length ? { properties } : {}),
         ...(required.length ? { required } : {}),
-        additionalProperties: true,
+        additionalProperties: dynamic ? rosettaShapeToJsonSchema(dynamic.shape) : true,
       };
     }
     default:

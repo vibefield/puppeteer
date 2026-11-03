@@ -12,4 +12,9 @@ describe('Pi detection', () => {
     expect(parsePiVersion(`pi v${PI_SURFACE_VERSION}`)).toBe(PI_SURFACE_VERSION);
     expect(parsePiVersion('pi unknown')).toBeUndefined();
   });
+
+  it('parses the bare native 1.5.0 output', () => {
+    // `pi --version` output of 1.5.0, captured 2026-11-03 in a disposable offline home.
+    expect(parsePiVersion('1.5.0\n')).toBe('1.5.0');
+  });
 });

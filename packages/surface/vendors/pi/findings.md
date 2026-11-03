@@ -1,4 +1,4 @@
-# Pi 0.84.3 surface findings
+# Pi 1.5.0 surface findings
 
 Status: canonical ground truth, adapter, Imposter persona, built-in provider,
 and local conformance are implemented. The baseline remains
@@ -10,7 +10,7 @@ four platforms.
 
 The vendor-root `groundtruth.json` is the single Puppeteer truth artifact. It
 is generated from the complete Rosetta `rosetta-groundtruth/1` inventory,
-controlled `0.84.3` fixtures, and the pinned open-source writer contract.
+controlled `1.5.0` fixtures, and the pinned open-source writer contract.
 Version 3 session JSONL is authoritative; branch summaries,
 extension-defined custom entries, and labels remain writer-backed where no
 controlled fixture exists.
@@ -18,6 +18,37 @@ controlled fixture exists.
 Official acquisition uses the four platform release assets from
 `earendil-works/pi`. The executable version is probed from the extracted
 artifact before it can enter the evidence workflow.
+
+## 1.5.0 capture and drift from 0.84.3
+
+The 1.5.0 corpus was farmed by Rosetta (commit
+`768de81d529d187523cbdf2f0995c6f63a6be8fc`, not yet landed upstream) from the
+npm `@earendil-works/pi-coding-agent` package on linux-x64, offline, against
+Rosetta's loopback mock model; the 0.84.3 corpus was farmed on darwin-arm64.
+Official acquisition still uses the GitHub release binaries, so the captured
+artifact is the same release through its npm distribution, not the acquired
+bytes. Rosetta's `sources/1.5.0.writer.json` is its 0.84.3 writer document with
+the reviewed v0.84.3..v1.5.0 diff of the persistence types applied. Rosetta's
+canonical inventory is cumulative across its pinned versions, so a shape shown
+here is proven for 0.84.3 or 1.5.0, not necessarily both (for example
+`toolResult.addedToolNames` exists only at 0.84.3).
+
+- The session header stays at version 3 and the record types are unchanged in
+  the fixtures. 1.5.0 persists the system prompt as a `message` entry with
+  `role: "system"` (`content`, `sections`, `toolsAdded`, `toolsRemoved`) after
+  `thinking_level_change`, and on `compaction.systemMessage`. The adapter keeps
+  it as a retained native `message:system`; it is prompt scaffolding, not a
+  turn.
+- Assistant messages gain `durationMs`, `thinkingLevel` and
+  `providerThinkingLevel`; tool results gain `durationMs` and `nestedCalls`;
+  `usage.cost.totalFromProvider` is new. None changes a consumed field.
+- New writer-only entries: `usage` (prompt-cache warming and other
+  model-attributed usage) and `context_edit`. Both are retained native events;
+  usage stays excluded from the session-JSONL usage family as before.
+- Invocation (`--help`, 1.5.0): a `mcp` command and `--no-mcp`; `--provider`
+  without `--model` now exits (`--provider requires --model`), so both the
+  argv normalizer and the managed launch refuse that combination; fullscreen
+  is now the default `--tui-mode`, which the hosted terminal accepts as is.
 
 ## Adapter boundary
 
@@ -54,6 +85,6 @@ observation degradation, and the shared agent/monitor conformance suites.
 
 Promotion still requires protected matching-platform runs through each exact
 acquired executable proving native TUI launch, durable session attachment,
-accepted prompt control, normalized completion, and `--session` resume. Pi is
-pre-1.0, so any session-format version change must reopen the ground-truth and
-adapter mapping review rather than being treated as compatible by default.
+accepted prompt control, normalized completion, and `--session` resume. Any
+session-format version change must reopen the ground-truth and adapter
+mapping review rather than being treated as compatible by default.

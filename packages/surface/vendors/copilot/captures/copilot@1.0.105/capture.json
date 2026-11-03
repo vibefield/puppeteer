@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 2,
+  "representation": "type-preserving-redaction",
+  "vendor": "copilot",
+  "vendorVersion": "1.0.105",
+  "mode": "imported-rosetta-controlled-native-journals",
+  "scenarios": [
+    "basic-chat",
+    "resume",
+    "tool-denied",
+    "tool-use",
+    "usage"
+  ],
+  "records": 70
+}

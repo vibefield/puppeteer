@@ -9,7 +9,10 @@ export function normalizeCopilotMode(type: string, data: Record<string, unknown>
       : [];
   }
   if (type === 'session.permissions_changed') {
+    // The 1.0.105 writer schema replaces the allow-all pair with `mode` (manual | assisted | allow-all), yet the
+    // 1.0.105 hermetic captures still write the allow-all pair; read the newer field first and keep both.
     const raw =
+      copilotString(data.mode) ??
       copilotString(data.allowAllPermissionMode) ??
       (data.allowAllPermissions === true ? 'on' : data.allowAllPermissions === false ? 'off' : undefined);
     return raw
@@ -18,7 +21,7 @@ export function normalizeCopilotMode(type: string, data: Record<string, unknown>
             type: 'mode:updated',
             intent: 'observed',
             modeKind: 'provider-permission',
-            mode: { raw, normalized: ['on', 'true'].includes(raw) ? 'auto' : 'manual' },
+            mode: { raw, normalized: ['on', 'true', 'allow-all'].includes(raw) ? 'auto' : 'manual' },
           },
         ]
       : [];

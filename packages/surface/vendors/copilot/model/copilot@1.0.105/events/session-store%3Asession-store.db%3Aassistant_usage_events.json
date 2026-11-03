@@ -1,0 +1,114 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "session-store:session-store.db:assistant_usage_events",
+  "nativeName": "session-store.db:assistant_usage_events",
+  "channel": "session-store",
+  "channels": [
+    "session-store"
+  ],
+  "transport": "sqlite-row",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agent_id": {
+        "type": "string"
+      },
+      "api_endpoint": {
+        "type": "string"
+      },
+      "cache_read_tokens": {
+        "type": "number"
+      },
+      "cache_write_tokens": {
+        "type": "number"
+      },
+      "content_filter_triggered": {
+        "type": "number"
+      },
+      "copilot_usage_model": {
+        "type": "string"
+      },
+      "created_at": {
+        "type": "string"
+      },
+      "duration_ms": {
+        "type": "number"
+      },
+      "finish_reason": {
+        "type": "string"
+      },
+      "id": {
+        "type": "number"
+      },
+      "initiator": {
+        "type": "string"
+      },
+      "input_tokens": {
+        "type": "number"
+      },
+      "inter_token_latency_ms": {
+        "type": "number"
+      },
+      "model": {
+        "type": "string"
+      },
+      "output_tokens": {
+        "type": "number"
+      },
+      "output_ttft_ms": {
+        "type": "number"
+      },
+      "parent_tool_call_id": {
+        "type": "string"
+      },
+      "reasoning_effort": {
+        "type": "string"
+      },
+      "reasoning_tokens": {
+        "type": "number"
+      },
+      "request_multiplier": {
+        "type": "number"
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "time_to_first_token_ms": {
+        "type": "number"
+      },
+      "token_details_json": {
+        "type": "string"
+      },
+      "total_nano_aiu": {
+        "type": "number"
+      },
+      "turn_index": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "id",
+      "model",
+      "session_id"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-observed"
+    ],
+    "shape": [
+      "copilot-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "session-store.db*; 14 retained observation(s); source evidence: fixture."
+}

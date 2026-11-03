@@ -1,0 +1,57 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "session-store:session-store.db:turns",
+  "nativeName": "session-store.db:turns",
+  "channel": "session-store",
+  "channels": [
+    "session-store"
+  ],
+  "transport": "sqlite-row",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "assistant_response": {
+        "type": "string"
+      },
+      "id": {
+        "type": "number"
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "turn_index": {
+        "type": "number"
+      },
+      "user_message": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "session_id",
+      "turn_index"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-observed"
+    ],
+    "shape": [
+      "copilot-rosetta-observed"
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "session-store.db*; 1 retained observation(s); source evidence: fixture."
+}

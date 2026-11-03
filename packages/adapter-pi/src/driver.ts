@@ -59,6 +59,8 @@ export async function preparePiTuiSession(options: CreatePiTuiSessionOptions): P
     agentDir,
     options.sessionDir ?? options.env?.PI_CODING_AGENT_SESSION_DIR,
   );
+  // Pi 1.5.0 refuses `--provider` without `--model` at startup.
+  if (options.provider && !options.model) throw new Error('Pi requires a model whenever a provider is selected');
   const location = options.resume ? await findPiSession(sessionDir, options.resume) : undefined;
   if (options.resume && !location) throw new Error(`Pi session ${options.resume} was not found in ${sessionDir}`);
   const sessionId = location?.sessionId ?? randomUUID();

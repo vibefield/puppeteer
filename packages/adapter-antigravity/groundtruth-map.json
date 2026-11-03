@@ -3,7 +3,7 @@
   "provider": "antigravity",
   "adapterPackage": "@vibefield/puppeteer-adapter-antigravity",
   "groundTruth": "packages/surface/vendors/antigravity/groundtruth.json",
-  "groundTruthSha256": "c851987db5f169cea2cf1c8eec1c31573b88078276b8745195f6b0c9c8663b66",
+  "groundTruthSha256": "145a941beef978d58e67d40ce37338ace25517d7e1629a99a30451f0044428f0",
   "semanticEvents": [
     "CHECKPOINT",
     "ERROR_MESSAGE",

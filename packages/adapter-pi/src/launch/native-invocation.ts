@@ -5,6 +5,7 @@ import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vi
 
 const SAFE_ID = /^[A-Za-z0-9._-]+$/u;
 const REJECTED = 'custom arguments are not compatible with the managed Pi launch';
+const PROVIDER_WITHOUT_MODEL = 'Pi requires --model with --provider';
 const StateSchema = z.strictObject({
   version: z.literal(1),
   agentDir: z.string().optional(),
@@ -61,6 +62,9 @@ export function normalizePiNativeInvocation(
       return { status: 'rejected', reason: REJECTED, argument };
     options[field] = field === 'sessionDir' ? resolve(invocation.cwd, value) : value;
   }
+  // Pi 1.5.0 exits with `--provider requires --model`; refuse the clause rather than launch a session that cannot start.
+  if (options.provider !== undefined && options.model === undefined)
+    return { status: 'rejected', reason: PROVIDER_WITHOUT_MODEL, argument: '--provider' };
   const agentDir = invocation.environment.PI_CODING_AGENT_DIR;
   const sessionDir = invocation.environment.PI_CODING_AGENT_SESSION_DIR;
   if (agentDir) options.piAgentDir = resolve(invocation.cwd, agentDir);

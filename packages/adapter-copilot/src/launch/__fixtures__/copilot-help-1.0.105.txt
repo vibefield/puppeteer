@@ -13,8 +13,10 @@ Commands:
   login        Authenticate with Copilot
   help         Display help information
   init         Initialize Copilot instructions
+  config       Manage configuration settings
   update       Download the latest version
   version      Display version information
+  workflow     Run dynamic workflows
   sessions     Manage saved sessions
   memories     Manage memories
   plugin       Manage plugins
@@ -22,6 +24,7 @@ Commands:
   skill        Manage skills
   instruction  Inspect instruction sources
   lsp          Inspect language server configuration
+  sandbox      Manage command sandboxing
   completion   Generate a shell completion script
 
 Options:
@@ -35,9 +38,16 @@ Options:
   -p, --prompt <text>
           Execute a prompt in non-interactive mode (exits after
           completion)
+      --trust-folder
+          Trust the resolved working directory's configuration for
+          one new prompt-mode session only (no saved trust or tool,
+          path, or URL approvals)
   -s, --silent
           Output only the agent response (no stats), useful for
           scripting with -p
+      --disable-client-telemetry
+          Disable telemetry sent by the CLI (does not affect
+          server-side telemetry)
       --enable-memory
           Enable memory in prompt mode (disabled by default)
       --model <model>
@@ -48,7 +58,7 @@ Options:
       --context <tier>
           Set the context window tier (overrides persisted setting) [possible values: default, long_context]
       --auto-tier <preference>
-          Set the Auto routing profile [possible values: efficiency, balance, intelligence, fast]
+          Set the Auto routing profile (validated against the available catalog)
       --agent <agent>
           Specify a custom agent to use
   -r, --resume [<value>]
@@ -115,7 +125,7 @@ Options:
           Disable a specific MCP server (can be used multiple times)
       --disable-builtin-mcps
           Disable all built-in MCP servers (currently:
-          github-mcp-server)
+          github-mcp-server, githubiq)
       --enable-all-github-mcp-tools
           Enable all GitHub MCP server tools instead of the default
           CLI subset. Overrides --add-github-mcp-toolset and
@@ -140,6 +150,11 @@ Options:
           relative @ path resolves against the session working
           directory (the --resume/--worktree/-C directory) and a
           leading ~/ expands to your home directory
+      --mcp-github-auth <server=origin>
+          Send the signed-in GitHub account credential only to this
+          explicit --additional-mcp-config server and approved origin.
+          HTTPS is required except for literal loopback HTTP. Never
+          put a token in this argument. Can be used multiple times.
       --allow-all-mcp-server-instructions
           Include initialization instructions from all MCP servers in
           the system prompt instead of only allowlisted servers
@@ -187,12 +202,14 @@ Options:
           Enable mouse support in alt screen mode (on|off)
       --acp
           Start as Agent Client Protocol server
-      --remote
-          Enable remote control of your session from GitHub web and
-          mobile
-      --remote-export
-          Export your session to GitHub web and mobile (read-only;
-          does not enable remote control)
+      --sync-session[=<on|off>]
+          Enable or disable read-only account history sync for this
+          run only (omitted: use configured/default behavior).
+          Without a value, enables sync; does not enable incoming control. [possible values: on, off]
+      --host-environment <name>
+          Start a headless Mission Control environment (no local listener unless --host-ahp is also set)
+      --host-compute-id <id>
+          Stable environment compute identity override (default: generate, persist, and reuse the CLI identity)
       --dynamic-retrieval <category=on|off>
           Enable or disable embeddings-based dynamic retrieval per
           category and persist the choice (category: skills).
@@ -204,11 +221,12 @@ Options:
           Set max AI credits for this session
       --assisted-approval
           Review tool permission requests with the assisted-approval
-          safety judge instead of approving them outright. Equivalent
+          safety judge instead of approving them outright. The judge
+          is probabilistic and not a security boundary. Equivalent
           to the `assisted` mode of /permissions. Takes precedence
-          over --allow-all-tools when the judge engages; requires
-          --experimental or enabledFeatureFlags.AUTO_APPROVAL. (env:
-          COPILOT_ASSISTED_APPROVAL)
+          over --allow-all-tools when the judge engages. Ignored, with
+          a warning, when AUTO_APPROVAL is explicitly disabled or
+          managed policy blocks it. (env: COPILOT_ASSISTED_APPROVAL)
       --usage-output-file <file>
           Write final usage statistics as JSON to the specified file
       --no-custom-instructions
@@ -229,12 +247,6 @@ Options:
           Disable BASH_ENV support for bash shells
       --no-mouse
           Disable mouse support in alt screen mode
-      --no-remote
-          Disable remote control of your session from GitHub web and
-          mobile
-      --no-remote-export
-          Disable exporting your session to GitHub web and mobile
-          (also disables remote control)
       --no-eager-powershell-resolution
           Disable background PowerShell prompt resolution on Windows
   -h, --help
@@ -261,6 +273,9 @@ Examples:
 
   # Execute a prompt in non-interactive mode (exits after completion)
   $ copilot -p "Fix the bug in main.js" --allow-all-tools
+
+  # Trust this checkout's configuration for one prompt-mode session only
+  $ copilot --trust-folder -p "Summarize this project"
 
   # Enable all permissions with a single flag
   $ copilot -p "Fix the bug in main.js" --allow-all

@@ -70,4 +70,18 @@ describe('Pi native TUI session: the durable record (RA-D7)', () => {
     expect(session.durableRecordSeen()).toBe(true);
     await prepared.dispose();
   });
+
+  it('refuses a provider without a model, which Pi 1.5.0 exits on at startup', async () => {
+    const home = await root();
+    await expect(
+      preparePiTuiSession({
+        cwd: '/repo',
+        host: host(),
+        executable: '/opt/pi',
+        piAgentDir: join(home, 'agent'),
+        sessionDir: join(home, 'sessions'),
+        provider: 'openai',
+      }),
+    ).rejects.toThrow('Pi requires a model whenever a provider is selected');
+  });
 });

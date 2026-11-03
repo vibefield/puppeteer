@@ -1,7 +1,7 @@
 import { readNativeInvocationArguments, type NativeInvocationGrammar } from '@vibefield/puppeteer-core';
 
 /** Native help and parser evidence: __fixtures__/README.md. Unknown arity is a refusal. */
-export const INVOCATION_GRAMMAR_VERSION = '1.0.88';
+export const INVOCATION_GRAMMAR_VERSION = '1.0.105';
 export const INVOCATION_GRAMMAR = {
   options: [
     {
@@ -323,11 +323,7 @@ export const INVOCATION_GRAMMAR = {
       names: ['--remote'],
       arity: 'none',
       reason: 'the managed launch cannot preserve this option',
-    },
-    {
-      names: ['--remote-export'],
-      arity: 'none',
-      reason: 'the managed launch cannot preserve this option',
+      hidden: 'listed through 1.0.88, unlisted in 1.0.105 help; `copilot --remote --version` still parses on 1.0.105',
     },
     {
       names: ['--assisted-approval'],
@@ -370,13 +366,40 @@ export const INVOCATION_GRAMMAR = {
       reason: 'the managed launch cannot preserve this option',
     },
     {
-      names: ['--no-remote'],
+      names: ['--no-remote-export'],
+      arity: 'none',
+      reason: 'the managed launch cannot preserve this option',
+      hidden:
+        'listed through 1.0.88, unlisted in 1.0.105 help; `copilot --no-remote-export --version` still parses on 1.0.105',
+    },
+    {
+      names: ['--trust-folder'],
       arity: 'none',
       reason: 'the managed launch cannot preserve this option',
     },
     {
-      names: ['--no-remote-export'],
+      names: ['--disable-client-telemetry'],
       arity: 'none',
+      reason: 'the managed launch cannot preserve this option',
+    },
+    {
+      names: ['--mcp-github-auth'],
+      arity: 'one',
+      reason: 'the managed launch cannot preserve this option',
+    },
+    {
+      names: ['--sync-session'],
+      arity: 'optional',
+      reason: 'the managed launch cannot preserve this option',
+    },
+    {
+      names: ['--host-environment'],
+      arity: 'one',
+      reason: 'the managed launch cannot preserve this option',
+    },
+    {
+      names: ['--host-compute-id'],
+      arity: 'one',
       reason: 'the managed launch cannot preserve this option',
     },
     {
@@ -399,12 +422,21 @@ export const INVOCATION_GRAMMAR = {
       passthrough: 'utility',
     },
     {
+      names: ['config'],
+      passthrough: 'utility',
+    },
+    {
       names: ['update'],
       passthrough: 'utility',
     },
     {
       names: ['version'],
       passthrough: 'utility',
+    },
+    {
+      // `workflow run` executes a registered workflow without a parent agent turn and exits.
+      names: ['workflow'],
+      passthrough: 'one-shot',
     },
     {
       names: ['sessions'],
@@ -432,6 +464,10 @@ export const INVOCATION_GRAMMAR = {
     },
     {
       names: ['lsp'],
+      passthrough: 'utility',
+    },
+    {
+      names: ['sandbox'],
       passthrough: 'utility',
     },
     {
