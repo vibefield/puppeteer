@@ -100,7 +100,7 @@ describe('claude persona scenarios', () => {
     }
   });
 
-  it('keeps the 2.1.308 /model and /compact orders the TUI census observed', () => {
+  it('keeps the 2.1.311 /model and /compact orders the TUI census observed', () => {
     const events = (name: string) =>
       actionsFor(JSON.parse(readFileSync(join(scenarioDir, `${name}.json`), 'utf8')) as unknown).map(
         (action) => action.emit?.event ?? (action.statusline ? 'statusLine' : 'transcript'),
@@ -112,8 +112,10 @@ describe('claude persona scenarios', () => {
       'statusLine',
       'UserPromptSubmit',
     ]);
+    // 2.1.311's /compact stops two internal agents before the compact SessionStart (2.1.308: one).
     expect(events('compact-lifecycle')).toEqual([
       'PreCompact',
+      'SubagentStop',
       'SubagentStop',
       'SessionStart',
       'PostCompact',
@@ -121,8 +123,9 @@ describe('claude persona scenarios', () => {
     ]);
     const internal = actionsFor(
       JSON.parse(readFileSync(join(scenarioDir, 'compact-lifecycle.json'), 'utf8')) as unknown,
-    ).find((action) => action.emit?.event === 'SubagentStop');
-    expect(internal?.emit?.with?.agent_type).toBe('');
+    ).filter((action) => action.emit?.event === 'SubagentStop');
+    expect(internal.map((action) => action.emit?.with?.agent_type)).toEqual(['', '']);
+    expect(new Set(internal.map((action) => action.emit?.with?.agent_id)).size).toBe(2);
   });
 
   it('writes the 2.1.308 transcript shapes and the API-error boundary the census recorded', () => {

@@ -1,0 +1,37 @@
+{
+  "probeVersion": 3,
+  "source": "static inspection of the exact digest-pinned executable",
+  "subagentStatusLine": {
+    "present": true,
+    "inputShape": "full-task-snapshot",
+    "taskFields": [
+      "id",
+      "name",
+      "type",
+      "agentType",
+      "status",
+      "description",
+      "label",
+      "startTime",
+      "model",
+      "effort",
+      "contextWindowSize",
+      "tokenCount",
+      "tokenSamples",
+      "cwd"
+    ],
+    "tokenSamples": {
+      "maxItems": 16,
+      "timestampsIncluded": false
+    },
+    "nominalCallbackIntervalMs": 5000
+  },
+  "evidence": {
+    "anchor": "Skipping subagentStatusLine execution",
+    "anchorByteOffset": 275163992,
+    "windowStart": 275161944,
+    "windowBytes": 14336,
+    "windowSha256": "3d8ea47a24488605319cff9caa09798828145a4b7623e4aac8087ee899572af8",
+    "timing": "history cap from the bound in X.length>CAP)X.splice; interval from the self-rescheduling snapshot timer, not the one-shot 300 ms kick"
+  }
+}

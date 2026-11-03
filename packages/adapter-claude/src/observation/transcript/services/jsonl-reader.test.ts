@@ -112,6 +112,27 @@ describe('createClaudeTranscriptReader', () => {
     expect(await reader.read()).toBe(kept);
   });
 
+  it("drops 2.1.311's tools-used side row: no uuid, so it is neither a message nor a graph node", async () => {
+    const root = mkdtempSync(join(tmpdir(), 'claude-jsonl-tools-used-'));
+    roots.push(root);
+    const path = join(root, 'transcript.jsonl');
+    writeFileSync(
+      path,
+      claude2308TranscriptText([
+        { promptUuid: 'prompt-1', prompt: 'List the files', answer: 'Two files.', tool: true },
+      ]),
+    );
+    const reader = createClaudeTranscriptReader(path);
+    const kept = await reader.read();
+    // The census shape (captures/claude@2.1.311/transcript-shape.json): type, tools, sessionId.
+    appendFileSync(
+      path,
+      `${JSON.stringify({ type: 'tools-used', tools: ['Bash', 'Read'], sessionId: 'session-1' })}\n`,
+    );
+    expect(await reader.read()).toBe(kept);
+    expect(kept.some(({ type }) => type === 'tools-used')).toBe(false);
+  });
+
   it('bounds retained decoded records', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-jsonl-records-'));
     roots.push(root);

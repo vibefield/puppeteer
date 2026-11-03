@@ -1,6 +1,6 @@
 {
   "name": "compact-lifecycle",
-  "notes": "/compact as Claude Code 2.1.308 runs it: PreCompact, a SubagentStop from Claude's internal compaction agent (empty agent_type, never started), SessionStart with source compact, then PostCompact and a status line whose context restarts.",
+  "notes": "/compact as Claude Code 2.1.311 runs it: PreCompact, a SubagentStop from each of Claude's two internal compaction agents (empty agent_type, never started, distinct agent_id; 2.1.308 ran one), SessionStart with source compact, then PostCompact and a status line whose context restarts.",
   "steps": [
     {
       "at": 0,
@@ -21,6 +21,24 @@
             "agent_id": "$uuid:compaction-agent",
             "agent_type": "",
             "agent_transcript_path": "/tmp/agent-compaction.jsonl",
+            "stop_hook_active": false,
+            "last_assistant_message": "Summary of the conversation so far.",
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    },
+    {
+      "at": 150,
+      "do": {
+        "emit": {
+          "event": "SubagentStop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "$uuid:compaction-agent-2",
+            "agent_type": "",
+            "agent_transcript_path": "/tmp/agent-compaction-2.jsonl",
             "stop_hook_active": false,
             "last_assistant_message": "Summary of the conversation so far.",
             "background_tasks": [],

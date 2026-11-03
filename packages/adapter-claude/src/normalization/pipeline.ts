@@ -19,7 +19,8 @@
  * - SubagentStop is re-entrant (1× stop_hook_active:false, then N× true):
  *   only the first occurrence per agent_id normalizes to delegation:subagent-stopped.
  *   `/compact` runs an internal agent whose SubagentStop has an empty agent_type and no
- *   SubagentStart (2.1.308 TUI lane); it delegated nothing the session can see, so it stays native.
+ *   SubagentStart (2.1.308 TUI lane; 2.1.311 runs two, each with its own agent_id); it delegated
+ *   nothing the session can see, so it stays native.
  * - Compaction: PreCompact → SessionStart(compact) → PostCompact. The compact SessionStart is a
  *   step inside the attempt, so it leaves the attempt open for PostCompact to complete.
  * - Unknown events are RETAINED (ADR-008) as adapter:native-event; the raw

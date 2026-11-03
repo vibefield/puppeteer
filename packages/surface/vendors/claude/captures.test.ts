@@ -280,7 +280,8 @@ describe('2.1.308 hook surface', () => {
     expect(errorOf('api-error-429')).toEqual(['rate_limit']);
     expect(errorOf('api-error-500')).toEqual(['server_error']);
     expect(errorOf('api-error-529')).toEqual(['server_error']);
-    expect(errorOf('headless')).toEqual(['authentication_failed']);
+    // The credential-less lane runs only on a host where the artifact holds no credential (2.1.311 findings).
+    if (captureModes.includes('headless')) expect(errorOf('headless')).toEqual(['authentication_failed']);
   });
 
   it('carries the resume staleness fields on a resumed SessionStart', () => {

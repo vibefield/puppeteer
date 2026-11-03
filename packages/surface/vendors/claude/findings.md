@@ -1,5 +1,122 @@
 # Phase 0 — Hook Surface Findings
 
+## 2.1.311 adaptation candidate (2026-11-03)
+
+Claude Code **2.1.311** is the upstream stable release this candidate targets
+(`downloads.claude.ai/claude-code-releases/stable`; `latest` was 2.1.317 and is not a target). The
+exact linux-x64 standalone artifact (`downloads.claude.ai/claude-code-releases/2.1.311/linux-x64/claude`,
+fetched with `surface:download`) reports `2.1.311 (Claude Code)` and has SHA-256
+`86dc1fcc69498159eaf15f446613e847010f9036bfbbdffd4c49350be8489ada`, which equals the release's own
+`manifest.json` checksum for linux-x64 (build `e7d3b836…`, 2026-10-26). Its `--help`
+(`probes/claude@2.1.311/help.txt`, SHA-256 `fc9af56f…d64d`) is the adapter's
+`claude-help-2.1.311.txt`. The identity, probes, reviewed hook reference, sanitized captures and the
+generated ASM v3 tree are digest-bound in `model/claude@2.1.311/evidence.json`. **Only linux-x64 has
+artifact and runtime evidence**; darwin-arm64, darwin-x64 and windows-x64 are acquired and attested by
+the protected workflows, so this is a candidate, not promoted support.
+
+### Method, and a census incident
+
+Same tools as 2.1.308, on linux-x64:
+
+```sh
+node packages/surface/vendors/claude/census/harness.mjs --artifact <claude> --version 2.1.311 --lanes init,api-error,interactive
+node packages/surface/vendors/claude/sanitize-captures.mjs packages/surface/vendors/claude/captures-raw/claude@2.1.311 packages/surface/vendors/claude/captures/claude@2.1.311
+node packages/surface/vendors/claude/census/invocation-probes.mjs --artifact <claude> --previous packages/surface/vendors/claude/probes/claude@2.1.308/invocation-grammar.json --output <file>
+node packages/surface/vendors/claude/census/switch-probes.mjs --artifact <claude> --output <file>
+node packages/surface/vendors/claude/census/generate-model.mjs --artifact <claude> --version 2.1.311 --captured-at 2026-11-03T19:12:57Z --retrieved-at 2026-11-03T19:33:22Z
+```
+
+**Incident: the credential-less lane was not credential-less on this host.** The census ran in a
+hosted Linux container. The first full census run's `headless` lane (a print turn meant to have no
+credential, no `ANTHROPIC_BASE_URL`) completed a real model turn: one Haiku reply, reported cost
+$0.000503. A loopback recorder (presence of headers only, no values read) then showed the artifact
+sends an `Authorization` header with the disposable environment and no token at all, so the
+credential comes from the host, outside anything `census/isolation.mjs` controls. Where a lane sets
+the placeholder `ANTHROPIC_AUTH_TOKEN` (api-error, interactive, resume, the switch probes), the
+artifact sends exactly that placeholder to the loopback model (an equality check; no value read). That run's
+captures were discarded (kept only in the gitignored `captures-raw/`, never sanitized or committed),
+and two changes follow:
+
+- `census/isolation.mjs` now defaults `ANTHROPIC_BASE_URL` to `http://127.0.0.1:0`, which refuses every
+  connection; lanes with a loopback model override it. With it, every census, generator, invocation
+  and switch execution in this candidate either talked to the harness's loopback model or failed
+  with ECONNREFUSED. (On a host where the artifact holds no credential, the default changes nothing:
+  2.1.308's headless lane made no request.)
+- The committed set has **no `headless` mode**. The credential-less print path ("no credential →
+  StopFailure `authentication_failed`, no request") needs a host where the artifact holds no
+  credential; it remains evidenced only by the 2.1.308 darwin-arm64 capture. StopFailure stays
+  `verified-headless` through the five api-error lanes.
+
+To separate release drift from platform/host drift, the same lanes, probes and switch sessions were
+also run on the promoted 2.1.308 linux-x64 bytes (digest equal to the promoted evidence), raw only.
+
+The lanes observed the same **24 of 33 events** as 2.1.308, in 98 records (2.1.308: 103; six fewer
+from the omitted headless lane, one more compaction SubagentStop).
+
+### Drift classification
+
+Reconciliation (`surface:reconcile` with the linux-x64 acquisition report) is `unsafe-or-unknown`
+only because three required platforms are not acquired; its model diff has no added, removed or
+changed event and no behavior change. `channelsChanged` is the transcript note below, and
+`detectionChanged` is the version-bearing probe path in `detection.notes` (it changes every
+release). Replay passes (98 frames, digest `6ea41e30…0f0b`).
+
+| Area | 2.1.308 → 2.1.311 | Class |
+| --- | --- | --- |
+| Hook inventory | the binary's two 33-entry arrays are unchanged | none |
+| Bundled hook input/output schemas | identical modulo minified identifiers (normalized diff of the schema region) | none |
+| Runtime hook input builders | all 36 builders identical modulo identifiers, the common base input included | none |
+| Captured payloads | per event, every key path and JSON type, and every tracked enum discriminator, equal to the 2.1.308 linux run | none |
+| `/compact` | **two** internal compaction-agent `SubagentStop`s (empty `agent_type`, no `SubagentStart`, distinct `agent_id`) before SessionStart(compact), where 2.1.308 sent one | count-only; consumed (see below) |
+| Transcript | new side row **`tools-used`** `{type, tools: string[], sessionId}`, no `uuid` or timestamp (6 in the TUI lane); subagent `*.meta.json` adds `isBuiltIn` | additive; consumed (see below) |
+| Status lines | statusLine key paths unchanged; subagent status timing 16 samples / 5000 ms unchanged | none |
+| `--help` / invocation grammar | only the purge description changed; all 76 parse and 8 runtime probes read as on 2.1.308 linux | none |
+| Static invocation facts (27) and hook-switch facts (21) | every anchor relocated; code around it equal modulo identifiers except the notes below | none for the adapter |
+| Hook switches F01-F16 | identical to the 2.1.308 record and to 2.1.308 linux | none |
+| API transport | an HTTP 400 is retried twice without the `thinking-token-count-2026-05-13` beta despite `CLAUDE_CODE_MAX_RETRIES=0` (3 requests; 2.1.308: 1); StopFailure is still `unknown` | not observable on the hook rail |
+| Official reference | new snapshot (SHA-256 `524960c0…bc6e`, 284 286 bytes); names no release after 2.1.309 (a Windows-only note); its event set and documented enum lists agree with the reviewed summary | none |
+
+Static notes, all outside the adapter's reading: 2.1.311 adds `cliFlagWords` beside
+`hasBackgroundFlag` (the debug logger's argv reader; `hasBackgroundFlag` is unchanged); on Windows
+without Git Bash the "noBash" fail-closed rule now also covers command hooks with `shell:
+"powershell"` and has an exit-127 message (the adapter sets no `shell`); the TLS env names an HTTP
+hook passes are one shared list; settings source labels add `mcpMount` ("Remote Control server
+mount"). New env names on these paths blind nothing: `CLAUDE_CODE_EMIT_USER_PROMPT_SUBMIT_HOOK_EVENTS`
+only adds SDK stream messages, and `CLAUDE_CODE_EVEN_MORE_DANGEROUSLY_SKIP_PERMISSIONS` (dangerous `rm`
+without a prompt in bypass mode) is withdrawn whenever a PermissionRequest hook is registered, as the
+adapter's are. The invocation-probe R02 (`-- attach <id>`) waited for its bound instead of reading
+"Not logged in" on both 2.1.308 and 2.1.311 linux: the host credential above, not a release change.
+
+### Adapter and Imposter (2.1.311 candidate)
+
+No semantic adapter change is needed; every drift is handled by existing structural rules, now
+pinned by tests:
+
+- **Two internal compaction stops**: the normalizer keys the internal-agent rule on an empty
+  `agent_type` with no prior SubagentStart, per `agent_id`, so both stay `adapter:native-event` and
+  never a delegation (`normalization/adapter.test.ts` replays both captured stops).
+- **`tools-used`**: the transcript reader keeps only `type` user/assistant rows and rows with a
+  `uuid`, so the new row is dropped before the bounded window and an append of one re-announces
+  nothing (`jsonl-reader.test.ts`).
+- Generated projections (`CLAUDE_SURFACE_VERSION` 2.1.311) and the re-locked ground-truth map;
+  `CLAUDE_INVOCATION_GRAMMAR_VERSION` 2.1.311 with no row change.
+- **Imposter**: `compact-lifecycle` emits the two internal stops in the TUI lane's order; the
+  persona's version follows the candidate ground truth. The persona's transcripts do not write
+  `tools-used` rows (nothing reads them).
+
+### Known gaps / follow-ups
+
+- **Platforms**: linux-x64 only. The other three required platforms, the protected live lanes and
+  promotion remain; `currentVersion` stays 2.1.308.
+- **Headless lane**: not run (above). Running it needs a host where the artifact presents no
+  credential; until then `headless` captures exist only for 2.1.308 and earlier.
+- Unreached events and branches are unchanged from 2.1.308 (UserPromptExpansion, PermissionDenied,
+  TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate/WorktreeRemove, Elicitation/ElicitationResult,
+  PostModelSwitch `auto`/`resume`, `mcp_server`, `scratchpad_dir`, `bashEditDiff`).
+- The 2.1.308 adapter follow-ups below still apply unchanged.
+
+---
+
 ## 2.1.308 adaptation candidate (2026-10-25)
 
 Claude Code **2.1.308** is the upstream stable release this candidate targets. The exact

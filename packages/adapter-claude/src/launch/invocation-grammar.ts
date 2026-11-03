@@ -16,11 +16,12 @@
  * Every row is evidence-bound to one CLI version: the census test holds the table to the
  * captured `claude --help` in both directions. Evidence per row, and the probes behind the
  * classes: packages/surface/vendors/claude/findings.md §7 (2.1.283) with its 2.1.308 changes, and
- * probes/claude@2.1.308/invocation-grammar.json.
+ * probes/claude@2.1.308/invocation-grammar.json; 2.1.311 changes no row (only the purge description),
+ * re-verified in probes/claude@2.1.311/invocation-grammar.json.
  */
 
 /** The Claude Code version whose grammar this table is. */
-export const CLAUDE_INVOCATION_GRAMMAR_VERSION = '2.1.308';
+export const CLAUDE_INVOCATION_GRAMMAR_VERSION = '2.1.311';
 
 /**
  * Commander's arity, read from the help's usage column: `none` (a flag), `one` (`<value>`: always
