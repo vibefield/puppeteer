@@ -427,5 +427,6 @@
       "codex-generated-schema"
     ]
   },
-  "confidence": "unverified"
+  "confidence": "unverified",
+  "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); this request runs only the managed-policy check, so only `modelProviderPolicyConflict` reaches it; it lasts until the provider configuration changes."
 }

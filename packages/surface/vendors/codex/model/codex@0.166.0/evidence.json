@@ -96,7 +96,7 @@
         "evidence.json"
       ],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "1b0f0c45599a199fc8456c587c0163994fa3a26ad5edd064436037b44ef0b50f"
+      "sha256": "06d325cfda37b1e3267d71342d2825b335be1cc4b008630e7281977a3d6388b6"
     },
     {
       "id": "binary-probes",

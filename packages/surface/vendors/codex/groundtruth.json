@@ -137,7 +137,7 @@
           "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "1b0f0c45599a199fc8456c587c0163994fa3a26ad5edd064436037b44ef0b50f"
+        "sha256": "06d325cfda37b1e3267d71342d2825b335be1cc4b008630e7281977a3d6388b6"
       },
       {
         "id": "binary-probes",
@@ -33787,6 +33787,7 @@
         ]
       },
       "confidence": "unverified",
+      "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); this request runs only the managed-policy check, so only `modelProviderPolicyConflict` reaches it; it lasts until the provider configuration changes.",
       "channels": [
         "appserver"
       ]
@@ -60737,6 +60738,7 @@
         ]
       },
       "confidence": "unverified",
+      "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); this request runs only the managed-policy check, so only `modelProviderPolicyConflict` reaches it; it lasts until the provider configuration changes.",
       "channels": [
         "appserver"
       ]

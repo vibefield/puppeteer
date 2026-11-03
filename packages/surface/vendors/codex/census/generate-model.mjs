@@ -370,10 +370,13 @@ function fileChangePayloadRefinements(method) {
 
 // Model-provider admission (rust-v0.166.0, findings C9): these client requests can be refused with
 // JSON-RPC -32600 whose `data` is a `ModelProviderError` (app-server config_manager.rs
-// `load_for_resume` / `check_thread_model_provider_for_input`, request_processors/config_errors.rs).
-// The ASM has no error-schema field, so the generated definition is named in the event's notes; the
-// refusals themselves are measured in probes/codex@<version>/provider-mismatch-results.json. Read from
-// source at the tag, so the list is reviewed here rather than inferred from the schema.
+// `load_for_resume` / `check_thread_model_provider_for_input` / `check_thread_model_provider`,
+// request_processors/config_errors.rs). `model/list` (catalog_processor.rs, model_catalog.rs) and
+// `thread/sample` (thread_processor.rs) run only the managed-policy check, so they can carry only
+// `modelProviderPolicyConflict`. The ASM has no error-schema field, so the generated definition is named
+// in the event's notes; the resume and input refusals are measured in
+// probes/codex@<version>/provider-mismatch-results.json. Read from source at the tag, so the list is
+// reviewed here rather than inferred from the schema.
 const MODEL_PROVIDER_ADMISSION = new Set([
   'thread/resume',
   'turn/start',
@@ -382,7 +385,12 @@ const MODEL_PROVIDER_ADMISSION = new Set([
   'thread/compact/start',
   'thread/queue/start',
   'thread/goal/set',
+  'model/list',
+  'thread/sample',
 ]);
+// Requests that reach only `check_thread_model_provider` (the managed-policy check), never the
+// provider-selection checks.
+const MODEL_PROVIDER_POLICY_ONLY = new Set(['model/list', 'thread/sample']);
 const modelProviderErrorSchema = existsSync(join(schemaDir, 'v2', 'ModelProviderError.json'))
   ? read('v2/ModelProviderError.json')
   : undefined;
@@ -395,6 +403,9 @@ function modelProviderAdmissionNote(method, transport, direction) {
   return (
     'Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is ' +
     `\`ModelProviderError\` (generated v2/ModelProviderError.json: ${modelProviderErrorVariants.join(' | ')}); ` +
+    (MODEL_PROVIDER_POLICY_ONLY.has(method)
+      ? 'this request runs only the managed-policy check, so only `modelProviderPolicyConflict` reaches it; '
+      : '') +
     'it lasts until the provider configuration changes.'
   );
 }
