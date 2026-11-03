@@ -103,7 +103,7 @@
       "kind": "probe-set",
       "path": "packages/surface/vendors/codex/probes/codex@0.166.0",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "eb7627ec0604b224478dc92d3947990e8b2c414d5118cf3387d4876203102aa2"
+      "sha256": "c2dd04ed4ee7550ba6ac12850978c6dff52f193298937f68af9d1b0fb4d6ba90"
     },
     {
       "id": "source-file-changes",

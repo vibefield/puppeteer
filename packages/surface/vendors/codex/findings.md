@@ -1042,7 +1042,8 @@ asset digest GitHub publishes was not compared (its REST API was unreachable fro
 0.164.0 linux-x64 package was re-acquired (`bin/codex` `b93f6811…`, equal to the promoted linux-x64 digest) and the
 census, the schema generation, the help and the parse/config probes were run on both. Differences between the two
 linux runs are release drift; differences that also hold between the 0.164.0 linux and darwin runs are platform
-branches. Nothing from the 0.164.0 linux run is committed beyond its digests.
+branches. Nothing from the 0.164.0 linux run is committed beyond its digests and the hand-merged `baseline` block of
+`probes/codex@0.166.0/provider-mismatch-results.json` (probes README, Method 6).
 
 ## Census
 
