@@ -25,6 +25,24 @@ describe('Hermes capture privacy', () => {
     expect(sanitized.type).toBe('tool.start');
   });
 
+  it('aliases the resume result stored id under every key that carries it', () => {
+    const stored = '20261103_193504_98164d';
+    const raw = { result: { session_id: 'a1b2c3d4', resumed: stored, session_key: stored, stored_session_id: stored } };
+
+    expect(checkRecord(raw, hermesRules).length).toBeGreaterThan(0);
+    const { result } = sanitizeRecord(raw, hermesRules);
+    expect(checkRecord({ result }, hermesRules)).toEqual([]);
+    expect(result.resumed).toMatch(/^anon-[0-9a-f]{16}$/);
+    expect(result.resumed).toBe(result.session_key);
+    expect(result.resumed).toBe(result.stored_session_id);
+  });
+
+  it('rejects a stored session id under an unclassified key', () => {
+    expect(checkRecord({ future: '20261103_193504_98164d' }, hermesRules)).toEqual([
+      '<record>.future: unsafe text at future',
+    ]);
+  });
+
   it('rejects provider key shapes under unknown keys', () => {
     expect(checkRecord({ future: 'sk-abcdefghijklmnopqrstuvwxyz' }, hermesRules)).toEqual([
       '<record>.future: unsafe text at future',
