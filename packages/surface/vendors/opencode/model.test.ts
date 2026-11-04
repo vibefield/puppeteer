@@ -6,7 +6,7 @@ import { loadModel, validateSanitizedPayload } from '@vibefield/puppeteer-surfac
 import { checkCaptureDirectory, defaultRules } from '@vibefield/puppeteer-surface/sanitize';
 import { opencodeRules } from './privacy.mjs';
 
-const VERSION = '1.18.16';
+const VERSION = '1.19.5';
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
 const capturesRoot = join(vendorRoot, 'captures', `opencode@${VERSION}`);
 const model = loadModel(vendorRoot);
@@ -50,7 +50,7 @@ function matches(value: unknown, expected: Readonly<Record<string, unknown>> | u
   return Object.entries(expected ?? {}).every(([path, candidate]) => Object.is(valueAt(value, path), candidate));
 }
 
-describe('the OpenCode 1.18.16 ASM', () => {
+describe(`the OpenCode ${VERSION} ASM`, () => {
   it('loads the complete generated HTTP/SSE surface with distinct native rails', () => {
     expect(model.manifest).toMatchObject({ asmVersion: 3, vendor: 'opencode', vendorVersion: VERSION });
     expect(Object.keys(model.channels.channels).sort()).toEqual(['argv', 'http', 'sse', 'terminal']);
@@ -61,6 +61,7 @@ describe('the OpenCode 1.18.16 ASM', () => {
       new Set(['client-to-agent', 'agent-to-client']),
     );
 
+    // The refreshed emulated Linux run also observed heartbeat in headless file-edit.
     const heartbeat = model.events.find((event) => event.event === 'server.heartbeat');
     expect(heartbeat).toMatchObject({ confidence: 'verified-headless', transport: 'sse-event' });
     expect(heartbeat?.notes).toContain('absent from the pinned /doc Event union');
@@ -69,7 +70,9 @@ describe('the OpenCode 1.18.16 ASM', () => {
   it('raises confidence only for the 21 HTTP and 24 SSE runtime observations', () => {
     expect(model.events.filter((event) => event.confidence === 'verified-headless')).toHaveLength(45);
     expect(model.events.filter((event) => event.confidence === 'unverified')).toHaveLength(233);
-    expect(model.events.filter((event) => event.confidence === 'verified-interactive')).toHaveLength(0);
+    expect(
+      model.events.filter((event) => event.confidence === 'verified-interactive').map((event) => event.event),
+    ).toEqual([]);
 
     expect(model.events.find((event) => event.event === 'http/session.prompt_async')?.confidence).toBe(
       'verified-headless',
@@ -226,7 +229,7 @@ describe('the OpenCode 1.18.16 ASM', () => {
         checked += 1;
       }
     }
-    expect(checked).toBe(2775);
+    expect(checked).toBe(2785);
     expect(failures).toEqual([]);
   });
 
@@ -422,63 +425,63 @@ describe('the OpenCode 1.18.16 ASM', () => {
     expect(claims.get('opencode-runtime-attach-permission-always')?.confidence).toBe('verified-interactive');
     expect(claims.get('opencode-runtime-file-write')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T06:31:05.993Z',
+      capturedAt: '2026-11-04T05:40:21.574Z',
     });
     expect(claims.get('opencode-runtime-file-edit')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T06:31:06.819Z',
+      capturedAt: '2026-11-04T05:40:53.993Z',
     });
     expect(claims.get('opencode-runtime-file-delete')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T06:31:04.089Z',
+      capturedAt: '2026-11-04T05:41:19.468Z',
     });
     expect(claims.get('opencode-runtime-file-part')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T07:01:18.440Z',
+      capturedAt: '2026-11-04T05:40:01.742Z',
     });
     expect(claims.get('opencode-runtime-session-lifecycle')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T07:10:18.767Z',
+      capturedAt: '2026-11-04T05:39:47.420Z',
     });
     expect(claims.get('opencode-runtime-attach-exact-resume')).toMatchObject({
       confidence: 'verified-interactive',
-      capturedAt: '2026-08-11T07:18:00.868Z',
+      capturedAt: '2026-11-04T05:55:08.286Z',
     });
     expect(claims.get('opencode-runtime-manual-compaction')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T05:53:20.004Z',
+      capturedAt: '2026-11-04T05:45:10.908Z',
     });
     expect(claims.get('opencode-runtime-auto-compaction')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T06:00:30.080Z',
+      capturedAt: '2026-11-04T05:45:30.212Z',
     });
     expect(claims.get('opencode-runtime-overflow-compaction')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T06:37:52.297Z',
+      capturedAt: '2026-11-04T05:45:51.883Z',
     });
     expect(claims.get('opencode-runtime-task-child')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T06:14:05.678Z',
+      capturedAt: '2026-11-04T05:41:37.019Z',
     });
     expect(claims.get('opencode-runtime-subtask-part')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T06:17:34.203Z',
+      capturedAt: '2026-11-04T05:41:50.296Z',
     });
     expect(claims.get('opencode-runtime-background-task')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T06:45:27.498Z',
+      capturedAt: '2026-11-04T05:42:13.688Z',
     });
     expect(claims.get('opencode-runtime-detach-task')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T06:45:16.713Z',
+      capturedAt: '2026-11-04T05:42:25.740Z',
     });
     expect(claims.get('opencode-runtime-agent-part')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T06:51:18.359Z',
+      capturedAt: '2026-11-04T05:42:01.998Z',
     });
     expect(claims.get('opencode-runtime-unknown-context')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-08-11T06:55:14.225Z',
+      capturedAt: '2026-11-04T05:46:25.001Z',
     });
     expect(claims.get('opencode-generated-openapi')?.confidence).toBe('unverified');
     expect(model.evidenceIndex?.records).toHaveLength(31);

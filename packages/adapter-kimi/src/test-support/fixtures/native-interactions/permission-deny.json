@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "scenario": "permission-deny",
+  "startedAt": "2026-11-04T07:27:08.774Z",
+  "completedAt": "2026-11-04T07:27:19.430Z",
+  "platform": "darwin-arm64",
+  "artifactSha256": "sha256:1a8539eae87ffbd9bf480b8a47beafc9668f66b048b96cfa631310dc12dab3a7",
+  "scope": "selected durable records from the native TUI; not a promotion receipt",
+  "records": [
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "step.begin",
+        "uuid": "db36ae35-51ec-4df6-9ebb-a32e65438590",
+        "turnId": "0",
+        "step": 1
+      },
+      "time": 1793777239182
+    },
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "content.part",
+        "uuid": "f0667ad1-0814-48f8-ba26-06aeffc3ed0b",
+        "turnId": "0",
+        "step": 1,
+        "stepUuid": "db36ae35-51ec-4df6-9ebb-a32e65438590",
+        "part": {
+          "type": "think",
+          "think": "Returning the requested controlled marker. ",
+          "reasoningKey": "reasoning_content"
+        }
+      },
+      "time": 1793777239260
+    },
+    {
+      "type": "interaction.request",
+      "agentId": "main",
+      "id": "approval_6c4df97b-ded0-47ec-8817-4e93c68fcc8c",
+      "kind": "approval",
+      "toolCallId": "call_live_interaction",
+      "request": {
+        "id": "approval_6c4df97b-ded0-47ec-8817-4e93c68fcc8c",
+        "sessionId": "session_0dcd523f-6fef-446c-bd12-4032fab9b5f3",
+        "agentId": "main",
+        "turnId": 0,
+        "toolCallId": "call_live_interaction",
+        "toolName": "Bash",
+        "action": "<redacted:action>",
+        "display": {
+          "kind": "command",
+          "command": "rm -rf '<redacted:root>/workspace/scratch'",
+          "cwd": "<redacted:root>/workspace",
+          "description": "Remove the disposable test scratch directory",
+          "language": "bash"
+        }
+      },
+      "time": 1793777239280
+    },
+    {
+      "type": "interaction.resolved",
+      "agentId": "main",
+      "id": "approval_6c4df97b-ded0-47ec-8817-4e93c68fcc8c",
+      "response": {
+        "decision": "rejected"
+      },
+      "time": 1793777239312
+    },
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "tool.call",
+        "uuid": "1a1c6958-de60-4b7b-b675-7af9197ba750",
+        "turnId": "0",
+        "step": 1,
+        "stepUuid": "db36ae35-51ec-4df6-9ebb-a32e65438590",
+        "toolCallId": "call_live_interaction",
+        "name": "Bash",
+        "args": {
+          "command": "rm -rf '<redacted:root>/workspace/scratch'",
+          "description": "Remove the disposable test scratch directory"
+        },
+        "display": {
+          "kind": "command",
+          "command": "rm -rf '<redacted:root>/workspace/scratch'",
+          "cwd": "<redacted:root>/workspace",
+          "description": "Remove the disposable test scratch directory",
+          "language": "bash"
+        }
+      },
+      "time": 1793777239313
+    },
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "tool.result",
+        "parentUuid": "1a1c6958-de60-4b7b-b675-7af9197ba750",
+        "toolCallId": "call_live_interaction",
+        "result": {
+          "output": "Tool \"Bash\" was not run because the user rejected the approval request.",
+          "isError": true,
+          "durationMs": 0
+        }
+      },
+      "time": 1793777239315
+    },
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "content.part",
+        "uuid": "49885983-13ed-4d17-be1d-c4cde2ac86e6",
+        "turnId": "0",
+        "step": 2,
+        "stepUuid": "cc3636a9-b29c-42ae-8162-81296df33a81",
+        "part": {
+          "type": "think",
+          "think": "Returning the requested controlled marker. ",
+          "reasoningKey": "reasoning_content"
+        }
+      },
+      "time": 1793777239401
+    },
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "content.part",
+        "uuid": "aa2933f5-eae1-4748-9971-3c8022541d00",
+        "turnId": "0",
+        "step": 2,
+        "stepUuid": "cc3636a9-b29c-42ae-8162-81296df33a81",
+        "part": {
+          "type": "text",
+          "text": "SURFACE_KIMI_TUI_OK"
+        }
+      },
+      "time": 1793777239401
+    },
+    {
+      "type": "turn.ended",
+      "agentId": "main",
+      "turnId": 0,
+      "reason": "completed",
+      "durationMs": 229,
+      "time": 1793777239403
+    }
+  ]
+}

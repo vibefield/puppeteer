@@ -20,6 +20,7 @@ import {
   METHOD_NOT_FOUND,
   requestFirstAnswer,
   RpcError,
+  serverRequestId,
   type AppServerChannel,
 } from '../session/channels/jsonrpc.ts';
 import { connectUnixWebSocket, listenUnixWebSocket } from '../session/channels/ws-unix.ts';
@@ -745,6 +746,7 @@ export async function main(argv: readonly string[], argv0?: string): Promise<num
         },
         notified: dispatcher.notified,
         jsonrpc: persona.serve?.$server?.jsonrpc,
+        requestId: serverRequestId(persona.serve?.$server?.requestIdPrefix),
         notificationFields: () =>
           substitute(persona.serve?.$server?.notification ?? {}, { bindings: session.bindings }) as Record<
             string,

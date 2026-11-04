@@ -1,0 +1,281 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "mcp.servers.set_api_key",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Store a credential in the profile's .env and reference it from the server config (header or env).",
+  "payloadSchema": {
+    "$ref": "#/$defs/McpServersSetApiKeyParams",
+    "$defs": {
+      "McpServersSetApiKeyParams": {
+        "additionalProperties": false,
+        "properties": {
+          "env_var": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Env Var"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": ["name", "value"],
+        "title": "McpServersSetApiKeyParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/McpServersSetApiKeyResult",
+    "$defs": {
+      "McpServersSetApiKeyResult": {
+        "additionalProperties": false,
+        "properties": {
+          "env_var": {
+            "title": "Env Var",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "server": {
+            "$ref": "#/$defs/McpServerSummary"
+          }
+        },
+        "required": ["ok", "name", "env_var", "server"],
+        "title": "McpServersSetApiKeyResult",
+        "type": "object"
+      },
+      "McpServerSummary": {
+        "additionalProperties": false,
+        "description": "``tui_gateway/mcp_rpc_helpers.summarize_server`` — a server's config without secret values.",
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Args",
+            "type": "array"
+          },
+          "auth": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Auth"
+          },
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Command"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "env": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Env",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "oauth_tokens_present": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Oauth Tokens Present"
+          },
+          "plugin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Plugin"
+          },
+          "source": {
+            "$ref": "#/$defs/McpServerSource"
+          },
+          "tools": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tools"
+          },
+          "transport": {
+            "title": "Transport",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "required": ["name", "transport", "args", "env", "enabled", "source"],
+        "title": "McpServerSummary",
+        "type": "object"
+      },
+      "McpServerSource": {
+        "enum": ["config", "plugin"],
+        "title": "McpServerSource",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["mcp.servers.set_api_key"]
+      },
+      "params": {
+        "$ref": "#/$defs/McpServersSetApiKeyParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "McpServersSetApiKeyParams": {
+        "additionalProperties": false,
+        "properties": {
+          "env_var": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Env Var"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": ["name", "value"],
+        "title": "McpServersSetApiKeyParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

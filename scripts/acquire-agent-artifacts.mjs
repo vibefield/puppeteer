@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { validateInstalledConsoleManifest } from './lib/installed-console-contract.mjs';
 import { verifyRuntimeBundleFiles } from './lib/runtime-bundle-contract.mjs';
 
+import { verifyReleaseBundle } from './lib/release-bundle.mjs';
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
 function json(path) {
@@ -32,6 +34,9 @@ function knownDigests(repoRoot, vendor, version) {
     const evidencePath = join(models, entry.name, 'evidence.json');
     if (!existsSync(evidencePath)) continue;
     for (const artifact of json(evidencePath).artifacts ?? []) {
+      // A source pin or fixture-corpus digest does not identify acquired executable bytes.
+      // Keep its capture provenance, but never classify a first binary acquisition as a republication of it.
+      if (artifact.kind !== undefined) continue;
       const digest = artifact.integrity?.sha256;
       if (artifact.platform && /^sha256:[0-9a-f]{64}$/.test(digest ?? '')) {
         known.set(artifact.platform, {
@@ -88,8 +93,6 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
   const upstreamPath = join(repoRoot, 'packages', 'surface', 'vendors', vendor, 'upstream.json');
   if (!existsSync(upstreamPath)) throw new Error(`no upstream policy for ${vendor}`);
   const upstream = json(upstreamPath);
-  const expectedArtifactKind =
-    upstream.acquisition?.strategy === 'source-revision' ? 'installed-console' : 'standalone-executable';
   const requiredPlatforms = upstream.platforms ?? [];
   const supplied = new Map();
   const issues = [];
@@ -122,6 +125,13 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
     } else if (!versionPattern.test(versionOutput)) {
       issues.push(`${platform} version output does not identify ${version}`);
     }
+    const spec = upstream.acquisition?.artifacts?.[platform];
+    const expectedArtifactKind =
+      upstream.acquisition?.strategy === 'source-revision'
+        ? 'installed-console'
+        : spec?.bundle
+          ? 'release-bundle'
+          : 'standalone-executable';
     const artifactKind = artifact.artifactKind ?? expectedArtifactKind;
     if (artifactKind !== expectedArtifactKind) {
       issues.push(`${platform} is ${artifactKind}, expected ${expectedArtifactKind}`);
@@ -147,6 +157,25 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
         identity = installedConsoleIdentity(manifest);
       } catch (error) {
         issues.push(`${platform} installed-console manifest is invalid: ${error.message}`);
+      }
+    }
+    if (artifactKind === 'release-bundle') {
+      try {
+        const { manifest } = verifyReleaseBundle(absolute, {
+          vendor,
+          version,
+          platform,
+          policy: spec?.bundle,
+          format: spec?.format,
+        });
+        identity = {
+          archiveSha256: manifest.archive.sha256,
+          treeSha256: manifest.tree.sha256,
+          entrySha256: manifest.tree.entrySha256,
+          entry: manifest.tree.entry,
+        };
+      } catch (error) {
+        issues.push(`${platform} release bundle is invalid: ${error.message}`);
       }
     }
     const prior = known.get(platform);

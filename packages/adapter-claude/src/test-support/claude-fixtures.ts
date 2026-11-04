@@ -7,7 +7,23 @@ import { CLAUDE_SURFACE_VERSION } from '../generated/registry.js';
 const require = createRequire(import.meta.url);
 const surfaceRoot = dirname(require.resolve('@vibefield/puppeteer-surface/package.json'));
 const captureRoot = join(surfaceRoot, 'vendors', 'claude', 'captures', `claude@${CLAUDE_SURFACE_VERSION}`);
-const captureModes = ['init', 'headless', 'interactive'].filter((mode) => existsSync(join(captureRoot, mode)));
+/**
+ * The hook fixture set: the init, credential-less headless and interactive lanes (required: a version bump
+ * that loses one must fail here, not shrink coverage), and every loopback API-error lane, which carries the
+ * captured StopFailure payloads. Resume is left out: it replays the interactive session's shapes under a
+ * second SessionStart.
+ */
+const captureModes = (() => {
+  for (const mode of ['init', 'headless', 'interactive']) {
+    if (!existsSync(join(captureRoot, mode)))
+      throw new Error(`claude@${CLAUDE_SURFACE_VERSION} has no ${mode} capture`);
+  }
+  const apiErrorModes = readdirSync(captureRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith('api-error-'))
+    .map((entry) => entry.name)
+    .sort();
+  return ['init', 'headless', 'interactive', ...apiErrorModes];
+})();
 
 export interface CapturedHookRecord {
   session_id: string;

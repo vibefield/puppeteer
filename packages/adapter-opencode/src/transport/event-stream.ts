@@ -1,6 +1,7 @@
 /** Exact OpenCode SSE framing, reconnect, and bounded malformed-record handling. */
 
 import type { OpenCodeClient } from './client.js';
+import { loopbackFetch } from './loopback-fetch.js';
 
 export interface OpenCodeSseRecord {
   id: string;
@@ -99,7 +100,7 @@ export class OpenCodeEventStream {
   private wakeReconnect: (() => void) | undefined;
 
   constructor(private readonly options: OpenCodeEventStreamOptions) {
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.fetchImpl = options.fetchImpl ?? loopbackFetch;
     this.reconnectDelayMs = options.reconnectDelayMs ?? 100;
     this.maxEventBytes = options.maxEventBytes ?? DEFAULT_MAX_EVENT_BYTES;
   }

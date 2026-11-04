@@ -1,0 +1,105 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "pre_tool_call",
+  "firstSeen": "0.21.5",
+  "lastVerified": "0.21.5",
+  "fixture": "captures/hermes@0.21.5/tool-success/plugin-hooks.jsonl",
+  "channel": "plugin-hook",
+  "channels": ["plugin-hook", "shell-hook", "outbound-webhook"],
+  "transport": "hook-callback",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "api_request_id": {
+        "type": "string"
+      },
+      "args": {
+        "type": "object"
+      },
+      "middleware_trace": {
+        "type": "array"
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "task_id": {
+        "type": "string"
+      },
+      "telemetry_schema_version": {
+        "type": "string"
+      },
+      "tool_call_id": {
+        "type": "string"
+      },
+      "tool_name": {
+        "type": "string"
+      },
+      "turn_id": {
+        "type": "string"
+      }
+    }
+  },
+  "resultSchema": {
+    "anyOf": [
+      {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["block"]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["action", "message"]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["approve"]
+          },
+          "message": {
+            "type": "string"
+          },
+          "rule_key": {
+            "type": "string"
+          }
+        },
+        "required": ["action"]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["modify"]
+          },
+          "args": {
+            "type": "object"
+          }
+        },
+        "required": ["action", "args"]
+      }
+    ]
+  },
+  "evidence": {
+    "existence": ["hermes-runtime-headless"],
+    "shape": ["hermes-runtime-headless"],
+    "result": ["hermes-exact-source"]
+  },
+  "schemaFidelity": {
+    "payload": "sampled",
+    "result": "structural",
+    "limitations": [
+      "The payload is the in-process plugin callback kwargs object, sampled from the census; shell-hook and outbound-webhook envelopes are retained in the source reference.",
+      "Arbitrary plugin return values and event-specific nested values remain unconstrained."
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "Outbound webhooks are a notify-only copy of the same hook name; the census sidecar registered them."
+}

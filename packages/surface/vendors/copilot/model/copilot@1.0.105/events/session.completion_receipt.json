@@ -1,0 +1,211 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "session.completion_receipt",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "attempt": {
+        "type": "number"
+      },
+      "eventRange": {
+        "type": "object",
+        "properties": {
+          "endEventId": {
+            "type": "string"
+          },
+          "startEventId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "endEventId",
+          "startEventId"
+        ],
+        "additionalProperties": true
+      },
+      "failedToolCount": {
+        "type": "number"
+      },
+      "finalTool": {
+        "type": "object",
+        "properties": {
+          "exitCode": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "toolCallId": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "toolCallId"
+        ],
+        "additionalProperties": true
+      },
+      "schemaVersion": {
+        "type": "number"
+      },
+      "sourceEventId": {
+        "type": "string"
+      },
+      "stopReason": {
+        "type": "string"
+      },
+      "successfulToolCount": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "attempt",
+      "eventRange",
+      "failedToolCount",
+      "schemaVersion",
+      "sourceEventId",
+      "stopReason",
+      "successfulToolCount"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "attempt": {
+            "type": "number"
+          },
+          "eventRange": {
+            "type": "object",
+            "properties": {
+              "endEventId": {
+                "type": "string"
+              },
+              "startEventId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "endEventId",
+              "startEventId"
+            ],
+            "additionalProperties": true
+          },
+          "failedToolCount": {
+            "type": "number"
+          },
+          "finalTool": {
+            "type": "object",
+            "properties": {
+              "exitCode": {
+                "type": "number"
+              },
+              "status": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "toolCallId"
+            ],
+            "additionalProperties": true
+          },
+          "schemaVersion": {
+            "type": "number"
+          },
+          "sourceEventId": {
+            "type": "string"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "successfulToolCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "attempt",
+          "eventRange",
+          "failedToolCount",
+          "schemaVersion",
+          "sourceEventId",
+          "stopReason",
+          "successfulToolCount"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ],
+    "carrier": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s) in the 1.0.105 sources; source evidence: writer."
+}

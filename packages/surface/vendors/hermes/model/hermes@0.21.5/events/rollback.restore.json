@@ -1,0 +1,300 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "rollback.restore",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Restore the working tree (or one file) to a checkpoint by hash or 1-based index.",
+  "payloadSchema": {
+    "$ref": "#/$defs/RollbackRestoreParams",
+    "$defs": {
+      "RollbackRestoreParams": {
+        "additionalProperties": false,
+        "properties": {
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File Path"
+          },
+          "hash": {
+            "title": "Hash",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id", "hash"],
+        "title": "RollbackRestoreParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/RollbackRestoreResult",
+    "$defs": {
+      "RollbackRestoreResult": {
+        "additionalProperties": true,
+        "description": "``tools/checkpoint_manager.py::restore`` outcome; ``history_removed`` is added for a full\n(non-file) restore that also rewound the live transcript.",
+        "properties": {
+          "debug": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Debug"
+          },
+          "directory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Directory"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error"
+          },
+          "failed_deletes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Failed Deletes"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File"
+          },
+          "history_removed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "History Removed"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          },
+          "restored_files": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Restored Files"
+          },
+          "restored_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Restored To"
+          },
+          "skipped_oversize": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Skipped Oversize"
+          },
+          "skipped_user_edits": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Skipped User Edits"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": ["success"],
+        "title": "RollbackRestoreResult",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["rollback.restore"]
+      },
+      "params": {
+        "$ref": "#/$defs/RollbackRestoreParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "RollbackRestoreParams": {
+        "additionalProperties": false,
+        "properties": {
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File Path"
+          },
+          "hash": {
+            "title": "Hash",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id", "hash"],
+        "title": "RollbackRestoreParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 /** Execute only the bounded `--version` probe in an isolated home. */
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { verifyReleaseBundle } from './lib/release-bundle.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -24,9 +27,26 @@ export function validateVersionOutput(output, version) {
   return value;
 }
 
+/** Copilot prints an identity sentence and a fixed update hint, not a one-line version. */
+export function normalizeVersionOutput(output, version, format = 'single-line') {
+  if (format === 'single-line') return validateVersionOutput(output, version);
+  if (format !== 'copilot-cli') throw new Error('unsupported version output format');
+  const lines = String(output ?? '')
+    .trim()
+    .split(/\r?\n/);
+  const hints = [
+    "Run 'copilot update' to check for updates.",
+    "Offline mode is enabled. Run 'copilot version' after reconnecting to check for updates.",
+  ];
+  if (lines.length !== 2 || lines[0] !== `GitHub Copilot CLI ${version}.` || !hints.includes(lines[1])) {
+    throw new Error('Copilot version output differs from the reviewed two-line grammar');
+  }
+  return validateVersionOutput(lines[0], version);
+}
+
 export function validateProbeMetadata(metadata, { artifact, version }) {
   if (!metadata || typeof metadata !== 'object') throw new Error('download metadata is required');
-  if (metadata.artifactKind !== 'standalone-executable') {
+  if (!['standalone-executable', 'release-bundle'].includes(metadata.artifactKind)) {
     throw new Error(`cannot execute artifact kind ${metadata.artifactKind ?? 'unknown'}`);
   }
   if (metadata.version !== version) throw new Error('download metadata version differs from the probe');
@@ -34,11 +54,40 @@ export function validateProbeMetadata(metadata, { artifact, version }) {
   return metadata;
 }
 
-export function probeAgentArtifact({ artifact, artifactKind, version, output, home, environment = process.env }) {
-  if (artifactKind !== 'standalone-executable') {
+export function probeAgentArtifact({
+  artifact,
+  artifactKind,
+  vendor,
+  platform,
+  version,
+  output,
+  home,
+  environment = process.env,
+}) {
+  if (!['standalone-executable', 'release-bundle'].includes(artifactKind)) {
     throw new Error(`cannot execute artifact kind ${artifactKind ?? 'unknown'}`);
   }
-  const artifactPath = safePath(artifact);
+  let artifactPath = safePath(artifact);
+  let config;
+  if (vendor !== undefined) {
+    if (!/^[a-z][a-z0-9-]*$/.test(vendor)) throw new Error('invalid probe vendor');
+    config = JSON.parse(readFileSync(safePath(`packages/surface/vendors/${vendor}/upstream.json`), 'utf8'));
+    if (config.vendor !== vendor) throw new Error('probe configuration vendor differs');
+  }
+  let verifyBundle;
+  if (artifactKind === 'release-bundle') {
+    if (!/^[a-z][a-z0-9-]*$/.test(vendor ?? '')) throw new Error('release bundle vendor is required');
+    const spec = config?.acquisition?.artifacts?.[platform];
+    verifyBundle = () =>
+      verifyReleaseBundle(safePath(artifact), {
+        vendor,
+        version,
+        platform,
+        policy: spec?.bundle,
+        format: spec?.format,
+      });
+    artifactPath = verifyBundle().executable;
+  }
   const outputPath = safePath(output);
   const homePath = safePath(home);
   mkdirSync(homePath, { recursive: true });
@@ -48,7 +97,11 @@ export function probeAgentArtifact({ artifact, artifactKind, version, output, ho
   env.HOME = homePath;
   env.USERPROFILE = homePath;
   env.NO_COLOR = '1';
+  if (vendor === 'antigravity') env.AGY_CLI_DISABLE_AUTO_UPDATE = 'true';
+  const digest = () => createHash('sha256').update(readFileSync(artifactPath)).digest('hex');
+  const before = digest();
   const result = spawnSync(artifactPath, ['--version'], {
+    cwd: homePath,
     encoding: 'utf8',
     timeout: 20_000,
     maxBuffer: 4_096,
@@ -60,7 +113,9 @@ export function probeAgentArtifact({ artifact, artifactKind, version, output, ho
       `artifact version probe failed: ${result.error?.message ?? result.stderr ?? `exit ${result.status}`}`,
     );
   }
-  const value = validateVersionOutput(result.stdout || result.stderr, version);
+  if (digest() !== before) throw new Error('artifact changed during the version probe');
+  verifyBundle?.();
+  const value = normalizeVersionOutput(result.stdout || result.stderr, version, config?.acquisition?.versionOutput);
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, `${value}\n`);
   return value;
@@ -85,6 +140,8 @@ if (invokedDirectly) {
     probeAgentArtifact({
       artifact,
       artifactKind: metadata.artifactKind,
+      vendor: metadata.vendor,
+      platform: metadata.platform,
       version,
       output: flag('--output'),
       home: flag('--home'),

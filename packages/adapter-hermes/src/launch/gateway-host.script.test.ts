@@ -7,7 +7,7 @@
 
 import { execFile, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -83,6 +83,49 @@ describe.skipIf(!python3)('Hermes gateway host admission', () => {
   });
 });
 
+/** Loads the script with a stand-in tui_gateway on sys.path and reports whether it tees events itself. */
+const FANOUT_PROBE = `
+import importlib.util, json, sys
+sys.path.insert(0, sys.argv[2])
+spec = importlib.util.spec_from_file_location("tui_gateway_host", sys.argv[1])
+host = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(host)
+from tui_gateway.ws import WSTransport
+original = WSTransport.write
+host.enable_session_event_fanout()
+print(json.dumps({"native": host.gateway_attaches_resuming_clients(), "patched": WSTransport.write is not original}))
+`;
+
+const FANOUT_STAND_IN = (nativeFanout: boolean): Record<string, string> => ({
+  'tui_gateway/__init__.py': '',
+  'tui_gateway/server.py': [
+    'import threading',
+    '_live_transports_lock = threading.Lock()',
+    '_live_transports = []',
+  ].join('\n'),
+  'tui_gateway/ws.py': ['class WSTransport:', '    def write(self, frame):', '        return True'].join('\n'),
+  ...(nativeFanout ? { 'tui_gateway/transport.py': 'class FanoutTransport:\n    pass' } : {}),
+});
+
+describe.skipIf(!python3)('Hermes gateway host session fan-out', () => {
+  it.each([
+    { nativeFanout: false, patched: true },
+    { nativeFanout: true, patched: false },
+  ])('tees session events itself only when Hermes has no native fan-out ($nativeFanout)', async (expected) => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-hermes-fanout-'));
+    try {
+      for (const [path, source] of Object.entries(FANOUT_STAND_IN(expected.nativeFanout))) {
+        await mkdir(join(root, dirname(path)), { recursive: true });
+        await writeFile(join(root, path), `${source}\n`);
+      }
+      const { stdout } = await execFileAsync('python3', ['-I', '-c', FANOUT_PROBE, HOST_SCRIPT, root]);
+      expect(JSON.parse(stdout)).toEqual({ native: expected.nativeFanout, patched: expected.patched });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
+
 const STAND_IN: Record<string, string> = {
   'tui_gateway/__init__.py': '',
   'tui_gateway/server.py': [
@@ -94,6 +137,14 @@ const STAND_IN: Record<string, string> = {
     'def _load_cfg():',
     '    return {}',
     '_methods = {"wake.start": lambda rid, params: _ok(rid, {"started": True})}',
+    'import atexit, os, time',
+    'from pathlib import Path',
+    'def _shutdown_sessions():',
+    '    time.sleep(float(os.environ.get("SHUTDOWN_DELAY_SECONDS", "0")))',
+    '    home = Path(os.environ["HERMES_HOME"])',
+    '    home.mkdir(parents=True, exist_ok=True)',
+    '    (home / ("shutdown-" + str(os.getpid()))).write_text("native sessions closed")',
+    'atexit.register(_shutdown_sessions)',
   ].join('\n'),
   'tui_gateway/ws.py': [
     'import json',
@@ -145,12 +196,12 @@ function upgradeStatus(url: string, headers: Record<string, string> = {}): Promi
 describe.skipIf(!servesWebSockets)('Hermes gateway host (the real script, a stand-in tui_gateway)', () => {
   let scratch: string;
 
-  const start = () =>
+  const start = (shutdownDelay = '0') =>
     startHermesGatewayHost({
       python: hostPython,
       hermesHome: join(scratch, 'home'),
       cwd: scratch,
-      env: { PYTHONPATH: join(scratch, 'stand-in') },
+      env: { PYTHONPATH: join(scratch, 'stand-in'), SHUTDOWN_DELAY_SECONDS: shutdownDelay },
     });
 
   beforeAll(async () => {
@@ -182,6 +233,16 @@ describe.skipIf(!servesWebSockets)('Hermes gateway host (the real script, a stan
       await Promise.all([host.close(), other.close()]);
     }
   }, 60_000);
+
+  it('runs native session shutdown before the gateway process exits on SIGTERM', async () => {
+    const host = await start('2.1');
+    try {
+      expect(await upgradeStatus(authorizedGatewayUrl(host.url, host.token))).toBe(101);
+    } finally {
+      await host.close();
+    }
+    expect(await readFile(join(scratch, 'home', `shutdown-${host.pid}`), 'utf8')).toBe('native sessions closed');
+  }, 20_000);
 
   it("serves the adapter's own client", async () => {
     const host = await start();

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "vendor": "pi",
+  "version": "1.5.0",
+  "platform": "linux-x64",
+  "startedAt": "2026-11-04T06:20:28.466692+00:00",
+  "capturedAt": "2026-11-04T06:20:53.380244+00:00",
+  "harness": "pi/census/release.py with pinned Rosetta mock-provider scenarios",
+  "rosettaRevision": "4282c44276d070958fbc442ca7a5b7021354aa5e",
+  "artifactSha256": "sha256:3262e81938a6dfbaa1cc65eb87cda26dfb0b9b3ffce69f5d88e512d827b9f57d",
+  "entrySha256": "sha256:61a84400938da652ed69aac9c1ad2ca23af3c9bd8cc2f46ce571ed84ae6a35e5",
+  "scenarios": [
+    "basic-chat",
+    "tool-use",
+    "resume",
+    "fork",
+    "error",
+    "compaction",
+    "usage"
+  ],
+  "sandbox": {
+    "kind": "docker-network-none",
+    "nonLoopbackRoutes": 0,
+    "publicDestinationErrno": 101
+  }
+}

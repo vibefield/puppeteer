@@ -1,0 +1,341 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "pet.cells",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Half-block cell frames (or a kitty placement) for one pet state.",
+  "payloadSchema": {
+    "$ref": "#/$defs/PetCellsParams",
+    "$defs": {
+      "PetCellsParams": {
+        "additionalProperties": false,
+        "description": "``graphics`` opts into the kitty payload when the TTY speaks it; ``cols`` overrides the width.",
+        "properties": {
+          "cols": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cols"
+          },
+          "graphics": {
+            "default": false,
+            "title": "Graphics",
+            "type": "boolean"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "State"
+          }
+        },
+        "title": "PetCellsParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/PetCellsResult",
+    "$defs": {
+      "PetCellsResult": {
+        "additionalProperties": false,
+        "description": "Unicode: ``frames`` is frame → row → cell ``[tr,tg,tb,ta, br,bg,bb,ba]``; kitty (``graphics``\nset): ``frames`` are transmit escapes and ``placeholder`` the text grid.",
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Color"
+          },
+          "cols": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cols"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Displayname"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "frameMs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Framems"
+          },
+          "frames": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "items": {
+                      "items": {
+                        "type": "integer"
+                      },
+                      "type": "array"
+                    },
+                    "type": "array"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Frames"
+          },
+          "graphics": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Graphics"
+          },
+          "imageId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Imageid"
+          },
+          "placeholder": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Placeholder"
+          },
+          "rows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rows"
+          },
+          "scale": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scale"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "State"
+          }
+        },
+        "required": ["enabled"],
+        "title": "PetCellsResult",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["pet.cells"]
+      },
+      "params": {
+        "$ref": "#/$defs/PetCellsParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "PetCellsParams": {
+        "additionalProperties": false,
+        "description": "``graphics`` opts into the kitty payload when the TTY speaks it; ``cols`` overrides the width.",
+        "properties": {
+          "cols": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cols"
+          },
+          "graphics": {
+            "default": false,
+            "title": "Graphics",
+            "type": "boolean"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "State"
+          }
+        },
+        "title": "PetCellsParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

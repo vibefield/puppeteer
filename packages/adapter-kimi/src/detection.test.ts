@@ -20,7 +20,7 @@ describe('Kimi detection contract', () => {
   });
 
   it('reports the candidate boundary without overstating approval or hook control', () => {
-    expect(KIMI_SURFACE_VERSION).toBe('0.34.0');
+    expect(KIMI_SURFACE_VERSION).toBe('2.4.1');
     expect(KIMI_ADAPTER_CAPABILITIES).toMatchObject({
       executionMode: 'native-tui',
       observationLevel: 'native-log',

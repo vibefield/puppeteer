@@ -1,0 +1,141 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "session.set_hidden",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Set/clear hidden (out of the default list, still resumable by its owner) on a session + lineage.",
+  "payloadSchema": {
+    "$ref": "#/$defs/SessionSetHiddenParams",
+    "$defs": {
+      "SessionSetHiddenParams": {
+        "additionalProperties": false,
+        "description": "``session_id`` is a live runtime id first, else a stored id / key / title.",
+        "properties": {
+          "hidden": {
+            "default": true,
+            "title": "Hidden",
+            "type": "boolean"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id"],
+        "title": "SessionSetHiddenParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/SessionSetHiddenResult",
+    "$defs": {
+      "SessionSetHiddenResult": {
+        "additionalProperties": false,
+        "properties": {
+          "hidden": {
+            "title": "Hidden",
+            "type": "boolean"
+          },
+          "session_key": {
+            "title": "Session Key",
+            "type": "string"
+          }
+        },
+        "required": ["hidden", "session_key"],
+        "title": "SessionSetHiddenResult",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session.set_hidden"]
+      },
+      "params": {
+        "$ref": "#/$defs/SessionSetHiddenParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "SessionSetHiddenParams": {
+        "additionalProperties": false,
+        "description": "``session_id`` is a live runtime id first, else a stored id / key / title.",
+        "properties": {
+          "hidden": {
+            "default": true,
+            "title": "Hidden",
+            "type": "boolean"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id"],
+        "title": "SessionSetHiddenParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

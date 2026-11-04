@@ -29,8 +29,13 @@ function messageContent(body: unknown, role: string): string[] {
   });
 }
 
+// Hermes's auxiliary session-title prompt (agent/title_generator.py): the 0.20 and 0.21 wordings.
+const TITLE_PROMPT_OPENINGS = ['Generate a short, descriptive title', 'You name chat sessions.'];
+
 function isTitleRequest(body: unknown): boolean {
-  return messageContent(body, 'system').some((content) => content.includes('Generate a short, descriptive title'));
+  return messageContent(body, 'system').some((content) =>
+    TITLE_PROMPT_OPENINGS.some((opening) => content.includes(opening)),
+  );
 }
 
 export function isHermesLiveTurnRequest(request: HermesLiveModelRequest): boolean {
@@ -54,7 +59,10 @@ function chatChunk(delta: Record<string, unknown>, finishReason: string | null, 
 }
 
 /** Deterministic local OpenAI-compatible provider for the native Hermes TUI. */
-export async function startHermesLoopbackProvider(): Promise<HermesLiveModelProvider> {
+export async function startHermesLoopbackProvider(tool?: {
+  name: string;
+  arguments: Record<string, unknown>;
+}): Promise<HermesLiveModelProvider> {
   const requests: HermesLiveModelRequest[] = [];
   const server: Server = createServer((request, response) => {
     void (async () => {
@@ -83,12 +91,35 @@ export async function startHermesLoopbackProvider(): Promise<HermesLiveModelProv
         connection: 'close',
       });
       const titleRequest = isTitleRequest(body);
+      const messages = body && typeof body === 'object' ? Reflect.get(body, 'messages') : undefined;
+      const toolFinished = Array.isArray(messages) && messages.some((message) => message?.role === 'tool');
+      const invokeTool = tool && !titleRequest && !toolFinished;
       for (const chunk of [
         chatChunk({ role: 'assistant' }, null),
         ...(titleRequest
           ? [chatChunk({ content: 'Hermes Resume Proof' }, null)]
-          : [chatChunk({ content: 'SURFACE_HERMES_' }, null), chatChunk({ content: 'TUI_OK' }, null)]),
-        chatChunk({}, 'stop', { prompt_tokens: 27, completion_tokens: 7, total_tokens: 34 }),
+          : invokeTool
+            ? [
+                chatChunk(
+                  {
+                    tool_calls: [
+                      {
+                        index: 0,
+                        id: 'call_live_interaction',
+                        type: 'function',
+                        function: { name: tool.name, arguments: JSON.stringify(tool.arguments) },
+                      },
+                    ],
+                  },
+                  null,
+                ),
+              ]
+            : [chatChunk({ content: 'SURFACE_HERMES_' }, null), chatChunk({ content: 'TUI_OK' }, null)]),
+        chatChunk({}, invokeTool ? 'tool_calls' : 'stop', {
+          prompt_tokens: 27,
+          completion_tokens: 7,
+          total_tokens: 34,
+        }),
       ]) {
         response.write(`data: ${JSON.stringify(chunk)}\n\n`);
         await delay(15);
@@ -129,7 +160,7 @@ function writeHermesConfiguration(home: string, baseUrl: string): void {
       '  mode: manual',
       '  timeout: 20',
       'platform_toolsets:',
-      '  tui: [terminal]',
+      '  tui: [terminal, clarify]',
       'display:',
       '  interface: tui',
       '  interim_assistant_messages: false',

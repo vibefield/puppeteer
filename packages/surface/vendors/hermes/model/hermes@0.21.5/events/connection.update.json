@@ -1,0 +1,1174 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "connection.update",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "One transition or the settlement of an open connection operation.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ConnectionUpdatePayload",
+    "$defs": {
+      "ConnectionUpdatePayload": {
+        "additionalProperties": false,
+        "description": "``methods_connectors._connection_update``: one target transition (``target``/``from``/``to``/\n``actor``) or the settlement (none of those), with the full snapshot.",
+        "properties": {
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectionActor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "deadline_at": {
+            "title": "Deadline At",
+            "type": "number"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detail"
+          },
+          "from": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectionTargetState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "op_id": {
+            "title": "Op Id",
+            "type": "string"
+          },
+          "owner": {
+            "discriminator": {
+              "mapping": {
+                "account": "#/components/schemas/AccountOwner",
+                "session": "#/components/schemas/SessionOwner"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/SessionOwner"
+              },
+              {
+                "$ref": "#/$defs/AccountOwner"
+              }
+            ],
+            "title": "Owner"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "settled": {
+            "title": "Settled",
+            "type": "boolean"
+          },
+          "settled_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Settled At"
+          },
+          "settled_by": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectionSettleReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/$defs/ConnectionOperationTarget"
+            },
+            "title": "Targets",
+            "type": "array"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectionTargetState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": ["op_id", "seq", "deadline_at", "settled", "targets", "owner"],
+        "title": "ConnectionUpdatePayload",
+        "type": "object"
+      },
+      "ConnectionActor": {
+        "description": "``tools/connectors/contract.py::Actor``.",
+        "enum": ["user", "backend_watcher", "clock"],
+        "title": "ConnectionActor",
+        "type": "string"
+      },
+      "ConnectionTargetState": {
+        "description": "``tools/connectors/contract.py::TargetState``.",
+        "enum": ["pending", "initiated", "connected", "skipped", "failed", "expired", "not_connected"],
+        "title": "ConnectionTargetState",
+        "type": "string"
+      },
+      "SessionOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "session",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "session_id"],
+        "title": "SessionOwner",
+        "type": "object"
+      },
+      "AccountOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "account",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type"],
+        "title": "AccountOwner",
+        "type": "object"
+      },
+      "ConnectionSettleReason": {
+        "description": "``tools/connectors/contract.py::SettleReason``.",
+        "enum": ["all_resolved", "continue", "deadline", "interrupt"],
+        "title": "ConnectionSettleReason",
+        "type": "string"
+      },
+      "ConnectionOperationTarget": {
+        "additionalProperties": false,
+        "description": "``Target.snapshot``: the link minted up front rides here, never in the model result. ``extra``\nkeys a leg records (``tools``, ``hint``) are typed here as they appear.",
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/ConnectionTargetAction"
+          },
+          "app_state": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CatalogAppState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "attempt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Attempt"
+          },
+          "connect_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Connect Url"
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Connection Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detail"
+          },
+          "discovery_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Discovery Error"
+          },
+          "display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display"
+          },
+          "has_desktop_half": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Has Desktop Half"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Hint"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Instructions"
+          },
+          "kind": {
+            "$ref": "#/$defs/ConnectionTargetKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "platforms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Platforms"
+          },
+          "repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repo"
+          },
+          "required_env": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/ConnectionTargetEnvField"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Required Env"
+          },
+          "requirements": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Requirements"
+          },
+          "scan": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CatalogScan"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sha"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Skill"
+          },
+          "state": {
+            "$ref": "#/$defs/ConnectionTargetState"
+          },
+          "subdir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Subdir"
+          },
+          "target_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target Profile"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CatalogTier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tools"
+          }
+        },
+        "required": ["name", "kind", "action", "state"],
+        "title": "ConnectionOperationTarget",
+        "type": "object"
+      },
+      "ConnectionTargetAction": {
+        "enum": ["authorize", "connect", "enable", "install", "reconnect"],
+        "title": "ConnectionTargetAction",
+        "type": "string"
+      },
+      "CatalogAppState": {
+        "description": "The desktop app a catalog plugin drives, from its ``hermes_platform`` declaration.",
+        "enum": ["present", "missing_app", "app_not_running", "unknown"],
+        "title": "CatalogAppState",
+        "type": "string"
+      },
+      "ConnectionTargetKind": {
+        "enum": ["connector", "mcp", "plugin", "skill"],
+        "title": "ConnectionTargetKind",
+        "type": "string"
+      },
+      "ConnectionTargetEnvField": {
+        "additionalProperties": false,
+        "description": "One credential an MCP install still needs; the card renders a field per entry and sends the\nvalues back with the approval.",
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Prompt"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "boolean"
+          }
+        },
+        "required": ["name", "required", "secret", "default"],
+        "title": "ConnectionTargetEnvField",
+        "type": "object"
+      },
+      "CatalogScan": {
+        "additionalProperties": false,
+        "description": "The catalog's security scan of the pinned commit; read-only on the card.",
+        "properties": {
+          "status": {
+            "$ref": "#/$defs/CatalogScanStatus"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": ["status", "summary"],
+        "title": "CatalogScan",
+        "type": "object"
+      },
+      "CatalogTier": {
+        "enum": ["official", "community"],
+        "title": "CatalogTier",
+        "type": "string"
+      },
+      "CatalogScanStatus": {
+        "enum": ["passed", "warnings", "failed"],
+        "title": "CatalogScanStatus",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["connection.update"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/ConnectionUpdatePayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "ConnectionUpdatePayload": {
+        "additionalProperties": false,
+        "description": "``methods_connectors._connection_update``: one target transition (``target``/``from``/``to``/\n``actor``) or the settlement (none of those), with the full snapshot.",
+        "properties": {
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectionActor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "deadline_at": {
+            "title": "Deadline At",
+            "type": "number"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detail"
+          },
+          "from": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectionTargetState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "op_id": {
+            "title": "Op Id",
+            "type": "string"
+          },
+          "owner": {
+            "discriminator": {
+              "mapping": {
+                "account": "#/components/schemas/AccountOwner",
+                "session": "#/components/schemas/SessionOwner"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/SessionOwner"
+              },
+              {
+                "$ref": "#/$defs/AccountOwner"
+              }
+            ],
+            "title": "Owner"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "settled": {
+            "title": "Settled",
+            "type": "boolean"
+          },
+          "settled_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Settled At"
+          },
+          "settled_by": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectionSettleReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/$defs/ConnectionOperationTarget"
+            },
+            "title": "Targets",
+            "type": "array"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectionTargetState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": ["op_id", "seq", "deadline_at", "settled", "targets", "owner"],
+        "title": "ConnectionUpdatePayload",
+        "type": "object"
+      },
+      "ConnectionActor": {
+        "description": "``tools/connectors/contract.py::Actor``.",
+        "enum": ["user", "backend_watcher", "clock"],
+        "title": "ConnectionActor",
+        "type": "string"
+      },
+      "ConnectionTargetState": {
+        "description": "``tools/connectors/contract.py::TargetState``.",
+        "enum": ["pending", "initiated", "connected", "skipped", "failed", "expired", "not_connected"],
+        "title": "ConnectionTargetState",
+        "type": "string"
+      },
+      "SessionOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "session",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "session_id"],
+        "title": "SessionOwner",
+        "type": "object"
+      },
+      "AccountOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "account",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type"],
+        "title": "AccountOwner",
+        "type": "object"
+      },
+      "ConnectionSettleReason": {
+        "description": "``tools/connectors/contract.py::SettleReason``.",
+        "enum": ["all_resolved", "continue", "deadline", "interrupt"],
+        "title": "ConnectionSettleReason",
+        "type": "string"
+      },
+      "ConnectionOperationTarget": {
+        "additionalProperties": false,
+        "description": "``Target.snapshot``: the link minted up front rides here, never in the model result. ``extra``\nkeys a leg records (``tools``, ``hint``) are typed here as they appear.",
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/ConnectionTargetAction"
+          },
+          "app_state": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CatalogAppState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "attempt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Attempt"
+          },
+          "connect_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Connect Url"
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Connection Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detail"
+          },
+          "discovery_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Discovery Error"
+          },
+          "display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display"
+          },
+          "has_desktop_half": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Has Desktop Half"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Hint"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Instructions"
+          },
+          "kind": {
+            "$ref": "#/$defs/ConnectionTargetKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "platforms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Platforms"
+          },
+          "repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repo"
+          },
+          "required_env": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/ConnectionTargetEnvField"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Required Env"
+          },
+          "requirements": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Requirements"
+          },
+          "scan": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CatalogScan"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sha"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Skill"
+          },
+          "state": {
+            "$ref": "#/$defs/ConnectionTargetState"
+          },
+          "subdir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Subdir"
+          },
+          "target_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target Profile"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CatalogTier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tools"
+          }
+        },
+        "required": ["name", "kind", "action", "state"],
+        "title": "ConnectionOperationTarget",
+        "type": "object"
+      },
+      "ConnectionTargetAction": {
+        "enum": ["authorize", "connect", "enable", "install", "reconnect"],
+        "title": "ConnectionTargetAction",
+        "type": "string"
+      },
+      "CatalogAppState": {
+        "description": "The desktop app a catalog plugin drives, from its ``hermes_platform`` declaration.",
+        "enum": ["present", "missing_app", "app_not_running", "unknown"],
+        "title": "CatalogAppState",
+        "type": "string"
+      },
+      "ConnectionTargetKind": {
+        "enum": ["connector", "mcp", "plugin", "skill"],
+        "title": "ConnectionTargetKind",
+        "type": "string"
+      },
+      "ConnectionTargetEnvField": {
+        "additionalProperties": false,
+        "description": "One credential an MCP install still needs; the card renders a field per entry and sends the\nvalues back with the approval.",
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Prompt"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "boolean"
+          }
+        },
+        "required": ["name", "required", "secret", "default"],
+        "title": "ConnectionTargetEnvField",
+        "type": "object"
+      },
+      "CatalogScan": {
+        "additionalProperties": false,
+        "description": "The catalog's security scan of the pinned commit; read-only on the card.",
+        "properties": {
+          "status": {
+            "$ref": "#/$defs/CatalogScanStatus"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": ["status", "summary"],
+        "title": "CatalogScan",
+        "type": "object"
+      },
+      "CatalogTier": {
+        "enum": ["official", "community"],
+        "title": "CatalogTier",
+        "type": "string"
+      },
+      "CatalogScanStatus": {
+        "enum": ["passed", "warnings", "failed"],
+        "title": "CatalogScanStatus",
+        "type": "string"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "unverified"
+}

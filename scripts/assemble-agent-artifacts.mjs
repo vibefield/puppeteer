@@ -55,11 +55,13 @@ export function acquisitionBundles({ repoRoot = root, vendor, version, directory
     const artifact =
       metadata.artifactKind === 'installed-console'
         ? join(bundle, 'installed-console.json')
-        : ['agent', 'agent.exe'].map((name) => join(bundle, name)).find(existsSync);
+        : metadata.artifactKind === 'release-bundle'
+          ? join(bundle, 'release-bundle.json')
+          : ['agent', 'agent.exe'].map((name) => join(bundle, name)).find(existsSync);
     if (
       !artifact ||
       !existsSync(artifact) ||
-      !['standalone-executable', 'installed-console'].includes(metadata.artifactKind)
+      !['standalone-executable', 'installed-console', 'release-bundle'].includes(metadata.artifactKind)
     ) {
       throw new Error(`acquisition bundle for ${platform} has no supported artifact`);
     }
@@ -104,5 +106,12 @@ if (invokedDirectly) {
   const output = safePath(flag('--output'));
   mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
-  if (report.status !== 'complete') process.exitCode = 1;
+  if (report.status !== 'complete') {
+    console.error(`Artifact acquisition refused: ${report.status}`);
+    for (const issue of report.issues ?? []) console.error(issue);
+    for (const artifact of report.republished ?? []) {
+      console.error(`${artifact.platform}: recorded ${artifact.priorDigest}, acquired ${artifact.acquiredDigest}`);
+    }
+    process.exitCode = 1;
+  }
 }

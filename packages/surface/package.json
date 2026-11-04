@@ -99,11 +99,11 @@
     "surface:privacy:kimi": "node vendors/kimi/sanitize-captures.mjs --check",
     "surface:model:kimi": "node vendors/kimi/census/generate-model.mjs",
     "surface:model:codex": "node vendors/codex/census/generate-model.mjs",
-    "surface:model:opencode": "node vendors/opencode/census/generate-model.mjs --version 1.18.16",
+    "surface:model:opencode": "node vendors/opencode/census/generate-model.mjs --version 1.19.5",
     "surface:privacy:claude": "node vendors/claude/sanitize-captures.mjs --check",
     "surface:sanitize:claude": "node vendors/claude/sanitize-captures.mjs",
-    "surface:privacy:opencode": "node vendors/opencode/census/sanitize.mjs --version 1.18.16 --check-only",
-    "surface:sanitize:opencode": "node vendors/opencode/census/sanitize.mjs --version 1.18.16"
+    "surface:privacy:opencode": "node vendors/opencode/census/sanitize.mjs --version 1.19.5 --check-only",
+    "surface:sanitize:opencode": "node vendors/opencode/census/sanitize.mjs --version 1.19.5"
   },
   "engines": {
     "node": ">=22.18.0"

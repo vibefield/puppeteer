@@ -1,0 +1,94 @@
+{
+  "name": "compact-summary-retry",
+  "notes": "/compact when the summary reply has no <summary> block, as the 2.1.311 TUI census captured it against a loopback model whose reply has none: the compactor asks for the summary once more (gate tengu_dapper_fountain, on by default), so each attempt's internal compaction agent stops (empty agent_type, never started, distinct agent_id) before SessionStart with source compact, PostCompact and a status line whose context restarts. compact-lifecycle is the nominal single-stop path.",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "PreCompact",
+          "with": { "prompt_id": "$uuid:prompt", "trigger": "manual", "custom_instructions": "" }
+        }
+      }
+    },
+    {
+      "at": 100,
+      "do": {
+        "emit": {
+          "event": "SubagentStop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "$uuid:compaction-agent",
+            "agent_type": "",
+            "agent_transcript_path": "/tmp/agent-compaction.jsonl",
+            "stop_hook_active": false,
+            "last_assistant_message": "Summary of the conversation so far.",
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    },
+    {
+      "at": 150,
+      "do": {
+        "emit": {
+          "event": "SubagentStop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "agent_id": "$uuid:compaction-agent-2",
+            "agent_type": "",
+            "agent_transcript_path": "/tmp/agent-compaction-2.jsonl",
+            "stop_hook_active": false,
+            "last_assistant_message": "Summary of the conversation so far.",
+            "background_tasks": [],
+            "session_crons": []
+          }
+        }
+      }
+    },
+    {
+      "at": 200,
+      "do": {
+        "emit": {
+          "event": "SessionStart",
+          "with": { "prompt_id": "$uuid:prompt", "source": "compact", "session_title": "$sessionTitle" }
+        }
+      }
+    },
+    {
+      "at": 300,
+      "do": {
+        "emit": {
+          "event": "PostCompact",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "trigger": "manual",
+            "compact_summary": "Summary of the conversation so far."
+          }
+        }
+      }
+    },
+    {
+      "at": 400,
+      "do": {
+        "statusline": {
+          "with": {
+            "session_id": "$sessionId",
+            "transcript_path": "$transcriptPath",
+            "cwd": "$cwd",
+            "model": { "id": "$modelId", "display_name": "$modelId" },
+            "workspace": { "current_dir": "$cwd" },
+            "context_window": {
+              "total_input_tokens": 0,
+              "context_window_size": "$capacityTokens",
+              "current_usage": null,
+              "used_percentage": null,
+              "remaining_percentage": null
+            }
+          }
+        }
+      }
+    }
+  ]
+}

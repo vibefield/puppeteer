@@ -1,0 +1,29 @@
+{
+  "visibleHelpOptions": {
+    "--tui": true,
+    "--cli": true,
+    "--resume": true,
+    "--continue": true,
+    "--worktree": true,
+    "--yolo": true,
+    "--ignore-user-config": true,
+    "--ignore-rules": true,
+    "--safe-mode": true,
+    "--version": true
+  },
+  "visibleSubcommands": {
+    "chat": true,
+    "acp": true,
+    "version": true,
+    "sessions": true,
+    "dashboard": true
+  },
+  "rejectedOptionProbe": {
+    "args": [
+      "--definitely-not-a-hermes-option"
+    ],
+    "status": 2,
+    "stdout": "",
+    "stderr": "usage: hermes [-h] [--version] [-z PROMPT] [--usage-file PATH] [-m MODEL]\n              [--provider PROVIDER] [--reasoning LEVEL] [-t TOOLSETS]\n              [--resume SESSION] [--no-restore-cwd] [--in DIR]\n              [--continue [SESSION_NAME]] [--worktree] [--accept-hooks]\n              [--skills SKILLS] [--yolo] [--pass-session-id]\n              [--ignore-user-config] [--ignore-rules] [--safe-mode] [--tui]\n              [--cli] [--dev]\n              <command> ...\nhermes: error: unrecognized arguments: --definitely-not-a-hermes-option"
+  }
+}

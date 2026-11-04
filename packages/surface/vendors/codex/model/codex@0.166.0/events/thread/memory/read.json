@@ -1,0 +1,87 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.166.0",
+  "event": "thread/memory/read",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "threadId": {
+        "description": "The thread must already be started or resumed.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "threadId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "thread/memory/read"
+        ],
+        "title": "Thread/memory/readRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadMemoryReadParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Thread/memory/readRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadMemoryReadParams": {
+        "properties": {
+          "threadId": {
+            "description": "The thread must already be started or resumed.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

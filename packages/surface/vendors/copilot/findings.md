@@ -1,4 +1,4 @@
-# GitHub Copilot CLI 1.0.80 surface findings
+# GitHub Copilot CLI 1.0.105 surface findings
 
 Status: canonical ground truth, adapter, Imposter persona, built-in provider,
 and local conformance are implemented. The baseline remains
@@ -10,13 +10,86 @@ four platforms.
 
 The vendor-root `groundtruth.json` is the single Puppeteer truth artifact. It
 is generated from the complete Rosetta `rosetta-groundtruth/1` inventory,
-controlled `1.0.80` fixtures, and the pinned writer schema. The schema defines
+controlled `1.0.105` fixtures, and the pinned writer schema. The schema defines
 many persisted event variants that controlled fixtures do not exercise; such
 variants remain schema-backed rather than being presented as runtime-observed.
 
 Official acquisition uses the four platform-specific `@github/copilot-*`
 packages from the npm registry. The executable version is probed from the
 extracted artifact before it can enter the evidence workflow.
+
+## 1.0.105 capture and drift from 1.0.80
+
+The 1.0.105 corpus was farmed by Rosetta (commit
+`8ebdd48d2cd52586ee7c524b6a36261295ce4ead`, on branch `groundtruth/upstream-rosetta-trio`,
+vibefield/rosetta#39, merged as `4282c44276d070958fbc442ca7a5b7021354aa5e`) from the
+npm `@github/copilot-linux-x64` executable on linux-x64, offline, against
+Rosetta's loopback BYOK mock model; the 1.0.80 corpus was farmed on
+darwin-arm64. Unlike the 1.0.80 package, the 1.0.105 platform package is a
+single-file executable whose writer schema exists only after its first run
+unpacks the payload; Rosetta now reads it from that unpacked payload. Rosetta's
+farm notes (commit `8ebdd48`) place that packaging change at 1.0.85, but no
+release between 1.0.80 and 1.0.105 was acquired or probed here.
+
+Rosetta's canonical inventory is cumulative across its pinned versions: the
+imported `rosetta-groundtruth.json` still sums the 1.0.80 darwin-arm64 fixtures
+and 2026-09-24 census with the 1.0.105 corpus. The model is version-scoped
+(`versionScopedSources`): every record's shape, occurrence count and evidence
+come from the digest-pinned 1.0.105 writer schema and fixture documents only.
+A record that only older releases wrote (for example `session.model_change`,
+the session-store `turns` table and `search_index*`) stays in the inventory as
+an unverified contract lead with zero 1.0.105 occurrences.
+
+- Writer schema: 53 → 80 persisted event types, none removed (fusion,
+  permission-authorization, `session.usage_record`, `subagent.configured`, …).
+- `session.permissions_changed`: the 1.0.105 writer schema replaces the
+  allow-all pair with `mode`/`previousMode`, yet the 1.0.105 captures still
+  persist the allow-all pair. Rosetta's derived writer document types `mode`
+  only as a string; the value set `manual | assisted | allow-all` is the
+  `PermissionMode` enum of the npm package's own
+  `schemas/session-events.schema.json` (1.0.105, vendored by Rosetta as
+  `groundtruth/copilot/sources/vendor/1.0.105.session-events.schema.json`,
+  sha256 `f360052b…2f66`), and the `--help` text names `assisted` as a
+  `/permissions` mode. No committed capture writes `mode`, so these values are
+  schema-declared, not observed. The adapter reads `mode` first and keeps the
+  pair; it labels `allow-all` as auto, `manual` as manual, `assisted` as its own
+  mode, and keeps any other value raw.
+- `session.model_change` (including the resume form with `previousModel`) is no
+  longer written in these scenarios, neither at session start nor after
+  `session.resume`; `session.start.selectedModel` and
+  `session.resume.selectedModel` carry the model, and the adapter already reads
+  both. The persona now mirrors that.
+- `system.message` is now written after the turn's `user.message` (whose id is
+  its `parentId`), where 1.0.80 wrote it before; it still carries the same
+  `interactionId` as that `user.message`. It gains
+  `metadata.variables.gitCommitTrailer`, and 1.0.105 no longer writes a fresh
+  `system.message` for the first turn after `session.resume`.
+- Dropped fields: `user.message` no longer writes `attachments` (always `[]` in
+  the 1.0.80 captures) and `tool.execution_start` no longer writes `rte`. The
+  adapter consumes neither, nor `system.message`, and the persona writes
+  neither field.
+- `session.usage_record` is persisted once per model request. Usage stays
+  `unsupported` (durable transcript usage is excluded), so it is retained as a
+  native event.
+- New optional fields: `user.message.messageId`/`turnId`,
+  `assistant.message.originatingMessageId` (and no `outputTokens` in these
+  captures), `assistant.message.toolRequests[].toolTitle`,
+  `tool.execution_start.toolTitle`, `tool.execution_complete.shellExecution`,
+  and shutdown accounting snapshots. `session.resume.sessionWasActive` was
+  already declared by the 1.0.80 writer schema but first appears in the 1.0.105
+  captures.
+- Invocation grammar (`--help`, 1.0.105): new `config`, `workflow` and
+  `sandbox` commands and `--trust-folder`, `--disable-client-telemetry`,
+  `--mcp-github-auth`, `--sync-session`, `--host-environment`,
+  `--host-compute-id`; `--remote-export` and `--no-remote` are removed, while
+  `--remote` and `--no-remote-export` still parse but are unlisted. The strict
+  grammar reads `--sync-session[=<on|off>]` as require-equals (a following
+  command is never its value), passes `--host-environment` through as
+  `elsewhere` (a headless Mission Control environment, like `--acp`), and
+  classes the `workflow` group as `one-shot`: its captured `workflow --help`
+  lists a single subcommand, `run <name>`, which runs a registered workflow
+  "without a parent agent turn" (`workflow --help` and `workflow run --help`
+  captured offline in a network-deny namespace, 2026-11-04).
 
 ## Adapter boundary
 
@@ -55,3 +128,20 @@ acquired executable proving native TUI launch, durable `events.jsonl`
 attachment, prompt receipt, normalized completion, and native resume. Hosted
 model parity with the controlled BYOK fixtures is also an explicit ongoing
 reconciliation concern, not an assumption baked into normalization.
+
+## Four-platform acquisition and replay follow-up (2026-11-04)
+
+All four official executable acquisitions and exact-version probes passed in
+[run 41786233830](https://github.com/vibefield/puppeteer/actions/runs/41786233830).
+The native version command prints a two-line banner: an identity sentence and a fixed update hint.
+The probe validates that complete grammar and stores the bounded identity line. Fixture-corpus
+digests remain distinct from acquired executable identities; the original Rosetta capture claims
+keep their corpus binding.
+
+The workflow's replay step exposed a separate envelope bug. Copilot's payload lives under `data`,
+while the replay runner was checking the outer carrier against the payload schema. Replay now
+uses the declared Rosetta payload path and independently validates the complete envelope.
+All 70 committed records pass; negative tests still reject both malformed nested payloads and
+malformed envelopes. The corrected workflow completed successfully in
+[run 41787728386](https://github.com/vibefield/puppeteer/actions/runs/41787728386).
+Protected native-TUI/resume promotion remains unimplemented.

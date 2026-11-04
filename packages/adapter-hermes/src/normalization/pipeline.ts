@@ -46,6 +46,17 @@ export class HermesGatewayNormalizer {
       turnId: currentTurnId,
       nativeEvent: frame,
     };
+    if (parsed.serverRequest) {
+      const { id, method } = parsed.serverRequest;
+      switch (method) {
+        case 'approval':
+          return this.record(this.interaction.requestPermission(id, parsed.payload), base);
+        case 'clarify':
+          return this.record(this.interaction.requestServerQuestion(id, parsed.payload), base);
+        default:
+          return this.record(normalizeHermesNative(method), base, 'retained-native');
+      }
+    }
     if (!parsed.type) {
       return this.record([hermesNativeEvent('untyped')], base, 'retained-native');
     }
@@ -73,13 +84,25 @@ export class HermesGatewayNormalizer {
       case 'message.complete': {
         const conversation = this.conversation.complete(parsed.payload, currentTurnId);
         const completed = this.turn.complete(parsed.payload, conversation.text);
-        return this.record([...conversation.events, ...completed.events], { ...base, turnId: completed.turnId });
+        const settled = this.interaction.turnCompleted();
+        return this.record([...conversation.events, ...settled, ...completed.events], {
+          ...base,
+          turnId: completed.turnId,
+        });
       }
       case 'tool.start':
+        this.interaction.toolStarted(parsed.payload);
         return this.record(this.tool.start(parsed.payload), base);
       case 'tool.complete': {
         const workspace = normalizeHermesWorkspace(parsed.payload);
-        return this.record([...this.tool.complete(parsed.payload), ...(workspace ? [workspace] : [])], base);
+        return this.record(
+          [
+            ...this.tool.complete(parsed.payload),
+            ...this.interaction.toolCompleted(parsed.payload),
+            ...(workspace ? [workspace] : []),
+          ],
+          base,
+        );
       }
       case 'approval.request':
         return this.record(this.interaction.permission(parsed.payload, parsed.liveSessionId), base);
@@ -87,6 +110,12 @@ export class HermesGatewayNormalizer {
         return this.record(this.interaction.requestQuestion(parsed.payload), base);
       case 'clarify.expire':
         return this.record(this.interaction.expireQuestion(parsed.payload), base);
+      case 'request.cancel': {
+        const events = this.interaction.cancelServerRequest(parsed.payload);
+        return events.length > 0
+          ? this.record(events, base)
+          : this.record(normalizeHermesNative(type), base, 'retained-native');
+      }
       default:
         return this.record(normalizeHermesNative(type), base, 'retained-native');
     }

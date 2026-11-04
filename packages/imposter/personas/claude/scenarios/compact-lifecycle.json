@@ -1,6 +1,6 @@
 {
   "name": "compact-lifecycle",
-  "notes": "/compact as Claude Code 2.1.308 runs it: PreCompact, a SubagentStop from Claude's internal compaction agent (empty agent_type, never started), SessionStart with source compact, then PostCompact and a status line whose context restarts.",
+  "notes": "/compact on its nominal path (Claude Code 2.1.308 captured; 2.1.311 when the summary reply has a <summary> block): PreCompact, a SubagentStop from Claude's internal compaction agent (empty agent_type, never started), SessionStart with source compact, then PostCompact and a status line whose context restarts. compact-summary-retry is the 2.1.311 retry path.",
   "steps": [
     {
       "at": 0,

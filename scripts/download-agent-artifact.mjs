@@ -5,6 +5,8 @@ import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:
 import { basename, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { materializeReleaseBundle, validateReleaseBundlePolicy } from './lib/release-bundle.mjs';
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
 function json(path) {
@@ -24,6 +26,7 @@ export function resolveArtifactDownload(config, platform, version, { tag } = {})
   const sourceArchive = config.acquisition?.strategy === 'source-revision';
   const artifact = sourceArchive ? config.acquisition.sourceArchive : config.acquisition?.artifacts?.[platform];
   if (!artifact) throw new Error(`unsupported platform ${platform}`);
+  if (artifact.bundle) validateReleaseBundlePolicy(artifact.bundle, artifact.format);
   const urls = artifact.urls.map((template) => {
     if (template.includes('${tag}') && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(tag ?? '')) {
       throw new Error('a normalized release tag is required');
@@ -38,7 +41,7 @@ export function resolveArtifactDownload(config, platform, version, { tag } = {})
   });
   return {
     ...artifact,
-    artifactKind: sourceArchive ? 'source-archive' : 'standalone-executable',
+    artifactKind: sourceArchive ? 'source-archive' : artifact.bundle ? 'release-bundle' : 'standalone-executable',
     urls,
     maxBytes: config.acquisition.maxBytes,
     allowedHosts: config.acquisition.allowedHosts,
@@ -123,7 +126,7 @@ export function archiveListingEntries(listing) {
   return listing.split(/\r?\n/).filter(Boolean);
 }
 
-export function safeArchiveEntry(entry) {
+export function safeSourceArchiveEntry(entry) {
   return (
     Boolean(entry) &&
     !entry.startsWith('/') &&
@@ -131,8 +134,14 @@ export function safeArchiveEntry(entry) {
     !entry.startsWith('@') &&
     !entry.includes('\\') &&
     !entry.split('/').includes('..') &&
-    !/[\u0000-\u001f\u007f*?[\]]/.test(entry)
+    !/[\u0000-\u001f\u007f]/.test(entry)
   );
+}
+
+export function safeArchiveEntry(entry) {
+  // Executable extraction passes a selected member to tar/unzip, which may interpret
+  // glob syntax. Source archives are instead extracted by Python using literal members.
+  return safeSourceArchiveEntry(entry) && !/[*?[\]]/.test(entry);
 }
 
 function listArchive(archive, format) {
@@ -214,7 +223,7 @@ function inspectSourceArchive(archiveBytes, spec, output) {
   try {
     const listing = listArchive(archive, spec.format);
     const entries = archiveListingEntries(listing.entries);
-    if (entries.some((entry) => !safeArchiveEntry(entry))) throw new Error('archive contains an unsafe path');
+    if (entries.some((entry) => !safeSourceArchiveEntry(entry))) throw new Error('archive contains an unsafe path');
     return resolveSourceArchiveRoot(entries, spec.rootFiles);
   } finally {
     rmSync(archive, { force: true });
@@ -238,6 +247,32 @@ export async function downloadAgentArtifact({
   const destination = safePath(repoRoot, output);
   mkdirSync(dirname(destination), { recursive: true });
   const downloaded = await fetchArtifact(spec, fetchImpl);
+  if (spec.artifactKind === 'release-bundle') {
+    const archiveRoot = inspectSourceArchive(
+      downloaded.bytes,
+      { ...spec, rootFiles: spec.bundle.rootFiles },
+      destination,
+    );
+    materializeReleaseBundle({
+      bytes: downloaded.bytes,
+      output: destination,
+      archiveRoot,
+      format: spec.format,
+      policy: spec.bundle,
+      vendor,
+      version,
+      platform,
+    });
+    return {
+      schemaVersion: 1,
+      vendor,
+      version,
+      platform,
+      artifactKind: spec.artifactKind,
+      output,
+      sourceUrl: downloaded.sourceUrl,
+    };
+  }
   const artifact =
     spec.artifactKind === 'source-archive'
       ? downloaded.bytes

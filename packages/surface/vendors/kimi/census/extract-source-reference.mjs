@@ -12,10 +12,13 @@ import {
   VERSION,
   WIRE_PROTOCOL_VERSION,
   cliOptions,
+  engineJournalTypes,
   hookEvents,
   hookSchemas,
   persistedSchemas,
+  retiredTypes,
   sourceFiles,
+  supplementalSchemas,
   transientTypes,
 } from './source-contract.mjs';
 
@@ -53,13 +56,22 @@ function sameInventory(label, actual, expected) {
   }
 }
 
+// 2.4.1 index lines are `//   <type>  <states>  <owner>`; every listed type is
+// durable (EVENT2_REGISTRY drains only `static durable = true` classes).
+const INDEXED_RECORD_TYPES = 67;
+
 function extractManifestInventory(source) {
+  const declared = /^\/\/ Index \((\d+) record types\)$/m.exec(source)?.[1];
+  if (Number(declared) !== INDEXED_RECORD_TYPES) fail(`wire manifest declares ${declared} record types`);
+  if (!source.includes('Every listed type is durable by construction')) fail('wire manifest durability rule changed');
   const entries = [];
   for (const line of source.split('\n')) {
-    const match = /^\/\/\s{3}(\S+)\s+.*?\s{2,}(persisted|transient)\s+(src\/\S+\.ts)$/.exec(line);
-    if (match) entries.push({ type: match[1], persistence: match[2], owner: match[3] });
+    const match = /^\/\/\s{3}(\S+)\s{2,}.*?\s{2,}(src\/\S+\.ts)$/.exec(line);
+    if (match) entries.push({ type: match[1], persistence: 'persisted', owner: match[2] });
   }
-  if (entries.length !== 48) fail(`wire manifest has ${entries.length} indexed records, expected 48`);
+  if (entries.length !== INDEXED_RECORD_TYPES) {
+    fail(`wire manifest has ${entries.length} indexed records, expected ${INDEXED_RECORD_TYPES}`);
+  }
   return entries;
 }
 
@@ -123,10 +135,11 @@ function validateProjectionAgainstManifest(manifest, schemas) {
 
   const compaction = schemas['context.apply_compaction'];
   const branches = (compaction.anyOf ?? []).map((branch) => sorted(branch.required ?? []).join(','));
+  // The manifest sketch omits contextCompactionBaseShape; its Zod source adds a required agentId to every branch.
   sameInventory('context.apply_compaction required branches', branches, [
-    'compactedCount,summary',
-    'compactedCount,contextSummary',
-    'count,summary',
+    'agentId,compactedCount,summary',
+    'agentId,compactedCount,contextSummary',
+    'agentId,count,summary',
   ]);
   for (const declaration of [
     '{ summary: string, compactedCount: number, contextSummary?: string }',
@@ -134,6 +147,33 @@ function validateProjectionAgainstManifest(manifest, schemas) {
     '{ summary: ContextMessage, count: number, compactedCount?: number }',
   ]) {
     if (!manifest.includes(declaration)) fail(`context.apply_compaction declaration is missing ${declaration}`);
+  }
+  // The manifest sketch omits the shared base; the pinned Zod source requires agentId in every branch.
+  if (!manifest.includes('shared base: ...contextCompactionBaseShape')) {
+    fail('context.apply_compaction no longer declares its shared base');
+  }
+}
+
+function validateSupplementalInventory(sourceRoot) {
+  const core = join(sourceRoot, 'packages/agent-core-v2/src');
+  const human = readFileSync(join(core, 'wire/human.ts'), 'utf8');
+  if (!/HUMAN_AGENT_DOMAIN = 'agent'/.test(human)) fail('engine journal domain is no longer agent');
+  const listed = [...human.matchAll(/'(agent\.[a-z.]+)'/g)].map((match) => match[1]);
+  sameInventory('engine journal record inventory', listed, engineJournalTypes);
+  const events = readFileSync(join(core, 'human/agent/events.ts'), 'utf8');
+  for (const type of engineJournalTypes) {
+    if (!events.includes(`type: '${type.slice('agent.'.length)}'`)) fail(`engine journal event ${type} is undeclared`);
+  }
+  const fork = readFileSync(join(core, 'wire/tree/fork.ts'), 'utf8');
+  for (const marker of ["type: 'context.undo'", "type: 'context.undone'", 'type: AGENT_SWITCHED_TYPE']) {
+    if (!fork.includes(marker)) fail(`undo switch records no longer write ${marker}`);
+  }
+  if (!readFileSync(join(core, 'wire/tree/tree.ts'), 'utf8').includes("AGENT_SWITCHED_TYPE = 'agent.switched'")) {
+    fail('agent.switched record type changed');
+  }
+  const owned = new Set(Object.keys(persistedSchemas));
+  for (const type of Object.keys(supplementalSchemas)) {
+    if (owned.has(type)) fail(`${type} is both a manifest and supplemental record`);
   }
 }
 
@@ -169,7 +209,11 @@ export function buildSourceReference({ sourceRoot, retrievedAt }) {
     transient.map((entry) => entry.type),
     transientTypes,
   );
+  for (const type of retiredTypes) {
+    if (entries.some((entry) => entry.type === type)) fail(`retired operation ${type} reappeared`);
+  }
   validateProjectionAgainstManifest(manifest, persistedSchemas);
+  validateSupplementalInventory(sourceRoot);
 
   const contributingFiles = sorted(
     new Set([...sourceFiles, ...entries.map((entry) => `packages/agent-core-v2/${entry.owner}`)]),
@@ -186,7 +230,10 @@ export function buildSourceReference({ sourceRoot, retrievedAt }) {
   const protocol = /WIRE_PROTOCOL_VERSION\s*=\s*['"]([^'"]+)['"]/.exec(protocolSource)?.[1];
   if (protocol !== WIRE_PROTOCOL_VERSION) fail(`expected wire protocol ${WIRE_PROTOCOL_VERSION}, got ${protocol}`);
 
-  const hookSource = readFileSync(join(sourceRoot, 'packages/agent-core-v2/src/agent/externalHooks/types.ts'), 'utf8');
+  const hookSource = readFileSync(
+    join(sourceRoot, 'packages/agent-core-v2/src/features/externalHooks/internal/types.ts'),
+    'utf8',
+  );
   const sourceHookEvents = extractStringArray(hookSource, 'HOOK_EVENT_TYPES');
   sameInventory('hook inventory', sourceHookEvents, hookEvents);
   sameInventory('hook schema inventory', Object.keys(hookSchemas), hookEvents);
@@ -209,7 +256,7 @@ export function buildSourceReference({ sourceRoot, retrievedAt }) {
     projection: {
       format: 'Agent Surface Model recursive schema subset',
       method:
-        'Curated recursive projection with top-level fields and requiredness checked against the release-generated wire manifest; every operation owner and expanded declaration source is digest-pinned.',
+        'Curated recursive projection with top-level fields and requiredness checked against the release-generated wire manifest; every record owner and expanded declaration source is digest-pinned. Engine-journal and undo records outside the manifest are inventory-checked against their pinned producers.',
       limitations:
         'Unknown/custom TypeScript values remain unconstrained; source-only declarations do not establish runtime behavior.',
     },
@@ -222,7 +269,12 @@ export function buildSourceReference({ sourceRoot, retrievedAt }) {
       transientOperationTypes: transient.length,
       persisted: persisted.map((entry) => ({ type: entry.type, owner: entry.owner })),
       transient: transient.map((entry) => ({ type: entry.type, owner: entry.owner })),
+      retired: retiredTypes,
       payloadSchemas: persistedSchemas,
+      supplemental: {
+        engineJournalTypes,
+        payloadSchemas: supplementalSchemas,
+      },
     },
     hooks: {
       events: hookEvents,
@@ -241,6 +293,6 @@ if (invokedDirectly) {
   mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, `${JSON.stringify(reference, null, 2)}\n`);
   console.log(
-    `wrote Kimi ${VERSION} source reference: ${reference.wire.persistedOperationTypes} persisted + ${reference.wire.transientOperationTypes} transient operations, ${reference.hooks.events.length} hooks`,
+    `wrote Kimi ${VERSION} source reference: ${reference.wire.persistedOperationTypes} durable records + ${Object.keys(reference.wire.supplemental.payloadSchemas).length} supplemental, ${reference.hooks.events.length} hooks`,
   );
 }

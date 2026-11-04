@@ -1,0 +1,9 @@
+# Hermes 0.21.5 attached-TUI interaction captures
+
+These selected native gateway frames were observed by the adapter's non-advertising connection while a real Hermes TUI was attached on macOS arm64. `interaction.live.test.ts` generated them after its assertions passed on 2026-11-04. The TUI denied the approval with Escape and answered the question with Enter; the adapter's structured turn-stop service interrupted the third scenario. Terminal output only coordinates UI readiness; all semantic assertions use native frames.
+
+The fixtures retain native keys, primitive types and order. Repeated envelopes for one native frame are deduplicated. Only the temporary root is redacted. No provider prompts, launch environments, gateway tokens or user credentials are retained. The provider ran on loopback with a disposable HOME; this run did not enforce an OS network-deny boundary.
+
+`installed-console.json` is the exact local materialization identity. Its SHA-256 is `6627b61d399a3e1a0d677f17faa10af0f84c5610ab00c7288b66d88b38e965df`. Python 3.11.9 came from uv's managed distribution, so its executable and standard-library hashes differ from GitHub's setup-python build. The source, Python dependency inventory, Node 22.22.0 executable and native TUI bundle match the previously acquired macOS arm64 artifact. These captures do not replace that artifact or attest a protected promotion.
+
+To reproduce, materialize the reviewed Hermes source with `scripts/materialize-installed-console.mjs`, then run the adapter tests with `HERMES_LIVE=1`, `PUPPETEER_HERMES_BIN`, `HERMES_PYTHON` and `HERMES_TUI_DIR` set to the generated paths. Use the pinned Node to launch Vitest. To retain passing interaction frames, also set `HERMES_INTERACTION_CAPTURE_DIR` and `PUPPETEER_LIVE_ARTIFACT` to the installed-console manifest. The manifest must describe the toolchain and console actually run.

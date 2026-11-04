@@ -1,0 +1,206 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "session.active_list",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Live sessions in this process, insertion order (not a DB browser).",
+  "payloadSchema": {
+    "$ref": "#/$defs/SessionActiveListParams",
+    "$defs": {
+      "SessionActiveListParams": {
+        "additionalProperties": false,
+        "properties": {
+          "current_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Current Session Id"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "SessionActiveListParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/SessionActiveListResult",
+    "$defs": {
+      "SessionActiveListResult": {
+        "additionalProperties": false,
+        "properties": {
+          "sessions": {
+            "items": {
+              "$ref": "#/$defs/SessionActiveItem"
+            },
+            "title": "Sessions",
+            "type": "array"
+          }
+        },
+        "required": ["sessions"],
+        "title": "SessionActiveListResult",
+        "type": "object"
+      },
+      "SessionActiveItem": {
+        "additionalProperties": false,
+        "description": "``server._session_live_item``.",
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_active": {
+            "title": "Last Active",
+            "type": "number"
+          },
+          "message_count": {
+            "title": "Message Count",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "preview": {
+            "title": "Preview",
+            "type": "string"
+          },
+          "session_key": {
+            "title": "Session Key",
+            "type": "string"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/$defs/LiveSessionStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current",
+          "id",
+          "last_active",
+          "message_count",
+          "model",
+          "preview",
+          "session_key",
+          "started_at",
+          "status",
+          "title"
+        ],
+        "title": "SessionActiveItem",
+        "type": "object"
+      },
+      "LiveSessionStatus": {
+        "enum": ["idle", "starting", "waiting", "working", "streaming", "resuming"],
+        "title": "LiveSessionStatus",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session.active_list"]
+      },
+      "params": {
+        "$ref": "#/$defs/SessionActiveListParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "SessionActiveListParams": {
+        "additionalProperties": false,
+        "properties": {
+          "current_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Current Session Id"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "SessionActiveListParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

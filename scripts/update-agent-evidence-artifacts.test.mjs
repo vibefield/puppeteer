@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mergeArtifactReport } from './update-agent-evidence-artifacts.mjs';
 
-test('complete artifact reports replace legacy identities and preserve claim linkage by platform', () => {
+test('complete acquisitions retain legacy claim identities separately from new executable bytes', () => {
   const evidence = {
     evidenceVersion: 2,
     vendor: 'fake',
@@ -27,10 +27,15 @@ test('complete artifact reports replace legacy identities and preserve claim lin
     ],
   };
   mergeArtifactReport({ evidence, report, requiredPlatforms: ['linux-x64'] });
-  assert.equal(evidence.artifacts[0].integrity.status, 'verified');
-  assert.equal(evidence.artifacts[0].artifactKind, 'installed-console');
-  assert.equal(evidence.artifacts[0].identity.environmentSha256, `sha256:${'b'.repeat(64)}`);
+  assert.equal(evidence.artifacts[0].integrity.status, 'legacy-missing-digest');
+  assert.equal(evidence.artifacts[1].id, 'fake-2.0.0-linux-x64');
+  assert.equal(evidence.artifacts[1].integrity.status, 'verified');
+  assert.equal(evidence.artifacts[1].artifactKind, 'installed-console');
+  assert.equal(evidence.artifacts[1].identity.environmentSha256, `sha256:${'b'.repeat(64)}`);
   assert.equal(evidence.claims[0].artifact, 'old');
+  const before = structuredClone(evidence);
+  mergeArtifactReport({ evidence, report, requiredPlatforms: ['linux-x64'] });
+  assert.deepEqual(evidence, before);
 });
 
 test('a report whose source URL carries a query, fragment or credentials never reaches evidence', () => {
@@ -158,7 +163,7 @@ test('different bytes under a reviewed version are an incident, not an update to
   assert.deepEqual(evidence, before);
 });
 
-test('a fixture corpus or a digest-less legacy entry is replaced by the acquired executable', () => {
+test('a fixture corpus or digest-less legacy capture never becomes an executable capture', () => {
   for (const existing of [
     { kind: 'rosetta-fixture-corpus', integrity: { status: 'verified', sha256: `sha256:${'f'.repeat(64)}` } },
     { integrity: { status: 'legacy-missing-digest' } },
@@ -171,8 +176,60 @@ test('a fixture corpus or a digest-less legacy entry is replaced by the acquired
       requiredPlatforms: ['darwin-arm64', 'linux-x64'],
     });
     assert.equal(evidence.artifacts[0].id, 'installed-fake-2.0.0-darwin-arm64');
-    assert.equal(evidence.artifacts[0].kind, undefined);
-    assert.equal(evidence.artifacts[0].acquiredAt, '2026-10-25T10:00:00.000Z');
-    assert.deepEqual(evidence.artifacts[0].integrity, { status: 'verified', sha256: `sha256:${'a'.repeat(64)}` });
+    assert.equal(evidence.artifacts[0].kind, existing.kind);
+    assert.equal(evidence.claims[0].artifact, evidence.artifacts[0].id);
+    assert.equal(evidence.artifacts[1].id, 'fake-2.0.0-darwin-arm64');
+    assert.equal(evidence.artifacts[1].kind, undefined);
+    assert.equal(evidence.artifacts[1].acquiredAt, '2026-10-25T10:00:00.000Z');
+    assert.deepEqual(evidence.artifacts[1].integrity, { status: 'verified', sha256: `sha256:${'a'.repeat(64)}` });
   }
+});
+
+test('an explicit retired-build identity stays historical and never donates claims to its replacement', () => {
+  const oldDigest = `sha256:${'a'.repeat(64)}`;
+  const newDigest = `sha256:${'b'.repeat(64)}`;
+  const evidence = {
+    evidenceVersion: 2,
+    vendor: 'fake',
+    vendorVersion: '2.0.0',
+    artifacts: [
+      {
+        id: 'fake-2.0.0-darwin-x64',
+        platform: 'darwin-x64',
+        kind: 'superseded-installed-console-build',
+        artifactKind: 'installed-console',
+        integrity: { status: 'verified', sha256: oldDigest },
+      },
+    ],
+    claims: [{ id: 'build-history', kind: 'inference', artifact: 'fake-2.0.0-darwin-x64', platform: 'darwin-x64' }],
+  };
+  const report = {
+    vendor: 'fake',
+    version: '2.0.0',
+    status: 'complete',
+    artifacts: [
+      {
+        key: `fake@2.0.0@darwin-x64@${newDigest}`,
+        platform: 'darwin-x64',
+        artifactKind: 'installed-console',
+        sha256: newDigest,
+        versionOutput: 'fake 2.0.0',
+        acquiredAt: '2026-11-04T00:00:00.000Z',
+      },
+    ],
+  };
+  const claims = structuredClone(evidence.claims);
+  mergeArtifactReport({ evidence, report, requiredPlatforms: ['darwin-x64'] });
+  assert.deepEqual(evidence.claims, claims);
+  assert.equal(evidence.artifacts[0].integrity.sha256, oldDigest);
+  assert.equal(evidence.artifacts[1].id, 'fake-2.0.0-darwin-x64-acquired');
+  assert.equal(evidence.artifacts[1].integrity.sha256, newDigest);
+  const once = structuredClone(evidence);
+  mergeArtifactReport({ evidence, report, requiredPlatforms: ['darwin-x64'] });
+  assert.deepEqual(evidence, once);
+  report.artifacts[0].sha256 = `sha256:${'c'.repeat(64)}`;
+  assert.throws(
+    () => mergeArtifactReport({ evidence, report, requiredPlatforms: ['darwin-x64'] }),
+    /same-version artifact change/,
+  );
 });

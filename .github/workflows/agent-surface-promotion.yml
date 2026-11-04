@@ -7,7 +7,12 @@ on:
         description: Candidate vendor
         required: true
         type: choice
-        options: [claude, codex, grok, hermes, kimi, opencode]
+        options: [antigravity, claude, codex, copilot, grok, hermes, kimi, opencode, pi]
+      antigravity_disposable_terms_approved:
+        description: Approve Antigravity native first-run terms only in disposable test homes, with interaction-data collection off
+        required: false
+        type: boolean
+        default: false
       version:
         description: Exact normalized vendor version
         required: true
@@ -128,8 +133,8 @@ jobs:
           node-version: ${{ steps.policy.outputs.nodeVersion }}
           package-manager-cache: false
 
-      - name: Download reviewed standalone executable bytes
-        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
+      - name: Download reviewed executable or release bundle bytes
+        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' || steps.policy.outputs.artifactKind == 'release-bundle' }}
         run: >-
           node scripts/download-agent-artifact.mjs
           --vendor "${{ inputs.vendor }}"
@@ -139,7 +144,7 @@ jobs:
           --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
 
       - name: Probe exact version in a disposable home
-        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
+        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' || steps.policy.outputs.artifactKind == 'release-bundle' }}
         run: >-
           node scripts/probe-agent-artifact.mjs
           --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
@@ -217,6 +222,16 @@ jobs:
         with:
           name: promotion-acquisition
           path: .agent-adaptation/acquisition.json
+          include-hidden-files: true
+          retention-days: 7
+
+      - name: Retain refused acquisition diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: promotion-acquisition-failure
+          path: .agent-adaptation/acquisition.json
+          if-no-files-found: ignore
           include-hidden-files: true
           retention-days: 7
 
@@ -311,7 +326,7 @@ jobs:
       # The version the platform report binds is the one these bytes print on this runner, not the acquisition
       # lane's own record of itself.
       - name: Probe the exact version again on the live runner
-        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
+        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' || steps.policy.outputs.artifactKind == 'release-bundle' }}
         run: >-
           node scripts/probe-agent-artifact.mjs
           --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
@@ -347,6 +362,20 @@ jobs:
           --platform "${{ matrix.platform }}"
           --expected ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
           --actual ".agent-adaptation/live-artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
+
+      # Keep only identity manifests and version output, including when exact reconstruction fails.
+      # Runtime environments, homes, logs and credentials are deliberately outside this artifact.
+      - name: Retain installed-console reconstruction evidence
+        if: ${{ always() && steps.policy.outputs.artifactKind == 'installed-console' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: promotion-reconstruction-${{ matrix.platform }}
+          path: |
+            .agent-adaptation/artifacts/${{ matrix.platform }}/installed-console.json
+            .agent-adaptation/live-artifacts/${{ matrix.platform }}/installed-console.json
+            .agent-adaptation/live-artifacts/${{ matrix.platform }}/version.txt
+          include-hidden-files: true
+          retention-days: 7
 
       - name: Bind the complete acquisition to candidate evidence
         run: >-
@@ -411,6 +440,38 @@ jobs:
           PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
         run: pnpm --filter @vibefield/puppeteer-adapter-kimi test --testTimeout=15000
+      - name: Antigravity pinned-real native-TUI/resume lane
+        if: ${{ inputs.vendor == 'antigravity' }}
+        env:
+          ANTIGRAVITY_LIVE: '1'
+          ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED: ${{ inputs.antigravity_disposable_terms_approved && '1' || '0' }}
+          PUPPETEER_ANTIGRAVITY_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+          PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+        run: pnpm --filter @vibefield/puppeteer-adapter-antigravity test --testTimeout=15000
+      - name: Copilot pinned-real native-TUI/resume lane
+        if: ${{ inputs.vendor == 'copilot' }}
+        env:
+          COPILOT_LIVE: '1'
+          PUPPETEER_COPILOT_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+          PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+        run: pnpm --filter @vibefield/puppeteer-adapter-copilot test --testTimeout=15000
+      - name: Pi pinned-real native-TUI/resume lane
+        if: ${{ inputs.vendor == 'pi' }}
+        env:
+          PI_LIVE: '1'
+          PUPPETEER_PI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.executablePath }}
+          PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+        run: pnpm --filter @vibefield/puppeteer-adapter-pi test --testTimeout=15000
+      - name: Revalidate the complete release bundle after the live test
+        if: ${{ steps.policy.outputs.artifactKind == 'release-bundle' }}
+        run: >-
+          node scripts/probe-agent-artifact.mjs
+          --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
+          --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
+          --version "${{ inputs.version }}"
+          --output ".agent-adaptation/live-artifacts/${{ matrix.platform }}/version.txt"
+          --home ".agent-adaptation/live-home/${{ matrix.platform }}"
+
       - run: >-
           node scripts/write-platform-verification.mjs
           --artifacts .agent-adaptation/acquisition.json

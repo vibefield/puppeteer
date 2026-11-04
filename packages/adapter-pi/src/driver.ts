@@ -59,6 +59,8 @@ export async function preparePiTuiSession(options: CreatePiTuiSessionOptions): P
     agentDir,
     options.sessionDir ?? options.env?.PI_CODING_AGENT_SESSION_DIR,
   );
+  // Pi 1.5.0 refuses `--provider` without `--model` at startup.
+  if (options.provider && !options.model) throw new Error('Pi requires a model whenever a provider is selected');
   const location = options.resume ? await findPiSession(sessionDir, options.resume) : undefined;
   if (options.resume && !location) throw new Error(`Pi session ${options.resume} was not found in ${sessionDir}`);
   const sessionId = location?.sessionId ?? randomUUID();
@@ -139,7 +141,8 @@ export async function preparePiTuiSession(options: CreatePiTuiSessionOptions): P
         runtimeSessionId,
         observationLevel: () => 'native-log',
         sessionFile: () => observer.sessionFile(),
-        // Pi writes the file only with its first assistant record; until then prepare refuses the id's resume
+        // Pi 1.5.0 creates the file (with its buffered setup entries) at the first user or assistant message; until then
+        // prepare refuses the id's resume
         durableRecordSeen: () => observer.sessionFile() !== undefined,
         events: { onCandidate: (listener) => (sessionDisposed ? () => undefined : events.onCandidate(listener)) },
         services: { prompt: { submit: (submission) => prompts.submit(submission) }, turnStop },

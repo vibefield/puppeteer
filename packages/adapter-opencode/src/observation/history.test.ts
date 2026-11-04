@@ -6,7 +6,7 @@ import type { OpenCodeSseRecord } from '../transport/event-stream.js';
 import { projectOpenCodeChild, projectOpenCodeHistory, projectOpenCodeStatus } from './history.js';
 import { OpenCodeNormalizer } from '../normalization/pipeline.js';
 
-const root = new URL('../../../surface/vendors/opencode/captures/opencode@1.18.16/turn/', import.meta.url);
+const root = new URL('../../../surface/vendors/opencode/captures/opencode@1.19.5/turn/', import.meta.url);
 
 function lines<T>(name: string): T[] {
   return readFileSync(fileURLToPath(new URL(name, root)), 'utf8')
@@ -78,7 +78,7 @@ describe('OpenCode durable history projection', () => {
 
   it('projects durable children as the same child-session lifecycle the live SSE path uses', () => {
     const childRoot = new URL(
-      '../../../surface/vendors/opencode/captures/opencode@1.18.16/task-child/',
+      '../../../surface/vendors/opencode/captures/opencode@1.19.5/task-child/',
       import.meta.url,
     );
     const parent = JSON.parse(

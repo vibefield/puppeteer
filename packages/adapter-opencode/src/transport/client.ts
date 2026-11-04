@@ -1,4 +1,6 @@
-/** Typed REST client for the verified OpenCode 1.18.16 adapter slice. */
+/** Typed REST client for the verified OpenCode 1.19.5 adapter slice. */
+
+import { loopbackFetch } from './loopback-fetch.js';
 
 export interface OpenCodeModelSelection {
   providerID: string;
@@ -104,7 +106,7 @@ export class OpenCodeClient {
     this.origin = origin.origin;
     this.directory = options.directory;
     this.authorization = basicAuthorization(options.username, options.password);
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.fetchImpl = options.fetchImpl ?? loopbackFetch;
   }
 
   eventUrl(): string {

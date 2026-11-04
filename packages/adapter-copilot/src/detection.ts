@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 
-export const COPILOT_SURFACE_VERSION = '1.0.80';
+export const COPILOT_SURFACE_VERSION = '1.0.105';
 export const COPILOT_EXECUTABLE_ENV = 'PUPPETEER_COPILOT_BIN';
 export const COPILOT_DEFAULT_EXECUTABLE = 'copilot';
 

@@ -9,11 +9,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-antigravity",
       "persona": "antigravity",
       "groundTruth": "packages/surface/vendors/antigravity/groundtruth.json",
-      "candidateVersion": "1.1.20",
-      "status": "baseline-pending",
-      "blockers": [
-        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed."
-      ]
+      "status": "verified",
+      "currentVersion": "1.1.20",
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "c5bb95e044083ffeaf723c1d464a81654624bd08",
+        "groundTruth": "packages/surface/vendors/antigravity/groundtruth.json",
+        "vendorVersion": "1.1.20",
+        "evidenceDigest": "2ef96d30abf608ac431ee432f1a1f029b5b2cf11da5de11297cf3ba4a0617a07",
+        "replayDigest": "c2ee090dbe6fb6f34dbec52a0ff85412cda9c5a07f4d6f2b0b01676808e0a044",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/claude/antigravity-1.1.20-promotion",
+        "runId": "41891078677",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:b454577f8531fcdf985c3cc2f9012904edfb4b0664e0edb9e237f6f345734e53"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:34a133764898d2c82cf9acd7434589723ba3da5af5cdfd5856d46cbe74d87681"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:d743ebe97c822b07d010a5a836804528119f926de9b136c9f5b2c0925fe710cb"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:98ce5e394600094bedcef0458ed47add891b46f2de237b5b9a1e03f8911ec305"
+          }
+        ]
+      },
+      "introducedInPuppeteer": "0.3.3"
     },
     {
       "id": "claude",
@@ -22,36 +50,36 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-claude",
       "persona": "claude",
       "groundTruth": "packages/surface/vendors/claude/groundtruth.json",
-      "currentVersion": "2.1.308",
+      "currentVersion": "2.1.311",
       "status": "verified",
       "introducedInPuppeteer": "0.1.8",
       "verification": {
         "provider": "github-actions",
-        "candidateCommit": "dd97faa3820318f1498969e62d50fbcfb776f57f",
+        "candidateCommit": "41da191dc41bf1652a5a8f1fb8f2e8a675d7e6c9",
         "groundTruth": "packages/surface/vendors/claude/groundtruth.json",
-        "vendorVersion": "2.1.308",
-        "evidenceDigest": "f63a5adec5e7965e7267858054bc232a888240deb702de7aa790df8b83417aba",
-        "replayDigest": "db49b9c58bbe45835b7f9b3cf54e419f440a4f77c6e28cc40a3a0e0412b45c04",
+        "vendorVersion": "2.1.311",
+        "evidenceDigest": "ebea0235d8fed36cbcafd22e87bc427afa32909f4f72f2c863ce09488dbbd81e",
+        "replayDigest": "32f68c418515d49c0fb13009b8c6f2afa555dc9bb7b69bd5fb30b8b62f3496f7",
         "repository": "vibefield/puppeteer",
-        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/adapt/upstream-claude-codex-grok",
-        "runId": "40242704606",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/claude/claude-2.1.311-promotion",
+        "runId": "41788894962",
         "runAttempt": "1",
         "platformArtifacts": [
           {
             "platform": "darwin-arm64",
-            "artifactSha256": "sha256:ca923c86ac84b30574a82331a05b6e066c27477a926ceaffe46a845a33e4dd37"
+            "artifactSha256": "sha256:85d8c08707fcfd1e78ffa0204eefbc6ec9e4fe22f375fb2767ef85d957ed3161"
           },
           {
             "platform": "darwin-x64",
-            "artifactSha256": "sha256:9a0bc140f5fb06e6366624d770371ef290e6731d1e84c4def5daf4df946d1b59"
+            "artifactSha256": "sha256:d34e1cb82015b050471a97574aa6ea6f698ecf3a97a61c980961f43ad9f838f5"
           },
           {
             "platform": "linux-x64",
-            "artifactSha256": "sha256:356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58"
+            "artifactSha256": "sha256:86dc1fcc69498159eaf15f446613e847010f9036bfbbdffd4c49350be8489ada"
           },
           {
             "platform": "windows-x64",
-            "artifactSha256": "sha256:c9796ba22a9221586b36371b36f5b66198d66eb4badf6a4cf4a5f7b07becea53"
+            "artifactSha256": "sha256:966f4b2ce962298f5dee6a942e8c47c8f97392e69e728e622319a98b259c0680"
           }
         ]
       }
@@ -63,36 +91,36 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-codex",
       "persona": "codex",
       "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
-      "currentVersion": "0.164.0",
+      "currentVersion": "0.166.0",
       "status": "verified",
       "introducedInPuppeteer": "0.1.8",
       "verification": {
         "provider": "github-actions",
-        "candidateCommit": "c20fef3a714b3061446ae360b7551cc821350884",
+        "candidateCommit": "a3001aa769aef9adc8cae564f8297622b4baba9c",
         "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
-        "vendorVersion": "0.164.0",
-        "evidenceDigest": "9f2d9d1634a16e4519a9f7df3da9fa8104e0531c1f48fedacb7e363998b3cc88",
-        "replayDigest": "1f66d0ac24d56902f182f74039d87371b542b20f8caac34a3211d006f84d99a0",
+        "vendorVersion": "0.166.0",
+        "evidenceDigest": "06d325cfda37b1e3267d71342d2825b335be1cc4b008630e7281977a3d6388b6",
+        "replayDigest": "fd509bc0b2e955f895fd8951ca5d276b5c3cdcf5e3bf34a868dc3f99731f22e6",
         "repository": "vibefield/puppeteer",
-        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/adapt/upstream-claude-codex-grok",
-        "runId": "40243951864",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/claude/codex-0.166.0-promotion",
+        "runId": "41784518623",
         "runAttempt": "1",
         "platformArtifacts": [
           {
             "platform": "darwin-arm64",
-            "artifactSha256": "sha256:d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf"
+            "artifactSha256": "sha256:39acf979729dd290f9a24ee38b2914e036c91b65952872e28ae2a6b88a7db7c1"
           },
           {
             "platform": "darwin-x64",
-            "artifactSha256": "sha256:d7e19691e0c1945612475ee8ab32e59ead55472e976b5cea1682d827d34dbba1"
+            "artifactSha256": "sha256:1361e18268866b7f9f5e8703fabcea0a2a990a439eedcce03940abb4ba9eaaeb"
           },
           {
             "platform": "linux-x64",
-            "artifactSha256": "sha256:b93f6811d3f653f0fb83be4050d857fb9abbb111dfa2ce160563327daff7f306"
+            "artifactSha256": "sha256:b8a11fedf24b2dfb59a70c9e52b030f9a508dcd49cd2dd0d41956f4c785156b8"
           },
           {
             "platform": "windows-x64",
-            "artifactSha256": "sha256:6f267830b029ee25d9339864aa867cd45de9f8fd4c5ea007d2e63c13a0c66d36"
+            "artifactSha256": "sha256:9d563ee4e0441ff9d59d612013e0460ddf8e5709735c2d9f6b98b7ef8ca4eb42"
           }
         ]
       }
@@ -104,11 +132,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-copilot",
       "persona": "copilot",
       "groundTruth": "packages/surface/vendors/copilot/groundtruth.json",
-      "candidateVersion": "1.0.80",
-      "status": "baseline-pending",
-      "blockers": [
-        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed."
-      ]
+      "status": "verified",
+      "currentVersion": "1.0.105",
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "fee155dead156decaf24451901c7f7053ff37da5",
+        "groundTruth": "packages/surface/vendors/copilot/groundtruth.json",
+        "vendorVersion": "1.0.105",
+        "evidenceDigest": "a9f0583c05592ca38fe5823a3718689d432a4cef1de738f43bec28587d90e0a0",
+        "replayDigest": "102b5cf77785ad2b67b801d3888367fc421312c0c67228350109b89cd1d5be51",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/claude/copilot-1.0.105-promotion",
+        "runId": "41804202048",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:5fd7d15ff02deb08a58593b1b488015bb52c1686014b80b5509e28263cb3ad70"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:83e8dfacc3e79e55e4ab723edaf5b9a38d83aec85e9e115a131b973c98265801"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:3bd8bdc75670d7b4ec445725f6a5b9af66ee7ec49e6194646e4a40a0bc09091c"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:ab6d710d551c137c766a6c8ef6ee2e7779c106870c96b9a91a91fa17b9748624"
+          }
+        ]
+      },
+      "introducedInPuppeteer": "0.3.3"
     },
     {
       "id": "grok",
@@ -158,11 +214,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-hermes",
       "persona": "hermes",
       "groundTruth": "packages/surface/vendors/hermes/groundtruth.json",
-      "candidateVersion": "0.20.0",
-      "status": "baseline-pending",
-      "blockers": [
-        "The protected four-platform locked installed-console reconstruction and adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."
-      ]
+      "status": "verified",
+      "currentVersion": "0.21.5",
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "be6ac139d21a673587f923e694b453f701047440",
+        "groundTruth": "packages/surface/vendors/hermes/groundtruth.json",
+        "vendorVersion": "0.21.5",
+        "evidenceDigest": "3b40919b6210b9f638dbb2cca00da47eba6594635afb540bb23d11353992e0fe",
+        "replayDigest": "854a53b1cfd4b818af5325701e4fb38aaec8c4dbbb1c12d71bb5e447a9e596dd",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/claude/hermes-final-reconstruction",
+        "runId": "41885545374",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:b8974fc6de9c980eec2f3197f6ed2fcdc92436baedbb0e83d5ea985ec5a33c59"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:8fa21f355cfe28848000e7bfc17d8cdc046dd90a6049bbfb92a6f78ef23ac4d6"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:27e615e31b3b8387ddf66df2e0a1eb846f49b4e3061e655caf80c3767ec724dc"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:991e506fee052fa84639d4ec5f3e63687fba80933face54fd9fa80c3a33217e0"
+          }
+        ]
+      },
+      "introducedInPuppeteer": "0.3.3"
     },
     {
       "id": "kimi",
@@ -171,11 +255,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-kimi",
       "persona": "kimi",
       "groundTruth": "packages/surface/vendors/kimi/groundtruth.json",
-      "candidateVersion": "0.34.0",
-      "status": "baseline-pending",
-      "blockers": [
-        "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."
-      ]
+      "status": "verified",
+      "currentVersion": "2.4.1",
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "1f7d5995ec98fdfe7b0711f810609a22a40452bb",
+        "groundTruth": "packages/surface/vendors/kimi/groundtruth.json",
+        "vendorVersion": "2.4.1",
+        "evidenceDigest": "32538767ff8cf45f6a30bca6f430d43ab41c590109eeb6d84eca1cb6dcbd63b0",
+        "replayDigest": "73a8a8b7b6ae93adcfdec7c753a1c87064c3e7dafc9915c907944946183e7ba3",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/claude/kimi-2.4.1-promotion",
+        "runId": "41798646315",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:1a8539eae87ffbd9bf480b8a47beafc9668f66b048b96cfa631310dc12dab3a7"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:cfd1134641fe864b4b55134668ad56124a679286b56342fad9d5b8d624932fc8"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:f2b3634c17b604e5b0f0c578b6a787fd01bcafb40a3c0dd62203ae14ff2ea068"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:f785736784a1d3cdbf71d76c1e09826acff6267d38f4b277bece47194b948dce"
+          }
+        ]
+      },
+      "introducedInPuppeteer": "0.3.3"
     },
     {
       "id": "opencode",
@@ -184,11 +296,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-opencode",
       "persona": "opencode",
       "groundTruth": "packages/surface/vendors/opencode/groundtruth.json",
-      "candidateVersion": "1.18.16",
-      "status": "baseline-pending",
-      "blockers": [
-        "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."
-      ]
+      "status": "verified",
+      "currentVersion": "1.19.5",
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "56b06c59d4b68c2d72715f7539036d04c1c576ca",
+        "groundTruth": "packages/surface/vendors/opencode/groundtruth.json",
+        "vendorVersion": "1.19.5",
+        "evidenceDigest": "2268943c23113db9be8f379df6ddad368c4ed98b6ac300c7af74caac7d5fca75",
+        "replayDigest": "ac9a87f333b3c85ad3083653f523d9e7859c3d3261ebf8a3a84337bc63802280",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/claude/opencode-1.19.5-promotion",
+        "runId": "41794896986",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:feaafead8cd563af0c2dcb386b0757e4355e327ebb6bd1aaad5440fe2f83596c"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:4b15c8aab1844936e9e1d1327213355d94c820de8c7084fad88d3812a067d3d0"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:7df4e4136301f16589b0f30bf91a61380fca5f8ef22dd36570f5ebe1d4ec802c"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:d7b473388cb62555970e400ce54cdfb6d6573608beea6f8fdf382cd1a698a3fa"
+          }
+        ]
+      },
+      "introducedInPuppeteer": "0.3.3"
     },
     {
       "id": "pi",
@@ -197,11 +337,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-pi",
       "persona": "pi",
       "groundTruth": "packages/surface/vendors/pi/groundtruth.json",
-      "candidateVersion": "0.84.3",
-      "status": "baseline-pending",
-      "blockers": [
-        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed."
-      ]
+      "status": "verified",
+      "currentVersion": "1.5.0",
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "fee155dead156decaf24451901c7f7053ff37da5",
+        "groundTruth": "packages/surface/vendors/pi/groundtruth.json",
+        "vendorVersion": "1.5.0",
+        "evidenceDigest": "9c7f8b2bd3c8277225efabfb15ab843055e6f13d6e7eed78c796b29e38f3aad1",
+        "replayDigest": "9b69dabcbd9e143e2167451c0ce2caf728a4038b738e65684f8350ef0ce45bf2",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/claude/pi-1.5.0-promotion",
+        "runId": "41806331805",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:f6f3109fe100f7a72e9d7fd65c22c527771eb44c72f42fe02c9fe8391c0f3c4e"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:6c3615bf1855efc350c86861565bc02e7cf1dbdce49224fa84b27e5a2666881e"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:3262e81938a6dfbaa1cc65eb87cda26dfb0b9b3ffce69f5d88e512d827b9f57d"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:bb4033903fa668f6c676a430921d0683e78b167775fa9353bbf2db0707c4a8c9"
+          }
+        ]
+      },
+      "introducedInPuppeteer": "0.3.3"
     }
   ]
 }

@@ -1,9 +1,12 @@
 # opencode invocation grammar evidence
 
-Captured 2026-09-28 from the installed native CLI, version 1.18.32, using
-`--version` and `--help`. These fixtures describe the command parser, not session
-state inferred from terminal text. Machine-specific diagnostics are omitted;
-trailing whitespace is normalized.
+Captured 2026-11-03 from the governed linux-x64 1.19.5 artifact
+(`packages/surface/vendors/opencode/probes/opencode@1.19.5/help.txt`) in an
+isolated home. These fixtures describe the command parser, not session state
+inferred from terminal text. Machine-specific diagnostics are omitted; trailing
+whitespace is normalized. Against the previous 1.18.32 fixture the only change is
+the `import` description (1.19.5 imports a JSON file only, no URL); every command,
+alias, and root option is unchanged.
 The bidirectional option and command census checks each public spelling against
 the grammar table. The matrix separately checks classification and mapping.
 

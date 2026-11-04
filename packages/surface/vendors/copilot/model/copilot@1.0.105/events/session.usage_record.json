@@ -1,0 +1,750 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "session.usage_record",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "usage": {
+        "type": "object",
+        "properties": {
+          "acceptedPredictionTokens": {
+            "type": "number"
+          },
+          "accounting": {
+            "type": "object",
+            "properties": {
+              "sequence": {
+                "type": "number"
+              },
+              "sourceSessionId": {
+                "type": "string"
+              },
+              "usageId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sequence",
+              "sourceSessionId",
+              "usageId"
+            ],
+            "additionalProperties": true
+          },
+          "aiCreditsStatus": {
+            "type": "string"
+          },
+          "apiCallId": {
+            "type": "string"
+          },
+          "apiEndpoint": {
+            "type": "string"
+          },
+          "availableToolCount": {
+            "type": "number"
+          },
+          "byokKind": {
+            "type": "string"
+          },
+          "cacheDetailsReported": {
+            "type": "boolean"
+          },
+          "cacheExpiresAt": {
+            "type": "string"
+          },
+          "cachePolicyTtlSeconds": {
+            "type": "number"
+          },
+          "cacheReadTokens": {
+            "type": "number"
+          },
+          "cacheTtlSeconds": {
+            "type": "number"
+          },
+          "cacheWriteTokens": {
+            "type": "number"
+          },
+          "contentFilterTriggered": {
+            "type": "boolean"
+          },
+          "copilotUsage": {
+            "type": "object",
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "tokenDetails": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "batchSize": {},
+                    "costPerBatch": {},
+                    "model": {},
+                    "tokenCount": {},
+                    "tokenType": {}
+                  },
+                  "required": [
+                    "batchSize",
+                    "costPerBatch",
+                    "tokenCount",
+                    "tokenType"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "totalNanoAiu": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "totalNanoAiu"
+            ],
+            "additionalProperties": true
+          },
+          "cost": {
+            "type": "number"
+          },
+          "customToolCallCount": {
+            "type": "number"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "finishReason": {
+            "type": "string"
+          },
+          "frontierSource": {
+            "type": "string"
+          },
+          "fusion": {
+            "type": "object",
+            "properties": {
+              "commitId": {
+                "type": "string"
+              },
+              "conversationScope": {
+                "type": "string"
+              },
+              "fusionId": {
+                "type": "string"
+              },
+              "hasUserSteering": {
+                "type": "boolean"
+              },
+              "pattern": {
+                "type": "string"
+              },
+              "phaseId": {
+                "type": "string"
+              },
+              "phaseKind": {
+                "type": "string"
+              },
+              "policy": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "sourceModel": {
+                "type": "string"
+              },
+              "sourcePhaseId": {
+                "type": "string"
+              },
+              "syntheticModel": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fusionId",
+              "pattern",
+              "policy",
+              "syntheticModel"
+            ],
+            "additionalProperties": true
+          },
+          "initiator": {
+            "type": "string"
+          },
+          "inputTokens": {
+            "type": "number"
+          },
+          "interactionType": {
+            "type": "string"
+          },
+          "interTokenLatencyMs": {
+            "type": "number"
+          },
+          "isAuto": {
+            "type": "boolean"
+          },
+          "isByok": {
+            "type": "boolean"
+          },
+          "maxOutputTokens": {
+            "type": "number"
+          },
+          "maxPromptTokens": {
+            "type": "number"
+          },
+          "model": {
+            "type": "string"
+          },
+          "modelDisplayName": {
+            "type": "string"
+          },
+          "modelProvider": {
+            "type": "string"
+          },
+          "numToolCalls": {
+            "type": "number"
+          },
+          "orphanToolCallCount": {
+            "type": "number"
+          },
+          "outputTokens": {
+            "type": "number"
+          },
+          "outputTtftMs": {
+            "type": "number"
+          },
+          "parentToolCallId": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "label"
+            ],
+            "additionalProperties": true
+          },
+          "providerCallId": {
+            "type": "string"
+          },
+          "providerType": {
+            "type": "string"
+          },
+          "quotaSnapshots": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "reasoningEffort": {
+            "type": "string"
+          },
+          "reasoningSummary": {
+            "type": "string"
+          },
+          "reasoningTokens": {
+            "type": "number"
+          },
+          "rejectedPredictionTokens": {
+            "type": "number"
+          },
+          "requestBodyBytes": {
+            "type": "number"
+          },
+          "requestBodyCompressionFallback": {
+            "type": "string"
+          },
+          "requestBodyCompressionFallbackFrom": {
+            "type": "string"
+          },
+          "requestBodyCompressionRejectedStatus": {
+            "type": "number"
+          },
+          "requestBodyEncoding": {
+            "type": "string"
+          },
+          "requestBodyWireBytes": {
+            "type": "number"
+          },
+          "rte": {
+            "type": "boolean"
+          },
+          "serviceRequestId": {
+            "type": "string"
+          },
+          "thinkingDroppedBlocks": {
+            "type": "number"
+          },
+          "thinkingDroppedReasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timeToFirstTokenMs": {
+            "type": "number"
+          },
+          "toolCounts": {
+            "type": "object",
+            "properties": {
+              "bash": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          },
+          "toolTokenCount": {
+            "type": "number"
+          },
+          "transport": {
+            "type": "string"
+          },
+          "unmatchedToolResultCount": {
+            "type": "number"
+          },
+          "websocketFallbackAfterMs": {
+            "type": "number"
+          },
+          "websocketFallbackCloseCode": {
+            "type": "number"
+          },
+          "websocketFallbackErrorKind": {
+            "type": "string"
+          },
+          "websocketFallbackReason": {
+            "type": "string"
+          },
+          "websocketFallbackReconnectAttempted": {
+            "type": "boolean"
+          },
+          "websocketFallbackStartedThisCall": {
+            "type": "boolean"
+          },
+          "websocketFallbackStatusCode": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "usage"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "usage": {
+            "type": "object",
+            "properties": {
+              "acceptedPredictionTokens": {
+                "type": "number"
+              },
+              "accounting": {
+                "type": "object",
+                "properties": {
+                  "sequence": {
+                    "type": "number"
+                  },
+                  "sourceSessionId": {
+                    "type": "string"
+                  },
+                  "usageId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sequence",
+                  "sourceSessionId",
+                  "usageId"
+                ],
+                "additionalProperties": true
+              },
+              "aiCreditsStatus": {
+                "type": "string"
+              },
+              "apiCallId": {
+                "type": "string"
+              },
+              "apiEndpoint": {
+                "type": "string"
+              },
+              "availableToolCount": {
+                "type": "number"
+              },
+              "byokKind": {
+                "type": "string"
+              },
+              "cacheDetailsReported": {
+                "type": "boolean"
+              },
+              "cacheExpiresAt": {
+                "type": "string"
+              },
+              "cachePolicyTtlSeconds": {
+                "type": "number"
+              },
+              "cacheReadTokens": {
+                "type": "number"
+              },
+              "cacheTtlSeconds": {
+                "type": "number"
+              },
+              "cacheWriteTokens": {
+                "type": "number"
+              },
+              "contentFilterTriggered": {
+                "type": "boolean"
+              },
+              "copilotUsage": {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "tokenDetails": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "batchSize": {},
+                        "costPerBatch": {},
+                        "model": {},
+                        "tokenCount": {},
+                        "tokenType": {}
+                      },
+                      "required": [
+                        "batchSize",
+                        "costPerBatch",
+                        "tokenCount",
+                        "tokenType"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "totalNanoAiu": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "totalNanoAiu"
+                ],
+                "additionalProperties": true
+              },
+              "cost": {
+                "type": "number"
+              },
+              "customToolCallCount": {
+                "type": "number"
+              },
+              "duration": {
+                "type": "number"
+              },
+              "finishReason": {
+                "type": "string"
+              },
+              "frontierSource": {
+                "type": "string"
+              },
+              "fusion": {
+                "type": "object",
+                "properties": {
+                  "commitId": {
+                    "type": "string"
+                  },
+                  "conversationScope": {
+                    "type": "string"
+                  },
+                  "fusionId": {
+                    "type": "string"
+                  },
+                  "hasUserSteering": {
+                    "type": "boolean"
+                  },
+                  "pattern": {
+                    "type": "string"
+                  },
+                  "phaseId": {
+                    "type": "string"
+                  },
+                  "phaseKind": {
+                    "type": "string"
+                  },
+                  "policy": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "sourceModel": {
+                    "type": "string"
+                  },
+                  "sourcePhaseId": {
+                    "type": "string"
+                  },
+                  "syntheticModel": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "fusionId",
+                  "pattern",
+                  "policy",
+                  "syntheticModel"
+                ],
+                "additionalProperties": true
+              },
+              "initiator": {
+                "type": "string"
+              },
+              "inputTokens": {
+                "type": "number"
+              },
+              "interactionType": {
+                "type": "string"
+              },
+              "interTokenLatencyMs": {
+                "type": "number"
+              },
+              "isAuto": {
+                "type": "boolean"
+              },
+              "isByok": {
+                "type": "boolean"
+              },
+              "maxOutputTokens": {
+                "type": "number"
+              },
+              "maxPromptTokens": {
+                "type": "number"
+              },
+              "model": {
+                "type": "string"
+              },
+              "modelDisplayName": {
+                "type": "string"
+              },
+              "modelProvider": {
+                "type": "string"
+              },
+              "numToolCalls": {
+                "type": "number"
+              },
+              "orphanToolCallCount": {
+                "type": "number"
+              },
+              "outputTokens": {
+                "type": "number"
+              },
+              "outputTtftMs": {
+                "type": "number"
+              },
+              "parentToolCallId": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "label"
+                ],
+                "additionalProperties": true
+              },
+              "providerCallId": {
+                "type": "string"
+              },
+              "providerType": {
+                "type": "string"
+              },
+              "quotaSnapshots": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "reasoningEffort": {
+                "type": "string"
+              },
+              "reasoningSummary": {
+                "type": "string"
+              },
+              "reasoningTokens": {
+                "type": "number"
+              },
+              "rejectedPredictionTokens": {
+                "type": "number"
+              },
+              "requestBodyBytes": {
+                "type": "number"
+              },
+              "requestBodyCompressionFallback": {
+                "type": "string"
+              },
+              "requestBodyCompressionFallbackFrom": {
+                "type": "string"
+              },
+              "requestBodyCompressionRejectedStatus": {
+                "type": "number"
+              },
+              "requestBodyEncoding": {
+                "type": "string"
+              },
+              "requestBodyWireBytes": {
+                "type": "number"
+              },
+              "rte": {
+                "type": "boolean"
+              },
+              "serviceRequestId": {
+                "type": "string"
+              },
+              "thinkingDroppedBlocks": {
+                "type": "number"
+              },
+              "thinkingDroppedReasons": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "timeToFirstTokenMs": {
+                "type": "number"
+              },
+              "toolCounts": {
+                "type": "object",
+                "properties": {
+                  "bash": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": true
+              },
+              "toolTokenCount": {
+                "type": "number"
+              },
+              "transport": {
+                "type": "string"
+              },
+              "unmatchedToolResultCount": {
+                "type": "number"
+              },
+              "websocketFallbackAfterMs": {
+                "type": "number"
+              },
+              "websocketFallbackCloseCode": {
+                "type": "number"
+              },
+              "websocketFallbackErrorKind": {
+                "type": "string"
+              },
+              "websocketFallbackReason": {
+                "type": "string"
+              },
+              "websocketFallbackReconnectAttempted": {
+                "type": "boolean"
+              },
+              "websocketFallbackStartedThisCall": {
+                "type": "boolean"
+              },
+              "websocketFallbackStatusCode": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "model"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "usage"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-runtime"
+    ],
+    "shape": [
+      "copilot-rosetta-runtime"
+    ],
+    "carrier": [
+      "copilot-rosetta-runtime"
+    ]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/copilot@1.0.105/basic-chat/events.jsonl",
+  "notes": "session-state/*/events.jsonl; 9 retained observation(s) in the 1.0.105 sources; source evidence: writer."
+}

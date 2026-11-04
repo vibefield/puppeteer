@@ -404,15 +404,9 @@
   &quot;additionalProperties&quot;: true
 }</pre></details></div></details></article><article id="event-conversation-message-index-document" class="event-card" data-search="conversation-message-index:document brain/*/.system_generated/messages/read.json agent-local json-document verified-headless conversation-message-index" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">conversation-message-index:document</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Native name</dt><dd><code>brain/*/.system_generated/messages/read.json</code></dd></div><div><dt>Channel</dt><dd><a href="#channels"><code>conversation-message-index</code></a></dd></div><div><dt>Transport</dt><dd>json-document</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints.&quot;]}</code></dd></div></dl><p>brain/*/.system_generated/messages/read.json; 1 retained observation(s); source evidence: fixture.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-rosetta-observed">antigravity-rosetta-observed</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
-  &quot;properties&quot;: {
-    &quot;&lt;dynamic&gt;&quot;: {
-      &quot;type&quot;: &quot;boolean&quot;
-    }
-  },
-  &quot;required&quot;: [
-    &quot;&lt;dynamic&gt;&quot;
-  ],
-  &quot;additionalProperties&quot;: true
+  &quot;additionalProperties&quot;: {
+    &quot;type&quot;: &quot;boolean&quot;
+  }
 }</pre></details></div></details></article><article id="event-conversation-messages-document" class="event-card" data-search="conversation-messages:document brain/*/.system_generated/messages/*.json agent-local json-document verified-headless conversation-messages" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">conversation-messages:document</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Native name</dt><dd><code>brain/*/.system_generated/messages/*.json</code></dd></div><div><dt>Channel</dt><dd><a href="#channels"><code>conversation-messages</code></a></dd></div><div><dt>Transport</dt><dd>json-document</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints.&quot;]}</code></dd></div></dl><p>brain/*/.system_generated/messages/*.json; 1 retained observation(s); source evidence: fixture.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-rosetta-observed">antigravity-rosetta-observed</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;properties&quot;: {
@@ -453,77 +447,71 @@
   &quot;properties&quot;: {
     &quot;conversations&quot;: {
       &quot;type&quot;: &quot;object&quot;,
-      &quot;properties&quot;: {
-        &quot;&lt;dynamic&gt;&quot;: {
-          &quot;type&quot;: &quot;object&quot;,
-          &quot;properties&quot;: {
-            &quot;is_internal&quot;: {
-              &quot;type&quot;: &quot;boolean&quot;
-            },
-            &quot;last_modified_time&quot;: {
-              &quot;type&quot;: &quot;string&quot;
-            },
-            &quot;summary&quot;: {
-              &quot;type&quot;: &quot;object&quot;,
-              &quot;properties&quot;: {
-                &quot;AgentName&quot;: {
-                  &quot;type&quot;: &quot;string&quot;
-                },
-                &quot;AppDataDir&quot;: {
-                  &quot;type&quot;: &quot;string&quot;
-                },
-                &quot;ID&quot;: {
-                  &quot;type&quot;: &quot;string&quot;
-                },
-                &quot;Loaded&quot;: {
-                  &quot;type&quot;: &quot;boolean&quot;
-                },
-                &quot;NumSteps&quot;: {
-                  &quot;type&quot;: &quot;number&quot;
-                },
-                &quot;Preview&quot;: {
-                  &quot;type&quot;: &quot;string&quot;
-                },
-                &quot;ProjectID&quot;: {
-                  &quot;type&quot;: &quot;string&quot;
-                },
-                &quot;Title&quot;: {
-                  &quot;type&quot;: &quot;string&quot;
-                },
-                &quot;UpdatedAt&quot;: {
-                  &quot;type&quot;: &quot;string&quot;
-                },
-                &quot;WorkspaceURIs&quot;: {
-                  &quot;type&quot;: &quot;null&quot;
-                }
-              },
-              &quot;required&quot;: [
-                &quot;AgentName&quot;,
-                &quot;AppDataDir&quot;,
-                &quot;ID&quot;,
-                &quot;Loaded&quot;,
-                &quot;NumSteps&quot;,
-                &quot;Preview&quot;,
-                &quot;ProjectID&quot;,
-                &quot;Title&quot;,
-                &quot;UpdatedAt&quot;,
-                &quot;WorkspaceURIs&quot;
-              ],
-              &quot;additionalProperties&quot;: true
-            }
+      &quot;additionalProperties&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;is_internal&quot;: {
+            &quot;type&quot;: &quot;boolean&quot;
           },
-          &quot;required&quot;: [
-            &quot;is_internal&quot;,
-            &quot;last_modified_time&quot;,
-            &quot;summary&quot;
-          ],
-          &quot;additionalProperties&quot;: true
-        }
-      },
-      &quot;required&quot;: [
-        &quot;&lt;dynamic&gt;&quot;
-      ],
-      &quot;additionalProperties&quot;: true
+          &quot;last_modified_time&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;summary&quot;: {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;properties&quot;: {
+              &quot;AgentName&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;AppDataDir&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;ID&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;Loaded&quot;: {
+                &quot;type&quot;: &quot;boolean&quot;
+              },
+              &quot;NumSteps&quot;: {
+                &quot;type&quot;: &quot;number&quot;
+              },
+              &quot;Preview&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;ProjectID&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;Title&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;UpdatedAt&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;WorkspaceURIs&quot;: {
+                &quot;type&quot;: &quot;null&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;AgentName&quot;,
+              &quot;AppDataDir&quot;,
+              &quot;ID&quot;,
+              &quot;Loaded&quot;,
+              &quot;NumSteps&quot;,
+              &quot;Preview&quot;,
+              &quot;ProjectID&quot;,
+              &quot;Title&quot;,
+              &quot;UpdatedAt&quot;,
+              &quot;WorkspaceURIs&quot;
+            ],
+            &quot;additionalProperties&quot;: true
+          }
+        },
+        &quot;required&quot;: [
+          &quot;is_internal&quot;,
+          &quot;last_modified_time&quot;,
+          &quot;summary&quot;
+        ],
+        &quot;additionalProperties&quot;: true
+      }
     }
   },
   &quot;required&quot;: [
@@ -1426,15 +1414,9 @@
   &quot;additionalProperties&quot;: true
 }</pre></details></div></details></article><article id="event-implicit-protobuf-artifact" class="event-card" data-search="implicit-protobuf:artifact implicit/*.pb agent-local file-artifact unverified implicit-protobuf" data-direction="agent-local" data-confidence="unverified"><details><summary><span class="event-name">implicit-protobuf:artifact</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Native name</dt><dd><code>implicit/*.pb</code></dd></div><div><dt>Channel</dt><dd><a href="#channels"><code>implicit-protobuf</code></a></dd></div><div><dt>Transport</dt><dd>file-artifact</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>implicit/*.pb; non-record native artifact tracked by the complete Rosetta stream inventory.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-rosetta-contract">antigravity-rosetta-contract</a></div></div></details></article><article id="event-installation-id-artifact" class="event-card" data-search="installation-id:artifact installation_id agent-local file-artifact unverified installation-id" data-direction="agent-local" data-confidence="unverified"><details><summary><span class="event-name">installation-id:artifact</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Native name</dt><dd><code>installation_id</code></dd></div><div><dt>Channel</dt><dd><a href="#channels"><code>installation-id</code></a></dd></div><div><dt>Transport</dt><dd>file-artifact</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>installation_id; non-record native artifact tracked by the complete Rosetta stream inventory.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-rosetta-contract">antigravity-rosetta-contract</a></div></div></details></article><article id="event-jetski-state-artifact" class="event-card" data-search="jetski-state:artifact jetski_state.pbtxt agent-local file-artifact unverified jetski-state" data-direction="agent-local" data-confidence="unverified"><details><summary><span class="event-name">jetski-state:artifact</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Native name</dt><dd><code>jetski_state.pbtxt</code></dd></div><div><dt>Channel</dt><dd><a href="#channels"><code>jetski-state</code></a></dd></div><div><dt>Transport</dt><dd>file-artifact</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>jetski_state.pbtxt; non-record native artifact tracked by the complete Rosetta stream inventory.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-rosetta-contract">antigravity-rosetta-contract</a></div></div></details></article><article id="event-knowledge-artifact" class="event-card" data-search="knowledge:artifact knowledge/**/* agent-local file-artifact unverified knowledge" data-direction="agent-local" data-confidence="unverified"><details><summary><span class="event-name">knowledge:artifact</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Native name</dt><dd><code>knowledge/**/*</code></dd></div><div><dt>Channel</dt><dd><a href="#channels"><code>knowledge</code></a></dd></div><div><dt>Transport</dt><dd>file-artifact</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>knowledge/**/*; non-record native artifact tracked by the complete Rosetta stream inventory.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-rosetta-contract">antigravity-rosetta-contract</a></div></div></details></article><article id="event-last-check-artifact" class="event-card" data-search="last-check:artifact last_check.timestamp agent-local file-artifact unverified last-check" data-direction="agent-local" data-confidence="unverified"><details><summary><span class="event-name">last-check:artifact</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence unverified">unverified</span></span></summary><div class="event-body"><dl><div><dt>Native name</dt><dd><code>last_check.timestamp</code></dd></div><div><dt>Channel</dt><dd><a href="#channels"><code>last-check</code></a></dd></div><div><dt>Transport</dt><dd>file-artifact</dd></div><div><dt>Trigger</dt><dd>—</dd></div></dl><p>last_check.timestamp; non-record native artifact tracked by the complete Rosetta stream inventory.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-rosetta-contract">antigravity-rosetta-contract</a></div></div></details></article><article id="event-last-conversations-document" class="event-card" data-search="last-conversations:document cache/last_conversations.json agent-local json-document verified-headless last-conversations" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">last-conversations:document</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Native name</dt><dd><code>cache/last_conversations.json</code></dd></div><div><dt>Channel</dt><dd><a href="#channels"><code>last-conversations</code></a></dd></div><div><dt>Transport</dt><dd>json-document</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints.&quot;]}</code></dd></div></dl><p>cache/last_conversations.json; 3 retained observation(s); source evidence: fixture.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-rosetta-observed">antigravity-rosetta-observed</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
-  &quot;properties&quot;: {
-    &quot;&lt;dynamic&gt;&quot;: {
-      &quot;type&quot;: &quot;string&quot;
-    }
-  },
-  &quot;required&quot;: [
-    &quot;&lt;dynamic&gt;&quot;
-  ],
-  &quot;additionalProperties&quot;: true
+  &quot;additionalProperties&quot;: {
+    &quot;type&quot;: &quot;string&quot;
+  }
 }</pre></details></div></details></article><article id="event-LIST_DIRECTORY" class="event-card" data-search="list_directory agent-local jsonl-record verified-headless transcript" data-direction="agent-local" data-confidence="verified-headless"><details><summary><span class="event-name">LIST_DIRECTORY</span><span class="event-meta"><span class="direction">agent-local</span><span class="confidence verified-headless">verified-headless</span></span></summary><div class="event-body"><dl><div><dt>Channel</dt><dd><a href="#channels"><code>transcript</code></a></dd></div><div><dt>Transport</dt><dd>jsonl-record</dd></div><div><dt>Trigger</dt><dd>—</dd></div><div><dt>Schema fidelity</dt><dd><code>{&quot;payload&quot;:&quot;structural&quot;,&quot;carrier&quot;:&quot;structural&quot;,&quot;limitations&quot;:[&quot;Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints.&quot;]}</code></dd></div></dl><p>brain/*/.system_generated/logs/transcript.jsonl; 8 retained observation(s); source evidence: observed.</p><div class="evidence-refs"><a class="evidence-ref" href="#claim-antigravity-rosetta-observed">antigravity-rosetta-observed</a></div><details class="schema"><summary>Payload schema</summary><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;properties&quot;: {
@@ -4588,7 +4570,7 @@
     &quot;type&quot;
   ],
   &quot;additionalProperties&quot;: true
-}</pre></details></div></details></article></div><p id="empty-events" class="empty" hidden>No events match these filters.</p></section><section id="evidence" class="panel"><div class="section-heading"><div><span class="eyebrow">Provenance</span><h2>Evidence</h2></div><span class="count">v2 · 3 claims</span></div><details open><summary>Immutable source references</summary><div class="table-wrap"><table><thead><tr><th>#</th><th>Relation</th><th>Repository</th><th>Revision</th><th>Details</th></tr></thead><tbody><tr><td>0</td><td>exact-release</td><td>https://github.com/google-antigravity/antigravity-cli</td><td><code>1.1.20</code></td><td><pre>{}</pre></td></tr></tbody></table></div></details><details open><summary>Digest-pinned records</summary><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kind</th><th>Path</th><th>Digest</th></tr></thead><tbody><tr><td><code>antigravity-captures</code></td><td></td><td><code>packages/surface/vendors/antigravity/captures/antigravity@1.1.20</code></td><td><code>sha256:0a4b423ca9ad40bba0b8234c5e436cdfab13307910361bdd6417e6cf9009c0b8</code></td></tr><tr><td><code>antigravity-references</code></td><td></td><td><code>packages/surface/vendors/antigravity/references/antigravity@1.1.20</code></td><td><code>sha256:83a6f10c717087b5b12a27598d8ccbc1cb6014279428f8dcc1b09af3fdfa6d46</code></td></tr></tbody></table></div></details><details><summary>Claim index</summary><div class="claim-list"><article id="claim-antigravity-rosetta-runtime" class="claim-card"><header><code>antigravity-rosetta-runtime</code><span>runtime-capture</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>antigravity-captures</dd></div><div><dt>Artifact</dt><dd>antigravity-1.1.20-rosetta-fixture-corpus</dd></div><div><dt>Captured</dt><dd>2026-08-25T05:10:43Z</dd></div></dl><p>Type-preserving transcript native journal captures.</p></article><article id="claim-antigravity-rosetta-observed" class="claim-card"><header><code>antigravity-rosetta-observed</code><span>generated-schema</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>antigravity-references</dd></div><div><dt>Artifact</dt><dd>antigravity-1.1.20-rosetta-fixture-corpus</dd></div><div><dt>Captured</dt><dd>2026-08-25T05:10:43Z</dd></div></dl><p>Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence.</p></article><article id="claim-antigravity-rosetta-contract" class="claim-card"><header><code>antigravity-rosetta-contract</code><span>generated-schema</span><span class="confidence unverified">unverified</span></header><dl><div><dt>Record</dt><dd>antigravity-references</dd></div><div><dt>Artifact</dt><dd>antigravity-1.1.20-rosetta-fixture-corpus</dd></div><div><dt>Captured</dt><dd>—</dd></div></dl><p>Digest-pinned complete Rosetta stream/shape inventory for antigravity@1.1.20; writer-only and zero-occurrence records establish a reviewable contract lead, not runtime occurrence.</p></article></div></details></section></main><script>
+}</pre></details></div></details></article></div><p id="empty-events" class="empty" hidden>No events match these filters.</p></section><section id="evidence" class="panel"><div class="section-heading"><div><span class="eyebrow">Provenance</span><h2>Evidence</h2></div><span class="count">v2 · 3 claims</span></div><details open><summary>Immutable source references</summary><div class="table-wrap"><table><thead><tr><th>#</th><th>Relation</th><th>Repository</th><th>Revision</th><th>Details</th></tr></thead><tbody><tr><td>0</td><td>exact-release</td><td>https://github.com/google-antigravity/antigravity-cli</td><td><code>1.1.20</code></td><td><pre>{}</pre></td></tr></tbody></table></div></details><details open><summary>Digest-pinned records</summary><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kind</th><th>Path</th><th>Digest</th></tr></thead><tbody><tr><td><code>antigravity-captures</code></td><td></td><td><code>packages/surface/vendors/antigravity/captures/antigravity@1.1.20</code></td><td><code>sha256:0a4b423ca9ad40bba0b8234c5e436cdfab13307910361bdd6417e6cf9009c0b8</code></td></tr><tr><td><code>antigravity-references</code></td><td></td><td><code>packages/surface/vendors/antigravity/references/antigravity@1.1.20</code></td><td><code>sha256:83a6f10c717087b5b12a27598d8ccbc1cb6014279428f8dcc1b09af3fdfa6d46</code></td></tr><tr><td><code>agent-surface-model</code></td><td>model-tree</td><td><code>packages/surface/vendors/antigravity/model/antigravity@1.1.20</code></td><td><code>sha256:2ef96d30abf608ac431ee432f1a1f029b5b2cf11da5de11297cf3ba4a0617a07</code></td></tr></tbody></table></div></details><details><summary>Claim index</summary><div class="claim-list"><article id="claim-antigravity-rosetta-runtime" class="claim-card"><header><code>antigravity-rosetta-runtime</code><span>runtime-capture</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>antigravity-captures</dd></div><div><dt>Artifact</dt><dd>antigravity-1.1.20-rosetta-fixture-corpus</dd></div><div><dt>Captured</dt><dd>2026-08-25T05:10:43Z</dd></div></dl><p>Type-preserving transcript native journal captures.</p></article><article id="claim-antigravity-rosetta-observed" class="claim-card"><header><code>antigravity-rosetta-observed</code><span>generated-schema</span><span class="confidence verified-headless">verified-headless</span></header><dl><div><dt>Record</dt><dd>antigravity-references</dd></div><div><dt>Artifact</dt><dd>antigravity-1.1.20-rosetta-fixture-corpus</dd></div><div><dt>Captured</dt><dd>2026-08-25T05:10:43Z</dd></div></dl><p>Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence.</p></article><article id="claim-antigravity-rosetta-contract" class="claim-card"><header><code>antigravity-rosetta-contract</code><span>generated-schema</span><span class="confidence unverified">unverified</span></header><dl><div><dt>Record</dt><dd>antigravity-references</dd></div><div><dt>Artifact</dt><dd>antigravity-1.1.20-rosetta-fixture-corpus</dd></div><div><dt>Captured</dt><dd>—</dd></div></dl><p>Digest-pinned complete Rosetta stream/shape inventory for antigravity@1.1.20; writer-only and zero-occurrence records establish a reviewable contract lead, not runtime occurrence.</p></article></div></details></section></main><script>
 const root=document.documentElement;let saved;try{saved=localStorage.getItem('surface-theme')}catch{}if(saved)root.dataset.theme=saved;
 document.querySelector('.theme').addEventListener('click',()=>{const dark=root.dataset.theme==='dark'||(!root.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);root.dataset.theme=dark?'light':'dark';try{localStorage.setItem('surface-theme',root.dataset.theme)}catch{}});
 const search=document.querySelector('#event-search'),direction=document.querySelector('#direction-filter'),confidence=document.querySelector('#confidence-filter'),cards=[...document.querySelectorAll('.event-card')],count=document.querySelector('#event-count'),empty=document.querySelector('#empty-events');

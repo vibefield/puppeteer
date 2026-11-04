@@ -1,0 +1,102 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "status.update",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "Transient status line (kind: status, lifecycle, compacting, goal, loop, heartbeat, process, …).",
+  "payloadSchema": {
+    "$ref": "#/$defs/StatusUpdatePayload",
+    "$defs": {
+      "StatusUpdatePayload": {
+        "additionalProperties": false,
+        "description": "``server._status_update`` and the direct emitters (goal / loop / heartbeat / process).",
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": ["kind", "text"],
+        "title": "StatusUpdatePayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["status.update"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/StatusUpdatePayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "StatusUpdatePayload": {
+        "additionalProperties": false,
+        "description": "``server._status_update`` and the direct emitters (goal / loop / heartbeat / process).",
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": ["kind", "text"],
+        "title": "StatusUpdatePayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "unverified"
+}

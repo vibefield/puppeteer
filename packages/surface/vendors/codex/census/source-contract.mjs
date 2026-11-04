@@ -14,9 +14,17 @@
  * be re-read by a person, never carried forward.
  *
  * usage: node source-contract.mjs --from <previous version> --version <new version> [--sources <dir>]
+ *                                 [--rename <old symbol>=<new symbol> ...]
  *
  * `--sources <dir>` reads `<dir>/rust-v<version>/<repository path>` instead of
  * raw.githubusercontent.com, for an offline re-check of already fetched files.
+ *
+ * `--rename` names a symbol whose owner moved (0.166.0: `ThreadItem::FileChange`
+ * became `ThreadItemPayload::FileChange` when `ThreadItem` became a struct that
+ * flattens the payload beside its lifecycle times). The item is still extracted
+ * at both tags and must still be byte-identical; only where it is looked up
+ * changes, and the new contract pins the new name. A rename is a reviewed claim,
+ * so it is never inferred.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -125,7 +133,7 @@ function tagCommit(repository, tag) {
   return commit;
 }
 
-export async function deriveSourceContract({ from, version, sources }) {
+export async function deriveSourceContract({ from, version, sources, renames = {} }) {
   const previous = JSON.parse(readFileSync(contractPath(from), 'utf8'));
   if (previous.vendorVersion !== from || previous.sourceRevision !== `rust-v${from}`) {
     throw new Error(`references/codex@${from} does not pin rust-v${from}`);
@@ -133,6 +141,10 @@ export async function deriveSourceContract({ from, version, sources }) {
   const tag = `rust-v${version}`;
   const sourceFiles = [];
   const items = [];
+  const pinned = new Set(previous.sourceFiles.flatMap((file) => file.symbols));
+  for (const symbol of Object.keys(renames)) {
+    if (!pinned.has(symbol)) throw new Error(`--rename ${symbol}: not a symbol of references/codex@${from}`);
+  }
   for (const file of previous.sourceFiles) {
     const before = await fetchSource({
       repository: previous.sourceRepository,
@@ -144,13 +156,22 @@ export async function deriveSourceContract({ from, version, sources }) {
       throw new Error(`${previous.sourceRevision}:${file.path} no longer matches its pin`);
     }
     const after = await fetchSource({ repository: previous.sourceRepository, tag, path: file.path, sources });
+    const symbols = [];
     for (const symbol of file.symbols) {
+      const renamed = renames[symbol] ?? symbol;
       const was = extractRustItem(before.toString('utf8'), symbol);
-      const now = extractRustItem(after.toString('utf8'), symbol);
+      const now = extractRustItem(after.toString('utf8'), renamed);
       if (was !== now) throw new Error(`${file.path} ${symbol} changed between ${previous.sourceRevision} and ${tag}`);
-      items.push({ path: file.path, symbol, sha256: sha256(now), bytes: Buffer.byteLength(now) });
+      items.push({
+        path: file.path,
+        symbol: renamed,
+        ...(renamed !== symbol ? { renamedFrom: symbol } : {}),
+        sha256: sha256(now),
+        bytes: Buffer.byteLength(now),
+      });
+      symbols.push(renamed);
     }
-    sourceFiles.push({ ...file, sha256: sha256(after), bytes: after.length });
+    sourceFiles.push({ ...file, symbols, sha256: sha256(after), bytes: after.length });
   }
   const commit = sources ? undefined : tagCommit(previous.sourceRepository, tag);
   const { sourceCommit: _previousCommit, sourceFiles: _previousFiles, ...carried } = previous;
@@ -174,12 +195,26 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const from = flag('--from');
   const version = flag('--version');
   if (!from || !version) throw new Error('usage: source-contract.mjs --from <version> --version <version>');
-  const { contract, items, commit } = await deriveSourceContract({ from, version, sources: flag('--sources') });
+  const renames = {};
+  argv.forEach((value, index) => {
+    if (value !== '--rename') return;
+    const [old, renamed, ...rest] = (argv[index + 1] ?? '').split('=');
+    if (!old || !renamed || rest.length > 0) throw new Error('usage: --rename <old symbol>=<new symbol>');
+    renames[old] = renamed;
+  });
+  const { contract, items, commit } = await deriveSourceContract({
+    from,
+    version,
+    sources: flag('--sources'),
+    renames,
+  });
   const target = contractPath(version);
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, `${JSON.stringify(contract, null, 2)}\n`);
-  for (const item of items)
-    console.log(`unchanged ${item.symbol.padEnd(36)} ${item.sha256.slice(0, 16)} ${item.bytes}B`);
+  for (const item of items) {
+    const renamed = item.renamedFrom ? ` (was ${item.renamedFrom})` : '';
+    console.log(`unchanged ${item.symbol.padEnd(36)} ${item.sha256.slice(0, 16)} ${item.bytes}B${renamed}`);
+  }
   if (commit) console.log(`${contract.sourceRevision} -> ${commit}`);
   console.log(`wrote ${target}`);
 }

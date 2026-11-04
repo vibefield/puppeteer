@@ -1,0 +1,2853 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "message.part.updated",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "part": {
+        "$ref": "#/$defs/Part"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      },
+      "time": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "sessionID",
+      "part",
+      "time"
+    ],
+    "type": "object",
+    "$defs": {
+      "Part": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/TextPart"
+          },
+          {
+            "$ref": "#/$defs/SubtaskPart"
+          },
+          {
+            "$ref": "#/$defs/ReasoningPart"
+          },
+          {
+            "$ref": "#/$defs/FilePart"
+          },
+          {
+            "$ref": "#/$defs/ToolPart"
+          },
+          {
+            "$ref": "#/$defs/StepStartPart"
+          },
+          {
+            "$ref": "#/$defs/StepFinishPart"
+          },
+          {
+            "$ref": "#/$defs/SnapshotPart"
+          },
+          {
+            "$ref": "#/$defs/PatchPart"
+          },
+          {
+            "$ref": "#/$defs/AgentPart"
+          },
+          {
+            "$ref": "#/$defs/RetryPart"
+          },
+          {
+            "$ref": "#/$defs/CompactionPart"
+          }
+        ]
+      },
+      "TextPart": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "ignored": {
+            "type": "boolean"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "synthetic": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "text"
+        ],
+        "type": "object"
+      },
+      "SubtaskPart": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "model": {
+            "additionalProperties": false,
+            "properties": {
+              "modelID": {
+                "type": "string"
+              },
+              "providerID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "providerID",
+              "modelID"
+            ],
+            "type": "object"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "subtask"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "prompt",
+          "description",
+          "agent"
+        ],
+        "type": "object"
+      },
+      "ReasoningPart": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "reasoning"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "text",
+          "time"
+        ],
+        "type": "object"
+      },
+      "FilePart": {
+        "additionalProperties": false,
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/FilePartSource"
+          },
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "mime",
+          "url"
+        ],
+        "type": "object"
+      },
+      "ToolPart": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/$defs/ToolState"
+          },
+          "tool": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "tool"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "callID",
+          "tool",
+          "state"
+        ],
+        "type": "object"
+      },
+      "StepStartPart": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "step-start"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type"
+        ],
+        "type": "object"
+      },
+      "StepFinishPart": {
+        "additionalProperties": false,
+        "properties": {
+          "cost": {
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          },
+          "tokens": {
+            "additionalProperties": false,
+            "properties": {
+              "cache": {
+                "additionalProperties": false,
+                "properties": {
+                  "read": {
+                    "type": "number"
+                  },
+                  "write": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "read",
+                  "write"
+                ],
+                "type": "object"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "input",
+              "output",
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "step-finish"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "reason",
+          "cost",
+          "tokens"
+        ],
+        "type": "object"
+      },
+      "SnapshotPart": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "snapshot"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "snapshot"
+        ],
+        "type": "object"
+      },
+      "PatchPart": {
+        "additionalProperties": false,
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "hash": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "patch"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "hash",
+          "files"
+        ],
+        "type": "object"
+      },
+      "AgentPart": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "source": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "start",
+              "end"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "agent"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "name"
+        ],
+        "type": "object"
+      },
+      "RetryPart": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "error": {
+            "$ref": "#/$defs/APIError"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "created": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "retry"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "attempt",
+          "error",
+          "time"
+        ],
+        "type": "object"
+      },
+      "CompactionPart": {
+        "additionalProperties": false,
+        "properties": {
+          "auto": {
+            "type": "boolean"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "overflow": {
+            "type": "boolean"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "tail_start_id": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "compaction"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "auto"
+        ],
+        "type": "object"
+      },
+      "FilePartSource": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/FileSource"
+          },
+          {
+            "$ref": "#/$defs/SymbolSource"
+          },
+          {
+            "$ref": "#/$defs/ResourceSource"
+          }
+        ]
+      },
+      "ToolState": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ToolStatePending"
+          },
+          {
+            "$ref": "#/$defs/ToolStateRunning"
+          },
+          {
+            "$ref": "#/$defs/ToolStateCompleted"
+          },
+          {
+            "$ref": "#/$defs/ToolStateError"
+          }
+        ]
+      },
+      "APIError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "isRetryable": {
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string"
+              },
+              "metadata": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "responseBody": {
+                "type": "string"
+              },
+              "responseHeaders": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "statusCode": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "message",
+              "isRetryable"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "APIError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "FileSource": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "text": {
+            "$ref": "#/$defs/FilePartSourceText"
+          },
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "type",
+          "path"
+        ],
+        "type": "object"
+      },
+      "SymbolSource": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/$defs/Range"
+          },
+          "text": {
+            "$ref": "#/$defs/FilePartSourceText"
+          },
+          "type": {
+            "enum": [
+              "symbol"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "type",
+          "path",
+          "range",
+          "name",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "ResourceSource": {
+        "additionalProperties": false,
+        "properties": {
+          "clientName": {
+            "type": "string"
+          },
+          "text": {
+            "$ref": "#/$defs/FilePartSourceText"
+          },
+          "type": {
+            "enum": [
+              "resource"
+            ],
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "type",
+          "clientName",
+          "uri"
+        ],
+        "type": "object"
+      },
+      "ToolStatePending": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "object"
+          },
+          "raw": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "input",
+          "raw"
+        ],
+        "type": "object"
+      },
+      "ToolStateRunning": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "object"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "running"
+            ],
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start"
+            ],
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "input",
+          "time"
+        ],
+        "type": "object"
+      },
+      "ToolStateCompleted": {
+        "additionalProperties": false,
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/$defs/FilePart"
+            },
+            "type": "array"
+          },
+          "input": {
+            "type": "object"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "output": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed"
+            ],
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "compacted": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "input",
+          "output",
+          "title",
+          "metadata",
+          "time"
+        ],
+        "type": "object"
+      },
+      "ToolStateError": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "input": {
+            "type": "object"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "error"
+            ],
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "status",
+          "input",
+          "error",
+          "time"
+        ],
+        "type": "object"
+      },
+      "FilePartSourceText": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "type": "number"
+          },
+          "start": {
+            "type": "number"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "start",
+          "end"
+        ],
+        "type": "object"
+      },
+      "Range": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "additionalProperties": false,
+            "properties": {
+              "character": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "line": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ],
+            "type": "object"
+          },
+          "start": {
+            "additionalProperties": false,
+            "properties": {
+              "character": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "line": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "part": {
+            "$ref": "#/$defs/Part"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "time": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sessionID",
+          "part",
+          "time"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "message.part.updated"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "Part": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/TextPart"
+          },
+          {
+            "$ref": "#/$defs/SubtaskPart"
+          },
+          {
+            "$ref": "#/$defs/ReasoningPart"
+          },
+          {
+            "$ref": "#/$defs/FilePart"
+          },
+          {
+            "$ref": "#/$defs/ToolPart"
+          },
+          {
+            "$ref": "#/$defs/StepStartPart"
+          },
+          {
+            "$ref": "#/$defs/StepFinishPart"
+          },
+          {
+            "$ref": "#/$defs/SnapshotPart"
+          },
+          {
+            "$ref": "#/$defs/PatchPart"
+          },
+          {
+            "$ref": "#/$defs/AgentPart"
+          },
+          {
+            "$ref": "#/$defs/RetryPart"
+          },
+          {
+            "$ref": "#/$defs/CompactionPart"
+          }
+        ]
+      },
+      "TextPart": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "ignored": {
+            "type": "boolean"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "synthetic": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "text"
+        ],
+        "type": "object"
+      },
+      "SubtaskPart": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "model": {
+            "additionalProperties": false,
+            "properties": {
+              "modelID": {
+                "type": "string"
+              },
+              "providerID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "providerID",
+              "modelID"
+            ],
+            "type": "object"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "subtask"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "prompt",
+          "description",
+          "agent"
+        ],
+        "type": "object"
+      },
+      "ReasoningPart": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "reasoning"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "text",
+          "time"
+        ],
+        "type": "object"
+      },
+      "FilePart": {
+        "additionalProperties": false,
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/$defs/FilePartSource"
+          },
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "mime",
+          "url"
+        ],
+        "type": "object"
+      },
+      "ToolPart": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/$defs/ToolState"
+          },
+          "tool": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "tool"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "callID",
+          "tool",
+          "state"
+        ],
+        "type": "object"
+      },
+      "StepStartPart": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "step-start"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type"
+        ],
+        "type": "object"
+      },
+      "StepFinishPart": {
+        "additionalProperties": false,
+        "properties": {
+          "cost": {
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          },
+          "tokens": {
+            "additionalProperties": false,
+            "properties": {
+              "cache": {
+                "additionalProperties": false,
+                "properties": {
+                  "read": {
+                    "type": "number"
+                  },
+                  "write": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "read",
+                  "write"
+                ],
+                "type": "object"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "input",
+              "output",
+              "reasoning",
+              "cache"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "step-finish"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "reason",
+          "cost",
+          "tokens"
+        ],
+        "type": "object"
+      },
+      "SnapshotPart": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "snapshot"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "snapshot"
+        ],
+        "type": "object"
+      },
+      "PatchPart": {
+        "additionalProperties": false,
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "hash": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "patch"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "hash",
+          "files"
+        ],
+        "type": "object"
+      },
+      "AgentPart": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "source": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "start",
+              "end"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "agent"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "name"
+        ],
+        "type": "object"
+      },
+      "RetryPart": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "error": {
+            "$ref": "#/$defs/APIError"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "created": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "created"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "retry"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "attempt",
+          "error",
+          "time"
+        ],
+        "type": "object"
+      },
+      "CompactionPart": {
+        "additionalProperties": false,
+        "properties": {
+          "auto": {
+            "type": "boolean"
+          },
+          "id": {
+            "pattern": "^prt",
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "overflow": {
+            "type": "boolean"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "tail_start_id": {
+            "pattern": "^msg",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "compaction"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "messageID",
+          "type",
+          "auto"
+        ],
+        "type": "object"
+      },
+      "FilePartSource": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/FileSource"
+          },
+          {
+            "$ref": "#/$defs/SymbolSource"
+          },
+          {
+            "$ref": "#/$defs/ResourceSource"
+          }
+        ]
+      },
+      "ToolState": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ToolStatePending"
+          },
+          {
+            "$ref": "#/$defs/ToolStateRunning"
+          },
+          {
+            "$ref": "#/$defs/ToolStateCompleted"
+          },
+          {
+            "$ref": "#/$defs/ToolStateError"
+          }
+        ]
+      },
+      "APIError": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": false,
+            "properties": {
+              "isRetryable": {
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string"
+              },
+              "metadata": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "responseBody": {
+                "type": "string"
+              },
+              "responseHeaders": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "statusCode": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "message",
+              "isRetryable"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "enum": [
+              "APIError"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data"
+        ],
+        "type": "object"
+      },
+      "FileSource": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "text": {
+            "$ref": "#/$defs/FilePartSourceText"
+          },
+          "type": {
+            "enum": [
+              "file"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "type",
+          "path"
+        ],
+        "type": "object"
+      },
+      "SymbolSource": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/$defs/Range"
+          },
+          "text": {
+            "$ref": "#/$defs/FilePartSourceText"
+          },
+          "type": {
+            "enum": [
+              "symbol"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "type",
+          "path",
+          "range",
+          "name",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "ResourceSource": {
+        "additionalProperties": false,
+        "properties": {
+          "clientName": {
+            "type": "string"
+          },
+          "text": {
+            "$ref": "#/$defs/FilePartSourceText"
+          },
+          "type": {
+            "enum": [
+              "resource"
+            ],
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "type",
+          "clientName",
+          "uri"
+        ],
+        "type": "object"
+      },
+      "ToolStatePending": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "object"
+          },
+          "raw": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "input",
+          "raw"
+        ],
+        "type": "object"
+      },
+      "ToolStateRunning": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "object"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "running"
+            ],
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start"
+            ],
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "input",
+          "time"
+        ],
+        "type": "object"
+      },
+      "ToolStateCompleted": {
+        "additionalProperties": false,
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/$defs/FilePart"
+            },
+            "type": "array"
+          },
+          "input": {
+            "type": "object"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "output": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed"
+            ],
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "compacted": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "type": "object"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "input",
+          "output",
+          "title",
+          "metadata",
+          "time"
+        ],
+        "type": "object"
+      },
+      "ToolStateError": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "input": {
+            "type": "object"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "error"
+            ],
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "status",
+          "input",
+          "error",
+          "time"
+        ],
+        "type": "object"
+      },
+      "FilePartSourceText": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "type": "number"
+          },
+          "start": {
+            "type": "number"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "start",
+          "end"
+        ],
+        "type": "object"
+      },
+      "Range": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "additionalProperties": false,
+            "properties": {
+              "character": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "line": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ],
+            "type": "object"
+          },
+          "start": {
+            "additionalProperties": false,
+            "properties": {
+              "character": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "line": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "line",
+              "character"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ]
+  },
+  "variantDiscriminants": [
+    "part.type",
+    "part.state.status"
+  ],
+  "variants": [
+    {
+      "match": {
+        "part.type": "text"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "subtask"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-subtask-part"
+        ],
+        "shape": [
+          "opencode-runtime-subtask-part"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "reasoning"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "file"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-file-part"
+        ],
+        "shape": [
+          "opencode-runtime-file-part"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.state.status": "pending"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-tool"
+        ],
+        "shape": [
+          "opencode-runtime-abort-tool"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.state.status": "running"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-tool"
+        ],
+        "shape": [
+          "opencode-runtime-abort-tool"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.state.status": "completed"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-agent-part"
+        ],
+        "shape": [
+          "opencode-runtime-agent-part"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.state.status": "error"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-tool"
+        ],
+        "shape": [
+          "opencode-runtime-abort-tool"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "tool"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-tool"
+        ],
+        "shape": [
+          "opencode-runtime-abort-tool"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "step-start"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-abort-stream"
+        ],
+        "shape": [
+          "opencode-runtime-abort-stream"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "step-finish"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-agent-part"
+        ],
+        "shape": [
+          "opencode-runtime-agent-part"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "snapshot"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-generated-openapi"
+        ],
+        "shape": [
+          "opencode-generated-openapi"
+        ]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "part.type": "patch"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-file-delete"
+        ],
+        "shape": [
+          "opencode-runtime-file-delete"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "agent"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-agent-part"
+        ],
+        "shape": [
+          "opencode-runtime-agent-part"
+        ]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "part.type": "retry"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-generated-openapi"
+        ],
+        "shape": [
+          "opencode-generated-openapi"
+        ]
+      },
+      "confidence": "unverified"
+    },
+    {
+      "match": {
+        "part.type": "compaction"
+      },
+      "evidence": {
+        "existence": [
+          "opencode-runtime-auto-compaction"
+        ],
+        "shape": [
+          "opencode-runtime-auto-compaction"
+        ]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "payloadRefinements": [
+    {
+      "match": {
+        "part.type": "tool",
+        "part.tool": "apply_patch",
+        "part.state.status": "running"
+      },
+      "path": "part.state.input",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "patchText": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "patchText"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-delete"
+        ],
+        "shape": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-delete"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "part.type": "tool",
+        "part.tool": "apply_patch",
+        "part.state.status": "completed"
+      },
+      "path": "part.state.input",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "patchText": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "patchText"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-delete"
+        ],
+        "shape": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-delete"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "part.type": "tool",
+        "part.tool": "apply_patch",
+        "part.state.status": "completed"
+      },
+      "path": "part.state.metadata",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "diagnostics": {
+            "type": "object"
+          },
+          "diff": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "filePath": {
+                  "type": "string"
+                },
+                "relativePath": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "add",
+                    "update",
+                    "delete",
+                    "move"
+                  ]
+                },
+                "patch": {
+                  "type": "string"
+                },
+                "additions": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "deletions": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "movePath": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "filePath",
+                "relativePath",
+                "type",
+                "patch",
+                "additions",
+                "deletions"
+              ]
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "outputPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diagnostics",
+          "diff",
+          "files",
+          "truncated"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-delete"
+        ],
+        "shape": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-delete"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "semantic",
+      "limitations": [
+        "The tool and generic wrapper define these completed metadata fields, while nested diagnostics remain an open native object.",
+        "`truncated` describes model-facing output truncation; it does not describe diff or patch completeness."
+      ]
+    },
+    {
+      "match": {
+        "part.type": "tool",
+        "part.tool": "edit",
+        "part.state.status": "running"
+      },
+      "path": "part.state.input",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "oldString": {
+            "type": "string"
+          },
+          "newString": {
+            "type": "string"
+          },
+          "replaceAll": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "filePath",
+          "oldString",
+          "newString"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-edit"
+        ],
+        "shape": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-edit"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "part.type": "tool",
+        "part.tool": "edit",
+        "part.state.status": "completed"
+      },
+      "path": "part.state.input",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "oldString": {
+            "type": "string"
+          },
+          "newString": {
+            "type": "string"
+          },
+          "replaceAll": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "filePath",
+          "oldString",
+          "newString"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-edit"
+        ],
+        "shape": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-edit"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "part.type": "tool",
+        "part.tool": "edit",
+        "part.state.status": "completed"
+      },
+      "path": "part.state.metadata",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "diagnostics": {
+            "type": "object"
+          },
+          "diff": {
+            "type": "string"
+          },
+          "filediff": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "patch": {
+                "type": "string"
+              },
+              "additions": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deletions": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "file",
+              "patch",
+              "additions",
+              "deletions"
+            ]
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "outputPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diagnostics",
+          "diff",
+          "filediff",
+          "truncated"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-edit"
+        ],
+        "shape": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-edit"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "semantic",
+      "limitations": [
+        "The tool and generic wrapper define these completed metadata fields, while nested diagnostics remain an open native object.",
+        "`truncated` describes model-facing output truncation; it does not describe diff or patch completeness."
+      ]
+    },
+    {
+      "match": {
+        "part.type": "tool",
+        "part.tool": "write",
+        "part.state.status": "running"
+      },
+      "path": "part.state.input",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "filePath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "filePath"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-write"
+        ],
+        "shape": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-write"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "part.type": "tool",
+        "part.tool": "write",
+        "part.state.status": "completed"
+      },
+      "path": "part.state.input",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "filePath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "filePath"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-write"
+        ],
+        "shape": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-write"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "exact"
+    },
+    {
+      "match": {
+        "part.type": "tool",
+        "part.tool": "write",
+        "part.state.status": "completed"
+      },
+      "path": "part.state.metadata",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "diagnostics": {
+            "type": "object"
+          },
+          "filepath": {
+            "type": "string"
+          },
+          "exists": {
+            "type": "boolean"
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "outputPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diagnostics",
+          "filepath",
+          "exists",
+          "truncated"
+        ]
+      },
+      "evidence": {
+        "existence": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-write"
+        ],
+        "shape": [
+          "opencode-exact-release-source",
+          "opencode-runtime-file-write"
+        ]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "semantic",
+      "limitations": [
+        "The tool and generic wrapper define these completed metadata fields, while nested diagnostics remain an open native object.",
+        "`truncated` describes model-facing output truncation; it does not describe diff or patch completeness."
+      ]
+    }
+  ],
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/abort-stream/events.jsonl"
+}

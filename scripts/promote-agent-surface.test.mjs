@@ -167,8 +167,8 @@ test('promotion rechecks the exact platform hash summary instead of trusting a p
   const linux = `sha256:${'b'.repeat(64)}`;
   const evidence = {
     artifacts: [
-      { platform: 'darwin-arm64', integrity: { sha256: darwin } },
-      { platform: 'linux-x64', integrity: { sha256: linux } },
+      { platform: 'darwin-arm64', integrity: { status: 'verified', sha256: darwin } },
+      { platform: 'linux-x64', integrity: { status: 'verified', sha256: linux } },
     ],
   };
   assert.deepEqual(
@@ -315,4 +315,51 @@ test('a promotion the support ledger refuses restores every file it wrote', () =
     /fake: verified support has no durable promotion attestation/,
   );
   assert.deepEqual(paths.map(read), before);
+});
+
+test('promotion binds acquired bytes regardless of the ordering of same-platform historical evidence', () => {
+  for (const historicalFirst of [true, false]) {
+    const { repoRoot, write, read } = promotionFixture();
+    const path = 'packages/surface/vendors/fake/groundtruth.json';
+    const document = JSON.parse(read(path));
+    const acquired = document.evidenceIndex.artifacts[0];
+    const historical = {
+      ...acquired,
+      id: 'historical',
+      kind: 'controlled-fixture-corpus',
+      integrity: { status: 'verified', sha256: `sha256:${'f'.repeat(64)}` },
+    };
+    document.evidenceIndex.artifacts = historicalFirst ? [historical, acquired] : [acquired, historical];
+    write(path, document);
+    const agent = applyPromotion({
+      vendor: 'fake',
+      groundTruthPath: path,
+      verificationPath: '.agent-adaptation/verification.json',
+      repoRoot,
+    });
+    assert.equal(agent.status, 'verified');
+    assert.equal(agent.verification.platformArtifacts[0].artifactSha256, acquired.integrity.sha256);
+  }
+});
+
+test('historical or ambiguous acquired identities cannot satisfy a protected promotion', () => {
+  for (const kind of ['controlled-fixture-corpus', 'superseded-installed-console-build', 'duplicate-current']) {
+    const { repoRoot, write, read } = promotionFixture();
+    const path = 'packages/surface/vendors/fake/groundtruth.json';
+    const document = JSON.parse(read(path));
+    if (kind === 'duplicate-current')
+      document.evidenceIndex.artifacts.push({ ...document.evidenceIndex.artifacts[0], id: 'duplicate' });
+    else document.evidenceIndex.artifacts[0].kind = kind;
+    write(path, document);
+    assert.throws(
+      () =>
+        applyPromotion({
+          vendor: 'fake',
+          groundTruthPath: path,
+          verificationPath: '.agent-adaptation/verification.json',
+          repoRoot,
+        }),
+      /no unambiguous immutable acquired artifact/,
+    );
+  }
 });

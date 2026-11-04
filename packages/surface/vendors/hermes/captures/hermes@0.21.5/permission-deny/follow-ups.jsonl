@@ -1,0 +1,1 @@
+{"serverRequest":"approval","frame":{"session_id":"anon-5937433c86ef0a3c","command":"<redacted:command>","pattern_key":"delete in root path","pattern_keys":["delete in root path"],"description":"delete in root path","allow_permanent":true,"allow_session":true,"request_id":"anon-943410baed065cfa","choices":["once","session","always","deny"]},"response":{"choice":"deny"}}

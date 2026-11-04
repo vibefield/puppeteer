@@ -1,0 +1,191 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "complete.slash",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Ranked slash-command / skill completions for a ``/`` token.",
+  "payloadSchema": {
+    "$ref": "#/$defs/CompleteSlashParams",
+    "$defs": {
+      "CompleteSlashParams": {
+        "additionalProperties": false,
+        "description": "``session_id`` binds skill completions to that session's profile and workspace (project skills).",
+        "properties": {
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Id"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Text"
+          }
+        },
+        "title": "CompleteSlashParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/CompleteSlashResult",
+    "$defs": {
+      "CompleteSlashResult": {
+        "additionalProperties": false,
+        "description": "``replace_from`` is the column the accepted item replaces from.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/CompletionItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "replace_from": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Replace From"
+          }
+        },
+        "title": "CompleteSlashResult",
+        "type": "object"
+      },
+      "CompletionItem": {
+        "additionalProperties": false,
+        "description": "One popover row; ``kind`` rides only on slash completions (command vs skill).",
+        "properties": {
+          "display": {
+            "default": "",
+            "title": "Display",
+            "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Kind"
+          },
+          "meta": {
+            "default": "",
+            "title": "Meta",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": ["text"],
+        "title": "CompletionItem",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["complete.slash"]
+      },
+      "params": {
+        "$ref": "#/$defs/CompleteSlashParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "CompleteSlashParams": {
+        "additionalProperties": false,
+        "description": "``session_id`` binds skill completions to that session's profile and workspace (project skills).",
+        "properties": {
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Id"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Text"
+          }
+        },
+        "title": "CompleteSlashParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

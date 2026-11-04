@@ -139,3 +139,22 @@ test('source acquisition exposes platform-correct Windows launcher paths', () =>
   assert.equal(resolved.consolePath, 'Scripts/fake.exe');
   assert.equal(resolved.pythonPath, 'Scripts/python.exe');
 });
+
+test('release acquisition exposes only the reviewed bundle entry and rejects path injection', () => {
+  const bundle = { entry: 'pi.exe', rootFiles: ['pi.exe', 'package.json'], maxExtractedBytes: 1024 };
+  const config = {
+    vendor: 'fake',
+    platforms: ['windows-x64'],
+    acquisition: { strategy: 'https-template', artifacts: { 'windows-x64': { format: 'zip', bundle } } },
+  };
+  const args = { vendor: 'fake', platform: 'windows-x64' };
+  assert.deepEqual(resolveAgentAcquisition(config, args), {
+    artifactKind: 'release-bundle',
+    outputName: 'release-bundle.json',
+    executablePath: 'release/pi.exe',
+  });
+  for (const entry of ['../pi.exe', 'pi.exe\nINJECTED=1', 'C:/pi.exe']) {
+    bundle.entry = entry;
+    assert.throws(() => resolveAgentAcquisition(config, args), /entry is unsafe/);
+  }
+});

@@ -43,6 +43,8 @@ export interface AppServerChannelOptions {
   validateOutbound?: ((method: string, record: Record<string, unknown>) => string[]) | undefined;
   /** Validate a client result for an agent-originated request. */
   validateResult?: ((method: string, result: unknown) => string[]) | undefined;
+  /** The vendor's spelling of agent-originated request ids; integers from 1 when absent. */
+  requestId?: ((sequence: number) => string | number) | undefined;
   /** Serve one inbound client request. Throw `RpcError` to answer with a code. */
   serve(method: string, params: Record<string, unknown>): Promise<unknown>;
   /** Inbound notifications (`initialized`); nothing is ever replied. */
@@ -65,9 +67,17 @@ export interface AppServerChannel {
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
 
+/** Request ids that carry a vendor prefix and a twelve-hex-digit sequence, or none for plain integers. */
+export function serverRequestId(prefix: string | undefined): ((sequence: number) => string) | undefined {
+  return prefix === undefined ? undefined : (sequence) => `${prefix}${sequence.toString(16).padStart(12, '0')}`;
+}
+
 export function createAppServerChannel(options: AppServerChannelOptions): AppServerChannel {
   const log = options.log ?? (() => {});
-  const pending = new Map<number, { method: string; resolve(value: unknown): void; reject(error: Error): void }>();
+  const pending = new Map<
+    string | number,
+    { method: string; resolve(value: unknown): void; reject(error: Error): void }
+  >();
   // Server request ids share no space with the client's; correlation is per
   // direction, exactly as the vendor does it.
   let nextId = 1;
@@ -141,7 +151,7 @@ export function createAppServerChannel(options: AppServerChannelOptions): AppSer
     }
 
     // Otherwise it is the client's reply to a server request.
-    const id = typeof message.id === 'number' ? message.id : undefined;
+    const id = typeof message.id === 'number' || typeof message.id === 'string' ? message.id : undefined;
     if (id === undefined) return log('dropping a reply with no usable id');
     const entry = pending.get(id);
     // The vendor's own wording: Grok's leader logs, and ignores, an answer to a
@@ -198,7 +208,8 @@ export function createAppServerChannel(options: AppServerChannelOptions): AppSer
     request(method, params, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, signal) {
       if (closed) return Promise.reject(new RpcError(INTERNAL_ERROR, 'app-server channel is closed'));
       if (signal?.aborted) return Promise.reject(new RpcError(INTERNAL_ERROR, `server request ${method} abandoned`));
-      const id = nextId++;
+      const sequence = nextId++;
+      const id = options.requestId?.(sequence) ?? sequence;
       return new Promise((resolve, reject) => {
         const abandon = (): void => {
           if (!pending.delete(id)) return;

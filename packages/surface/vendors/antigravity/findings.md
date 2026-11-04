@@ -62,6 +62,61 @@ the exact `1.1.20` artifacts before promotion.
 
 ---
 
+## Upstream 1.4.12: surveyed, not imported
+
+On 2026-11-03 Rosetta farmed `agy_cli_linux_x64.tar.gz` 1.4.12 (archive
+SHA-256 `3368d1923fc869f21ec8fce83252a8c96c89283aac9393958ac91fbf7a3949e4`)
+hermetically against its loopback Gemini mock. The run needed a mock fix
+(Rosetta `a6fbaadfbc3b3d9f7daa3ba64779383542aa5083`, vibefield/rosetta#39, merged as `4282c44276d070958fbc442ca7a5b7021354aa5e`): 1.4.12
+declares `run_command` with a strict schema (`CommandLine`, `toolSummary`,
+`WaitMsBeforeAsync` required) and records the old `commandLine` call as an
+INVALID step. With the fix the farm completes, and it shows real drift that
+the 1.1.20 adapter does not handle:
+
+- a command result is recorded as a `GENERIC` transcript step with no
+  `exit_code`, where 1.1.20 wrote `RUN_COMMAND` with `exit_code`; the adapter
+  correlates tool results by that step type, so 1.4.12 command results would
+  stay unresolved;
+- `PLANNER_RESPONSE` carries `input_tokens`, `cache_read_tokens` and
+  `output_tokens`, a transcript usage source 1.1.20 lacked;
+- the tool-use scenario writes no `CHECKPOINT` step;
+- new store files appear (`annotations/*.pbtxt`, `implicit/*.pb`,
+  `jetbox_summaries_proto.pb`), and `conversation_summaries` gains
+  `raw_summary` and `group_id`.
+
+The corpus is not imported. Rosetta pins the newest farmed release that has
+writer evidence, and its only protobuf grammar is the 1.2.9 FileDescriptorSet
+extraction, so 1.4.12 first needs its own descriptor extraction, plus Rosetta
+raw types for the transcript drift. The ledger's blockers list these steps.
+
+On 2026-11-04 the six writer message schemas were independently extracted from
+1.4.12's official darwin-arm64 executable. Their projected field shapes match
+1.2.9 exactly. The pinned binary identity, descriptor offsets/hashes, selected
+message descriptors and reproducible extractor are retained in
+[`references/antigravity@1.4.12`](references/antigravity@1.4.12/README.md).
+This closes the missing descriptor-extraction step; the store-binding, transcript
+fixture, Rosetta raw-type and adapter migration work is still outstanding. The
+active canonical model remains 1.1.20.
+
+
+## Auto-update suppression correction — 2026-11-04
+
+The kill switch requires the lowercase literal `AGY_CLI_DISABLE_AUTO_UPDATE=true`.
+`1` does not disable the updater. The [official troubleshooting guide](https://antigravity.google/docs/cli-troubleshooting?hl=en)
+documents `true`; [upstream issue 1046](https://github.com/google-antigravity/antigravity-cli/issues/1046)
+records the same failure on 1.2.6. A disposable probe here had replaced its
+previously downloaded 1.1.20 executable with 1.5.0 while using `1`, so that probe
+was stopped and is not version-bound runtime evidence.
+
+The official 1.1.20 darwin-arm64 executable was reacquired with SHA-256
+`b454577f8531fcdf985c3cc2f9012904edfb4b0664e0edb9e237f6f345734e53`.
+With `true`, its startup log identifies 1.1.20 and explicitly reports that
+updates are disabled; the executable digest remains unchanged. Account usage,
+model discovery and the authorized census now use this spelling. Distribution
+inspection no longer reports `1` or unprobed alternate spellings as disabled.
+The census also rechecks its pinned executable digest before and after each
+invocation. Existing captures that used `1` do not establish update suppression.
+
 ## Historical survey: 1.1.12
 
 Status: Stage 0 complete. Stage 1 authorized print-mode survey in progress on

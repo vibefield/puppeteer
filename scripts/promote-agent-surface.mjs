@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /** Manually promote a fully verified candidate. Detection never calls this. */
+import { acquiredArtifactForPlatform } from './lib/acquired-artifact.mjs';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isClaimAddressableAsmVersion, loadModel } from '@vibefield/puppeteer-surface';
+import { modelTreeDigest } from './verify-agent-surface.mjs';
 import { auditEvidence } from '../packages/surface/scripts/check-evidence.mjs';
 import { renderSupportBlock, updateReadme, validateSupportLedger } from './render-agent-support.mjs';
 
@@ -68,7 +70,7 @@ export function validateVerificationAttestation({ verification, evidence, curren
   ) {
     issues.push('promotion must run in the attested GitHub Actions workflow and attempt');
   }
-  const modelDigest = evidence?.records?.find((record) => record.kind === 'model-tree')?.sha256;
+  const modelDigest = modelTreeDigest(evidence);
   if (!/^[0-9a-f]{64}$/.test(attestation?.evidenceDigest ?? '') || attestation.evidenceDigest !== modelDigest) {
     issues.push('attestation evidenceDigest does not match the candidate model tree');
   }
@@ -77,16 +79,8 @@ export function validateVerificationAttestation({ verification, evidence, curren
 
 /** Promotion requires evidence for the whole declared platform matrix, not a self-asserted gate string. */
 export function validatePlatformEvidence(evidence, requiredPlatforms) {
-  const verified = new Set(
-    (evidence?.artifacts ?? [])
-      .filter(
-        (artifact) =>
-          artifact?.integrity?.status === 'verified' && /^sha256:[0-9a-f]{64}$/.test(artifact.integrity.sha256 ?? ''),
-      )
-      .map((artifact) => artifact.platform),
-  );
   return requiredPlatforms
-    .filter((platform) => !verified.has(platform))
+    .filter((platform) => !acquiredArtifactForPlatform(evidence, platform))
     .map((platform) => `candidate has no verified artifact SHA-256 for required platform ${platform}`);
 }
 
@@ -95,7 +89,7 @@ export function validateVerificationPlatforms(verification, evidence, requiredPl
   if (!Array.isArray(reports)) return ['verification has no platform artifact summary'];
   const issues = [];
   const expected = new Map(
-    (evidence?.artifacts ?? []).map((artifact) => [artifact.platform, artifact.integrity?.sha256]),
+    requiredPlatforms.map((platform) => [platform, acquiredArtifactForPlatform(evidence, platform)?.integrity.sha256]),
   );
   const actual = new Map();
   for (const report of reports) {
@@ -110,7 +104,7 @@ export function validateVerificationPlatforms(verification, evidence, requiredPl
     }
   }
   for (const platform of requiredPlatforms) {
-    if (actual.get(platform) !== expected.get(platform)) {
+    if (!expected.get(platform) || actual.get(platform) !== expected.get(platform)) {
       issues.push(`verification artifact digest does not match evidence for ${platform}`);
     }
   }

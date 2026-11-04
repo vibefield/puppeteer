@@ -73,7 +73,21 @@ test('changed paths include deletions so the publisher cannot bypass its allowli
     ['-c', 'user.name=Puppeteer Test', '-c', 'user.email=test@invalid', 'commit', '--quiet', '-m', 'fixture'],
     { cwd: repoRoot },
   );
+  const oldBase = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+  writeFileSync(join(repoRoot, 'unrelated-pr-change.txt'), 'already reviewed branch change\n');
+  execFileSync('git', ['add', '.'], { cwd: repoRoot });
+  execFileSync(
+    'git',
+    ['-c', 'user.name=Puppeteer Test', '-c', 'user.email=test@invalid', 'commit', '--quiet', '-m', 'branch change'],
+    { cwd: repoRoot },
+  );
+  const dispatchedCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
   rmSync(runtime);
 
   assert.deepEqual(changedPaths('HEAD', repoRoot), ['packages/adapter-fake/src/runtime.ts']);
+  assert.deepEqual(changedPaths(dispatchedCommit, repoRoot), ['packages/adapter-fake/src/runtime.ts']);
+  assert.deepEqual(changedPaths(oldBase, repoRoot), [
+    'packages/adapter-fake/src/runtime.ts',
+    'unrelated-pr-change.txt',
+  ]);
 });

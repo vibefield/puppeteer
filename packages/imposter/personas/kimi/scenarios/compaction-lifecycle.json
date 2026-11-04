@@ -3,7 +3,9 @@
   "steps": [
     {
       "at": 0,
-      "do": { "emit": { "channel": "wire", "event": "full_compaction.begin", "with": { "source": "auto" } } }
+      "do": {
+        "emit": { "channel": "wire", "event": "full_compaction.begin", "with": { "agentId": "main", "source": "auto" } }
+      }
     },
     {
       "at": 30,
@@ -11,10 +13,13 @@
         "emit": {
           "channel": "wire",
           "event": "context.apply_compaction",
-          "with": { "summary": "imposter summary", "compactedCount": 3 }
+          "with": { "agentId": "main", "summary": "imposter summary", "compactedCount": 3 }
         }
       }
     },
-    { "at": 60, "do": { "emit": { "channel": "wire", "event": "full_compaction.complete", "with": {} } } }
+    {
+      "at": 60,
+      "do": { "emit": { "channel": "wire", "event": "full_compaction.complete", "with": { "agentId": "main" } } }
+    }
   ]
 }

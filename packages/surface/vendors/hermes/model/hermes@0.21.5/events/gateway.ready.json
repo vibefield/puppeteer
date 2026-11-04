@@ -1,0 +1,267 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "gateway.ready",
+  "firstSeen": "0.21.5",
+  "lastVerified": "0.21.5",
+  "fixture": "captures/hermes@0.21.5/basic-turn/rpc.jsonl",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "First frame of a connection: the resolved skin, the change-event capability and the replay epoch.",
+  "payloadSchema": {
+    "$ref": "#/$defs/GatewayReadyPayload",
+    "$defs": {
+      "GatewayReadyPayload": {
+        "additionalProperties": false,
+        "description": "``tui_gateway/entry.py`` (stdio) / ``tui_gateway/ws.py`` (WebSocket) first frame.",
+        "properties": {
+          "change_events": {
+            "title": "Change Events",
+            "type": "boolean"
+          },
+          "heartbeat": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Heartbeat"
+          },
+          "replay_epoch": {
+            "title": "Replay Epoch",
+            "type": "string"
+          },
+          "skin": {
+            "$ref": "#/$defs/SkinPayload"
+          }
+        },
+        "required": ["skin", "change_events", "replay_epoch"],
+        "title": "GatewayReadyPayload",
+        "type": "object"
+      },
+      "SkinPayload": {
+        "additionalProperties": true,
+        "description": "``tui_gateway/change_watcher.py::resolve_skin`` — the resolved active skin (``HermesSkin``).\n``{}`` when the skin engine failed to load. Colour maps are token → colour string.",
+        "properties": {
+          "banner_hero": {
+            "default": "",
+            "title": "Banner Hero",
+            "type": "string"
+          },
+          "banner_logo": {
+            "default": "",
+            "title": "Banner Logo",
+            "type": "string"
+          },
+          "branding": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Branding",
+            "type": "object"
+          },
+          "colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Colors",
+            "type": "object"
+          },
+          "dark_colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Dark Colors",
+            "type": "object"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "help_header": {
+            "default": "",
+            "title": "Help Header",
+            "type": "string"
+          },
+          "light_colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Light Colors",
+            "type": "object"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "tool_prefix": {
+            "default": "",
+            "title": "Tool Prefix",
+            "type": "string"
+          }
+        },
+        "title": "SkinPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["gateway.ready"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/GatewayReadyPayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "GatewayReadyPayload": {
+        "additionalProperties": false,
+        "description": "``tui_gateway/entry.py`` (stdio) / ``tui_gateway/ws.py`` (WebSocket) first frame.",
+        "properties": {
+          "change_events": {
+            "title": "Change Events",
+            "type": "boolean"
+          },
+          "heartbeat": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Heartbeat"
+          },
+          "replay_epoch": {
+            "title": "Replay Epoch",
+            "type": "string"
+          },
+          "skin": {
+            "$ref": "#/$defs/SkinPayload"
+          }
+        },
+        "required": ["skin", "change_events", "replay_epoch"],
+        "title": "GatewayReadyPayload",
+        "type": "object"
+      },
+      "SkinPayload": {
+        "additionalProperties": true,
+        "description": "``tui_gateway/change_watcher.py::resolve_skin`` — the resolved active skin (``HermesSkin``).\n``{}`` when the skin engine failed to load. Colour maps are token → colour string.",
+        "properties": {
+          "banner_hero": {
+            "default": "",
+            "title": "Banner Hero",
+            "type": "string"
+          },
+          "banner_logo": {
+            "default": "",
+            "title": "Banner Logo",
+            "type": "string"
+          },
+          "branding": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Branding",
+            "type": "object"
+          },
+          "colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Colors",
+            "type": "object"
+          },
+          "dark_colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Dark Colors",
+            "type": "object"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "help_header": {
+            "default": "",
+            "title": "Help Header",
+            "type": "string"
+          },
+          "light_colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Light Colors",
+            "type": "object"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "tool_prefix": {
+            "default": "",
+            "title": "Tool Prefix",
+            "type": "string"
+          }
+        },
+        "title": "SkinPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-runtime-headless", "hermes-generated-contract"],
+    "shape": ["hermes-generated-contract", "hermes-runtime-headless"],
+    "carrier": ["hermes-runtime-headless"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "verified-headless"
+}

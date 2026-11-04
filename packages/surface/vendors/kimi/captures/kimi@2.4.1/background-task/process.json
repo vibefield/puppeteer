@@ -1,0 +1,22 @@
+{
+  "identity": {
+    "version": "2.4.1",
+    "output": "<redacted:output>"
+  },
+  "artifactSha256": "f2b3634c17b604e5b0f0c578b6a787fd01bcafb40a3c0dd62203ae14ff2ea068",
+  "args": {
+    "promptMode": true,
+    "outputFormat": "<redacted:outputFormat>",
+    "isolatedSkillsDirectory": true
+  },
+  "mode": "native-print-hermetic",
+  "code": 0,
+  "signal": null,
+  "invocations": [
+    {
+      "resumed": false,
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

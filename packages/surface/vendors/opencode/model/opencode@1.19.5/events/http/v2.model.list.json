@@ -1,0 +1,489 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/v2.model.list",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "List models — Retrieve available models ordered by release date.",
+  "payloadSchema": {
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "location": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/$defs/ModelV2Info"
+            },
+            "type": "array"
+          },
+          "location": {
+            "$ref": "#/$defs/LocationInfo"
+          }
+        },
+        "required": [
+          "location",
+          "data"
+        ],
+        "type": "object"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "location": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/model"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "ModelV2Info": {
+        "additionalProperties": false,
+        "properties": {
+          "api": {
+            "$ref": "#/$defs/ModelApi"
+          },
+          "capabilities": {
+            "$ref": "#/$defs/ModelCapabilities"
+          },
+          "cost": {
+            "items": {
+              "$ref": "#/$defs/ModelCost"
+            },
+            "type": "array"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "family": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "limit": {
+            "additionalProperties": false,
+            "properties": {
+              "context": {
+                "type": "integer"
+              },
+              "input": {
+                "type": "integer"
+              },
+              "output": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "context",
+              "output"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "request": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "type": "object"
+              },
+              "headers": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "variant": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "headers",
+              "body"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "alpha",
+              "beta",
+              "deprecated",
+              "active"
+            ],
+            "type": "string"
+          },
+          "time": {
+            "additionalProperties": false,
+            "properties": {
+              "released": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "released"
+            ],
+            "type": "object"
+          },
+          "variants": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "body": {
+                  "type": "object"
+                },
+                "headers": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "headers",
+                "body"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "providerID",
+          "name",
+          "api",
+          "capabilities",
+          "request",
+          "variants",
+          "time",
+          "cost",
+          "status",
+          "enabled",
+          "limit"
+        ],
+        "type": "object"
+      },
+      "LocationInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "project": {
+            "additionalProperties": false,
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "directory"
+            ],
+            "type": "object"
+          },
+          "workspaceID": {
+            "pattern": "^wrk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "directory",
+          "project"
+        ],
+        "type": "object"
+      },
+      "ModelApi": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "package": {
+                "type": "string"
+              },
+              "settings": {
+                "type": "object"
+              },
+              "type": {
+                "enum": [
+                  "aisdk"
+                ],
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "package"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "settings": {
+                "type": "object"
+              },
+              "type": {
+                "enum": [
+                  "native"
+                ],
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "settings"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ModelCapabilities": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "output": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tools": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "tools",
+          "input",
+          "output"
+        ],
+        "type": "object"
+      },
+      "ModelCost": {
+        "additionalProperties": false,
+        "properties": {
+          "cache": {
+            "additionalProperties": false,
+            "properties": {
+              "read": {
+                "type": "number"
+              },
+              "write": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "read",
+              "write"
+            ],
+            "type": "object"
+          },
+          "input": {
+            "type": "number"
+          },
+          "output": {
+            "type": "number"
+          },
+          "tier": {
+            "additionalProperties": false,
+            "properties": {
+              "size": {
+                "type": "integer"
+              },
+              "type": {
+                "enum": [
+                  "context"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "size"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "input",
+          "output",
+          "cache"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "method": {
+            "enum": [
+              "GET"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "properties": {
+              "location": {
+                "additionalProperties": false,
+                "properties": {
+                  "directory": {
+                    "type": "string"
+                  },
+                  "workspace": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/model"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.model.list; GET /api/model."
+}

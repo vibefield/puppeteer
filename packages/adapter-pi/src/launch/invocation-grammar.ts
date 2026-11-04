@@ -1,7 +1,7 @@
 import { readNativeInvocationArguments, type NativeInvocationGrammar } from '@vibefield/puppeteer-core';
 
 /** Native help and parser evidence: __fixtures__/README.md. Unknown arity is a refusal. */
-export const INVOCATION_GRAMMAR_VERSION = '0.87.1';
+export const INVOCATION_GRAMMAR_VERSION = '1.5.0';
 export const INVOCATION_GRAMMAR = {
   shortClusters: false,
   commandFirst: true,
@@ -175,6 +175,11 @@ export const INVOCATION_GRAMMAR = {
       reason: 'the managed launch cannot preserve this option',
     },
     {
+      names: ['--no-mcp'],
+      arity: 'none',
+      reason: 'the managed launch cannot preserve this option',
+    },
+    {
       names: ['--no-skills', '-ns'],
       arity: 'none',
       reason: 'the managed launch cannot preserve this option',
@@ -242,6 +247,10 @@ export const INVOCATION_GRAMMAR = {
     },
     {
       names: ['auth'],
+      passthrough: 'utility',
+    },
+    {
+      names: ['mcp'],
       passthrough: 'utility',
     },
   ],

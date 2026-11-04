@@ -1,0 +1,118 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "browser.controller.cancel",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "Withdraw a pending controller command.",
+  "payloadSchema": {
+    "$ref": "#/$defs/BrowserControllerCancelPayload",
+    "$defs": {
+      "BrowserControllerCancelPayload": {
+        "additionalProperties": false,
+        "description": "``gateway/browser_control_broker.py::_cancel_frame``.",
+        "properties": {
+          "command_id": {
+            "title": "Command Id",
+            "type": "string"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Call Id"
+          }
+        },
+        "required": ["command_id"],
+        "title": "BrowserControllerCancelPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["browser.controller.cancel"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/BrowserControllerCancelPayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "BrowserControllerCancelPayload": {
+        "additionalProperties": false,
+        "description": "``gateway/browser_control_broker.py::_cancel_frame``.",
+        "properties": {
+          "command_id": {
+            "title": "Command Id",
+            "type": "string"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Call Id"
+          }
+        },
+        "required": ["command_id"],
+        "title": "BrowserControllerCancelPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "unverified"
+}

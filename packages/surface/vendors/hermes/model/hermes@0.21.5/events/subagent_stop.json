@@ -1,0 +1,25 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "subagent_stop",
+  "channel": "plugin-hook",
+  "channels": ["plugin-hook", "shell-hook", "outbound-webhook"],
+  "transport": "hook-callback",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object"
+  },
+  "evidence": {
+    "existence": ["hermes-exact-source"],
+    "shape": ["hermes-exact-source"]
+  },
+  "schemaFidelity": {
+    "payload": "unknown",
+    "limitations": [
+      "The payload is the in-process plugin callback kwargs object, sampled from the census; shell-hook and outbound-webhook envelopes are retained in the source reference.",
+      "Arbitrary plugin return values and event-specific nested values remain unconstrained."
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "Declared in VALID_HOOKS at the pinned revision; this hook was not encountered by the turn census."
+}

@@ -1,0 +1,175 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "bot_relay.outbox.drain",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Atomically claim every pending cross-connection envelope queued on this gateway.",
+  "payloadSchema": {
+    "$ref": "#/$defs/BotRelayOutboxDrainParams",
+    "$defs": {
+      "BotRelayOutboxDrainParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "BotRelayOutboxDrainParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/BotRelayOutboxDrainResult",
+    "$defs": {
+      "BotRelayOutboxDrainResult": {
+        "additionalProperties": false,
+        "properties": {
+          "envelopes": {
+            "items": {
+              "$ref": "#/$defs/RelayEnvelope"
+            },
+            "title": "Envelopes",
+            "type": "array"
+          }
+        },
+        "required": ["envelopes"],
+        "title": "BotRelayOutboxDrainResult",
+        "type": "object"
+      },
+      "RelayEnvelope": {
+        "additionalProperties": true,
+        "description": "``tools/bot_relay.py::enqueue_envelope``.",
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Created At"
+          },
+          "from_handle": {
+            "title": "From Handle",
+            "type": "string"
+          },
+          "from_profile": {
+            "title": "From Profile",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "target_connection": {
+            "title": "Target Connection",
+            "type": "string"
+          },
+          "target_handle": {
+            "title": "Target Handle",
+            "type": "string"
+          },
+          "target_profile": {
+            "title": "Target Profile",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "from_profile",
+          "from_handle",
+          "target_connection",
+          "target_profile",
+          "target_handle",
+          "message"
+        ],
+        "title": "RelayEnvelope",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["bot_relay.outbox.drain"]
+      },
+      "params": {
+        "$ref": "#/$defs/BotRelayOutboxDrainParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "BotRelayOutboxDrainParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "BotRelayOutboxDrainParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

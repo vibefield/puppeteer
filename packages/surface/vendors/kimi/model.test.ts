@@ -7,7 +7,7 @@ import { checkCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import { kimiRules } from './sanitize-captures.mjs';
 
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
-const version = '0.34.0';
+const version = '2.4.1';
 const capturesRoot = join(vendorRoot, 'captures', `kimi@${version}`);
 const model = loadModel(vendorRoot);
 const events = new Map(model.events.map((event) => [event.event, event]));
@@ -102,23 +102,43 @@ describe(`the Kimi ${version} candidate ASM`, () => {
   it('attributes observed branches to runtime while leaving source-only outcomes unverified', () => {
     const turnEnded = events.get('turn.ended')!;
     expect(turnEnded.confidence).toBe('verified-headless');
-    expect(turnEnded.variants?.find((entry) => entry.match.reason === 'completed')?.confidence).toBe(
-      'verified-headless',
-    );
-    expect(turnEnded.variants?.find((entry) => entry.match.reason === 'failed')?.confidence).toBe('verified-headless');
-    for (const reason of ['cancelled', 'blocked']) {
-      expect(turnEnded.variants?.find((entry) => entry.match.reason === reason)?.confidence).toBe('unverified');
+    for (const reason of ['completed', 'failed', 'cancelled']) {
+      expect(turnEnded.variants?.find((entry) => entry.match.reason === reason)?.confidence, reason).toBe(
+        'verified-headless',
+      );
+    }
+    expect(turnEnded.variants?.find((entry) => entry.match.reason === 'blocked')?.confidence).toBe('unverified');
+    const promptCompleted = events.get('prompt.completed')!;
+    for (const reason of ['completed', 'failed', 'blocked']) {
+      expect(promptCompleted.variants?.find((entry) => entry.match.reason === reason)?.confidence, reason).toBe(
+        'verified-headless',
+      );
     }
     expect(events.get('SessionStart')?.variants?.find((entry) => entry.match.source === 'resume')?.confidence).toBe(
       'verified-headless',
     );
-    expect(events.get('task.started')?.confidence).toBe('verified-headless');
-    expect(events.get('task.terminated')?.confidence).toBe('verified-headless');
-    expect(events.get('TaskStarted')?.confidence).toBe('verified-headless');
-    expect(events.get('Notification')?.confidence).toBe('verified-headless');
-    expect(events.get('StopFailure')?.confidence).toBe('verified-headless');
-    expect(events.get('SubagentStart')?.confidence).toBe('verified-headless');
-    expect(events.get('SubagentStop')?.confidence).toBe('verified-headless');
+    for (const name of [
+      'task.started',
+      'task.terminated',
+      'turn.cancel',
+      'turn.step.retrying',
+      'turn.step.interrupted',
+      'prompt.aborted',
+      'subagent.spawned',
+      'subagent.started',
+      'subagent.completed',
+      'agent.turn.started',
+      'agent.turn.ended',
+      'agent.message.appended',
+      'TaskStarted',
+      'Notification',
+      'StopFailure',
+      'Interrupt',
+      'SubagentStart',
+      'SubagentStop',
+    ]) {
+      expect(events.get(name)?.confidence, name).toBe('verified-headless');
+    }
     expect(
       events
         .get('context.append_message')
@@ -127,35 +147,61 @@ describe(`the Kimi ${version} candidate ASM`, () => {
     expect(
       events.get('TurnStarted')?.variants?.find((entry) => entry.match.origin_kind === 'system_trigger')?.confidence,
     ).toBe('verified-headless');
-    expect(events.get('interaction.request')?.confidence).toBe('unverified');
-    expect(events.get('full_compaction.begin')?.confidence).toBe('unverified');
+    for (const name of [
+      'interaction.request',
+      'full_compaction.begin',
+      'subagent.failed',
+      'subagent.cancelled',
+      'agent.switched',
+      'context.undone',
+      'tower_mode.enter',
+    ]) {
+      expect(events.get(name)?.confidence, name).toBe('unverified');
+    }
   });
 
-  it('uses the 40-persisted/8-transient source contract verbatim', () => {
+  it('uses the 67-record durable manifest plus the supplemental engine/undo contract verbatim', () => {
     expect(sourceReference.wire).toMatchObject({
-      totalOperationTypes: 48,
-      persistedOperationTypes: 40,
-      transientOperationTypes: 8,
+      totalOperationTypes: 67,
+      persistedOperationTypes: 67,
+      transientOperationTypes: 0,
+      retired: ['permission.rules.add', 'skill.activate'],
     });
     expect(sourceReference.hooks.events).toHaveLength(20);
-    for (const [name, schema] of Object.entries(sourceReference.wire.payloadSchemas)) {
+    for (const [name, schema] of Object.entries({
+      ...sourceReference.wire.payloadSchemas,
+      ...sourceReference.wire.supplemental.payloadSchemas,
+    })) {
       expect(events.get(name)?.payloadSchema, name).toEqual(schema);
     }
     for (const [name, schema] of Object.entries(sourceReference.hooks.payloadSchemas)) {
       expect(events.get(name)?.payloadSchema, name).toEqual(schema);
     }
+    for (const retired of sourceReference.wire.retired as string[]) expect(events.has(retired)).toBe(false);
+  });
+
+  it('requires the agent identity 2.4.1 stamps on agent-scoped records', () => {
+    for (const name of ['turn.prompt', 'turn.ended', 'context.append_loop_event', 'profile.bind', 'task.started']) {
+      expect(events.get(name)?.payloadSchema?.required, name).toContain('agentId');
+    }
+    expect(events.get('subagent.spawned')?.payloadSchema?.required).not.toContain('agentId');
+    expect(events.get('Notification')?.payloadSchema?.required).toContain('agent_id');
   });
 
   it('enforces the source union/integer constraints and complete llm.request field set', () => {
     const undo = events.get('context.undo')!.payloadSchema!;
-    expect(validatePayload(undo, { count: 1 })).toEqual([]);
-    expect(validatePayload(undo, { count: 0 })).not.toEqual([]);
-    expect(validatePayload(undo, { count: 1.5 })).not.toEqual([]);
+    expect(validatePayload(undo, { agentId: 'main', count: 1 })).toEqual([]);
+    expect(validatePayload(undo, { agentId: 'main', count: 0 })).not.toEqual([]);
+    expect(validatePayload(undo, { agentId: 'main', count: 1.5 })).not.toEqual([]);
+    expect(validatePayload(undo, { count: 1 })).not.toEqual([]);
 
     const compaction = events.get('context.apply_compaction')!.payloadSchema!;
     expect(validatePayload(compaction, {})).toEqual(['payload does not satisfy anyOf']);
-    expect(validatePayload(compaction, { summary: 'summary', compactedCount: 2 })).toEqual([]);
-    expect(validatePayload(compaction, { contextSummary: 'summary', compactedCount: 2 })).toEqual([]);
+    expect(validatePayload(compaction, { agentId: 'main', summary: 'summary', compactedCount: 2 })).toEqual([]);
+    expect(validatePayload(compaction, { agentId: 'main', contextSummary: 'summary', compactedCount: 2 })).toEqual([]);
+    expect(validatePayload(compaction, { summary: 'summary', compactedCount: 2 })).toEqual([
+      'payload does not satisfy anyOf',
+    ]);
 
     expect(Object.keys(events.get('llm.request')!.payloadSchema!.properties ?? {})).toEqual(
       expect.arrayContaining([
@@ -243,10 +289,12 @@ describe(`the Kimi ${version} candidate ASM`, () => {
   });
 
   it('binds the exact candidate identity and contains no detectable private material', () => {
-    const artifact = model.evidenceIndex?.artifacts[0] as Record<string, unknown>;
+    const artifact = model.evidenceIndex?.artifacts.find(
+      (entry) => entry.id === `installed-kimi-${version}-linux-x64`,
+    ) as Record<string, unknown>;
     expect(artifact.versionOutput).toBe(version);
     expect((artifact.integrity as Record<string, unknown>).sha256).toBe(
-      'sha256:9f4337e10da47843f6b550474012a53ba8b30dd665f83b176a5cd479c5f7e859',
+      'sha256:f2b3634c17b604e5b0f0c578b6a787fd01bcafb40a3c0dd62203ae14ff2ea068',
     );
     expect(checkCaptureDirectory(capturesRoot, kimiRules)).toEqual([]);
     expect(model.evidenceIndex?.records.map((record) => record.id)).toEqual(
@@ -262,6 +310,7 @@ describe(`the Kimi ${version} candidate ASM`, () => {
         'hook-block-prompt',
         'hook-deny-tool',
         'interrupt-stream',
+        'malformed-stream',
         'provider-error',
         'provider-retry',
         'resume-turn',
@@ -271,7 +320,7 @@ describe(`the Kimi ${version} candidate ASM`, () => {
       ],
     });
     expect(attestation.files).toEqual(expect.any(Number));
-    expect(attestation.files).toBeGreaterThan(37);
+    expect(attestation.files).toBeGreaterThan(140);
     expect(model.evidenceIndex?.claims.find((claim) => claim.id === 'kimi-runtime-headless')?.capturedAt).toBe(
       attestation.captureStartedAt,
     );

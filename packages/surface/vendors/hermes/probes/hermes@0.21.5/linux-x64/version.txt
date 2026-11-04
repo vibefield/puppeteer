@@ -1,0 +1,5 @@
+Hermes Agent v0.21.5 (2026.9.24)
+Install directory: <redacted:install-directory>
+Install method: unknown
+Python: 3.11.18
+OpenAI SDK: 2.24.0

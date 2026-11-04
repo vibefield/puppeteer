@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { loadModel, validatePayload } from '@vibefield/puppeteer-surface';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 import { CLAUDE_HOOK_EVENTS } from './census/harness.mjs';
+import { sandboxedModes } from './census/generate-model.mjs';
 
 interface CapturedHookRecord {
   session_id: string;
@@ -281,6 +282,16 @@ describe('2.1.308 hook surface', () => {
     expect(errorOf('api-error-500')).toEqual(['server_error']);
     expect(errorOf('api-error-529')).toEqual(['server_error']);
     expect(errorOf('headless')).toEqual(['authentication_failed']);
+  });
+
+  it('keeps a sandbox proof only for modes whose namespace refused every non-loopback destination', () => {
+    // Capture sets older than the network-deny sandbox (findings.md, 2.1.311) carry no proof.
+    const proofPath = join(captureRoot, 'sandbox.json');
+    if (!existsSync(proofPath)) return;
+    const { entries } = JSON.parse(readFileSync(proofPath, 'utf8')) as { entries: { modes: string[] }[] };
+    const named = entries.flatMap((entry) => entry.modes).sort();
+    expect(sandboxedModes(captureRoot)).toEqual(named);
+    for (const mode of named) expect(captureModes).toContain(mode);
   });
 
   it('carries the resume staleness fields on a resumed SessionStart', () => {

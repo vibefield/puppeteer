@@ -1,0 +1,293 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "usage.bars",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Two-bar dollar usage view shared by /usage, /topup and /subscription; fail-open to unavailable.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ProfileParams",
+    "$defs": {
+      "ProfileParams": {
+        "additionalProperties": false,
+        "description": "Any method the desktop may route to a named profile (``requestGatewayForProfile`` adds ``profile``).",
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "ProfileParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/UsageModel",
+    "$defs": {
+      "UsageModel": {
+        "additionalProperties": false,
+        "description": "``_serialize_usage_model`` — also embedded as ``usage`` in the billing / subscription states,\nwhere the fail-open form is a bare ``{available: false}`` (no ``ok``).",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "has_topup": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Has Topup"
+          },
+          "ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Ok"
+          },
+          "plan_bar": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/UsageBar"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "plan_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Plan Name"
+          },
+          "renews_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Renews At"
+          },
+          "renews_display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Renews Display"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "subscription_remaining_display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Subscription Remaining Display"
+          },
+          "topup_bar": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/UsageBar"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "topup_remaining_display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Topup Remaining Display"
+          },
+          "total_spendable_display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total Spendable Display"
+          }
+        },
+        "required": ["available"],
+        "title": "UsageModel",
+        "type": "object"
+      },
+      "UsageBar": {
+        "additionalProperties": false,
+        "description": "``_serialize_usage_bar``: one bar, magnitudes pre-formatted; ``pct_used`` only for ``plan``.",
+        "properties": {
+          "fill_fraction": {
+            "title": "Fill Fraction",
+            "type": "number"
+          },
+          "kind": {
+            "$ref": "#/$defs/UsageBarKind"
+          },
+          "pct_used": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pct Used"
+          },
+          "remaining_display": {
+            "title": "Remaining Display",
+            "type": "string"
+          },
+          "spent_display": {
+            "title": "Spent Display",
+            "type": "string"
+          },
+          "total_display": {
+            "title": "Total Display",
+            "type": "string"
+          }
+        },
+        "required": ["kind", "remaining_display", "total_display", "spent_display", "fill_fraction"],
+        "title": "UsageBar",
+        "type": "object"
+      },
+      "UsageBarKind": {
+        "enum": ["plan", "topup"],
+        "title": "UsageBarKind",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["usage.bars"]
+      },
+      "params": {
+        "$ref": "#/$defs/ProfileParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ProfileParams": {
+        "additionalProperties": false,
+        "description": "Any method the desktop may route to a named profile (``requestGatewayForProfile`` adds ``profile``).",
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          }
+        },
+        "title": "ProfileParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

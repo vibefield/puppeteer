@@ -1,0 +1,1867 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "session.activate",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Attach the frontend to a live session without closing the previously focused one.",
+  "payloadSchema": {
+    "$ref": "#/$defs/SessionActivateParams",
+    "$defs": {
+      "SessionActivateParams": {
+        "additionalProperties": false,
+        "properties": {
+          "cols": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cols"
+          },
+          "omit_messages": {
+            "default": false,
+            "title": "Omit Messages",
+            "type": "boolean"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id"],
+        "title": "SessionActivateParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/SessionActivateResult",
+    "$defs": {
+      "SessionActivateResult": {
+        "additionalProperties": false,
+        "properties": {
+          "auto_continue": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AutoContinue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "hydrating": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Hydrating"
+          },
+          "inflight": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/InflightTurn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "info": {
+            "$ref": "#/$defs/SessionLiveInfo"
+          },
+          "message_count": {
+            "title": "Message Count",
+            "type": "integer"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/$defs/TranscriptMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "messages_omitted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Messages Omitted"
+          },
+          "open_requests": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/OpenRequestEntry"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Open Requests"
+          },
+          "pending_approval": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PendingApproval"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "pending_connection": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ConnectionRequestPayload"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "queued": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/QueuedPrompt"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "resumed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Resumed"
+          },
+          "running": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Running"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "session_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Key"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Started At"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "stored_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Stored Session Id"
+          },
+          "todo_state": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TodoState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "turn_started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Turn Started At"
+          }
+        },
+        "required": ["session_id", "message_count", "messages", "info"],
+        "title": "SessionActivateResult",
+        "type": "object"
+      },
+      "AutoContinue": {
+        "additionalProperties": false,
+        "description": "A crash-interrupted turn was scheduled to continue right after this resume.",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "interrupted_at": {
+            "title": "Interrupted At",
+            "type": "number"
+          }
+        },
+        "required": ["attempt", "interrupted_at"],
+        "title": "AutoContinue",
+        "type": "object"
+      },
+      "InflightTurn": {
+        "additionalProperties": false,
+        "description": "``session_auto_continue._inflight_snapshot``: the live (or retained failed) turn a reconnecting\nclient rebuilds its bubbles from.",
+        "properties": {
+          "assistant": {
+            "default": "",
+            "title": "Assistant",
+            "type": "string"
+          },
+          "correction_offsets": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Correction Offsets"
+          },
+          "corrections": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Corrections"
+          },
+          "display_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display Kind"
+          },
+          "display_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display Metadata"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error"
+          },
+          "error_surface": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error Surface"
+          },
+          "recoverable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Recoverable"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "streaming": {
+            "default": false,
+            "title": "Streaming",
+            "type": "boolean"
+          },
+          "user": {
+            "default": "",
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "title": "InflightTurn",
+        "type": "object"
+      },
+      "SessionLiveInfo": {
+        "additionalProperties": true,
+        "description": "``tui_gateway/server.py::_session_info`` — the ``session.info`` event and the ``info`` field of\n``session.create`` / ``session.resume`` / ``session.activate`` results.",
+        "properties": {
+          "approval_mode": {
+            "default": "manual",
+            "title": "Approval Mode",
+            "type": "string"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Branch"
+          },
+          "credential_warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Credential Warning"
+          },
+          "cwd": {
+            "default": "",
+            "title": "Cwd",
+            "type": "string"
+          },
+          "desktop_contract": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Desktop Contract"
+          },
+          "fast": {
+            "default": false,
+            "title": "Fast",
+            "type": "boolean"
+          },
+          "lazy": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Lazy"
+          },
+          "mcp_servers": {
+            "items": {
+              "$ref": "#/$defs/McpServerStatus"
+            },
+            "title": "Mcp Servers",
+            "type": "array"
+          },
+          "model": {
+            "default": "",
+            "title": "Model",
+            "type": "string"
+          },
+          "personality": {
+            "default": "",
+            "title": "Personality",
+            "type": "string"
+          },
+          "profile_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile Name"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ProjectRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "provider": {
+            "default": "",
+            "title": "Provider",
+            "type": "string"
+          },
+          "reasoning_effort": {
+            "default": "",
+            "title": "Reasoning Effort",
+            "type": "string"
+          },
+          "reasoning_effort_wire": {
+            "default": "",
+            "title": "Reasoning Effort Wire",
+            "type": "string"
+          },
+          "release_date": {
+            "default": "",
+            "title": "Release Date",
+            "type": "string"
+          },
+          "running": {
+            "default": false,
+            "title": "Running",
+            "type": "boolean"
+          },
+          "service_tier": {
+            "default": "",
+            "title": "Service Tier",
+            "type": "string"
+          },
+          "skills": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Skills",
+            "type": "object"
+          },
+          "stored_session_id": {
+            "default": "",
+            "title": "Stored Session Id",
+            "type": "string"
+          },
+          "system_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "System Prompt"
+          },
+          "terminal_backend": {
+            "default": "",
+            "title": "Terminal Backend",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "tools": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Tools",
+            "type": "object"
+          },
+          "turn_started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Turn Started At"
+          },
+          "update_behind": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Update Behind"
+          },
+          "update_command": {
+            "default": "",
+            "title": "Update Command",
+            "type": "string"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Usage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "version": {
+            "default": "",
+            "title": "Version",
+            "type": "string"
+          },
+          "yolo": {
+            "default": false,
+            "title": "Yolo",
+            "type": "boolean"
+          }
+        },
+        "title": "SessionLiveInfo",
+        "type": "object"
+      },
+      "TranscriptMessage": {
+        "additionalProperties": true,
+        "description": "One transcript row as the gateway PROJECTS it for renderers (``session_history._project_history``):\n``text``, display-only ``timestamp`` / ``display_kind`` / ``display_metadata``, the durable ``row_id``\nrewind targets, and for tool rows raw ``content``, ``tool_call_id``, ``name``, ``context`` and ``args``.\nAssistant detail sidecars (``reasoning``, …) ride as extra keys.",
+        "properties": {
+          "args": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Args"
+          },
+          "content": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Content"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context"
+          },
+          "display_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display Kind"
+          },
+          "display_metadata": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display Metadata"
+          },
+          "labels": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/ToolLabel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Labels"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "reasoning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reasoning"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "row_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Row Id"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Text"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timestamp"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Call Id"
+          }
+        },
+        "required": ["role"],
+        "title": "TranscriptMessage",
+        "type": "object"
+      },
+      "OpenRequestEntry": {
+        "additionalProperties": false,
+        "description": "One unanswered server→client request (``server_requests.Request.snapshot``); the reconnecting\nclient re-delivers it to its request handlers.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": ["id", "method", "params"],
+        "title": "OpenRequestEntry",
+        "type": "object"
+      },
+      "PendingApproval": {
+        "additionalProperties": true,
+        "description": "One unresolved ``tools/approval.py`` gateway queue entry as ``server._approval_request_payload``\nrenders it (command redacted; ``choices`` precomputed). The key set is owned by the approval tool.",
+        "properties": {
+          "allow_permanent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Allow Permanent"
+          },
+          "allow_session": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Allow Session"
+          },
+          "choices": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Choices"
+          },
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Command"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "pattern_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pattern Key"
+          },
+          "pattern_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pattern Keys"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Id"
+          },
+          "smart_denied": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Smart Denied"
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Name"
+          }
+        },
+        "title": "PendingApproval",
+        "type": "object"
+      },
+      "ConnectionRequestPayload": {
+        "additionalProperties": false,
+        "description": "``ConnectionOperation.request_payload``: opens the card; also the ``pending_connection`` resume\nsnapshot so a client that missed the event restores the card with the server's deadline.",
+        "properties": {
+          "deadline_at": {
+            "title": "Deadline At",
+            "type": "number"
+          },
+          "op_id": {
+            "title": "Op Id",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/$defs/ConnectionOperationTarget"
+            },
+            "title": "Targets",
+            "type": "array"
+          },
+          "timeout_seconds": {
+            "title": "Timeout Seconds",
+            "type": "number"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Call Id"
+          }
+        },
+        "required": ["op_id", "seq", "deadline_at", "timeout_seconds", "targets"],
+        "title": "ConnectionRequestPayload",
+        "type": "object"
+      },
+      "QueuedPrompt": {
+        "additionalProperties": false,
+        "properties": {
+          "user": {
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "required": ["user"],
+        "title": "QueuedPrompt",
+        "type": "object"
+      },
+      "TodoState": {
+        "additionalProperties": false,
+        "description": "``tool_progress._normalize_todo_state``: the authoritative todo snapshot.",
+        "properties": {
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "todos": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Todos",
+            "type": "array"
+          }
+        },
+        "required": ["todos", "revision"],
+        "title": "TodoState",
+        "type": "object"
+      },
+      "McpServerStatus": {
+        "additionalProperties": true,
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "tool_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Count"
+          }
+        },
+        "title": "McpServerStatus",
+        "type": "object"
+      },
+      "ProjectRef": {
+        "additionalProperties": false,
+        "description": "``tui_gateway/server.py::_project_info_for_cwd``.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "primary_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Primary Path"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": ["id", "slug", "name"],
+        "title": "ProjectRef",
+        "type": "object"
+      },
+      "Usage": {
+        "additionalProperties": true,
+        "description": "``tui_gateway/server.py::_get_usage`` + ``agent/context_breakdown.py::context_usage_fields``.",
+        "properties": {
+          "active_subagents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Active Subagents"
+          },
+          "avg_latency_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Avg Latency S"
+          },
+          "avg_tps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Avg Tps"
+          },
+          "cache_hit_pct": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cache Hit Pct"
+          },
+          "cache_read": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cache Read"
+          },
+          "cache_write": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cache Write"
+          },
+          "calls": {
+            "default": 0,
+            "title": "Calls",
+            "type": "integer"
+          },
+          "completion": {
+            "default": 0,
+            "title": "Completion",
+            "type": "integer"
+          },
+          "compressions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Compressions"
+          },
+          "context_estimated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Estimated"
+          },
+          "context_max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Max"
+          },
+          "context_percent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Percent"
+          },
+          "context_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Source"
+          },
+          "context_used": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Used"
+          },
+          "cost_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cost Status"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cost Usd"
+          },
+          "dev_credits_spent_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Dev Credits Spent Micros"
+          },
+          "input": {
+            "default": 0,
+            "title": "Input",
+            "type": "integer"
+          },
+          "model": {
+            "default": "",
+            "title": "Model",
+            "type": "string"
+          },
+          "output": {
+            "default": 0,
+            "title": "Output",
+            "type": "integer"
+          },
+          "prompt": {
+            "default": 0,
+            "title": "Prompt",
+            "type": "integer"
+          },
+          "reasoning": {
+            "default": 0,
+            "title": "Reasoning",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "Usage",
+        "type": "object"
+      },
+      "ToolLabel": {
+        "additionalProperties": false,
+        "description": "``tools.tool_labels.ToolLabel`` — what one call executed through the tool_search bridge is,\nin words. Clients render ``text`` (or ``app``/``action`` in their own columns) and never parse\nthe tool name themselves.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "app": {
+            "title": "App",
+            "type": "string"
+          },
+          "emoji": {
+            "title": "Emoji",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/ToolLabelKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "preview": {
+            "default": "",
+            "title": "Preview",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": ["kind", "app", "action", "emoji", "text", "name"],
+        "title": "ToolLabel",
+        "type": "object"
+      },
+      "ConnectionOperationTarget": {
+        "additionalProperties": false,
+        "description": "``Target.snapshot``: the link minted up front rides here, never in the model result. ``extra``\nkeys a leg records (``tools``, ``hint``) are typed here as they appear.",
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/ConnectionTargetAction"
+          },
+          "app_state": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CatalogAppState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "attempt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Attempt"
+          },
+          "connect_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Connect Url"
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Connection Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detail"
+          },
+          "discovery_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Discovery Error"
+          },
+          "display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display"
+          },
+          "has_desktop_half": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Has Desktop Half"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Hint"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Instructions"
+          },
+          "kind": {
+            "$ref": "#/$defs/ConnectionTargetKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "platforms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Platforms"
+          },
+          "repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repo"
+          },
+          "required_env": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/ConnectionTargetEnvField"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Required Env"
+          },
+          "requirements": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Requirements"
+          },
+          "scan": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CatalogScan"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sha"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Skill"
+          },
+          "state": {
+            "$ref": "#/$defs/ConnectionTargetState"
+          },
+          "subdir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Subdir"
+          },
+          "target_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target Profile"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CatalogTier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tools"
+          }
+        },
+        "required": ["name", "kind", "action", "state"],
+        "title": "ConnectionOperationTarget",
+        "type": "object"
+      },
+      "ToolLabelKind": {
+        "description": "Which surface one inner call of a bridged ``tool_call`` runs on.",
+        "enum": ["connector", "mcp", "tool"],
+        "title": "ToolLabelKind",
+        "type": "string"
+      },
+      "ConnectionTargetAction": {
+        "enum": ["authorize", "connect", "enable", "install", "reconnect"],
+        "title": "ConnectionTargetAction",
+        "type": "string"
+      },
+      "CatalogAppState": {
+        "description": "The desktop app a catalog plugin drives, from its ``hermes_platform`` declaration.",
+        "enum": ["present", "missing_app", "app_not_running", "unknown"],
+        "title": "CatalogAppState",
+        "type": "string"
+      },
+      "ConnectionTargetKind": {
+        "enum": ["connector", "mcp", "plugin", "skill"],
+        "title": "ConnectionTargetKind",
+        "type": "string"
+      },
+      "ConnectionTargetEnvField": {
+        "additionalProperties": false,
+        "description": "One credential an MCP install still needs; the card renders a field per entry and sends the\nvalues back with the approval.",
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Prompt"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "boolean"
+          }
+        },
+        "required": ["name", "required", "secret", "default"],
+        "title": "ConnectionTargetEnvField",
+        "type": "object"
+      },
+      "CatalogScan": {
+        "additionalProperties": false,
+        "description": "The catalog's security scan of the pinned commit; read-only on the card.",
+        "properties": {
+          "status": {
+            "$ref": "#/$defs/CatalogScanStatus"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": ["status", "summary"],
+        "title": "CatalogScan",
+        "type": "object"
+      },
+      "ConnectionTargetState": {
+        "description": "``tools/connectors/contract.py::TargetState``.",
+        "enum": ["pending", "initiated", "connected", "skipped", "failed", "expired", "not_connected"],
+        "title": "ConnectionTargetState",
+        "type": "string"
+      },
+      "CatalogTier": {
+        "enum": ["official", "community"],
+        "title": "CatalogTier",
+        "type": "string"
+      },
+      "CatalogScanStatus": {
+        "enum": ["passed", "warnings", "failed"],
+        "title": "CatalogScanStatus",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session.activate"]
+      },
+      "params": {
+        "$ref": "#/$defs/SessionActivateParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "SessionActivateParams": {
+        "additionalProperties": false,
+        "properties": {
+          "cols": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cols"
+          },
+          "omit_messages": {
+            "default": false,
+            "title": "Omit Messages",
+            "type": "boolean"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": ["session_id"],
+        "title": "SessionActivateParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

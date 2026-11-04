@@ -1,0 +1,44 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "session-store:session-store.db:search_index_content",
+  "nativeName": "session-store.db:search_index_content",
+  "channel": "session-store",
+  "channels": [
+    "session-store"
+  ],
+  "transport": "sqlite-row",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "c0": {},
+      "c1": {},
+      "c2": {},
+      "c3": {},
+      "id": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "id"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-store.db*; 0 retained observation(s) in the 1.0.105 sources; source evidence: fixture."
+}

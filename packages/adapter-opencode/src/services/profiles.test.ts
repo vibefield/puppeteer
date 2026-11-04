@@ -12,14 +12,21 @@ import {
 } from '@vibefield/puppeteer-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { normalizeOpenCodeNativeInvocation } from '../launch/native-invocation.js';
+import { createLoopbackFetch, loopbackFetch } from '../transport/loopback-fetch.js';
 import {
   createOpenCodeProfileService,
   openCodeConsoleOrgsFrom,
   openCodeDataHome,
   openCodeStoredCredentials,
+  openCodeVerificationClient,
   OPENCODE_PROFILE_ROOT_VARIABLE,
   type OpenCodeConsoleOrgsRequest,
 } from './profiles.js';
+
+vi.mock('../transport/loopback-fetch.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../transport/loopback-fetch.js')>();
+  return { ...actual, loopbackFetch: vi.fn(actual.loopbackFetch) };
+});
 
 const service = createOpenCodeProfileService({ home: resolve('/home/tester'), executable: 'opencode' });
 
@@ -541,6 +548,28 @@ describe('OpenCode profile verification through a private serve', () => {
       directoryExisted: true,
     });
     expect(existsSync(String(seen.directory))).toBe(false);
+    // A fresh serve usually reuses its predecessor's origin, so the read must ride the loopback fetch.
+    expect(vi.mocked(loopbackFetch).mock.calls.map(([input]) => new URL(String(input)).pathname)).toContain(
+      '/experimental/console/orgs',
+    );
+  });
+
+  it("reads the orgs through a fetch that survives a predecessor's stale pooled socket", async () => {
+    const pooled = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(
+        new TypeError('fetch failed', { cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }) }),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ orgs: [] }), { status: 200 }));
+    const client = openCodeVerificationClient(
+      { origin: 'http://127.0.0.1:4096', username: 'opencode', password: 'secret' },
+      '/tmp/verify',
+      1_000,
+      createLoopbackFetch({ pooled }),
+    );
+    expect(await client.listConsoleOrgs()).toEqual({ orgs: [] });
+    expect(pooled).toHaveBeenCalledTimes(2);
+    expect(pooled.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it('gives up on a console that does not answer within the budget and keeps the account', async () => {

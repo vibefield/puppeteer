@@ -16,7 +16,7 @@ afterEach(() => {
 describe('Hermes native persona', () => {
   it('loads the Surface ASM and serves the observed tui_gateway methods', () => {
     expect(persona.vendor).toBe('hermes');
-    expect(persona.version).toBe('0.20.0');
+    expect(persona.version).toBe('0.21.5');
     expect(persona.serve).toBeDefined();
     expect(
       Object.keys(persona.serve ?? {})
@@ -68,6 +68,46 @@ describe('Hermes native persona', () => {
       text: 'SURFACE_HERMES_OK',
       status: 'complete',
       usage: { input: 24, output: 6, total: 30, calls: 1 },
+    });
+  });
+
+  it('asks for approval as a server→client request and continues only once the client answers', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'puppeteer-hermes-approval-'));
+    roots.push(home);
+    const behavior = JSON.parse(
+      readFileSync(join(personaDirectory('hermes'), 'behavior', 'approval-turn.json'), 'utf8'),
+    ) as BehaviorDocument;
+    const requests: Array<{ method: string; params: Record<string, unknown> }> = [];
+    const session = createImposterSession({
+      persona,
+      argv: [],
+      env: { PUPPETEER_IMPOSTER_HOME: home },
+      cwd: home,
+      behavior,
+      jsonrpc: {
+        notify: () => {},
+        request: async (method, params) => {
+          requests.push({ method, params });
+          return { choice: 'deny' };
+        },
+      },
+    });
+
+    await session.boot();
+    await session.turn('remove the scratch directory');
+
+    expect(requests.map(({ method }) => method)).toEqual(['approval']);
+    expect(requests[0]?.params).toMatchObject({
+      session_id: expect.any(String),
+      request_id: expect.any(String),
+      choices: ['once', 'session', 'always', 'deny'],
+    });
+    const events = session.emitted.map((entry) => entry.event);
+    expect(events).not.toContain('approval.request');
+    expect(events.indexOf('approval')).toBeLessThan(events.indexOf('tool.complete'));
+    expect(session.emitted.find((entry) => entry.event === 'tool.complete')?.payload).toMatchObject({
+      tool_id: 'call_imposter',
+      result: { exit_code: -1, status: 'blocked' },
     });
   });
 });

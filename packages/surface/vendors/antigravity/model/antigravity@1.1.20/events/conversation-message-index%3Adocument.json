@@ -11,15 +11,9 @@
   "direction": "agent-local",
   "payloadSchema": {
     "type": "object",
-    "properties": {
-      "<dynamic>": {
-        "type": "boolean"
-      }
-    },
-    "required": [
-      "<dynamic>"
-    ],
-    "additionalProperties": true
+    "additionalProperties": {
+      "type": "boolean"
+    }
   },
   "schemaFidelity": {
     "payload": "structural",

@@ -13,6 +13,7 @@ import {
   loadModel as loadCanonicalModel,
   loadModelSources as loadModel,
   validatePayload,
+  validateSanitizedPayload,
   type PayloadSchema,
   type SurfaceModel,
 } from './model.js';
@@ -265,6 +266,24 @@ function eventDocumentPaths(modelDir: string): string[] {
   return found;
 }
 
+describe('validateSanitizedPayload', () => {
+  const schema: PayloadSchema = {
+    type: 'object',
+    properties: { modelId: { type: 'string', enum: ['mock-model'] }, count: { type: 'number' } },
+    required: ['modelId'],
+  };
+  it('accepts redaction placeholders and sanitizer pseudonyms in place of an enum value', () => {
+    expect(validateSanitizedPayload(schema, { modelId: 'mock-model' })).toEqual([]);
+    expect(validateSanitizedPayload(schema, { modelId: '<redacted>' })).toEqual([]);
+    expect(validateSanitizedPayload(schema, { modelId: 'anon-52b9ff92b8e55df1' })).toEqual([]);
+  });
+  it('still rejects other values and type changes', () => {
+    expect(validateSanitizedPayload(schema, { modelId: 'other-model' })).not.toEqual([]);
+    expect(validateSanitizedPayload(schema, { modelId: 'anon-52b9ff92' })).not.toEqual([]);
+    expect(validateSanitizedPayload(schema, { modelId: 'mock-model', count: 'anon-52b9ff92b8e55df1' })).not.toEqual([]);
+  });
+});
+
 describe('loadModel', () => {
   it('round-trips native event identities through portable authoring paths', () => {
     const paths = {
@@ -387,6 +406,34 @@ describe('loadModel', () => {
       { 'event.type': 'one' },
       { 'event.type': 'two' },
     ]);
+  });
+
+  it('checks a variant match against an enum reached through the payload schema $defs', () => {
+    writeModel(dir, [
+      eventFile({
+        event: 'Done',
+        payloadSchema: {
+          $ref: '#/$defs/DonePayload',
+          $defs: {
+            DonePayload: {
+              type: 'object',
+              properties: { status: { anyOf: [{ $ref: '#/$defs/Status' }, { type: 'null' }] } },
+            },
+            Status: { type: 'string', enum: ['complete', 'interrupted'] },
+          },
+        },
+      }),
+    ]);
+    upgradeFixtureToV2(dir);
+    const eventPath = join(dir, 'events', 'Done.json');
+    const event = JSON.parse(readFileSync(eventPath, 'utf8')) as Record<string, unknown>;
+    event.variants = [{ match: { status: 'interrupted' }, evidence: { existence: ['captured'], shape: ['captured'] } }];
+    writeFileSync(eventPath, JSON.stringify(event));
+    expect(loadModel(dir).events[0]?.variants?.map((entry) => entry.match)).toEqual([{ status: 'interrupted' }]);
+
+    event.variants = [{ match: { status: 'paused' }, evidence: { existence: ['captured'], shape: ['captured'] } }];
+    writeFileSync(eventPath, JSON.stringify(event));
+    expect(() => loadModel(dir)).toThrow(/match "status" violates payloadSchema/);
   });
 
   it('treats schema enums as legal values and requires evidence only for declared behavior variants', () => {

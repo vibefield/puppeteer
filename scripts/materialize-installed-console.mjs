@@ -19,6 +19,8 @@ import { digestTree } from '../packages/surface/scripts/check-evidence.mjs';
 import { createInstalledConsoleManifest, validatePythonUvLockPolicy } from './lib/installed-console-contract.mjs';
 import { materializeNodeRuntimeBundle } from './lib/materialize-runtime-bundle.mjs';
 
+import { dependencyBuildEnvironment } from './lib/reproducible-dependency-build.mjs';
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const pythonTool = resolve(root, 'scripts', 'lib', 'python-console-tool.py');
 
@@ -126,7 +128,7 @@ function run(commandName, args, options = {}) {
   return result.stdout;
 }
 
-function isolatedEnvironment(workRoot, names, environment = process.env) {
+export function isolatedEnvironment(workRoot, names, environment = process.env) {
   const inherited = [
     'PATH',
     'SystemRoot',
@@ -152,6 +154,10 @@ function isolatedEnvironment(workRoot, names, environment = process.env) {
   value.NO_COLOR = '1';
   value.PYTHONDONTWRITEBYTECODE = '1';
   value.UV_NO_ENV_FILE = '1';
+  // Source-built Python dependencies may use the installed Rust toolchain.
+  // Retain its location, while Cargo's config and credentials stay in the disposable home.
+  const rustupHome = environment.RUSTUP_HOME ?? (environment.HOME && join(environment.HOME, '.rustup'));
+  if (rustupHome && existsSync(rustupHome)) value.RUSTUP_HOME = rustupHome;
   for (const name of names) value[name] = home;
   return value;
 }
@@ -223,6 +229,8 @@ export function materializeInstalledConsole({
   const npmCommand = command(npm);
   mkdirSync(workRoot, { recursive: true });
   const env = isolatedEnvironment(workRoot, policy.isolatedHomeEnvironment, environment);
+  const dependencyBuild = policy.dependencyBuilds?.[platform];
+  Object.assign(env, dependencyBuildEnvironment(dependencyBuild, workRoot));
   const pythonVersionText = run(pythonCommand, ['--version'], { env, label: 'Python identity probe' }).trim();
   if (pythonVersionText !== `Python ${policy.pythonVersion}`) {
     throw new Error(`Python identity is ${pythonVersionText || 'unknown'}, expected Python ${policy.pythonVersion}`);
@@ -289,6 +297,24 @@ export function materializeInstalledConsole({
   );
   if (!existsSync(installedPython) || !existsSync(installedConsole)) {
     throw new Error('locked uv sync did not materialize the declared console');
+  }
+  if (dependencyBuild) {
+    run(
+      installedPython,
+      [
+        join(root, 'scripts/lib/normalize-dependency-sbom.py'),
+        '--recipe',
+        JSON.stringify(dependencyBuild),
+        '--original',
+        join(workRoot, 'build-provenance', 'sbom-original.json'),
+      ],
+      {
+        env,
+        timeout: 20_000,
+        maxBuffer: 4_096,
+        label: 'reviewed dependency SBOM normalization',
+      },
+    );
   }
   const generatedSource = attestSourceChanges(projectRoot, sourceSnapshot, policy.generatedSourcePaths);
   const inventoryArguments = [

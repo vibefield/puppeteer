@@ -42,6 +42,15 @@ describe('correlation — the property that makes a fixture replayable', () => {
     expect(sanitizeRecord({ turnId: '1786346001309' })).not.toEqual({ turnId: '1786346001309' });
   });
 
+  it('keeps a vendor-declared structural value under an id key in both redaction and detection', () => {
+    const rules = extendRules({ structuralEnumValue: /^main$/ });
+    const out = sanitizeRecord({ agentId: 'main', parentAgentId: 'agent-7' }, rules) as Record<string, unknown>;
+    expect(out.agentId).toBe('main');
+    expect(out.parentAgentId).toMatch(/^anon-[0-9a-f]{16}$/);
+    expect(checkRecord(out, rules)).toEqual([]);
+    expect(checkRecord({ agentId: 'agent-7' }, rules)).not.toEqual([]);
+  });
+
   it('is idempotent — re-sanitizing a fixture changes nothing', () => {
     const record = { threadId: '019f5d86-423a-7083-ab79-2deb044599c1', cwd: '/Users/someone/repo', text: 'hello' };
     const once = sanitizeRecord(record);
@@ -217,5 +226,68 @@ describe('numeric wall-clock timestamps', () => {
     // shape-faithful for anything that asserts on elapsed time.
     const sanitized = sanitizeRecord({ elapsedTime: 42, createdAt: 5 }) as Record<string, unknown>;
     expect(sanitized).toEqual({ elapsedTime: 42, createdAt: 5 });
+  });
+
+  it("pins a camelCase `…Time` clock such as copilot's epoch-ms `sessionStartTime`", () => {
+    const raw = { accountingSnapshot: { sessionStartTime: 1793733259769, totalApiDurationMs: 4200 } };
+    expect(checkRecord(raw)).toEqual([expect.stringContaining('unpinned wall-clock timestamp at sessionStartTime')]);
+    const sanitized = sanitizeRecord(raw);
+    expect(sanitized).toEqual({
+      accountingSnapshot: { sessionStartTime: REDACTED_EPOCH_MS, totalApiDurationMs: 4200 },
+    });
+    expect(checkRecord(sanitized)).toEqual([]);
+  });
+
+  it('redacts the ISO-string form of a clock under a vendor text rule', () => {
+    const rules = extendRules({ sensitiveTextKey: /^(?:sessionStartTime|resumeTime)$/ });
+    const sanitized = sanitizeRecord(
+      { sessionStartTime: '2026-11-03T19:14:19.769Z', resumeTime: '2026-11-03T19:14:26.626Z' },
+      rules,
+    );
+    expect(sanitized).toEqual({ sessionStartTime: '<redacted:sessionStartTime>', resumeTime: '<redacted:resumeTime>' });
+    expect(checkRecord(sanitized, rules)).toEqual([]);
+  });
+
+  it('flags an unpinned `sessionStartTime` in a capture directory until it is sanitised', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sanitize-time-'));
+    try {
+      writeFileSync(join(dir, 'events.jsonl'), `${JSON.stringify({ data: { sessionStartTime: 1793733259769 } })}\n`);
+      expect(checkCaptureDirectory(dir)).toEqual([expect.stringContaining('unpinned wall-clock timestamp')]);
+      sanitizeCaptureDirectory(dir);
+      expect(checkCaptureDirectory(dir)).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('UUID-keyed maps', () => {
+  // Copilot 1.0.105's `session.shutdown` keys its usage watermarks by the session UUID.
+  const sessionId = '902724a7-80ac-4b9c-bd90-691a8cd00805';
+
+  it('aliases a UUID key with the same pseudonym as the matching value', () => {
+    const sanitized = sanitizeRecord({ data: { sessionId, usageAccountingWatermarks: { [sessionId]: 2 } } }) as {
+      data: { sessionId: string; usageAccountingWatermarks: Record<string, number> };
+    };
+    expect(sanitized.data.sessionId).toBe(alias(sessionId));
+    expect(sanitized.data.sessionId.startsWith('a11a5ed0-')).toBe(true);
+    expect(sanitized.data.usageAccountingWatermarks).toEqual({ [alias(sessionId)]: 2 });
+    expect(JSON.stringify(sanitized)).not.toContain(sessionId);
+    expect(checkRecord(sanitized)).toEqual([]);
+    expect(sanitizeRecord(sanitized)).toEqual(sanitized);
+  });
+
+  it('aliases a UUID embedded in a longer key', () => {
+    expect(sanitizeRecord({ byFile: { [`session-${sessionId}.jsonl`]: 1 } })).toEqual({
+      byFile: { [`session-${alias(sessionId)}.jsonl`]: 1 },
+    });
+  });
+
+  it('detects a raw UUID that survives only as an object key, without echoing it', () => {
+    const issues = checkRecord({
+      data: { sessionId: alias(sessionId), usageAccountingWatermarks: { [sessionId]: 2 } },
+    });
+    expect(issues).toEqual([expect.stringContaining('raw UUID in object key under usageAccountingWatermarks')]);
+    expect(issues.join('\n')).not.toContain(sessionId);
   });
 });

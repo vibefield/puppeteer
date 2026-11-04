@@ -1,0 +1,257 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/question.list",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "List pending questions — Get all pending question requests across all sessions.",
+  "payloadSchema": {
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "description": "List of pending questions",
+        "items": {
+          "$ref": "#/$defs/QuestionRequest"
+        },
+        "type": "array"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/question"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "QuestionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^que",
+            "type": "string"
+          },
+          "questions": {
+            "description": "Questions to ask",
+            "items": {
+              "$ref": "#/$defs/QuestionInfo"
+            },
+            "type": "array"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "tool": {
+            "$ref": "#/$defs/QuestionTool"
+          }
+        },
+        "required": [
+          "id",
+          "sessionID",
+          "questions"
+        ],
+        "type": "object"
+      },
+      "QuestionInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "custom": {
+            "type": "boolean"
+          },
+          "header": {
+            "description": "Very short label (max 30 chars)",
+            "type": "string"
+          },
+          "multiple": {
+            "type": "boolean"
+          },
+          "options": {
+            "description": "Available choices",
+            "items": {
+              "$ref": "#/$defs/QuestionOption"
+            },
+            "type": "array"
+          },
+          "question": {
+            "description": "Complete question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "header",
+          "options"
+        ],
+        "type": "object"
+      },
+      "QuestionTool": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg",
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageID",
+          "callID"
+        ],
+        "type": "object"
+      },
+      "QuestionOption": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "description": "Explanation of choice",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display text (1-5 words, concise)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "description"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "method": {
+            "enum": [
+              "GET"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/question"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "result": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/abort-stream/http-roundtrip.jsonl",
+  "notes": "OpenAPI operationId question.list; GET /question."
+}

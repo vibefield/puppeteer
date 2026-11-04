@@ -1,0 +1,119 @@
+{
+  "codex": "0.166.0",
+  "probe": "probes/codex@0.166.0/provider-mismatch-probe.mjs",
+  "artifact": {
+    "versionOutput": "codex-cli 0.166.0",
+    "executableSha256": "b8a11fedf24b2dfb59a70c9e52b030f9a508dcd49cd2dd0d41956f4c785156b8"
+  },
+  "mismatch": {
+    "firstTurn": {
+      "answered": true,
+      "result": true
+    },
+    "resume": {
+      "answered": true,
+      "error": {
+        "code": -32600,
+        "messageSha256": "0e6abf87b1364c12",
+        "data": {
+          "type": "modelProviderMismatch",
+          "modelProvider": "fake",
+          "currentModelProvider": "other"
+        }
+      }
+    }
+  },
+  "notConfigured": {
+    "firstTurn": {
+      "answered": true,
+      "result": true
+    },
+    "resume": {
+      "answered": true,
+      "error": {
+        "code": -32600,
+        "messageSha256": "2d3f64cf05a53e32",
+        "data": {
+          "type": "modelProviderNotConfigured",
+          "modelProvider": "fake"
+        }
+      }
+    }
+  },
+  "inputMismatch": {
+    "firstTurn": {
+      "answered": true,
+      "result": true
+    },
+    "secondTurn": {
+      "answered": true,
+      "error": {
+        "code": -32600,
+        "messageSha256": "0e6abf87b1364c12",
+        "data": {
+          "type": "modelProviderMismatch",
+          "modelProvider": "fake",
+          "currentModelProvider": "other"
+        }
+      }
+    },
+    "loadedResume": {
+      "answered": true,
+      "error": {
+        "code": -32600,
+        "messageSha256": "0e6abf87b1364c12",
+        "data": {
+          "type": "modelProviderMismatch",
+          "modelProvider": "fake",
+          "currentModelProvider": "other"
+        }
+      }
+    }
+  },
+  "baseline": {
+    "codex": "0.164.0",
+    "probe": "probes/codex@0.166.0/provider-mismatch-probe.mjs (run against the 0.164.0 linux-x64 baseline)",
+    "artifact": {
+      "versionOutput": "codex-cli 0.164.0",
+      "executableSha256": "b93f6811d3f653f0fb83be4050d857fb9abbb111dfa2ce160563327daff7f306"
+    },
+    "mismatch": {
+      "firstTurn": {
+        "answered": true,
+        "result": true
+      },
+      "resume": {
+        "answered": true,
+        "result": true
+      }
+    },
+    "notConfigured": {
+      "firstTurn": {
+        "answered": true,
+        "result": true
+      },
+      "resume": {
+        "answered": true,
+        "error": {
+          "code": -32600,
+          "messageSha256": "195a39c2dd3b8d35",
+          "data": null
+        }
+      }
+    },
+    "inputMismatch": {
+      "firstTurn": {
+        "answered": true,
+        "result": true
+      },
+      "secondTurn": {
+        "answered": true,
+        "result": true
+      },
+      "loadedResume": {
+        "answered": true,
+        "result": true
+      }
+    }
+  }
+}

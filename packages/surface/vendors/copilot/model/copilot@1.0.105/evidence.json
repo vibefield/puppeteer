@@ -1,0 +1,139 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "copilot",
+  "vendorVersion": "1.0.105",
+  "artifacts": [
+    {
+      "id": "copilot-1.0.105-rosetta-fixture-corpus",
+      "kind": "controlled-fixture-corpus",
+      "versionOutput": "1.0.105",
+      "platform": "linux-x64",
+      "capturedAt": "2026-11-03T19:14:19Z",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:41f0b6b85c14a0f1942fc71a58e89a5cb9a569d59ca283010a3d1a2f24264cfe"
+      }
+    },
+    {
+      "id": "copilot-1.0.105-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-11-04T06:34:09.294Z",
+      "versionOutput": "GitHub Copilot CLI 1.0.105.",
+      "sourceUrl": "https://registry.npmjs.org/@github/copilot-darwin-arm64/-/copilot-darwin-arm64-1.0.105.tgz",
+      "acquisitionKey": "copilot@1.0.105@darwin-arm64@sha256:5fd7d15ff02deb08a58593b1b488015bb52c1686014b80b5509e28263cb3ad70",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:5fd7d15ff02deb08a58593b1b488015bb52c1686014b80b5509e28263cb3ad70"
+      }
+    },
+    {
+      "id": "copilot-1.0.105-darwin-x64",
+      "platform": "darwin-x64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-11-04T06:34:09.470Z",
+      "versionOutput": "GitHub Copilot CLI 1.0.105.",
+      "sourceUrl": "https://registry.npmjs.org/@github/copilot-darwin-x64/-/copilot-darwin-x64-1.0.105.tgz",
+      "acquisitionKey": "copilot@1.0.105@darwin-x64@sha256:83e8dfacc3e79e55e4ab723edaf5b9a38d83aec85e9e115a131b973c98265801",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:83e8dfacc3e79e55e4ab723edaf5b9a38d83aec85e9e115a131b973c98265801"
+      }
+    },
+    {
+      "id": "copilot-1.0.105-linux-x64",
+      "platform": "linux-x64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-11-04T06:34:09.681Z",
+      "versionOutput": "GitHub Copilot CLI 1.0.105.",
+      "sourceUrl": "https://registry.npmjs.org/@github/copilot-linux-x64/-/copilot-linux-x64-1.0.105.tgz",
+      "acquisitionKey": "copilot@1.0.105@linux-x64@sha256:3bd8bdc75670d7b4ec445725f6a5b9af66ee7ec49e6194646e4a40a0bc09091c",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:3bd8bdc75670d7b4ec445725f6a5b9af66ee7ec49e6194646e4a40a0bc09091c"
+      }
+    },
+    {
+      "id": "copilot-1.0.105-windows-x64",
+      "platform": "windows-x64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-11-04T06:34:09.839Z",
+      "versionOutput": "GitHub Copilot CLI 1.0.105.",
+      "sourceUrl": "https://registry.npmjs.org/@github/copilot-win32-x64/-/copilot-win32-x64-1.0.105.tgz",
+      "acquisitionKey": "copilot@1.0.105@windows-x64@sha256:ab6d710d551c137c766a6c8ef6ee2e7779c106870c96b9a91a91fa17b9748624",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:ab6d710d551c137c766a6c8ef6ee2e7779c106870c96b9a91a91fa17b9748624"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/github/copilot-cli",
+      "revision": "v1.0.105",
+      "relation": "exact-release"
+    }
+  ],
+  "records": [
+    {
+      "id": "copilot-captures",
+      "path": "packages/surface/vendors/copilot/captures/copilot@1.0.105",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "23c818243dd20a5197e32ec75f38ae79a5076e7575aae3f438c873d50be38964"
+    },
+    {
+      "id": "copilot-references",
+      "path": "packages/surface/vendors/copilot/references/copilot@1.0.105",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "263df611b64f41d778eec72550c366358b62472b196c1d699fe31fa2975b13ed"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/copilot/model/copilot@1.0.105",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "a9f0583c05592ca38fe5823a3718689d432a4cef1de738f43bec28587d90e0a0"
+    }
+  ],
+  "claims": [
+    {
+      "id": "copilot-rosetta-runtime",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "copilot-captures",
+      "artifact": "copilot-1.0.105-rosetta-fixture-corpus",
+      "platform": "linux-x64",
+      "harness": "rosetta controlled mock-provider farm",
+      "capturedAt": "2026-11-03T19:14:19Z",
+      "notes": "Type-preserving events native journal captures."
+    },
+    {
+      "id": "copilot-rosetta-observed",
+      "kind": "generated-schema",
+      "confidence": "verified-headless",
+      "record": "copilot-references",
+      "artifact": "copilot-1.0.105-rosetta-fixture-corpus",
+      "sourceReference": 0,
+      "platform": "linux-x64",
+      "harness": "rosetta controlled mock-provider farm",
+      "capturedAt": "2026-11-03T19:14:19Z",
+      "notes": "Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence. Counts and shapes come from the 1.0.105 writer and fixture sources only, not from the cumulative multi-release inventory."
+    },
+    {
+      "id": "copilot-rosetta-contract",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "record": "copilot-references",
+      "artifact": "copilot-1.0.105-rosetta-fixture-corpus",
+      "sourceReference": 0,
+      "notes": "Digest-pinned complete Rosetta stream/shape inventory for copilot@1.0.105; writer-only and zero-occurrence records establish a reviewable contract lead, not runtime occurrence."
+    }
+  ]
+}

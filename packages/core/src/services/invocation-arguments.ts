@@ -13,6 +13,11 @@ export interface NativeInvocationOption {
   /** An unlisted native alias, with its source or probe. Census tests exclude it. */
   readonly hidden?: string;
   readonly optionLikeValues?: boolean;
+  /**
+   * The value attaches only as `--flag=value` (clap's `require_equals`, shown as `--flag[=<v>]`); the next argument
+   * is never consumed, so an optional row followed by a command still reaches that command.
+   */
+  readonly requireEquals?: boolean;
 }
 
 export interface NativeInvocationCommand {
@@ -156,7 +161,9 @@ export function readNativeInvocationArguments(
       const values: string[] = [];
       if (row.arity !== 'none') {
         if (inline !== undefined) values.push(inline);
-        else {
+        else if (row.requireEquals) {
+          if (row.arity === 'one') return rejection(argument, 'this native option requires an attached =value');
+        } else {
           const next = argv[index + 1];
           if (
             next !== undefined &&

@@ -1,0 +1,234 @@
+{
+  "surface": "pi",
+  "surfaceVersion": "1.5.0",
+  "event": "usage",
+  "channel": "session",
+  "channels": [
+    "session"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "kind": {
+        "type": "string"
+      },
+      "model": {
+        "type": "string"
+      },
+      "note": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "usage": {
+        "type": "object",
+        "properties": {
+          "cacheRead": {
+            "type": "number"
+          },
+          "cacheWrite": {
+            "type": "number"
+          },
+          "cacheWrite1h": {
+            "type": "number"
+          },
+          "cost": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              },
+              "totalFromProvider": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "input",
+              "output",
+              "total"
+            ],
+            "additionalProperties": true
+          },
+          "input": {
+            "type": "number"
+          },
+          "output": {
+            "type": "number"
+          },
+          "reasoning": {
+            "type": "number"
+          },
+          "totalTokens": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cacheRead",
+          "cacheWrite",
+          "cost",
+          "input",
+          "output",
+          "totalTokens"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "kind",
+      "model",
+      "provider",
+      "usage"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string"
+      },
+      "model": {
+        "type": "string"
+      },
+      "note": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "provider": {
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      },
+      "usage": {
+        "type": "object",
+        "properties": {
+          "cacheRead": {
+            "type": "number"
+          },
+          "cacheWrite": {
+            "type": "number"
+          },
+          "cacheWrite1h": {
+            "type": "number"
+          },
+          "cost": {
+            "type": "object",
+            "properties": {
+              "cacheRead": {
+                "type": "number"
+              },
+              "cacheWrite": {
+                "type": "number"
+              },
+              "input": {
+                "type": "number"
+              },
+              "output": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              },
+              "totalFromProvider": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "cacheRead",
+              "cacheWrite",
+              "input",
+              "output",
+              "total"
+            ],
+            "additionalProperties": true
+          },
+          "input": {
+            "type": "number"
+          },
+          "output": {
+            "type": "number"
+          },
+          "reasoning": {
+            "type": "number"
+          },
+          "totalTokens": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cacheRead",
+          "cacheWrite",
+          "cost",
+          "input",
+          "output",
+          "totalTokens"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "id",
+      "kind",
+      "model",
+      "parentId",
+      "provider",
+      "timestamp",
+      "type",
+      "usage"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "pi-rosetta-contract"
+    ],
+    "shape": [
+      "pi-rosetta-contract"
+    ],
+    "carrier": [
+      "pi-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s) in the 1.5.0 sources; source evidence: writer."
+}

@@ -1,6 +1,6 @@
 import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 
-export const PI_CONTRACT = 'pi-session@3+surface@0.84.3';
+export const PI_CONTRACT = 'pi-session@3+surface@1.5.0';
 export const PI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   {
     family: 'status',
@@ -9,7 +9,9 @@ export const PI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     latency: 'file-flush',
     source: 'pi-session-jsonl',
     contractVersion: PI_CONTRACT,
-    limitations: ['User prompts are flushed with the first assistant record, not at terminal submission time.'],
+    limitations: [
+      'A user prompt is durable once Pi appends it (1.5.0 creates the journal at the first user or assistant message), which can lag terminal submission.',
+    ],
   },
   {
     family: 'usage',

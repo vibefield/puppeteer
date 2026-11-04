@@ -22,8 +22,10 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { HOOK_TOKEN_VAR, hookSettings, startHookSink, writeForwarder } from './hook-sink.mjs';
 import { delay, loadNodePty, scriptedPlan } from './interactive-lane.mjs';
-import { createIsolatedRoot, isolatedEnvironment, removeIsolatedRoot } from './isolation.mjs';
+import { assertNoEgress, startEgressRecorder } from './egress-guard.mjs';
+import { createIsolatedRoot, egressEnvironment, isolatedEnvironment, removeIsolatedRoot } from './isolation.mjs';
 import { LOOPBACK_AUTH_TOKEN, LOOPBACK_MODEL, startLoopbackModel } from './loopback-model.mjs';
+import { enterProvenCensusSandbox } from './sandbox.mjs';
 
 const MANAGED_EVENTS = ['SessionStart', 'UserPromptSubmit', 'Stop', 'SessionEnd'];
 const TOOL_EVENTS = ['PreToolUse', 'PostToolUse'];
@@ -102,11 +104,12 @@ export const SWITCH_PROBES = [
   },
 ];
 
-async function runProbe(pty, artifact, probe, rawRoot) {
+async function runProbe(pty, artifact, probe, rawRoot, egress) {
   const layout = createIsolatedRoot();
   const sink = await startHookSink({ outputRoot: join(rawRoot, probe.id), failEvents: probe.failManaged ?? [] });
   const model = await startLoopbackModel({ plan: scriptedPlan(layout.workspace) });
   sink.mode = probe.id;
+  egress.lane = probe.id;
   let terminal;
   let exited = false;
   try {
@@ -161,6 +164,7 @@ async function runProbe(pty, artifact, probe, rawRoot) {
       ...(probe.tool ? ['--allowedTools', 'Bash(touch touched.txt)'] : []),
     ];
     const environment = isolatedEnvironment(layout, {
+      ...egressEnvironment(egress.url),
       ANTHROPIC_BASE_URL: model.baseUrl,
       ANTHROPIC_AUTH_TOKEN: LOOPBACK_AUTH_TOKEN,
       ANTHROPIC_API_KEY: '',
@@ -235,8 +239,14 @@ async function runProbe(pty, artifact, probe, rawRoot) {
 export async function runSwitchProbes({ artifact, rawRoot, ids }) {
   const pty = loadNodePty();
   const results = [];
-  for (const probe of SWITCH_PROBES.filter((candidate) => !ids || ids.includes(candidate.id))) {
-    results.push(await runProbe(pty, artifact, probe, rawRoot));
+  const egress = await startEgressRecorder();
+  try {
+    for (const probe of SWITCH_PROBES.filter((candidate) => !ids || ids.includes(candidate.id))) {
+      results.push(await runProbe(pty, artifact, probe, rawRoot, egress));
+      assertNoEgress(egress, probe.id);
+    }
+  } finally {
+    await egress.close();
   }
   return results;
 }
@@ -248,6 +258,7 @@ function flag(name) {
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
+  await enterProvenCensusSandbox();
   const artifact = flag('--artifact');
   const output = flag('--output');
   if (!artifact || !output)

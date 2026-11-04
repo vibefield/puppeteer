@@ -142,7 +142,7 @@ async function prompt(server: HttpPersonaServer, sessionID: string, text = 'hell
 
 describe('OpenCode HTTP/SSE persona', () => {
   it('loads native routes and channel mappings from the pinned ASM', () => {
-    expect(persona.version).toBe('1.18.16');
+    expect(persona.version).toBe('1.19.5');
     expect(persona.channels).toEqual(['argv', 'http', 'sse', 'terminal']);
     expect(persona.channelFor('http')).toBe('http');
     expect(persona.channelFor('sse')).toBe('sse');

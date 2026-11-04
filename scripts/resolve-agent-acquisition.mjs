@@ -5,12 +5,23 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validatePythonUvLockPolicy } from './lib/installed-console-contract.mjs';
 
+import { validateReleaseBundlePolicy } from './lib/release-bundle.mjs';
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
 export function resolveAgentAcquisition(config, { vendor, platform, sourceReference }) {
   if (config.vendor !== vendor) throw new Error('upstream configuration vendor mismatch');
   if (!(config.platforms ?? []).includes(platform)) throw new Error(`unsupported platform ${platform}`);
   if (config.acquisition?.strategy === 'https-template') {
+    const spec = config.acquisition.artifacts?.[platform];
+    if (spec?.bundle) {
+      validateReleaseBundlePolicy(spec.bundle, spec.format);
+      return {
+        artifactKind: 'release-bundle',
+        outputName: 'release-bundle.json',
+        executablePath: `release/${spec.bundle.entry}`,
+      };
+    }
     return {
       artifactKind: 'standalone-executable',
       outputName: platform === 'windows-x64' ? 'agent.exe' : 'agent',

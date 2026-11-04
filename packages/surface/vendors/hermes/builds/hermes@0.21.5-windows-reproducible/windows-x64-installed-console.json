@@ -1,0 +1,528 @@
+{
+  "schemaVersion": 2,
+  "artifactKind": "installed-console",
+  "identityAlgorithm": "sha256-installed-console-manifest-v2",
+  "vendor": "hermes",
+  "version": "0.21.5",
+  "platform": "windows-x64",
+  "source": {
+    "archiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
+    "tree": {
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "sha256:867171ae4d917f85fe5f95a2cb224ec6e6e10a8ab98483e7cd21ec9ab4ce89df"
+    },
+    "generated": {
+      "roots": [
+        "hermes_agent.egg-info"
+      ],
+      "fileCount": 6,
+      "digestAlgorithm": "sha256-generated-source-trees-v1",
+      "sha256": "sha256:4516b4fc656064d227efa506b60b485c393eed1928c22476f7c4e1f30aa2cfd5"
+    },
+    "reference": "v2026.9.24",
+    "archiveRoot": "hermes-agent-2026.9.24",
+    "projectFile": {
+      "path": "pyproject.toml",
+      "sha256": "sha256:6f969b9fdff95e7269ec808361e3ae8be5357036e6257e53a3306878cf8c41dd"
+    },
+    "lockFile": {
+      "path": "uv.lock",
+      "sha256": "sha256:5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590"
+    }
+  },
+  "materialization": {
+    "strategy": "python-uv-lock",
+    "uvVersion": "0.9.28",
+    "pythonVersion": "3.11.9",
+    "frozen": true,
+    "exact": true,
+    "editable": true,
+    "defaultGroups": false
+  },
+  "pythonInventorySchemaVersion": 1,
+  "runtime": {
+    "cacheTag": "cpython-311",
+    "executableSha256": "sha256:21bb438c0d4a6f1f164b9a646f6ee000340185e5871180aec06db8d3f07c0082",
+    "implementation": "cpython",
+    "pythonVersion": "3.11.9",
+    "stdlibFileCount": 2403,
+    "stdlibSha256": "sha256:3292232ee435e7c4ed883d8c6dcbb26544a6ab227a17afc5ccec54e8a67490f6"
+  },
+  "environment": {
+    "digestAlgorithm": "sha256-python-installed-files-v1",
+    "distributionCount": 67,
+    "distributions": [
+      {
+        "fileCount": 9,
+        "filesSha256": "sha256:a41fa9b9582e72eb449a2de4caf8a9bae3167666062e1ca38ce47de7e4701ad6",
+        "name": "annotated-doc",
+        "version": "0.0.4"
+      },
+      {
+        "fileCount": 8,
+        "filesSha256": "sha256:9eb8d497f464634ee7b8333481e53cc861d03a9deb37b0231b612b444f3d4e4b",
+        "name": "annotated-types",
+        "version": "0.7.0"
+      },
+      {
+        "fileCount": 50,
+        "filesSha256": "sha256:d86c0aee89b6e4392a10449f55b904694a7db657b1b98381b02499562fb40cdc",
+        "name": "anyio",
+        "version": "4.12.1"
+      },
+      {
+        "fileCount": 11,
+        "filesSha256": "sha256:edd046dd81619e0ecda43ebef5d34dcba3b6e732dd654d27aae17023e2deaef2",
+        "name": "certifi",
+        "version": "2026.5.20"
+      },
+      {
+        "fileCount": 31,
+        "filesSha256": "sha256:f6578d8aa8e0b5fb776c5dba0df7b8ea280a985c8aca366b0ef883e7812a7e13",
+        "name": "cffi",
+        "version": "2.0.0"
+      },
+      {
+        "fileCount": 22,
+        "filesSha256": "sha256:217b5fb426366079d78dcabd750dd403e7ec1687c6b04a616583334d25ef78eb",
+        "name": "charset-normalizer",
+        "version": "3.4.4"
+      },
+      {
+        "fileCount": 23,
+        "filesSha256": "sha256:5839112b8ac8e7e7a4fe3c25c1ce5f0e5bfa0af6bd2efddda904358327ff9350",
+        "name": "click",
+        "version": "8.4.2"
+      },
+      {
+        "fileCount": 18,
+        "filesSha256": "sha256:16434512411747779d17755b513907e0d8fab9146547bbd84e6ce12dec931320",
+        "name": "colorama",
+        "version": "0.4.6"
+      },
+      {
+        "fileCount": 8,
+        "filesSha256": "sha256:84890b29ed1316052caf01a0689f0a74a73bc69cfb8b7034897bde255ec0828b",
+        "name": "concurrent-log-handler",
+        "version": "0.9.29"
+      },
+      {
+        "fileCount": 8,
+        "filesSha256": "sha256:d5ef7cba65a136039496b998c1c137bf8afac6e0cfd1c7b6dc646454c629001e",
+        "name": "croniter",
+        "version": "6.0.0"
+      },
+      {
+        "fileCount": 121,
+        "filesSha256": "sha256:ca0c74b5768bdc2cd4b6bc638740e851a98d80f329814a0690c8cd12fcd5be2d",
+        "name": "cryptography",
+        "version": "50.0.0"
+      },
+      {
+        "fileCount": 11,
+        "filesSha256": "sha256:04071036779262eacf181d73d53470c8f3adc73ba4ba358be13c1a85a94dde14",
+        "name": "distro",
+        "version": "1.9.0"
+      },
+      {
+        "fileCount": 55,
+        "filesSha256": "sha256:bbb2c3efe6b03b5d79be1d9398bd90560d3d39c71e9e9cf99ba0d5bb491851b8",
+        "name": "fastapi",
+        "version": "0.133.1"
+      },
+      {
+        "fileCount": 53,
+        "filesSha256": "sha256:29b4c7435e4bf3b1835fae09b4b7b6c456291137d5dec85094419476c9d87f15",
+        "name": "fire",
+        "version": "0.7.1"
+      },
+      {
+        "fileCount": 9,
+        "filesSha256": "sha256:4f524af5ff6d97c031e3243f2028933cf6df1089a7a754765ecbf0caff9f8c0b",
+        "name": "firecrawl-anydoc",
+        "version": "0.2.4"
+      },
+      {
+        "fileCount": 18,
+        "filesSha256": "sha256:6066d2c1bcdabb9bad2b6d75c1eaa6827b91962e9f6edc29aa95e368aa6bb629",
+        "name": "h11",
+        "version": "0.16.0"
+      },
+      {
+        "fileCount": 10,
+        "filesSha256": "sha256:c9c2acc0dd2291456210d864b535bfe707064f3cd66659286d2726aafcca0a3e",
+        "name": "hermes-agent",
+        "version": "0.21.5"
+      },
+      {
+        "fileCount": 37,
+        "filesSha256": "sha256:57dddc697d36b069874fa9125003483c372f2a1d8ae4225502c9900ad1925144",
+        "name": "httpcore",
+        "version": "1.0.9"
+      },
+      {
+        "fileCount": 20,
+        "filesSha256": "sha256:224366d021d074378aa5a8d317bf4346a7c5017b5a14528d8cca45d4bd90ef0e",
+        "name": "httptools",
+        "version": "0.7.1"
+      },
+      {
+        "fileCount": 30,
+        "filesSha256": "sha256:3d40b705e6ebde51b866f3466ca5fa52fb748ac2c3c4de910c2fe33086dea55c",
+        "name": "httpx",
+        "version": "0.28.1"
+      },
+      {
+        "fileCount": 17,
+        "filesSha256": "sha256:2faa05b8e51968a72d9502da295098dc49541bae5333d5a76b0f62d5d2e1f89a",
+        "name": "idna",
+        "version": "3.18"
+      },
+      {
+        "fileCount": 32,
+        "filesSha256": "sha256:e271b3e0ef916683deac20591885209ea31e5c81048c0d9d78434917b3fc1b45",
+        "name": "jinja2",
+        "version": "3.1.6"
+      },
+      {
+        "fileCount": 9,
+        "filesSha256": "sha256:81f3ac526ed71942553064fb50de8f24b8fbee913da7fe2d9327ee57a67daf22",
+        "name": "jiter",
+        "version": "0.13.0"
+      },
+      {
+        "fileCount": 40,
+        "filesSha256": "sha256:cf25a95892906c1b0a568f9e09ffbc6dcb59083fb9c4007a7c953c9fd821d91b",
+        "name": "markdown",
+        "version": "3.10.2"
+      },
+      {
+        "fileCount": 75,
+        "filesSha256": "sha256:20dfb837fda8be677a374b8ef19b510e5efa37055b2502013a70bfeaeb8aa8da",
+        "name": "markdown-it-py",
+        "version": "4.0.0"
+      },
+      {
+        "fileCount": 12,
+        "filesSha256": "sha256:ebe7bd307b1220a8692cc22ca383b19aa99bcac9e649aaf66b85fafa68f14839",
+        "name": "markupsafe",
+        "version": "3.0.3"
+      },
+      {
+        "fileCount": 12,
+        "filesSha256": "sha256:bf769f8301a50609e619224bfb6599c814eeea7af3dadf963f40ceab4ffae30f",
+        "name": "mdurl",
+        "version": "0.1.2"
+      },
+      {
+        "fileCount": 1060,
+        "filesSha256": "sha256:425298f5383bc74589eb8c79db6e9231f97a1ff4066d7261c5adb91b075675ab",
+        "name": "openai",
+        "version": "2.24.0"
+      },
+      {
+        "fileCount": 25,
+        "filesSha256": "sha256:584cbf0cc7f8fd419b36491fa05eb3ac52d6c99465ee92129f16500f1dceefd5",
+        "name": "packaging",
+        "version": "26.0"
+      },
+      {
+        "fileCount": 37,
+        "filesSha256": "sha256:83ec590feacdc86f4e2b50211b31af96044dc513c8f1f1ccc7dacb584bfd9353",
+        "name": "pathspec",
+        "version": "1.1.1"
+      },
+      {
+        "fileCount": 122,
+        "filesSha256": "sha256:b06373d29008d30bfa246e094011be9bed6640eaaef6099b74e728022c048c5e",
+        "name": "pillow",
+        "version": "12.3.0"
+      },
+      {
+        "fileCount": 26,
+        "filesSha256": "sha256:b74e74f3d3fb324ca73f6ff16027062068a88ff71b2f5ac229364c67ab08b58d",
+        "name": "pillow-heif",
+        "version": "1.5.0"
+      },
+      {
+        "fileCount": 16,
+        "filesSha256": "sha256:e9b9efa966ef4d5fff4d97b8447e4c326f11ef6eed3ee94dbe6b51a63d4f8026",
+        "name": "portalocker",
+        "version": "3.2.0"
+      },
+      {
+        "fileCount": 153,
+        "filesSha256": "sha256:ea243863a4a8437181e716336884b5041b299063675ee03d002a852607c822c2",
+        "name": "prompt-toolkit",
+        "version": "3.0.52"
+      },
+      {
+        "fileCount": 17,
+        "filesSha256": "sha256:30da4cc233cd01e3a22775d903be374d053acbe93b342456885cf892114da85e",
+        "name": "psutil",
+        "version": "7.2.2"
+      },
+      {
+        "fileCount": 14,
+        "filesSha256": "sha256:77a9c92be5334f700762ce66ca98acd3916770e09e6513af0a39dd3745849fd2",
+        "name": "pycparser",
+        "version": "3.0"
+      },
+      {
+        "fileCount": 112,
+        "filesSha256": "sha256:31cb3562e6498dd3e13c616cc95912ccfa400dca58da58bd23d38f084138917a",
+        "name": "pydantic",
+        "version": "2.13.4"
+      },
+      {
+        "fileCount": 11,
+        "filesSha256": "sha256:7dff7f6d3103b1c85ac90ccfd53f786f2888828879f161bd208359ab8ff574b8",
+        "name": "pydantic-core",
+        "version": "2.46.4"
+      },
+      {
+        "fileCount": 346,
+        "filesSha256": "sha256:92e4503dd558acf4c3acef8e8da91bea5ca277151a174edb07c5b6bf5d2daf9b",
+        "name": "pygments",
+        "version": "2.20.0"
+      },
+      {
+        "fileCount": 20,
+        "filesSha256": "sha256:0bab0ed4396bc2ab538db9bf9060a6917dbcee90e065ce0d688947702afa915b",
+        "name": "pyjwt",
+        "version": "2.13.0"
+      },
+      {
+        "fileCount": 26,
+        "filesSha256": "sha256:5461cc095f4cee6a05063f19f340a617019546de2dc51495e5d2d6ab938fa8db",
+        "name": "python-dateutil",
+        "version": "2.9.0.post0"
+      },
+      {
+        "fileCount": 16,
+        "filesSha256": "sha256:20494ba24320e11c76d297d0bc0bc8a30e5edabcffc7433f9f83a94ec9e05164",
+        "name": "python-dotenv",
+        "version": "1.2.2"
+      },
+      {
+        "fileCount": 14,
+        "filesSha256": "sha256:4b0f6d4e74bcd1fae4a878883cbe6991a4e1e9cd02509b92fae79971f8c0900f",
+        "name": "python-multipart",
+        "version": "0.0.32"
+      },
+      {
+        "fileCount": 617,
+        "filesSha256": "sha256:c52ab94166d460c45a4a352263f7302d4f1d0bf49c85750184e15905852727c6",
+        "name": "pytz",
+        "version": "2025.2"
+      },
+      {
+        "fileCount": 599,
+        "filesSha256": "sha256:7d2f85f70e86fa41e3d00dbde710b0f27a1b6ff7bc617a6f0083b9cb9e1e6c1d",
+        "name": "pywin32",
+        "version": "311"
+      },
+      {
+        "fileCount": 15,
+        "filesSha256": "sha256:3dce8d99c4ace7bb7f015c24cc462ea69ba12c88564ecf4f91061234176082bd",
+        "name": "pywinpty",
+        "version": "2.0.15"
+      },
+      {
+        "fileCount": 25,
+        "filesSha256": "sha256:83d1d89bf39fa96b59961cb880dbfbec69d9a1bf9e24789d8ee1d49dbd59593a",
+        "name": "pyyaml",
+        "version": "6.0.3"
+      },
+      {
+        "fileCount": 25,
+        "filesSha256": "sha256:2ac87c02a2b738faeb917e3bf33f4b9a38a697e5744b6f119165a213cb70059f",
+        "name": "requests",
+        "version": "2.33.0"
+      },
+      {
+        "fileCount": 106,
+        "filesSha256": "sha256:2c2dabd5765711bf094b70fec248d6c1ed073cfee591b424f3ef595273c0bd94",
+        "name": "rich",
+        "version": "14.3.3"
+      },
+      {
+        "fileCount": 40,
+        "filesSha256": "sha256:f909fef0d4d726663df47b1645ac00aed4bb416a9ce6800551f216876577462e",
+        "name": "ruamel-yaml",
+        "version": "0.18.17"
+      },
+      {
+        "fileCount": 7,
+        "filesSha256": "sha256:55b179cf1f0eb8f065556d266bd3591318131e53f1db3c4c6084e788e53dfaec",
+        "name": "ruamel-yaml-clib",
+        "version": "0.2.15"
+      },
+      {
+        "fileCount": 7,
+        "filesSha256": "sha256:a532a5616cf757af263778520c116ad358f9589b43ee36a94e195a7df7ce01a7",
+        "name": "six",
+        "version": "1.17.0"
+      },
+      {
+        "fileCount": 14,
+        "filesSha256": "sha256:93ccf1c8590ccc0af9bd687edf57a312c25d1f375824421879cd975040069918",
+        "name": "sniffio",
+        "version": "1.3.1"
+      },
+      {
+        "fileCount": 45,
+        "filesSha256": "sha256:e4fdbd60bd098271653ce2d2db41120d1959f0259d5dd083756b07f069cddc11",
+        "name": "snowballstemmer",
+        "version": "3.1.1"
+      },
+      {
+        "fileCount": 13,
+        "filesSha256": "sha256:93e07c5401379512555f80512001387475c0c46a6f3d84fa6c93371bfece021e",
+        "name": "socksio",
+        "version": "1.0.0"
+      },
+      {
+        "fileCount": 40,
+        "filesSha256": "sha256:bab305ec2d7f6e4efd099b4d71e9f1369f171116bc8b7fbe60e7d7ba105c7513",
+        "name": "starlette",
+        "version": "1.3.1"
+      },
+      {
+        "fileCount": 19,
+        "filesSha256": "sha256:36d40c7bb6946a8994d9e178634e024062fca21d6c50528c8eced7ba6313e0f8",
+        "name": "tenacity",
+        "version": "9.1.4"
+      },
+      {
+        "fileCount": 9,
+        "filesSha256": "sha256:ae0c6d65b3baaf2c7835540c77fe051cf025296c9ed5d0733e0d816078ef04ab",
+        "name": "termcolor",
+        "version": "3.3.0"
+      },
+      {
+        "fileCount": 40,
+        "filesSha256": "sha256:0f95df5f7e92a8425214aa588c5006066f46259c3523945819636456d7bddf44",
+        "name": "tqdm",
+        "version": "4.67.3"
+      },
+      {
+        "fileCount": 6,
+        "filesSha256": "sha256:15a7a2117c22438d4670fe2a7d1c4a010a15e369504fabe605517670c56b3b90",
+        "name": "typing-extensions",
+        "version": "4.15.0"
+      },
+      {
+        "fileCount": 10,
+        "filesSha256": "sha256:d282ecef7551d18fe5bdc7b6af0f01229e120c2453016f20ac0ca29f13f1a22f",
+        "name": "typing-inspection",
+        "version": "0.4.2"
+      },
+      {
+        "fileCount": 634,
+        "filesSha256": "sha256:d4c60e256e3fcf9f7250be612a54b7cefa02f5891431f9b91ae0f04d240dde5a",
+        "name": "tzdata",
+        "version": "2025.3"
+      },
+      {
+        "fileCount": 43,
+        "filesSha256": "sha256:be84aa26c5bc5ffd37f053f6c317f1cd3695a4c4cc9b43ff7d4c37f79ea048d8",
+        "name": "urllib3",
+        "version": "2.7.0"
+      },
+      {
+        "fileCount": 47,
+        "filesSha256": "sha256:fe22e49d23f9d7b711aa445bb31319fc4d4b56261c340bcd94303e901ca8b114",
+        "name": "uvicorn",
+        "version": "0.41.0"
+      },
+      {
+        "fileCount": 16,
+        "filesSha256": "sha256:bc8c6ae7d85921379bc87974096a0e3d300c51d50ef6848ba25dbec6f7590ac3",
+        "name": "watchfiles",
+        "version": "1.1.1"
+      },
+      {
+        "fileCount": 21,
+        "filesSha256": "sha256:1e50ae61a0a9231fe78c2fbba71e5876382e5a6da8c11808199ade17e0aea2e5",
+        "name": "wcwidth",
+        "version": "0.6.0"
+      },
+      {
+        "fileCount": 58,
+        "filesSha256": "sha256:01ed77d1ebc34addcca365a08ba7cf56e2a592c4f4a1c8f18d03749be1cba88b",
+        "name": "websockets",
+        "version": "15.0.1"
+      }
+    ],
+    "excludedGeneratedLaunchers": true,
+    "excludedInstallMetadata": [
+      "RECORD",
+      "direct_url.json",
+      "uv_cache.json"
+    ],
+    "pathNormalization": [
+      "python-environment",
+      "source-root"
+    ],
+    "sha256": "sha256:964aa234c5c0d037d02d68cfa9936d142293f8802deedb203952624783d15b04"
+  },
+  "console": {
+    "bindingDigestAlgorithm": "sha256-console-binding-v1",
+    "bindingSha256": "sha256:1f3d700744a9f5e0cae6bbb497231a0d505ae99e020acd27b9b749570b987e7f",
+    "distribution": "hermes-agent",
+    "distributionVersion": "0.21.5",
+    "entryPoint": "hermes_cli.main:main",
+    "installMode": "editable",
+    "launcher": "Scripts/hermes.exe",
+    "script": "hermes",
+    "sourceBinding": "direct-url",
+    "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)"
+  },
+  "runtimeBundle": {
+    "strategy": "node-npm-lock-bundle",
+    "nodeVersion": "22.22.0",
+    "npmVersion": "10.9.4",
+    "nodeExecutableSha256": "sha256:bae898add4643fcf890a83ad8ae56e20dce7e781cab161a53991ceba70c99ffb",
+    "source": {
+      "packageFile": {
+        "path": "package.json",
+        "sha256": "sha256:8b5b2ea9721e8d4bdedea457f5b5bab038e7f3e11ea4e1381bd43f2e87ce04cd"
+      },
+      "lockFile": {
+        "path": "package-lock.json",
+        "sha256": "sha256:193a3a3703499eb7c4b4ce48d3ba1e9dae2be62a48315c1e7ea9545e8be4a067"
+      },
+      "workspacePackageFile": {
+        "path": "ui-tui/package.json",
+        "sha256": "sha256:4753204cb018d78f203e4d2c9c1a8ca6f710563052c86df3c41f718b840f5418"
+      },
+      "buildFile": {
+        "path": "ui-tui/scripts/build.mjs",
+        "sha256": "sha256:152e99169e36953638ac09f86e7cd0e1ce73620af3568a3085d2bf732a0cc76e"
+      }
+    },
+    "materialization": {
+      "cleanInstall": true,
+      "locked": true,
+      "workspace": "ui-tui",
+      "includeDev": true,
+      "lifecycleScripts": false,
+      "buildEntrypoint": "ui-tui/scripts/build.mjs",
+      "outputFile": "ui-tui/dist/entry.js"
+    },
+    "artifact": {
+      "root": "runtime",
+      "entry": "runtime/dist/entry.js",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "fileCount": 1,
+      "bytes": 3820665,
+      "sha256": "sha256:0fbd2209f1ab5befab9ed4057c1ce13dace08cf8674aee6e5b1189b856fa4891",
+      "entrySha256": "sha256:2f88a6810f33a1e8d2f961e0d0b89c374a5bc186b4e6d05b94fb1a54765d9540"
+    },
+    "environment": {
+      "variable": "HERMES_TUI_DIR",
+      "root": "runtime"
+    }
+  }
+}

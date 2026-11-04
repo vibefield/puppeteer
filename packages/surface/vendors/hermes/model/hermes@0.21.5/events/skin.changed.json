@@ -1,0 +1,200 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "skin.changed",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "The active skin moved (name switch or live colour edit); repaint from this palette.",
+  "payloadSchema": {
+    "$ref": "#/$defs/SkinPayload",
+    "$defs": {
+      "SkinPayload": {
+        "additionalProperties": true,
+        "description": "``tui_gateway/change_watcher.py::resolve_skin`` — the resolved active skin (``HermesSkin``).\n``{}`` when the skin engine failed to load. Colour maps are token → colour string.",
+        "properties": {
+          "banner_hero": {
+            "default": "",
+            "title": "Banner Hero",
+            "type": "string"
+          },
+          "banner_logo": {
+            "default": "",
+            "title": "Banner Logo",
+            "type": "string"
+          },
+          "branding": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Branding",
+            "type": "object"
+          },
+          "colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Colors",
+            "type": "object"
+          },
+          "dark_colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Dark Colors",
+            "type": "object"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "help_header": {
+            "default": "",
+            "title": "Help Header",
+            "type": "string"
+          },
+          "light_colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Light Colors",
+            "type": "object"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "tool_prefix": {
+            "default": "",
+            "title": "Tool Prefix",
+            "type": "string"
+          }
+        },
+        "title": "SkinPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["skin.changed"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/SkinPayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "SkinPayload": {
+        "additionalProperties": true,
+        "description": "``tui_gateway/change_watcher.py::resolve_skin`` — the resolved active skin (``HermesSkin``).\n``{}`` when the skin engine failed to load. Colour maps are token → colour string.",
+        "properties": {
+          "banner_hero": {
+            "default": "",
+            "title": "Banner Hero",
+            "type": "string"
+          },
+          "banner_logo": {
+            "default": "",
+            "title": "Banner Logo",
+            "type": "string"
+          },
+          "branding": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Branding",
+            "type": "object"
+          },
+          "colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Colors",
+            "type": "object"
+          },
+          "dark_colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Dark Colors",
+            "type": "object"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "help_header": {
+            "default": "",
+            "title": "Help Header",
+            "type": "string"
+          },
+          "light_colors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Light Colors",
+            "type": "object"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "tool_prefix": {
+            "default": "",
+            "title": "Tool Prefix",
+            "type": "string"
+          }
+        },
+        "title": "SkinPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "unverified"
+}

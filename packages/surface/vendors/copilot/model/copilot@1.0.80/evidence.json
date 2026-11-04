@@ -27,7 +27,7 @@
       "id": "copilot-captures",
       "path": "packages/surface/vendors/copilot/captures/copilot@1.0.80",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "3cab17380acd3ca194ce7d43082d5c638e427c763ded708e6687170f3b624dc1"
+      "sha256": "ca7e3765dfbd7043faca5bacec958d3146e4098e41e8a13b50fb634d4cd2fa8a"
     },
     {
       "id": "copilot-references",

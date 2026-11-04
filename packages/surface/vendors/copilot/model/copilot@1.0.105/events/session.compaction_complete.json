@@ -1,0 +1,597 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "session.compaction_complete",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "activeWorkflowSummary": {
+        "type": "string"
+      },
+      "behaviorModelId": {
+        "type": "string"
+      },
+      "checkpointNumber": {
+        "type": "number"
+      },
+      "checkpointPath": {
+        "type": "string"
+      },
+      "compactionAttemptId": {
+        "type": "string"
+      },
+      "compactionTokensUsed": {
+        "type": "object",
+        "properties": {
+          "aiCreditsStatus": {
+            "type": "string"
+          },
+          "cacheReadTokens": {
+            "type": "number"
+          },
+          "cacheWriteTokens": {
+            "type": "number"
+          },
+          "copilotUsage": {
+            "type": "object",
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "tokenDetails": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "batchSize": {},
+                    "costPerBatch": {},
+                    "model": {},
+                    "tokenCount": {},
+                    "tokenType": {}
+                  },
+                  "required": [
+                    "batchSize",
+                    "costPerBatch",
+                    "tokenCount",
+                    "tokenType"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "totalNanoAiu": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "totalNanoAiu"
+            ],
+            "additionalProperties": true
+          },
+          "duration": {
+            "type": "number"
+          },
+          "inputTokens": {
+            "type": "number"
+          },
+          "model": {
+            "type": "string"
+          },
+          "modelDisplayName": {
+            "type": "string"
+          },
+          "outputTokens": {
+            "type": "number"
+          },
+          "provider": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "label"
+            ],
+            "additionalProperties": true
+          },
+          "requestCount": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": true
+      },
+      "conversationTokens": {
+        "type": "number"
+      },
+      "customInstructions": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "failureReason": {
+        "type": "string"
+      },
+      "initialModel": {
+        "type": "string"
+      },
+      "messagesRemoved": {
+        "type": "number"
+      },
+      "model": {
+        "type": "string"
+      },
+      "outcome": {
+        "type": "string"
+      },
+      "outcomeReason": {
+        "type": "string"
+      },
+      "postCompactionTokens": {
+        "type": "number"
+      },
+      "preCompactionMessagesLength": {
+        "type": "number"
+      },
+      "preCompactionTokens": {
+        "type": "number"
+      },
+      "requestId": {
+        "type": "string"
+      },
+      "responsesReasoning": {
+        "type": "object",
+        "properties": {
+          "effort": {
+            "type": "string"
+          },
+          "initialEffort": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "effort",
+          "initialEffort",
+          "model"
+        ],
+        "additionalProperties": true
+      },
+      "serviceRequestId": {
+        "type": "string"
+      },
+      "statusCode": {
+        "type": "number"
+      },
+      "success": {
+        "type": "boolean"
+      },
+      "summarizerProgress": {
+        "type": "object",
+        "properties": {
+          "attemptAgeMs": {
+            "type": "number"
+          },
+          "attemptCount": {
+            "type": "number"
+          },
+          "attemptSettled": {
+            "type": "boolean"
+          },
+          "durationMs": {
+            "type": "number"
+          },
+          "idleMs": {
+            "type": "number"
+          },
+          "inputShrunk": {
+            "type": "boolean"
+          },
+          "maxOutputGapAfterAnswerMs": {
+            "type": "number"
+          },
+          "maxOutputGapBeforeAnswerMs": {
+            "type": "number"
+          },
+          "maxStreamEventGapMs": {
+            "type": "number"
+          },
+          "outputEventCount": {
+            "type": "number"
+          },
+          "sinceLastOutputMs": {
+            "type": "number"
+          },
+          "streamEventCount": {
+            "type": "number"
+          },
+          "timeToFirstAnswerOutputMs": {
+            "type": "number"
+          },
+          "timeToFirstOutputMs": {
+            "type": "number"
+          },
+          "timeToFirstTokenMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "attemptCount",
+          "durationMs",
+          "outputEventCount",
+          "streamEventCount"
+        ],
+        "additionalProperties": true
+      },
+      "summaryContent": {
+        "type": "string"
+      },
+      "switchTargetModel": {
+        "type": "string"
+      },
+      "systemTokens": {
+        "type": "number"
+      },
+      "targetPromptTokenLimit": {
+        "type": "number"
+      },
+      "tokenAccountingBasis": {
+        "type": "string"
+      },
+      "tokenLimit": {
+        "type": "number"
+      },
+      "tokensRemoved": {
+        "type": "number"
+      },
+      "toolDefinitionsTokens": {
+        "type": "number"
+      },
+      "trigger": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "success"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "activeWorkflowSummary": {
+            "type": "string"
+          },
+          "behaviorModelId": {
+            "type": "string"
+          },
+          "checkpointNumber": {
+            "type": "number"
+          },
+          "checkpointPath": {
+            "type": "string"
+          },
+          "compactionAttemptId": {
+            "type": "string"
+          },
+          "compactionTokensUsed": {
+            "type": "object",
+            "properties": {
+              "aiCreditsStatus": {
+                "type": "string"
+              },
+              "cacheReadTokens": {
+                "type": "number"
+              },
+              "cacheWriteTokens": {
+                "type": "number"
+              },
+              "copilotUsage": {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "tokenDetails": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "batchSize": {},
+                        "costPerBatch": {},
+                        "model": {},
+                        "tokenCount": {},
+                        "tokenType": {}
+                      },
+                      "required": [
+                        "batchSize",
+                        "costPerBatch",
+                        "tokenCount",
+                        "tokenType"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "totalNanoAiu": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "totalNanoAiu"
+                ],
+                "additionalProperties": true
+              },
+              "duration": {
+                "type": "number"
+              },
+              "inputTokens": {
+                "type": "number"
+              },
+              "model": {
+                "type": "string"
+              },
+              "modelDisplayName": {
+                "type": "string"
+              },
+              "outputTokens": {
+                "type": "number"
+              },
+              "provider": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "label"
+                ],
+                "additionalProperties": true
+              },
+              "requestCount": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": true
+          },
+          "conversationTokens": {
+            "type": "number"
+          },
+          "customInstructions": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "failureReason": {
+            "type": "string"
+          },
+          "initialModel": {
+            "type": "string"
+          },
+          "messagesRemoved": {
+            "type": "number"
+          },
+          "model": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "outcomeReason": {
+            "type": "string"
+          },
+          "postCompactionTokens": {
+            "type": "number"
+          },
+          "preCompactionMessagesLength": {
+            "type": "number"
+          },
+          "preCompactionTokens": {
+            "type": "number"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "responsesReasoning": {
+            "type": "object",
+            "properties": {
+              "effort": {
+                "type": "string"
+              },
+              "initialEffort": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "effort",
+              "initialEffort",
+              "model"
+            ],
+            "additionalProperties": true
+          },
+          "serviceRequestId": {
+            "type": "string"
+          },
+          "statusCode": {
+            "type": "number"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "summarizerProgress": {
+            "type": "object",
+            "properties": {
+              "attemptAgeMs": {
+                "type": "number"
+              },
+              "attemptCount": {
+                "type": "number"
+              },
+              "attemptSettled": {
+                "type": "boolean"
+              },
+              "durationMs": {
+                "type": "number"
+              },
+              "idleMs": {
+                "type": "number"
+              },
+              "inputShrunk": {
+                "type": "boolean"
+              },
+              "maxOutputGapAfterAnswerMs": {
+                "type": "number"
+              },
+              "maxOutputGapBeforeAnswerMs": {
+                "type": "number"
+              },
+              "maxStreamEventGapMs": {
+                "type": "number"
+              },
+              "outputEventCount": {
+                "type": "number"
+              },
+              "sinceLastOutputMs": {
+                "type": "number"
+              },
+              "streamEventCount": {
+                "type": "number"
+              },
+              "timeToFirstAnswerOutputMs": {
+                "type": "number"
+              },
+              "timeToFirstOutputMs": {
+                "type": "number"
+              },
+              "timeToFirstTokenMs": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "attemptCount",
+              "durationMs",
+              "outputEventCount",
+              "streamEventCount"
+            ],
+            "additionalProperties": true
+          },
+          "summaryContent": {
+            "type": "string"
+          },
+          "switchTargetModel": {
+            "type": "string"
+          },
+          "systemTokens": {
+            "type": "number"
+          },
+          "targetPromptTokenLimit": {
+            "type": "number"
+          },
+          "tokenAccountingBasis": {
+            "type": "string"
+          },
+          "tokenLimit": {
+            "type": "number"
+          },
+          "tokensRemoved": {
+            "type": "number"
+          },
+          "toolDefinitionsTokens": {
+            "type": "number"
+          },
+          "trigger": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ],
+    "carrier": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s) in the 1.0.105 sources; source evidence: writer."
+}

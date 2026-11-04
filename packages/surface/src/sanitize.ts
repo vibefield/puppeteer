@@ -79,8 +79,11 @@ const TEMP_ROOT_PATH = /(?:(?<=file:\/\/(?:localhost)?)|(?<![\w.~/-]))\/(?:priva
 
 export const defaultRules: SanitizerRules = {
   // Epoch-ms/seconds clocks. `At`/`Ms` suffixes cover startedAtMs, completedAtMs,
-  // createdAt, firstSeenAtUnixMs; `timestamp` covers the snake_case forms.
-  timestampKey: /(?:^|_)(?:timestamp|time)$|At(?:Unix)?(?:Ms|Millis|Seconds)?$|_at(?:_unix)?(?:_ms|_s)?$/,
+  // createdAt, firstSeenAtUnixMs; `timestamp` covers the snake_case forms and
+  // `[a-z0-9]Time` the camelCase ones (copilot's accountingSnapshot.sessionStartTime
+  // carried a raw epoch-ms past the older rule). Only epoch-sized integers are
+  // pinned, so a duration such as `elapsedTime: 1200` is kept.
+  timestampKey: /(?:^|_)(?:timestamp|time)$|[a-z0-9]Time$|At(?:Unix)?(?:Ms|Millis|Seconds)?$|_at(?:_unix)?(?:_ms|_s)?$/,
   // Trailing-`Id` catches camelCase (threadId, itemId, callId, installationId,
   // clientUserMessageId) without listing them; `(?:^|_)id$` keeps snake_case
   // and refuses to match words that merely end in "id" such as `valid`.
@@ -321,12 +324,21 @@ function sanitizeValue(value: unknown, key: string, inContainer: boolean, rules:
     const nextInContainer = inContainer || rules.sensitiveContainer.test(key);
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([childKey, child]) => [
-        childKey,
+        sanitizeKey(childKey),
         sanitizeValue(child, childKey, nextInContainer, rules),
       ]),
     );
   }
   return value;
+}
+
+/**
+ * Object KEYS are data too. Copilot 1.0.105 writes `usageAccountingWatermarks: { "<sessionId>": n }`, an id-keyed map
+ * whose key is the very session UUID aliased everywhere else — leaving the key raw hands back the pseudonym's preimage.
+ * `alias` is value-keyed, so the key gets the same pseudonym as the matching `sessionId` value and the join survives.
+ */
+function sanitizeKey(key: string): string {
+  return key.replace(EMBEDDED_UUID, (match) => alias(match));
 }
 
 /** Sanitise one already-parsed capture record. Exposed for unit tests. */
@@ -393,7 +405,9 @@ function inspect(
       issues.push(`${location}: raw UUID at ${key} (UUIDv7 encodes capture wall-clock time)`);
     }
     if (
-      ((rules.idKey.test(key) && !safeOrdinalId(value, key)) ||
+      // A vendor-declared structural value is kept under any key by the
+      // redactor (`sanitizeString`), so the detector must accept it there too.
+      ((rules.idKey.test(key) && !safeOrdinalId(value, key) && !safeStructuralEnum(value, key, rules)) ||
         rules.pathKey.test(key) ||
         rules.urlKey.test(key) ||
         (rules.sensitiveTextKey.test(key) && !safeStructuralEnum(value, key, rules)) ||
@@ -411,6 +425,10 @@ function inspect(
   if (value !== null && typeof value === 'object') {
     const nextInContainer = inContainer || rules.sensitiveContainer.test(key);
     for (const [childKey, child] of Object.entries(value as Record<string, unknown>)) {
+      // The detector half of `sanitizeKey`: an id-keyed map leaks through its keys, not its values.
+      if (childKey.replace(new RegExp(ALIAS_MARKER + '[0-9a-f-]*', 'g'), '').match(EMBEDDED_UUID)) {
+        issues.push(`${location}: raw UUID in object key under ${key || '<root>'}`);
+      }
       inspect(child, issues, `${location}.${childKey}`, childKey, nextInContainer, rules);
     }
   }

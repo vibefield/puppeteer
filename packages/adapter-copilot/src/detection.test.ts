@@ -19,4 +19,16 @@ describe('Copilot detection', () => {
       '1.0.80',
     );
   });
+
+  it('parses the native 1.0.105 output, including its offline-mode notice', () => {
+    // Byte-for-byte `copilot --version` output of 1.0.105, captured 2026-11-03 in a disposable home.
+    expect(parseCopilotVersion("GitHub Copilot CLI 1.0.105.\nRun 'copilot update' to check for updates.\n")).toBe(
+      '1.0.105',
+    );
+    expect(
+      parseCopilotVersion(
+        "GitHub Copilot CLI 1.0.105.\nOffline mode is enabled. Run 'copilot version' after reconnecting to check for updates.\n",
+      ),
+    ).toBe('1.0.105');
+  });
 });

@@ -35,6 +35,44 @@ describe('Copilot session normalization', () => {
       turnId: 'interaction',
     });
   });
+  it('observes the permission mode from both the 1.0.105 mode field and the allow-all pair it still writes', () => {
+    const mode = (data: Record<string, unknown>) =>
+      new CopilotSessionNormalizer().normalize(record('session.permissions_changed', data)).events;
+    // The 1.0.105 hermetic captures still persist the allow-all pair.
+    expect(
+      mode({
+        previousAllowAllPermissions: false,
+        allowAllPermissions: true,
+        previousAllowAllPermissionMode: 'off',
+        allowAllPermissionMode: 'on',
+      }),
+    ).toEqual([
+      {
+        type: 'mode:updated',
+        intent: 'observed',
+        modeKind: 'provider-permission',
+        mode: { raw: 'on', normalized: 'auto' },
+      },
+    ]);
+    // `mode` values from the 1.0.105 npm session-events schema's PermissionMode enum (no capture writes `mode` yet).
+    const permission = (normalized: Record<string, string>) => [
+      { type: 'mode:updated', intent: 'observed', modeKind: 'provider-permission', mode: normalized },
+    ];
+    expect(mode({ previousMode: 'manual', mode: 'allow-all' })).toEqual(
+      permission({ raw: 'allow-all', normalized: 'auto' }),
+    );
+    expect(mode({ previousMode: 'allow-all', mode: 'manual' })).toEqual(
+      permission({ raw: 'manual', normalized: 'manual' }),
+    );
+    // The assisted-approval judge is neither manual nor allow-all.
+    expect(mode({ previousMode: 'manual', mode: 'assisted' })).toEqual(
+      permission({ raw: 'assisted', normalized: 'assisted' }),
+    );
+    // `mode` is an open string on the wire: an unknown value keeps only its raw form.
+    expect(mode({ mode: 'future-mode' })).toEqual(permission({ raw: 'future-mode' }));
+    expect(mode({ allowAllPermissions: false })).toEqual(permission({ raw: 'off', normalized: 'manual' }));
+    expect(mode({})).toEqual([]);
+  });
   it('maps native workspace file changes directly', () => {
     expect(
       new CopilotSessionNormalizer().normalize(

@@ -1,0 +1,235 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/permission.reply",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Respond to permission request — Approve or deny a permission request from the AI assistant.",
+  "payloadSchema": {
+    "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "reply": {
+            "enum": [
+              "once",
+              "always",
+              "reject"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "reply"
+        ],
+        "type": "object"
+      },
+      "method": {
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "requestID": {
+            "pattern": "^per",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "description": "Permission processed successfully",
+        "type": "boolean"
+      },
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "requestID": {
+            "pattern": "^per",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/permission/:requestID/reply"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "body": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "reply": {
+                "enum": [
+                  "once",
+                  "always",
+                  "reject"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "reply"
+            ],
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "requestID": {
+                "pattern": "^per",
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestID"
+            ],
+            "type": "object"
+          },
+          "query": {
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/permission/:requestID/reply"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-permission-accept"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-permission-accept"
+    ],
+    "result": [
+      "opencode-generated-openapi",
+      "opencode-runtime-permission-accept"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-permission-accept"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/permission-accept/http-roundtrip.jsonl",
+  "notes": "OpenAPI operationId permission.reply; POST /permission/{requestID}/reply."
+}

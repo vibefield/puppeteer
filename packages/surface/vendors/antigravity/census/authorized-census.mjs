@@ -88,6 +88,8 @@ function installHooks(workspace, hookDir) {
 }
 
 function runAgy(bin, args, { cwd, env, timeout = 90_000 }) {
+  if (sha256(readFileSync(bin)) !== REVIEWED_SHA256)
+    throw new Error('census executable identity changed before launch');
   const result = spawnSync(bin, args, {
     cwd,
     env,
@@ -96,6 +98,8 @@ function runAgy(bin, args, { cwd, env, timeout = 90_000 }) {
     maxBuffer: 8 * 1024 * 1024,
     windowsHide: true,
   });
+  if (sha256(readFileSync(bin)) !== REVIEWED_SHA256)
+    throw new Error('census executable identity changed during launch');
   return {
     status: result.status,
     signal: result.signal,
@@ -110,7 +114,7 @@ function censusEnv(hookDir) {
     ...process.env,
     PUPPETEER_AGY_HOOK_DIR: hookDir,
     AGY_CLI_HIDE_ACCOUNT_INFO: '1',
-    AGY_CLI_DISABLE_AUTO_UPDATE: '1',
+    AGY_CLI_DISABLE_AUTO_UPDATE: 'true',
     NO_COLOR: '1',
   };
 }

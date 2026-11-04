@@ -1,0 +1,607 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "session.usage_checkpoint",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "accountingSnapshot": {
+        "type": "object",
+        "properties": {
+          "agentMetrics": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "aiCreditsStatus": {
+            "type": "string"
+          },
+          "codeChanges": {
+            "type": "object",
+            "properties": {
+              "filesModified": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "filesModifiedCount": {
+                "type": "number"
+              },
+              "linesAdded": {
+                "type": "number"
+              },
+              "linesRemoved": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "filesModified",
+              "filesModifiedCount",
+              "linesAdded",
+              "linesRemoved"
+            ],
+            "additionalProperties": true
+          },
+          "currentModel": {
+            "type": "string"
+          },
+          "lastCallInputTokens": {
+            "type": "number"
+          },
+          "lastCallOutputTokens": {
+            "type": "number"
+          },
+          "modelMetrics": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "providerModelMetrics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "metrics": {
+                  "type": "object",
+                  "properties": {
+                    "aiCreditsStatus": {},
+                    "cacheExpiresAt": {},
+                    "requests": {},
+                    "tokenDetails": {},
+                    "totalNanoAiu": {},
+                    "usage": {}
+                  },
+                  "required": [
+                    "requests",
+                    "usage"
+                  ],
+                  "additionalProperties": true
+                },
+                "modelDisplayName": {
+                  "type": "string"
+                },
+                "modelId": {},
+                "provider": {}
+              },
+              "required": [
+                "metrics",
+                "modelId",
+                "provider"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "sessionStartTime": {
+            "type": "string"
+          },
+          "tokenDetails": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "totalApiDurationMs": {
+            "type": "number"
+          },
+          "totalNanoAiu": {
+            "type": "number"
+          },
+          "totalPremiumRequestCost": {
+            "type": "number"
+          },
+          "totalUserRequests": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "codeChanges",
+          "lastCallInputTokens",
+          "lastCallOutputTokens",
+          "modelMetrics",
+          "sessionStartTime",
+          "totalApiDurationMs",
+          "totalPremiumRequestCost",
+          "totalUserRequests"
+        ],
+        "additionalProperties": true
+      },
+      "modelCacheState": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "cacheExpiresAt": {
+              "type": "string"
+            },
+            "cacheTtlSeconds": {
+              "type": "number"
+            },
+            "modelId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "cacheExpiresAt",
+            "cacheTtlSeconds",
+            "modelId"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "promptCacheBreakState": {
+        "type": "array",
+        "items": {}
+      },
+      "providerModelMetrics": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "metrics": {
+              "type": "object",
+              "properties": {
+                "aiCreditsStatus": {
+                  "type": "string"
+                },
+                "cacheExpiresAt": {
+                  "type": "string"
+                },
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "cost": {},
+                    "count": {}
+                  },
+                  "required": [
+                    "cost",
+                    "count"
+                  ],
+                  "additionalProperties": true
+                },
+                "tokenDetails": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "totalNanoAiu": {
+                  "type": "number"
+                },
+                "usage": {
+                  "type": "object",
+                  "properties": {
+                    "cacheReadTokens": {},
+                    "cacheWriteTokens": {},
+                    "inputTokens": {},
+                    "outputTokens": {},
+                    "reasoningTokens": {}
+                  },
+                  "required": [
+                    "cacheReadTokens",
+                    "cacheWriteTokens",
+                    "inputTokens",
+                    "outputTokens"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "requests",
+                "usage"
+              ],
+              "additionalProperties": true
+            },
+            "modelDisplayName": {
+              "type": "string"
+            },
+            "modelId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "provider": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {},
+                    "kind": {},
+                    "label": {}
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "label"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "metrics",
+            "modelId",
+            "provider"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "toolUsageRequestIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "totalNanoAiu": {
+        "type": "number"
+      },
+      "totalPremiumRequests": {
+        "type": "number"
+      },
+      "usageAccountingWatermarks": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "required": [
+      "totalNanoAiu"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "accountingSnapshot": {
+            "type": "object",
+            "properties": {
+              "agentMetrics": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "aiCreditsStatus": {
+                "type": "string"
+              },
+              "codeChanges": {
+                "type": "object",
+                "properties": {
+                  "filesModified": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "filesModifiedCount": {
+                    "type": "number"
+                  },
+                  "linesAdded": {
+                    "type": "number"
+                  },
+                  "linesRemoved": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "filesModified",
+                  "filesModifiedCount",
+                  "linesAdded",
+                  "linesRemoved"
+                ],
+                "additionalProperties": true
+              },
+              "currentModel": {
+                "type": "string"
+              },
+              "lastCallInputTokens": {
+                "type": "number"
+              },
+              "lastCallOutputTokens": {
+                "type": "number"
+              },
+              "modelMetrics": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "providerModelMetrics": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "metrics": {
+                      "type": "object",
+                      "properties": {
+                        "aiCreditsStatus": {},
+                        "cacheExpiresAt": {},
+                        "requests": {},
+                        "tokenDetails": {},
+                        "totalNanoAiu": {},
+                        "usage": {}
+                      },
+                      "required": [
+                        "requests",
+                        "usage"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "modelDisplayName": {
+                      "type": "string"
+                    },
+                    "modelId": {},
+                    "provider": {}
+                  },
+                  "required": [
+                    "metrics",
+                    "modelId",
+                    "provider"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "sessionStartTime": {
+                "type": "string"
+              },
+              "tokenDetails": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "totalApiDurationMs": {
+                "type": "number"
+              },
+              "totalNanoAiu": {
+                "type": "number"
+              },
+              "totalPremiumRequestCost": {
+                "type": "number"
+              },
+              "totalUserRequests": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "codeChanges",
+              "lastCallInputTokens",
+              "lastCallOutputTokens",
+              "modelMetrics",
+              "sessionStartTime",
+              "totalApiDurationMs",
+              "totalPremiumRequestCost",
+              "totalUserRequests"
+            ],
+            "additionalProperties": true
+          },
+          "modelCacheState": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "cacheExpiresAt": {
+                  "type": "string"
+                },
+                "cacheTtlSeconds": {
+                  "type": "number"
+                },
+                "modelId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "cacheExpiresAt",
+                "cacheTtlSeconds",
+                "modelId"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "promptCacheBreakState": {
+            "type": "array",
+            "items": {}
+          },
+          "providerModelMetrics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "metrics": {
+                  "type": "object",
+                  "properties": {
+                    "aiCreditsStatus": {
+                      "type": "string"
+                    },
+                    "cacheExpiresAt": {
+                      "type": "string"
+                    },
+                    "requests": {
+                      "type": "object",
+                      "properties": {
+                        "cost": {},
+                        "count": {}
+                      },
+                      "required": [
+                        "cost",
+                        "count"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "tokenDetails": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "totalNanoAiu": {
+                      "type": "number"
+                    },
+                    "usage": {
+                      "type": "object",
+                      "properties": {
+                        "cacheReadTokens": {},
+                        "cacheWriteTokens": {},
+                        "inputTokens": {},
+                        "outputTokens": {},
+                        "reasoningTokens": {}
+                      },
+                      "required": [
+                        "cacheReadTokens",
+                        "cacheWriteTokens",
+                        "inputTokens",
+                        "outputTokens"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "requests",
+                    "usage"
+                  ],
+                  "additionalProperties": true
+                },
+                "modelDisplayName": {
+                  "type": "string"
+                },
+                "modelId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "provider": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {},
+                        "kind": {},
+                        "label": {}
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "label"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "metrics",
+                "modelId",
+                "provider"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "toolUsageRequestIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "totalNanoAiu": {
+            "type": "number"
+          },
+          "totalPremiumRequests": {
+            "type": "number"
+          },
+          "usageAccountingWatermarks": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "totalNanoAiu"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ],
+    "carrier": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s) in the 1.0.105 sources; source evidence: writer."
+}

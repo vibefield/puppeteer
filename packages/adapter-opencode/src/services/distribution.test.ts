@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   InstalledAgentSchema,
@@ -9,10 +9,11 @@ import {
 } from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import {
-  autoUpdateFromConfig,
   classifyOpenCodeCandidate,
   createOpenCodeDistributionService,
   OPENCODE_DISTRIBUTION_PROVIDER,
+  openCodeAutoUpdateState,
+  readOpenCodeAutoUpdateConfig,
 } from './distribution.js';
 
 const candidate = (overrides: Partial<InstallCandidate> & Pick<InstallCandidate, 'realPath'>): InstallCandidate => ({
@@ -25,7 +26,7 @@ const candidate = (overrides: Partial<InstallCandidate> & Pick<InstallCandidate,
 const versionOutput = '1.18.23\n';
 
 const missingConfig = async (): Promise<string> => {
-  throw new Error('ENOENT');
+  throw Object.assign(new Error('ENOENT: no such file or directory'), { code: 'ENOENT' });
 };
 
 const service = (
@@ -130,13 +131,184 @@ describe('OpenCode install classification', () => {
 });
 
 describe('OpenCode auto-update evidence', () => {
-  it('reads the three documented config values and nothing else', () => {
-    expect(autoUpdateFromConfig('{"autoupdate":true}')).toBe('enabled');
-    expect(autoUpdateFromConfig('{"autoupdate":false}')).toBe('disabled');
-    // "notify" reports a new release but never replaces the binary.
-    expect(autoUpdateFromConfig('{"autoupdate":"notify"}')).toBe('disabled');
-    expect(autoUpdateFromConfig('{"mcp":{}}')).toBeUndefined();
-    expect(autoUpdateFromConfig('not json')).toBeUndefined();
+  const state = (document: string | undefined, version?: string, env: NodeJS.ProcessEnv = {}) =>
+    openCodeAutoUpdateState({
+      config: document === undefined ? { kind: 'absent' } : readOpenCodeAutoUpdateConfig(document),
+      version,
+      method: 'standalone-binary',
+      env,
+    });
+
+  it('reads the config key without judging it', () => {
+    expect(readOpenCodeAutoUpdateConfig('{"autoupdate":true}')).toEqual({ kind: 'value', value: true });
+    expect(readOpenCodeAutoUpdateConfig('{"autoupdate":"notify"}')).toEqual({ kind: 'value', value: 'notify' });
+    expect(readOpenCodeAutoUpdateConfig('{"mcp":{}}')).toEqual({ kind: 'absent' });
+    expect(readOpenCodeAutoUpdateConfig('not json')).toEqual({ kind: 'unreadable' });
+    expect(readOpenCodeAutoUpdateConfig('[]')).toEqual({ kind: 'unreadable' });
+  });
+
+  // Upstream v1.18.16 cli/upgrade.ts: false or OPENCODE_DISABLE_AUTOUPDATE returns early, "notify" only reports,
+  // and anything else — `true` or no key — falls through to Installation.upgrade for a patch release.
+  it('reads 1.18.x as self-updating unless the config or the environment turns it off', () => {
+    for (const version of ['1.18.16', '1.18.35']) {
+      expect(state(undefined, version), `missing config at ${version}`).toBe('enabled');
+      expect(state('{"mcp":{}}', version), `no key at ${version}`).toBe('enabled');
+      expect(state('{"autoupdate":true}', version)).toBe('enabled');
+      expect(state('{"autoupdate":false}', version)).toBe('disabled');
+      expect(state('{"autoupdate":"notify"}', version)).toBe('disabled');
+      expect(state('{"autoupdate":"yes"}', version)).toBe('unknown');
+      expect(state('not json', version)).toBe('unknown');
+      for (const flag of ['1', 'true', 'TRUE']) {
+        expect(state('{"autoupdate":true}', version, { OPENCODE_DISABLE_AUTOUPDATE: flag })).toBe('disabled');
+        expect(state(undefined, version, { OPENCODE_DISABLE_AUTOUPDATE: flag })).toBe('disabled');
+      }
+      expect(state(undefined, version, { OPENCODE_DISABLE_AUTOUPDATE: '0' })).toBe('enabled');
+    }
+  });
+
+  it('leaves a 1.18.x install unknown when the install method could not be classified', () => {
+    // Upstream returns before upgrading when its own method probe finds nothing; path evidence cannot stand in.
+    expect(openCodeAutoUpdateState({ config: { kind: 'absent' }, version: '1.18.16', method: 'unknown' })).toBe(
+      'unknown',
+    );
+  });
+
+  // Upstream v1.19.0 cli/upgrade.ts: "Checking never installs anything."
+  it('reads every config state as disabled from 1.19.0', () => {
+    for (const version of ['1.19.0', '1.19.5', '1.20.0', '2.0.0']) {
+      expect(state(undefined, version), `missing config at ${version}`).toBe('disabled');
+      expect(state('{"mcp":{}}', version), `no key at ${version}`).toBe('disabled');
+      expect(state('{"autoupdate":true}', version)).toBe('disabled');
+      expect(state('{"autoupdate":false}', version)).toBe('disabled');
+      expect(state('{"autoupdate":"notify"}', version)).toBe('disabled');
+      expect(state('{"autoupdate":"yes"}', version)).toBe('disabled');
+      expect(state('not json', version)).toBe('disabled');
+    }
+  });
+
+  it('trusts only the explicit off switches without a version the evidence covers', () => {
+    for (const version of [undefined, '1.17.9']) {
+      expect(state(undefined, version)).toBe('unknown');
+      expect(state('{"autoupdate":true}', version)).toBe('unknown');
+      expect(state('{"autoupdate":false}', version)).toBe('disabled');
+      expect(state('{"autoupdate":"notify"}', version)).toBe('disabled');
+      expect(state(undefined, version, { OPENCODE_DISABLE_AUTOUPDATE: '1' })).toBe('disabled');
+    }
+  });
+
+  it('applies the installed version the native probe reported', async () => {
+    const config = async () => '{"autoupdate":true}';
+    const old = await service({ readConfigFile: config }).inspect(
+      candidate({ realPath: '/home/tester/.opencode/bin/opencode' }),
+    );
+    expect(old).toMatchObject({ version: '1.18.23', autoUpdate: 'enabled' });
+    const current = await service({
+      readConfigFile: config,
+      exec: async () => ({ stdout: '1.19.5\n', stderr: '' }),
+    }).inspect(candidate({ realPath: '/home/tester/.opencode/bin/opencode' }));
+    expect(current).toMatchObject({ version: '1.19.5', autoUpdate: 'disabled' });
+  });
+
+  it('reads a missing config file as the default on both lines', async () => {
+    const at = (stdout: string) =>
+      service({ exec: async () => ({ stdout, stderr: '' }) }).inspect(
+        candidate({ realPath: '/home/tester/.opencode/bin/opencode' }),
+      );
+    expect(await at('1.18.16\n')).toMatchObject({ autoUpdate: 'enabled' });
+    expect(await at('1.19.5\n')).toMatchObject({ autoUpdate: 'disabled' });
+  });
+
+  it('keeps an unreadable config unknown on 1.18.x', async () => {
+    const install = await service({
+      readConfigFile: async () => {
+        throw Object.assign(new Error('EACCES'), { code: 'EACCES' });
+      },
+    }).inspect(candidate({ realPath: '/home/tester/.opencode/bin/opencode' }));
+    expect(install).toMatchObject({ version: '1.18.23', autoUpdate: 'unknown' });
+  });
+
+  it('reads OPENCODE_DISABLE_AUTOUPDATE from the environment the service was given', async () => {
+    const install = await service({ env: { OPENCODE_DISABLE_AUTOUPDATE: 'true' } }).inspect(
+      candidate({ realPath: '/home/tester/.opencode/bin/opencode' }),
+    );
+    expect(install).toMatchObject({ version: '1.18.23', autoUpdate: 'disabled' });
+  });
+
+  it('merges the global config files in upstream order, the last autoupdate winning', async () => {
+    const files = (contents: Record<string, string>) => async (path: string) => {
+      const text = contents[basename(path)];
+      if (text === undefined) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      return text;
+    };
+    const at = (contents: Record<string, string>) =>
+      service({ readConfigFile: files(contents) }).inspect(
+        candidate({ realPath: '/home/tester/.opencode/bin/opencode' }),
+      );
+    expect(await at({ 'opencode.jsonc': '{"autoupdate":false}' })).toMatchObject({ autoUpdate: 'disabled' });
+    expect(await at({ 'config.json': '{"autoupdate":false}' })).toMatchObject({ autoUpdate: 'disabled' });
+    expect(await at({ 'config.json': '{"autoupdate":false}', 'opencode.json': '{"autoupdate":true}' })).toMatchObject({
+      autoUpdate: 'enabled',
+    });
+    expect(
+      await at({ 'opencode.json': '{"autoupdate":true}', 'opencode.jsonc': '{"autoupdate":"notify"}' }),
+    ).toMatchObject({ autoUpdate: 'disabled' });
+    expect(await at({ 'opencode.json': '{"mcp":{}}' })).toMatchObject({ autoUpdate: 'enabled' });
+    expect(
+      await at({
+        'config.json': '{"autoupdate":true}',
+        'opencode.json': '// overrides the default\n{"autoupdate":false,}',
+        'opencode.jsonc': '{/* final override */"autoupdate":"notify",}',
+      }),
+    ).toMatchObject({ autoUpdate: 'disabled' });
+    expect(
+      await at({
+        'opencode.json': '{"autoupdate":false}',
+        'opencode.jsonc': '{/* final override */"autoupdate":true,}',
+      }),
+    ).toMatchObject({ autoUpdate: 'enabled' });
+    expect(
+      await at({
+        'opencode.json': '{"autoupdate":false}',
+        'opencode.jsonc': '{"autoupdate":true,,}',
+      }),
+    ).toMatchObject({ autoUpdate: 'unknown' });
+  });
+
+  it('reads JSONC comments and trailing commas without changing strings', () => {
+    const document = [
+      '{',
+      '  // "autoupdate": true,',
+      '  "mcp": {"example": {"url": "https://example.test/a/*literal*/,}"}},',
+      '  "autoupdate": /* preserve the actual switch */ false,',
+      '}',
+    ].join('\r');
+    expect(readOpenCodeAutoUpdateConfig(document)).toEqual({ kind: 'value', value: false });
+    expect(state(document, '1.18.16')).toBe('disabled');
+  });
+
+  it('does not use a partial document recovered from invalid JSONC', () => {
+    for (const document of [
+      '{"autoupdate":false,,}',
+      '{"autoupdate":false, "mcp": {,}}',
+      '{"autoupdate":false} trailing',
+      '{"autoupdate":false /* unterminated',
+    ]) {
+      expect(readOpenCodeAutoUpdateConfig(document)).toEqual({ kind: 'unreadable' });
+      expect(state(document, '1.18.16')).toBe('unknown');
+    }
+  });
+
+  it('does not infer an off switch before OpenCode resolves config substitutions', () => {
+    for (const document of [
+      '{"autoupdate":"{env:UPDATE_MODE}"}',
+      '{"autoupdate":false,"mcp":{"example":{"url":"{env:MCP_URL}"}}}',
+      '{"{env:CONFIG_KEY}":false}',
+      '{"autoupdate":false,"instructions":["{file:instructions.txt}"]}',
+    ]) {
+      expect(readOpenCodeAutoUpdateConfig(document)).toEqual({ kind: 'unreadable' });
+      expect(state(document, '1.18.16')).toBe('unknown');
+      expect(state(document, '1.19.0')).toBe('disabled');
+    }
   });
 
   it('reads the config beside the XDG config root', async () => {
@@ -148,7 +320,11 @@ describe('OpenCode auto-update evidence', () => {
       },
       env: { XDG_CONFIG_HOME: '/home/tester/.xdg-config' },
     }).inspect(candidate({ realPath: '/home/tester/.opencode/bin/opencode' }));
-    expect(seen).toEqual([join('/home/tester/.xdg-config', 'opencode', 'opencode.json')]);
+    expect(seen).toEqual(
+      ['config.json', 'opencode.json', 'opencode.jsonc'].map((name) =>
+        join('/home/tester/.xdg-config', 'opencode', name),
+      ),
+    );
     expect(install?.autoUpdate).toBe('disabled');
   });
 
@@ -160,7 +336,11 @@ describe('OpenCode auto-update evidence', () => {
         return '{"autoupdate":true}';
       },
     }).inspect(candidate({ realPath: '/home/tester/.opencode/bin/opencode' }));
-    expect(seen).toEqual([join('/home/tester', '.config', 'opencode', 'opencode.json')]);
+    expect(seen).toEqual(
+      ['config.json', 'opencode.json', 'opencode.jsonc'].map((name) =>
+        join('/home/tester', '.config', 'opencode', name),
+      ),
+    );
   });
 });
 
@@ -172,7 +352,8 @@ describe('OpenCode inspect', () => {
       version: '1.18.23',
       method: 'standalone-binary',
       location: '/home/tester/.opencode',
-      autoUpdate: 'unknown',
+      // A missing config on 1.18.x is the self-installing default.
+      autoUpdate: 'enabled',
       warnings: [],
     });
   });

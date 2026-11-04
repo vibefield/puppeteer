@@ -1,0 +1,175 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "pty.updated",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "info": {
+        "$ref": "#/$defs/Pty"
+      }
+    },
+    "required": [
+      "info"
+    ],
+    "type": "object",
+    "$defs": {
+      "Pty": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "command": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "exitCode": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^pty",
+            "type": "string"
+          },
+          "pid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "exited"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "command",
+          "args",
+          "cwd",
+          "status",
+          "pid"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "info": {
+            "$ref": "#/$defs/Pty"
+          }
+        },
+        "required": [
+          "info"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "pty.updated"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "Pty": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "command": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "exitCode": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^pty",
+            "type": "string"
+          },
+          "pid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "exited"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "command",
+          "args",
+          "cwd",
+          "status",
+          "pid"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified"
+}

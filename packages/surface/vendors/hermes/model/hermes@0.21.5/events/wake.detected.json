@@ -1,0 +1,126 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "wake.detected",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "A wake phrase fired.",
+  "payloadSchema": {
+    "$ref": "#/$defs/WakeDetectedPayload",
+    "$defs": {
+      "WakeDetectedPayload": {
+        "additionalProperties": false,
+        "description": "``methods_voice`` wake detector ``_on_detect``.",
+        "properties": {
+          "phrase": {
+            "title": "Phrase",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "start_new_session": {
+            "title": "Start New Session",
+            "type": "boolean"
+          }
+        },
+        "required": ["phrase", "start_new_session"],
+        "title": "WakeDetectedPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["wake.detected"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/WakeDetectedPayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "WakeDetectedPayload": {
+        "additionalProperties": false,
+        "description": "``methods_voice`` wake detector ``_on_detect``.",
+        "properties": {
+          "phrase": {
+            "title": "Phrase",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "start_new_session": {
+            "title": "Start New Session",
+            "type": "boolean"
+          }
+        },
+        "required": ["phrase", "start_new_session"],
+        "title": "WakeDetectedPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "unverified"
+}

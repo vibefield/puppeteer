@@ -1,0 +1,1404 @@
+[
+  {
+    "batch": "batch1",
+    "typed": [
+      "--sandbox",
+      "bogus",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch1",
+    "typed": [
+      "--sandbox",
+      "read-only",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch1",
+    "typed": [
+      "--sandbox",
+      "bogus",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch1",
+    "typed": [
+      "-a",
+      "bogus",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch1",
+    "typed": [
+      "-a",
+      "bogus",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch1",
+    "typed": [
+      "--bogus-flag",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch1",
+    "typed": [
+      "--bogus-flag",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch1",
+    "typed": [
+      "-m",
+      "gpt-x",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch1",
+    "typed": [
+      "-s",
+      "read-only",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--sandbox",
+      "bogus",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--sandbox",
+      "read-only",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "-c",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--config",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--enable",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--disable",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--remote",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--remote-auth-token-env",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--strict-config",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "-i",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--image",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "-m",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--model",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--oss",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--local-provider",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "-p",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--profile",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "-s",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--sandbox",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--approve-for-me",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--dangerously-bypass-approvals-and-sandbox",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--dangerously-bypass-hook-trust",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "-C",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--cd",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--worktree",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--add-dir",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "-a",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--ask-for-approval",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--search",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--no-alt-screen",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "--no-daemon",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "-c",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--config",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--enable",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--disable",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--remote",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--remote-auth-token-env",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--strict-config",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "-i",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--image",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "-m",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--model",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--oss",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--local-provider",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "-p",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--profile",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "-s",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--sandbox",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--approve-for-me",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--dangerously-bypass-approvals-and-sandbox",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--dangerously-bypass-hook-trust",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "-C",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--cd",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--worktree",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--add-dir",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "-a",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--ask-for-approval",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--search",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--no-alt-screen",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--no-daemon",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--last",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--all",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch2",
+    "typed": [
+      "resume",
+      "--include-non-interactive",
+      "--last",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-i",
+      "a.png",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--image",
+      "a.png",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-i",
+      "a.png",
+      "b.png",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--add-dir",
+      "d",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-c",
+      "k=v",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--enable",
+      "x",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-m",
+      "a",
+      "-m",
+      "b",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-c",
+      "a=1",
+      "-c",
+      "b=2",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--enable",
+      "x",
+      "--enable",
+      "y",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--disable",
+      "x",
+      "--disable",
+      "y",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--add-dir",
+      "a",
+      "--add-dir",
+      "b",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-s",
+      "read-only",
+      "-s",
+      "workspace-write",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-a",
+      "never",
+      "-a",
+      "on-request",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--search",
+      "--search",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-i",
+      "a",
+      "-i",
+      "b",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-p",
+      "x",
+      "-p",
+      "y",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-C",
+      "x",
+      "-C",
+      "y",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-a",
+      "untrusted",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-a",
+      "on-failure",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-a",
+      "never",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-a",
+      "on-request",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-a",
+      "granular",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-s",
+      "workspace-write",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-s",
+      "danger-full-access",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--local-provider",
+      "bogus",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--local-provider",
+      "ollama",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--local-provider",
+      "lmstudio",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--model=x",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-m=x",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-mx",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-sread-only",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-s=read-only",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-sbogus",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--sandbox=bogus",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--search=true",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--no-alt-screen=x",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-c=k=v",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-ck=v",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--dangerously-bypass-approvals-and-sandbox",
+      "-s",
+      "read-only",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--dangerously-bypass-approvals-and-sandbox",
+      "-a",
+      "never",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--approve-for-me",
+      "-a",
+      "never",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--approve-for-me",
+      "-s",
+      "read-only",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--approve-for-me",
+      "--dangerously-bypass-approvals-and-sandbox",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--oss",
+      "-m",
+      "x",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "--remote",
+      "x",
+      "--no-daemon",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-C",
+      "d",
+      "--worktree",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "resume",
+      "--last",
+      "--all",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "resume",
+      "--last",
+      "abc",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "resume",
+      "abc",
+      "def",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "resume",
+      "abc",
+      "def",
+      "ghi",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "hello",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "hello",
+      "world",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "hello",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "hello",
+      "resume",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "e",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "a",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "r",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "f",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "execpolicy",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "responses-api-proxy",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "stdio-to-uds",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "tcp-tunnel",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "mcp-server",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "cloud-tasks",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "proto",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "tui",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "help"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "help",
+      "resume"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "resume",
+      "-V"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "resume",
+      "abc",
+      "--version"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-m",
+      "x",
+      "-V"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "fork",
+      "-V"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "exec",
+      "-V"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "login",
+      "-V"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "-h"
+    ]
+  },
+  {
+    "batch": "batch3",
+    "typed": [
+      "resume",
+      "-h"
+    ]
+  },
+  {
+    "batch": "batch4",
+    "typed": [
+      "--sandbox",
+      "bogus",
+      "mcp",
+      "list"
+    ]
+  },
+  {
+    "batch": "batch4",
+    "typed": [
+      "--sandbox",
+      "read-only",
+      "mcp",
+      "list"
+    ]
+  },
+  {
+    "batch": "batch4",
+    "typed": [
+      "-a",
+      "bogus",
+      "features",
+      "list"
+    ]
+  },
+  {
+    "batch": "batch4",
+    "typed": [
+      "-m",
+      "x",
+      "--sandbox",
+      "bogus",
+      "mcp",
+      "list"
+    ]
+  },
+  {
+    "batch": "batch4",
+    "typed": [
+      "--sandbox",
+      "bogus",
+      "-m",
+      "x",
+      "mcp",
+      "list"
+    ]
+  },
+  {
+    "batch": "batch5",
+    "typed": [
+      "--mod",
+      "x",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch5",
+    "typed": [
+      "--sea",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch5",
+    "typed": [
+      "-hV"
+    ]
+  },
+  {
+    "batch": "batch5",
+    "typed": [
+      "-Vh"
+    ]
+  },
+  {
+    "batch": "batch5",
+    "typed": [
+      "-i",
+      "-",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch5",
+    "typed": [
+      "-m",
+      "-5",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch5",
+    "typed": [
+      "--image=a.png",
+      "mcp",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch5",
+    "typed": [
+      "resume",
+      "--last",
+      "--all",
+      "--include-non-interactive",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch5",
+    "typed": [
+      "-c",
+      "k",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch6",
+    "typed": [
+      "features",
+      "list"
+    ]
+  },
+  {
+    "batch": "batch7",
+    "typed": [
+      "migrate-nfs-db",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch7",
+    "typed": [
+      "help",
+      "migrate-nfs-db"
+    ]
+  },
+  {
+    "batch": "batch7",
+    "typed": [
+      "migrate-nfs-db",
+      "-V"
+    ]
+  },
+  {
+    "batch": "batch7",
+    "typed": [
+      "migrate-nfs-db",
+      "--version"
+    ]
+  },
+  {
+    "batch": "batch7",
+    "typed": [
+      "--sandbox",
+      "bogus",
+      "migrate-nfs-db",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch7",
+    "typed": [
+      "sandbox",
+      "--help"
+    ]
+  },
+  {
+    "batch": "batch7",
+    "typed": [
+      "sandbox",
+      "uninstall",
+      "--help"
+    ]
+  }
+]

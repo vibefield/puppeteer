@@ -15,7 +15,7 @@ const T0 = '2026-01-01T00:00:00.000Z';
 
 function fixture(name: string): OpenCodeSseRecord[] {
   const path = fileURLToPath(
-    new URL(`../../../surface/vendors/opencode/captures/opencode@1.18.16/${name}/events.jsonl`, import.meta.url),
+    new URL(`../../../surface/vendors/opencode/captures/opencode@1.19.5/${name}/events.jsonl`, import.meta.url),
   );
   return readFileSync(path, 'utf8')
     .trim()
@@ -159,8 +159,8 @@ describe('OpenCodeMonitorEvidence', () => {
       value: {
         actor: {
           rootSessionKey: root,
-          runKey: `${root}:actor:ses_a11a5ed0a84e8d6d6a9ea922a5`,
-          nativeSessionId: 'ses_a11a5ed0a84e8d6d6a9ea922a5',
+          runKey: `${root}:actor:ses_a11a5ed096e559acb3197beb5f`,
+          nativeSessionId: 'ses_a11a5ed096e559acb3197beb5f',
         },
         canonical: true,
       },
@@ -172,7 +172,7 @@ describe('OpenCodeMonitorEvidence', () => {
             update.family === 'delegation' &&
             update.operation === 'upsert' &&
             update.value.kind === 'actor' &&
-            update.value.actor.nativeAgentId === 'ses_a11a5ed0a84e8d6d6a9ea922a5' &&
+            update.value.actor.nativeAgentId === 'ses_a11a5ed096e559acb3197beb5f' &&
             update.value.state === 'stopped',
         ),
       ),

@@ -1,0 +1,337 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "wake.status",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Everything a client needs to draw the wake-word state and decide whether to (re)arm.",
+  "payloadSchema": {
+    "$ref": "#/$defs/WakeStatusParams",
+    "$defs": {
+      "WakeStatusParams": {
+        "additionalProperties": false,
+        "properties": {
+          "client_capture": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Client Capture"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "surface": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Surface"
+          }
+        },
+        "title": "WakeStatusParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/WakeStatusResult",
+    "$defs": {
+      "WakeStatusResult": {
+        "additionalProperties": false,
+        "description": "``enabled`` is config truth; ``listening`` is this caller's armed detector; ``audio_silent``\nmeans armed but deaf (see ``hint``).",
+        "properties": {
+          "audio_silent": {
+            "title": "Audio Silent",
+            "type": "boolean"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "capture": {
+            "title": "Capture",
+            "type": "string"
+          },
+          "configured_surface": {
+            "title": "Configured Surface",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "frame_length": {
+            "title": "Frame Length",
+            "type": "integer"
+          },
+          "hint": {
+            "title": "Hint",
+            "type": "string"
+          },
+          "input_device": {
+            "$ref": "#/$defs/WakeInputDevice"
+          },
+          "listening": {
+            "title": "Listening",
+            "type": "boolean"
+          },
+          "local_input_available": {
+            "title": "Local Input Available",
+            "type": "boolean"
+          },
+          "owned_by_caller": {
+            "title": "Owned By Caller",
+            "type": "boolean"
+          },
+          "owner_surface": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Owner Surface"
+          },
+          "phrase": {
+            "title": "Phrase",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "sample_rate": {
+            "title": "Sample Rate",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "listening",
+          "owned_by_caller",
+          "phrase",
+          "provider",
+          "configured_surface",
+          "input_device",
+          "available",
+          "hint",
+          "enabled",
+          "audio_silent",
+          "capture",
+          "local_input_available",
+          "sample_rate",
+          "frame_length"
+        ],
+        "title": "WakeStatusResult",
+        "type": "object"
+      },
+      "WakeInputDevice": {
+        "additionalProperties": true,
+        "description": "``tools/wake_word.py::_describe_input_device`` — PortAudio diagnostics for the configured mic.",
+        "properties": {
+          "default_samplerate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Default Samplerate"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error"
+          },
+          "hostapi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Hostapi"
+          },
+          "hostapi_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Hostapi Index"
+          },
+          "max_input_channels": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Input Channels"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "selector": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Selector"
+          }
+        },
+        "title": "WakeInputDevice",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["wake.status"]
+      },
+      "params": {
+        "$ref": "#/$defs/WakeStatusParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "WakeStatusParams": {
+        "additionalProperties": false,
+        "properties": {
+          "client_capture": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Client Capture"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "surface": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Surface"
+          }
+        },
+        "title": "WakeStatusParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

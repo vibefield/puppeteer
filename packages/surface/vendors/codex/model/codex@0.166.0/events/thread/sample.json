@@ -1,0 +1,204 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.166.0",
+  "event": "thread/sample",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "disableMcp": {
+        "description": "Disable MCP servers when the inherited window uses incremental tools on Responses Lite.",
+        "type": "boolean"
+      },
+      "effort": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ReasoningEffort"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Applied only when the provider and model support cache-preserving reasoning-effort updates."
+      },
+      "expectedTurnId": {
+        "description": "The loaded source's latest completed, failed, or interrupted turn. Stale or active sources are rejected.",
+        "type": "string"
+      },
+      "prompt": {
+        "type": "string"
+      },
+      "responsesapiClientMetadata": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "description": "Optional metadata to enrich Codex's ResponsesAPI turn metadata.",
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "threadSource": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ThreadSource"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "turnTrigger": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "expectedTurnId",
+      "prompt",
+      "threadId"
+    ],
+    "type": "object",
+    "$defs": {
+      "ReasoningEffort": {
+        "description": "A non-empty reasoning effort value advertised by the model.",
+        "minLength": 1,
+        "type": "string"
+      },
+      "ThreadSource": {
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "thread/sample"
+        ],
+        "title": "Thread/sampleRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadSampleParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Thread/sampleRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadSampleParams": {
+        "properties": {
+          "disableMcp": {
+            "description": "Disable MCP servers when the inherited window uses incremental tools on Responses Lite.",
+            "type": "boolean"
+          },
+          "effort": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningEffort"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Applied only when the provider and model support cache-preserving reasoning-effort updates."
+          },
+          "expectedTurnId": {
+            "description": "The loaded source's latest completed, failed, or interrupted turn. Stale or active sources are rejected.",
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "responsesapiClientMetadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Optional metadata to enrich Codex's ResponsesAPI turn metadata.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "threadSource": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ThreadSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "turnTrigger": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "expectedTurnId",
+          "prompt",
+          "threadId"
+        ],
+        "type": "object"
+      },
+      "ReasoningEffort": {
+        "description": "A non-empty reasoning effort value advertised by the model.",
+        "minLength": 1,
+        "type": "string"
+      },
+      "ThreadSource": {
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); this request runs only the managed-policy check, so only `modelProviderPolicyConflict` reaches it; it lasts until the provider configuration changes."
+}

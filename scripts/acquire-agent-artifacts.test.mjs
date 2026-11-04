@@ -58,6 +58,34 @@ test('same-version changed bytes are quarantined as a republished artifact', () 
   assert.equal(report.republished[0].platform, 'darwin-arm64');
 });
 
+test('a prior fixture corpus cannot be mistaken for an earlier acquired executable', () => {
+  const { repoRoot, vendorRoot, first, second } = fixture();
+  writeFileSync(
+    join(vendorRoot, 'model/fake@1.2.3/evidence.json'),
+    JSON.stringify({
+      artifacts: [
+        {
+          id: 'original-fixtures',
+          platform: 'linux-x64',
+          kind: 'controlled-fixture-corpus',
+          integrity: { status: 'verified', sha256: `sha256:${'a'.repeat(64)}` },
+        },
+      ],
+    }),
+  );
+  const report = acquireAgentArtifacts({
+    repoRoot,
+    vendor: 'fake',
+    version: '1.2.3',
+    artifacts: [
+      { platform: 'darwin-arm64', path: first, versionOutput: 'fake 1.2.3' },
+      { platform: 'linux-x64', path: second, versionOutput: 'fake 1.2.3' },
+    ],
+  });
+  assert.equal(report.status, 'complete');
+  assert.deepEqual(report.republished, []);
+});
+
 test('acquisition refuses a source URL that carries a query, fragment or credentials', () => {
   const { repoRoot, vendorRoot, first, second } = fixture();
   writeFileSync(

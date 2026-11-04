@@ -3,8 +3,12 @@
   "provider": "kimi",
   "adapterPackage": "@vibefield/puppeteer-adapter-kimi",
   "groundTruth": "packages/surface/vendors/kimi/groundtruth.json",
-  "groundTruthSha256": "15dfeb864a9a057b90ca1b29af6a8581c2e72aec9ebe6501e4fdf48bc4dc6ad1",
+  "groundTruthSha256": "1a4eccdf24131444552de5f9b44a730cde7723acb5b6ff4f35729f4790e662d4",
   "semanticEvents": [
+    "agent.message.appended",
+    "agent.turn.ended",
+    "agent.turn.started",
+    "changeNotifier.snapshot",
     "context.append_loop_event",
     "context.append_message",
     "context.apply_compaction",
@@ -22,7 +26,14 @@
     "plan_mode.cancel",
     "plan_mode.enter",
     "plan_mode.exit",
+    "plugin.session_start",
     "profile.bind",
+    "runtime.set_binding",
+    "subagent.cancelled",
+    "subagent.completed",
+    "subagent.failed",
+    "subagent.spawned",
+    "subagent.started",
     "task.started",
     "task.terminated",
     "turn.ended",
@@ -33,13 +44,13 @@
     "state.json"
   ],
   "unmapped": {
-    "count": 39,
-    "sha256": "6818636081dfae3bc18cba7cfba29e746160345581b02e76dc99f5a6a9a00bbf",
+    "count": 60,
+    "sha256": "f781ea825c8f8c050796eb0eecf13981210d56cafb34063cd1130b23f3ca54b0",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
-    "groundTruth": 63,
-    "semantic": 23,
+    "groundTruth": 95,
+    "semantic": 34,
     "observedOrControlled": 1
   }
 }

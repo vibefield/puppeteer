@@ -1,0 +1,159 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "session.diff",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "diff": {
+        "items": {
+          "$ref": "#/$defs/SnapshotFileDiff"
+        },
+        "type": "array"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      }
+    },
+    "required": [
+      "sessionID",
+      "diff"
+    ],
+    "type": "object",
+    "$defs": {
+      "SnapshotFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "diff": {
+            "items": {
+              "$ref": "#/$defs/SnapshotFileDiff"
+            },
+            "type": "array"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID",
+          "diff"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "session.diff"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object",
+    "$defs": {
+      "SnapshotFileDiff": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "type": "number"
+          },
+          "deletions": {
+            "type": "number"
+          },
+          "file": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "additions",
+          "deletions"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-abort-stream"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/abort-stream/events.jsonl"
+}

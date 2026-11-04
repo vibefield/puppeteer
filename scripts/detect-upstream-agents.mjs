@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateReleaseBundlePolicy } from './lib/release-bundle.mjs';
 import { validatePythonUvLockPolicy } from './lib/installed-console-contract.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -136,6 +137,12 @@ function validateAcquisitionHosts(label, acquisition, issues) {
 function validateAcquisition(label, config, issues) {
   const acquisition = config.acquisition;
   if (acquisition?.strategy === 'https-template') {
+    if (
+      acquisition.versionOutput !== undefined &&
+      !['single-line', 'copilot-cli'].includes(acquisition.versionOutput)
+    ) {
+      issues.push(`${label}: unsupported version output format`);
+    }
     const hosts = validateAcquisitionHosts(label, acquisition, issues);
     const artifactPlatforms = Object.keys(acquisition.artifacts ?? {});
     for (const platform of config.platforms ?? []) {
@@ -143,6 +150,13 @@ function validateAcquisition(label, config, issues) {
       if (!artifact) {
         issues.push(`${label}: acquisition has no artifact for ${platform}`);
         continue;
+      }
+      if (artifact.bundle) {
+        try {
+          validateReleaseBundlePolicy(artifact.bundle, artifact.format);
+        } catch (error) {
+          issues.push(`${label}: ${platform}: ${error.message}`);
+        }
       }
       validateExecutableArchiveSpec(`${label}: ${platform}`, artifact, hosts, issues, {
         formats: ['binary', 'tar.gz', 'zip'],

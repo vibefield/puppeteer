@@ -3,7 +3,7 @@
   "provider": "copilot",
   "adapterPackage": "@vibefield/puppeteer-adapter-copilot",
   "groundTruth": "packages/surface/vendors/copilot/groundtruth.json",
-  "groundTruthSha256": "2a662b7173f50379af5eb0c182abb530e48887b5693489f88a7bf843b4251afc",
+  "groundTruthSha256": "31bc0cf4165f9a1d6a2701b302b5e42d001b45bcbb3c2d5841a27d2c7aee755b",
   "semanticEvents": [
     "abort",
     "assistant.message",
@@ -35,12 +35,12 @@
   ],
   "observedOrControlledEvents": [],
   "unmapped": {
-    "count": 72,
-    "sha256": "8ee488df8bfbba152285fe4e3f1582a03ca2998b990b585a1a7365ed428c8670",
+    "count": 117,
+    "sha256": "186ec6c75cc6fd22e8106a0154d4363a5b195878b53b974cfc4150265ec9fcd6",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
-    "groundTruth": 99,
+    "groundTruth": 144,
     "semantic": 27,
     "observedOrControlled": 0
   }

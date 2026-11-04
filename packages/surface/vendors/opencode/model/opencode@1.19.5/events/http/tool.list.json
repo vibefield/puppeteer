@@ -1,0 +1,207 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/tool.list",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "List tools — Get a list of available tools with their JSON schema parameters for a specific provider and model combination.",
+  "payloadSchema": {
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "provider"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "query"
+    ],
+    "type": "object"
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "$ref": "#/$defs/ToolList"
+      },
+      "method": {
+        "enum": [
+          "GET"
+        ],
+        "type": "string"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "provider"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/experimental/tool"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "query",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "ToolList": {
+        "items": {
+          "$ref": "#/$defs/ToolListItem"
+        },
+        "type": "array"
+      },
+      "ToolListItem": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "parameters": {}
+        },
+        "required": [
+          "id",
+          "description",
+          "parameters"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "method": {
+            "enum": [
+              "GET"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "provider"
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/experimental/tool"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "query"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId tool.list; GET /experimental/tool."
+}

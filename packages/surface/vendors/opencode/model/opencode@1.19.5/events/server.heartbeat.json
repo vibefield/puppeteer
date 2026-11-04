@@ -1,0 +1,60 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "server.heartbeat",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Observed on the native GET /event stream.",
+  "payloadSchema": {
+    "type": "object"
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "properties": {
+        "type": "object"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "server.heartbeat"
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "properties",
+      "type"
+    ]
+  },
+  "schemaFidelity": {
+    "payload": "sampled",
+    "carrier": "sampled",
+    "limitations": [
+      "Schema includes only shapes present in the sanitized runtime samples."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "opencode-runtime-file-edit"
+    ],
+    "shape": [
+      "opencode-runtime-file-edit"
+    ],
+    "carrier": [
+      "opencode-runtime-file-edit"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/file-edit/events.jsonl",
+  "notes": "Runtime-only event absent from the pinned /doc Event union."
+}

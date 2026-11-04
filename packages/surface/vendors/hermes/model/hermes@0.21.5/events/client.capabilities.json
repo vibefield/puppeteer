@@ -1,0 +1,108 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "client.capabilities",
+  "firstSeen": "0.21.5",
+  "lastVerified": "0.21.5",
+  "fixture": "captures/hermes@0.21.5/basic-turn/rpc.jsonl",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "What the calling client handles, sent once per connection (after gateway.ready); returns the server→client request methods this backend may send.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ClientCapabilitiesParams",
+    "$defs": {
+      "ClientCapabilitiesParams": {
+        "additionalProperties": false,
+        "properties": {
+          "server_requests": {
+            "default": false,
+            "title": "Server Requests",
+            "type": "boolean"
+          }
+        },
+        "title": "ClientCapabilitiesParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/ClientCapabilitiesResult",
+    "$defs": {
+      "ClientCapabilitiesResult": {
+        "additionalProperties": false,
+        "properties": {
+          "server_requests": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Server Requests",
+            "type": "array"
+          }
+        },
+        "required": ["server_requests"],
+        "title": "ClientCapabilitiesResult",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["client.capabilities"]
+      },
+      "params": {
+        "$ref": "#/$defs/ClientCapabilitiesParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ClientCapabilitiesParams": {
+        "additionalProperties": false,
+        "properties": {
+          "server_requests": {
+            "default": false,
+            "title": "Server Requests",
+            "type": "boolean"
+          }
+        },
+        "title": "ClientCapabilitiesParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-runtime-headless", "hermes-generated-contract"],
+    "shape": ["hermes-generated-contract", "hermes-runtime-headless"],
+    "result": ["hermes-generated-contract", "hermes-runtime-headless"],
+    "carrier": ["hermes-runtime-headless"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "A WebSocket client that never advertises server_requests gets every server→client request failed fast for its sessions."
+}

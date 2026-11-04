@@ -54,6 +54,23 @@ describe('Hermes TUI session driver', () => {
     }
   });
 
+  it('resumes by stored id alone, as the 0.21.5 contract admits no cwd on session.resume', async () => {
+    const gateway = new FakeHermesGateway();
+    const request = vi.spyOn(gateway, 'request');
+    const session = await createHermesTuiSession({
+      cwd: '/work',
+      host: host(),
+      transport: gateway,
+      resume: '20260812_000000_stored',
+    });
+    try {
+      expect(request).toHaveBeenCalledWith('session.resume', { session_id: '20260812_000000_stored' });
+      expect(session.storedSessionId()).toBe('20260812_000000_stored');
+    } finally {
+      await session.dispose();
+    }
+  });
+
   it('attaches through an owned gateway and confirms prompt.submit via message.start', async () => {
     const gateway = new FakeHermesGateway({ reply: 'SURFACE_HERMES_OK' });
     const session = await createHermesTuiSession({

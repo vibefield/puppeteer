@@ -1,300 +1,283 @@
-# Hermes Agent 0.20.0 Surface findings
+# Hermes Agent 0.21.5 Surface findings
 
-Status: candidate adaptation through Gate 0, hermetic turn census, ASM v3,
-adapter conformance, and Imposter conformance. The support ledger entry remains
-`baseline-pending`; none of this is a promotion claim.
+Status: candidate adaptation of the latest stable release through the exact-source
+contract survey, an isolated-home identity probe, a type-preserving hermetic turn
+census, ASM v3, adapter and Imposter conformance, and one local adapter-through-real-
+native-TUI run. The support ledger entry remains `baseline-pending`; none of this is
+a promotion claim. The 0.20.0 candidate's authoring model, captures, probes, and
+reference stay beside this one as history.
 
 Candidate pin:
 
-- product version `0.20.0`
-- GitHub tag `v2026.8.3` (annotated tag object `7de39e700d2c329e15d32eb0b96e2f7cdd9fbdb2`)
-- source revision `3c27eb6234bf91b8ceee9e9071591b31e9b148cb`
-- `pyproject.toml` SHA-256 `64d1085ee1c23caf0ae0d9e65c73e280f466362ed43fdda1531f18f3af1d9869`
-- `uv.lock` SHA-256 `aab3c83f71b683507a590b6315b23bdc0abd6b63b76b2349eae15bf00dfbaf2b`
+- product version `0.21.5`
+- GitHub tag `v2026.9.24` (annotated tag object `e3dd27ee2d8b011737a4eea8e3eb3d711ab78690`)
+- source revision `f97608f178d1ffeca59860195ab7da295f7c8e5f`
+- `pyproject.toml` SHA-256 `6f969b9fdff95e7269ec808361e3ae8be5357036e6257e53a3306878cf8c41dd`
+- `uv.lock` SHA-256 `5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590`
+- gateway contract `apps/shared/src/gateway-contract.openrpc.json` SHA-256
+  `c89a203e853c285c4af204a229d4d804a36847efdcb6d223da8d3d22017f184d`
 
-Identity probes used a disposable `HERMES_HOME` and an editable install of
-that exact checkout, with no provider traffic. Turn captures used a second
-set of disposable homes, a loopback OpenAI-compatible provider, and never
-read the operator's `~/.hermes`.
+## Release and version mapping
 
-## Acquisition decision
+Hermes publishes date tags. The detector reads the stable tag (`^v(\d{4}\.\d{1,2}\.\d{1,2})$`)
+and takes the product version from the release title (`v(\d+\.\d+\.\d+)`). The 0.20.0
+candidate followed the same rule: annotated tag `v2026.8.3` has the subject
+`Hermes Agent v0.20.0 (2026.8.3)`, and its `pyproject.toml` and `hermes_cli.__version__`
+say `0.20.0`. Tag `v2026.9.24` has the subject `Hermes Agent v0.21.5 (2026.9.24)`
+("Rollup patch: ~460 PRs since v0.21.4"), and at the peeled commit `pyproject.toml`
+says `version = "0.21.5"` and `hermes_cli/__init__.py` says `__version__ = "0.21.5"`,
+`__release_date__ = "2026.9.24"`. The installed console prints
+`Hermes Agent v0.21.5 (2026.9.24)`. So `0.21.5` is the normalized version for this tag.
+The census tooling keeps every reviewed pin in `census/harness.mjs` `RELEASES`.
 
-Hermes is a Python source checkout plus `uv`, not four platform binaries.
-`upstream.json` therefore uses `source-revision`: one GitHub source archive
-URL templated on `${tag}`, with the usual Puppeteer platforms listed as
-**execution environments** for that same archive. Per-platform artifact
-maps are forbidden for this vendor. The archive contract reviews
-`pyproject.toml`, `uv.lock`, the root npm package/lock, and the TUI package and
-build entrypoint at one project root. It then declares a `python-uv-lock`
-installed-console recipe plus a separate `node-npm-lock-bundle` runtime recipe.
+## Acquisition and artifact identity
 
-`hermes` and `hermes-acp` on PATH are setuptools console scripts (~330
-bytes). Product identity is the pinned commit and lockfile, not those
-wrapper hashes.
+`upstream.json` is unchanged: a `source-revision` archive, a `python-uv-lock`
+installed console, and a `node-npm-lock-bundle` runtime bundle. All six reviewed
+root files exist at the new tag. `ui-tui/scripts/build.mjs` is byte-identical to
+0.20.0; the other five changed. The project still requires Python `>=3.11,<3.14`; the
+root `package.json` engines widened from `node >=22.22.0` to
+`^22.22.0 || ^24.11.0 || >=26.0.0`, which still admits the pinned Node `22.22.0`.
 
-Protected promotion still cannot treat this vendor as four reacquired
-binaries. The downloader now requires the exact tag, retains the source
-archive bytes, and labels them `source-archive`; the standalone executable
-probe and attestation reject those bytes. The generic adaptation lane can
-now perform Hermes's required editable but source-bound `uv` materialization
-and attest a composite `installed-console.json` identity on every execution
-platform. The source tree must remain byte-for-byte unchanged during install;
-checkout paths in editable pointers are normalized before hashing, while generated
-launcher wrappers are represented by their canonical console-script binding.
+The four-platform acquisition completed on 2026-11-04 in
+[run 41781642980](https://github.com/vibefield/puppeteer/actions/runs/41781642980).
+It downloaded the reviewed source archive and built installed-console manifests with the
+pinned Python 3.11.9, uv 0.9.28 and Node 22.22.0, including the locked runtime bundle.
+All four exact-version probes passed. The manifests and archive identities are recorded in
+`model/hermes@0.21.5/evidence.json` and the canonical ground truth.
 
-The same manifest now binds the native TUI bytes that the Python console
-actually launches. A fresh source extraction is installed from
-`package-lock.json` with Node `22.22.0`, its bundled npm `10.9.4`, and dependency
-lifecycle scripts disabled. Puppeteer invokes only the reviewed
-`ui-tui/scripts/build.mjs`, rejects changes outside `node_modules` and
-`ui-tui/dist`, uploads the bounded `runtime/dist/entry.js`, and re-hashes it
-during acquisition assembly. This prevents a Python-only identity from hiding
-an untracked first-launch npm install/build.
+The original `hermes-0.21.5-source-revision` identity remains a separate
+`source-revision-pin`. Existing source and runtime survey claims retain that identity:
+they were not executed with the newly acquired toolchains. Acquisition appends distinct
+installed-console identities instead of relabeling those claims. Real attached-TUI approval,
+clarify and `request.cancel` captures remain outstanding.
 
-A local path-independence check of the exact tag produced the same 3,689,441-byte
-bundle at two different checkout paths, SHA-256
-`a1bb291b54cc62ab8f51c05c87dae9fecd5f1fd6a916a8f1f656c1df4ddd9c30`.
-Two complete fresh materializations also produced byte-identical 16,195-byte
-`installed-console.json` manifests, SHA-256
-`dad293b2e3ef56f433275f6ab6b05c11bfe9dc95f24496985ddd5301ad2f96f9`.
+## Identity probes (`linux-x64`, survey environment)
 
-The guarded promotion workflow now retains each platform's reviewed source
-archive, independently reconstructs the installed console on its protected
-runner, revalidates both runtime bundles, and requires the reconstructed
-manifest bytes to match the acquisition manifest before executing the adapter.
-These local checks validate the recipe and protected gate; they are not
-four-platform promotion evidence. The complete protected workflow still needs
-a successful run on every required platform.
+The probe ran an editable `uv sync --frozen --no-default-groups` of the exact tag with
+Python 3.11.18 in a disposable `HERMES_HOME`; `artifact.json` records that environment
+as unattested. Observed:
 
-## Identity probes (`darwin-arm64`)
+- `hermes --version` prints `Hermes Agent v0.21.5 (2026.9.24)`, then install directory,
+  a new `Install method:` line, Python, and OpenAI SDK lines;
+- `hermes acp --version` prints `0.21.5`;
+- `hermes acp --check` exits 1: ACP's protocol package is the optional `acp` extra in
+  both 0.20.0 and 0.21.5, and the reviewed recipe installs no extras. The 0.20.0
+  `darwin-arm64` probe evidently ran with the extra installed. The harness now records
+  the check's exit status rather than requiring success. ACP is never run beside the TUI;
+- unknown option `--definitely-not-a-hermes-option` exits 2 and names the option;
+- `--help` still lists every flag and subcommand the census requires. Root, `chat`, and
+  `sessions` help are identical to the adapter's 0.21.4 grammar fixtures apart from the
+  isolated home's display path. `hermes_cli/_parser.py`, `main_tui_launch.py`, and
+  `stream_json.py` are byte-identical to the hashes in `dispatch-probes.json`;
+  `main.py` changed only in profile/s6 supervision paths, not chat dispatch. The 0.21.4
+  invocation grammar therefore stands; it was not re-probed.
 
-Observed:
+## Drift from 0.20.0
 
-- `hermes --version` prints `Hermes Agent v0.20.0 (2026.8.3)` plus install
-  directory, Python, and OpenAI SDK lines;
-- `hermes acp --version` and `hermes-acp --version` print `0.20.0`;
-- `hermes acp --check` prints `Hermes ACP check OK` and exits 0;
-- unknown option `--definitely-not-a-hermes-option` exits 2 and names the
-  option;
-- `--help` includes `--tui`, `--cli`, `--resume`, `--continue`, `--in` is
-  **not** in the top-level help excerpt captured here (directory scoping
-  remains a docs lead), `--worktree`, `--yolo`, `--ignore-user-config`,
-  `--ignore-rules`, `--safe-mode`, and subcommands `chat`, `acp`,
-  `sessions`, `dashboard`.
+| Area                                                                  | 0.20.0                                                                                                                       | 0.21.5                                                                                                                                                                                                                                                                                                                                           | Classification                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gateway contract                                                      | Methods discovered by scanning `@method` in Python                                                                           | Upstream-generated OpenRPC 1.3.2 contract; registry, handler table, and contract agree (237 methods)                                                                                                                                                                                                                                             | additive authority: exact schemas replace structural guesses                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Methods                                                               | 130                                                                                                                          | 237 (+111, −4: `clarify.respond`, `secret.respond`, `sudo.respond`, `terminal.read.respond` removed, because those flows are now answered by a response frame to the server→client request); the dispatcher rejects any undeclared params key with error 4000                                                                                    | adaptation-required (see `session.resume`); the removals have no adapter impact, since the adapter never sent them                                                                                                                                                                                                                                                                                                                                                     |
+| `session.resume`                                                      | Ignored an unread `cwd`                                                                                                      | Contract has no `cwd`; `{session_id, cwd}` is refused with 4000 (captured in `resume-turn/rejections.jsonl`)                                                                                                                                                                                                                                     | **breaking for the adapter**, fixed                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Approvals                                                             | `approval.request` event, `approval.respond` method                                                                          | Server→client JSON-RPC request `approval` (`srq-<12 hex>` id, params with `request_id`), answered by a response frame; `approval.respond` remains                                                                                                                                                                                                | **breaking for observation**, fixed                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Clarify, sudo, secret, ...                                            | `*.request` / `*.expire` events, answered by `clarify.respond` / `sudo.respond` / `secret.respond` / `terminal.read.respond` | 13 server→client requests, answered by a response frame; the four `*.respond` methods are gone (only `approval.respond` remains); a timeout or cancel emits `request.cancel {id, method, reason}`                                                                                                                                                | **breaking for observation**, fixed for `clarify`; breaking for any client that answered by method (not the adapter)                                                                                                                                                                                                                                                                                                                                                   |
+| Client capability                                                     | none                                                                                                                         | `client.capabilities {server_requests: true}`; a WebSocket session whose every client never sent it gets server requests failed fast                                                                                                                                                                                                             | additive; the native TUI sends it on `gateway.ready`                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Live session attach                                                   | One scalar transport; `session.resume` rebinds it                                                                            | `FanoutTransport`: a resuming client joins the session's existing clients                                                                                                                                                                                                                                                                        | additive; the host's 0.20 fan-out shim is now skipped                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Events                                                                | 60 (source scan)                                                                                                             | 73; removed `approval.request`, `clarify.*`, `secret.*`, `sudo.*`, `terminal.read.*`, `subagent.text`; added `request.cancel`, `session.usage`, `todo.updated`, `message.reaction`, `session.control.update`, and others                                                                                                                         | removals adaptation-required (above); additions additive-unconsumed                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Ground-truth keys for names that are both a method and a notification | The method keeps the bare key; the notification is `gateway-event:<name>` (only `session.title` collided)                    | The notification keeps the bare key; the method is `gateway-method:<name>` (`session.title`, `session.usage`, `display.status`)                                                                                                                                                                                                                  | key remap, not a native change: `session.title` and `session.usage` now name the agent notification, the 0.20 methods of those names are `gateway-method:session.title` / `gateway-method:session.usage`, and 0.20 `gateway-event:session.title` is renamed to `session.title`, not removed. The `session.title` notification already existed in 0.20.0 and is only newly runtime-captured; the `session.usage` notification and both `display.status` entries are new |
+| Event carrier                                                         | `params {type, session_id, payload}`                                                                                         | adds a per-session monotonic `params.seq` on session-scoped events                                                                                                                                                                                                                                                                               | additive-unconsumed                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `gateway.ready`                                                       | `skin`, `change_events`                                                                                                      | adds required `replay_epoch`, optional `heartbeat`                                                                                                                                                                                                                                                                                               | additive-unconsumed                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `prompt.submit` result                                                | `{status}`                                                                                                                   | `{status, user_row_id, ...}`; still no prompt id                                                                                                                                                                                                                                                                                                 | additive-unconsumed                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Hooks                                                                 | 23 `VALID_HOOKS`                                                                                                             | 41 (18 added: stream, auxiliary-call, kanban, room, skill, and transcription hooks, plus others such as `pre_command`, `on_interim_message`, `agent_loop_stopped`, `gateway_platform_event`, and `transform_api_error_classification`; none removed)                                                                                             | additive-unconsumed                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Hook envelopes                                                        | shell / outbound fields                                                                                                      | both add `profile`                                                                                                                                                                                                                                                                                                                               | additive-unconsumed                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Hook kwargs                                                           | captured kwargs per hook                                                                                                     | `post_api_request` +`first_chunk_at`, +`moa_references`; `pre_api_request` +`system_prompt`; `pre_approval_request` / `post_approval_response` +`session_id` (fills the webhook's top-level `session_id`, empty in 0.20.0); hook sequence, `telemetry_schema_version`, and tool-hook `turn_id` / `api_request_id` / `middleware_trace` unchanged | additive-unconsumed                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Inline diff                                                           | `tool.complete.inline_diff`                                                                                                  | same bounds (6 files, 80 lines) and tools; preview produced only for a local terminal backend                                                                                                                                                                                                                                                    | no drift for the adapter                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Title request                                                         | "Generate a short, descriptive title ..."                                                                                    | "You name chat sessions. ..."                                                                                                                                                                                                                                                                                                                    | test-support only                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `state.db`                                                            | schema 25                                                                                                                    | schema 30                                                                                                                                                                                                                                                                                                                                        | unconsumed (resume and replay go through the gateway)                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ACP                                                                   | `agent-client-protocol==0.9.0` extra                                                                                         | same pin; a few internal server helpers changed                                                                                                                                                                                                                                                                                                  | unconsumed (forbidden beside the TUI)                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| CLI                                                                   |                                                                                                                              | help unchanged from 0.21.4                                                                                                                                                                                                                                                                                                                       | no drift                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
-`--version` install-directory text is redacted in the committed probe.
+## Gate 0 — native control seam (re-checked against 0.21.5 source and one live run)
 
-## Gate 0 — native control seam
+The process model is unchanged: `hermes --tui` runs the Node Ink TUI, which spawns
+`python -m tui_gateway.entry` unless `HERMES_TUI_GATEWAY_URL` points it at a WebSocket
+gateway (`ui-tui/src/gatewayClient.ts`). `tui_gateway.ws.handle_ws` is the same
+dispatcher. No new 0.21.5 process-tree probe was committed; the attach is proven by the
+live adapter run below.
 
-### Default `hermes --tui` process tree
+What changed is the shared-session model. `session.resume` of a live session now
+attaches the caller beside the clients already streaming
+(`methods_session._resume_reuse_live` → `session_lifecycle._rebind_live_transport` →
+`session_transports._attach_session_transport`), so the native TUI and the adapter both
+receive session events without help. Puppeteer's gateway host keeps its 0.20 event tee
+only when `tui_gateway.transport` has no `FanoutTransport`.
 
-Live PTY launch of `hermes --tui` (isolated home, prebuilt
-`HERMES_TUI_DIR`) produced:
+Server→client requests travel the same fan-out. The exact release source shows that `server.write_json` routes a server request carrying
+`params.session_id` to the session's transport, `FanoutTransport.write` queues it for
+every attached peer, and `server_requests.resolve_response` settles it on the first
+response. `session_transports._session_client_answers_requests` fails a request fast only
+when no attached WebSocket client advertised `server_requests`. The census captured the
+`approval` frame through a single client that advertises. The 2026-11-04 attached-TUI captures below now also prove delivery to the adapter's non-advertising connection. The native TUI answers. The
+adapter observes and must never reply, because even an error reply would settle the
+request in the TUI's place. Approvals therefore stay `native-tui`. Until the TUI has
+resumed the session, the adapter's WebSocket is the session's only client and has not
+advertised `server_requests`, so Hermes would fail an approval raised in that window;
+prompts submitted before the TUI attaches remain a known limitation.
 
-```text
-python hermes --tui
-  └─ node --expose-gc ui-tui/dist/entry.js
-       └─ python -m tui_gateway.entry
-```
+ACP (`hermes acp`) is still a separate stdio host and is forbidden as the native-TUI
+control plane.
 
-The JSON-RPC stdio pipe is owned by the Node TUI and its
-`tui_gateway.entry` child. An adapter cannot sit on that pipe without
-replacing the visible TUI.
+### Live adapter/native-TUI run (`linux-x64`, survey environment)
 
-`python -m tui_gateway.entry` on stdio emits
-`{"method":"event","params":{"type":"gateway.ready",...}}` within seconds
-with no inbound request. That is a live, headless `gateway.ready`.
+`driver.live.test.ts` ran against the survey install and a TUI bundle built from the
+tag's `package-lock.json` (`npm ci --workspace ui-tui --ignore-scripts`, then the
+reviewed `ui-tui/scripts/build.mjs`, with Node 22.23.4 / npm 10.9.9, not the pinned
+22.22.0 / 10.9.4; the bundle digest is not recorded as identity). With a disposable
+`HERMES_HOME` and a loopback provider, one prompt was confirmed through `prompt.submit`,
+normalized to `turn:completed`, rendered in the real native TUI, and resumed into a
+second native TUI with replayed history; the provider saw exactly one model turn. Before
+the `session.resume` fix the same run failed at resume with error 4000. It passes with
+or without the host's event tee. No attestation receipt was written: this is not the
+protected lane.
 
-### Same-session attach
+### Attached-TUI interaction regression (darwin-arm64, 2026-11-04)
 
-A loopback FastAPI host mounting `tui_gateway.ws.handle_ws` on
-`/api/ws` emitted `gateway.ready` to a WebSocket client. Launching
-`hermes --tui` with `HERMES_TUI_GATEWAY_URL=ws://127.0.0.1:<port>/api/ws`
-attached the Node TUI to that host and **did not** spawn
-`python -m tui_gateway.entry`.
+The pinned Node 22.22.0 / npm 10.9.4 TUI and Python 3.11.9 / uv 0.9.28 console passed
+`driver.live.test.ts` and all three `interaction.live.test.ts` scenarios. The full Hermes
+suite passed 205 tests, including the real native-TUI/resume lane. The adapter received
+`approval`, `clarify` and `request.cancel` beside the real TUI without advertising server-request
+handling or answering those requests. Escape denied the scratch-directory deletion; its sentinel
+survived. Enter answered `Alpha`, and structured `session.interrupt` cancelled an open clarification.
 
-This is the dashboard's documented internal seam, not a public CLI flag.
-It is stable enough to model: the TUI client reads `HERMES_TUI_GATEWAY_URL`
-in `ui-tui/src/gatewayClient.ts`, and `handle_ws` is the same dispatcher
-as stdio. Puppeteer may own a tiny loopback host of `handle_ws`; the TUI
-is then a viewer of that process's `AIAgent`.
+The test found and fixed a stale-question bug: the private TUI response never reaches the adapter,
+but `tool.complete.result.user_response` does. A correlated clarify result now resolves the question;
+empty answers and interrupted requests cancel it. A question with ambiguous tool correlation is
+superseded at turn end rather than attributed to another tool's answer. Duplicate completion or
+cancellation does not resolve it twice. Committed selected gateway frames and the exact local
+installed-console manifest are in
+[`native-interactions`](../../../adapter-hermes/src/test-support/fixtures/native-interactions/README.md).
 
-Two WebSocket clients can share the module-global session table. Approvals
-must stay native-TUI unless a single-controller lease is proven. Do not
-let the adapter and the TUI both answer `approval.respond`.
-
-The exact 0.20.0 implementation stores one transport on each live session.
-`session.resume` and `prompt.submit` rebind that scalar transport to the current
-WebSocket, so attaching the native TUI otherwise steals subsequent events from
-the adapter observer. Puppeteer's gateway host is private to one binding and
-tees only session-scoped `event` notifications to its connected observer and
-viewer. RPC results remain request-local, and the adapter still does not answer
-approval requests.
-
-### Exact adapter/native-TUI proof (`darwin-arm64`)
-
-An opt-in live adapter test materialized the reviewed `v2026.8.3` source with
-Python `3.11.9`, uv `0.9.28`, Node `22.22.0`, and npm `10.9.4`, then launched
-the real `hermes --tui` in a PTY against the bundled Node viewer. With a
-disposable `HERMES_HOME` and loopback OpenAI-compatible provider, one prompt:
-
-- was confirmed through the adapter's structured `prompt.submit` service;
-- produced a normalized `turn:completed` and assistant message on the adapter
-  observer;
-- rendered the same response marker in the real native TUI; and
-- made exactly one model-turn request.
-
-The test emitted the artifact-bound receipt
-`hermes:native-tui-gateway` against the composite manifest above. This is one
-local execution-host proof; the protected four-platform lane remains pending.
-
-### ACP isolation
-
-`hermes acp` / `hermes-acp` is a separate stdio ACP server. It was not
-observed joining the live `--tui` tree. Source and docs treat ACP
-list/load/resume as process-scoped. Running ACP beside the TUI would be a
-second `AIAgent`. Forbidden as the native-TUI control plane.
-
-### Gate 0 verdict
-
-| Question                      | Result                                                            |
-| ----------------------------- | ----------------------------------------------------------------- |
-| Default process tree          | Proven: wrapper → Node TUI → `tui_gateway.entry`                  |
-| Who owns stdio JSON-RPC       | Node TUI ↔ `tui_gateway.entry`                                    |
-| Same-session attach           | Proven via Puppeteer-owned `handle_ws` + `HERMES_TUI_GATEWAY_URL` |
-| Official public attach API    | No. Dashboard/Desktop internal only                               |
-| Second client races approvals | Yes, if both call `approval.respond`                              |
-| Does ACP join the TUI session | No evidence it does; treat as a separate host                     |
-
-**First adapter rail:** structured observation/control through a
-Puppeteer-owned loopback `handle_ws` host, with `hermes --tui` attached as
-the native viewer. Prompt submission may use `prompt.submit` on that host.
-Approvals stay native-TUI for the first slice.
-
-Plugin hooks / outbound webhooks remain a fallback observer if the WS host
-is not used. `state.db` is resume/replay only.
+This is local survey evidence, not a protected promotion. Its manifest digest is
+`sha256:6627b61d399a3e1a0d677f17faa10af0f84c5610ab00c7288b66d88b38e965df`.
+The Python executable and standard library come from uv's managed distribution and differ from
+GitHub setup-python; source, Python dependencies, Node executable and TUI bundle match the acquired
+macOS arm64 identity. Existing artifact identities and earlier runtime claims are unchanged.
+The run used disposable state and a loopback provider without an OS network-deny boundary.
 
 ## Turn census (stdio `tui_gateway`)
 
-The census drove `tui_gateway` over stdio with a fake provider. That is the
-same dispatcher as the attach WebSocket (`handle_ws`), not a second agent.
-It is not a live `hermes --tui` PTY capture.
-
-Sanitized fixtures live under `captures/hermes@0.20.0/`.
+Same harness and scenarios as 0.20.0, with two changes: the census client advertises
+`client.capabilities {server_requests: true}` on `gateway.ready` (as the native shared
+channel does) and answers the `approval` server request with `{choice: "deny"}`. Sanitized
+fixtures under `captures/hermes@0.21.5/` are **type-preserving** (schemaVersion 2), unlike
+the 0.20.0 legacy projections, so every captured frame is validated against its exact
+contract schema by the audit and by `surface:replay`. Replay correlates results through
+the census's inline `"direction": "client"` marker, so the method results and the
+response to the `approval` server request are validated against their result schemas too
+(143 frames + 17 results, 0 unattributed, 0 issues).
 
 ### Identities
 
-`session.create` returns two ids:
+Unchanged: `session.create` returns an 8-hex live `session_id` and a
+`YYYYMMDD_HHMMSS_<6 hex>` `stored_session_id`; `session.resume` takes the stored id and
+returns a new live id with `resumed` / `session_key`. `prompt.submit` returns
+`{status: "streaming", user_row_id}` with no prompt id, so prompt receipts still confirm
+only on the following `message.start` and are otherwise `uncertain`.
 
-- live `session_id`: 8 hex (`272654f4` in the raw basic-turn);
-- durable `stored_session_id`: `YYYYMMDD_HHMMSS_` plus 6 hex.
+### Observed
 
-Events carry the live id. `session.resume` takes the stored id and returns a
-**new** live id. The resume result uses `resumed` / `session_key` for the
-stored id, not `stored_session_id`. `session.info` then repeats
-`stored_session_id`. Resume of the basic-turn stored id came back with
-`message_count: 2` and `status: "idle"`.
+| Scenario        | Distinct native traffic                                                                                                                                                                                                       |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| basic-turn      | `gateway.ready`, `client.capabilities`, `session.create`, `session.info`, `prompt.submit`, `message.start`, `sessions.changed`, `session.title`, `thinking.delta`, `message.delta`, `reasoning.available`, `message.complete` |
+| tool-success    | plus `tool.generating`, `tool.start`, `tool.complete`, `session.usage` (emitted mid-turn, after `tool.start`; absent from the tool-less scenarios)                                                                            |
+| permission-deny | plus server request `approval` and the client's response                                                                                                                                                                      |
+| interrupt       | `session.interrupt` → `{status: "interrupted"}`; `message.complete` status `interrupted` with `persisted_turn`                                                                                                                |
+| resume-turn     | refused `session.resume {session_id, cwd}` (kept in `rejections.jsonl`), then `session.resume {session_id}` and the basic stream                                                                                              |
 
-`prompt.submit` returns `{ status: "streaming" }` immediately. There is no
-caller-supplied prompt id and no native receipt id. Confirmation is only the
-later `message.start` on that live session. Prompt receipts must stay
-`uncertain` if that pairing is lost.
-
-### Observed JSON-RPC events
-
-| Scenario        | Distinct event types observed                                                                                                                      |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| basic-turn      | `gateway.ready`, `session.info`, `message.start`, `thinking.delta`, `sessions.changed`, `message.delta`, `reasoning.available`, `message.complete` |
-| tool-success    | plus `tool.generating`, `tool.start`, `tool.complete`                                                                                              |
-| permission-deny | plus `approval.request`                                                                                                                            |
-| interrupt       | `session.interrupt` result `interrupted`; `message.complete` status `interrupted`                                                                  |
-| resume-turn     | `session.resume` then the basic-turn stream set                                                                                                    |
-
-`thinking.delta` is a UI spinner string (`(⊙_⊙) pondering...`), not model
-reasoning. `reasoning.available` echoed the assistant text in these runs.
-
-`tool.start` / `tool.complete` share `tool_id` (the model `call_…` id) and
-`name`. `tool.complete.result` for a successful terminal call has `output`,
-`exit_code: 0`. A denied call has `exit_code: -1`, `status: "blocked"`, and
-an error telling the model not to retry.
-
-The pinned source also defines an optional `tool.complete.inline_diff` branch for
-`write_file`, `patch`, and `skill_manage`. It is ANSI-rendered presentation text,
-bounded to six files and 80 rendered lines, and can contain an omission summary;
-it is not a raw unified patch. Source proves `args.path` as the single local target
-for `write_file` and `patch`. `skill_manage` resolves one or many paths dynamically,
-so its file identity cannot be normalized from this gateway payload alone. No
-runtime capture in this census exercised the `inline_diff` branch; it remains
-source-defined and runtime-unverified.
-
-`approval.request` choices were `once | session | always | deny`.
-`approval.respond` with `choice: "deny"` returned `{ resolved: 1 }`. The
-TUI overlay was not in this stdio census; a live `--tui` attach would still
-race this method if both answered.
-
-`session.interrupt` after the first `message.delta` produced
-`message.complete` with `status: "interrupted"` and the partial text. The
-RPC write is not itself the stop: the later `message.complete` is.
-
-After a successful user turn the fake provider saw two extra non-streaming
-`/v1/chat/completions` calls with no tools. Their system prompt asked for a
-3–7 word conversation title. Those are not user turns.
+`thinking.delta` is still spinner text, and an empty text now clears it. `message.start`
+carries no payload. `sessions.changed` is session-less and carries no `seq`. A denied
+terminal call completes with `exit_code: -1`, `status: "blocked"`, and a new
+`user_summary`. The approval request params carried `pattern_key` and `pattern_keys`
+beyond the declared fields, which the open `ApprovalRequestParams` model admits.
+Besides the user turn, the provider again saw two auxiliary requests, which in 0.21.5
+are byte-identical structured session-title requests (`response_format` json_schema
+`session_title`, `reasoning_effort: "none"`), and several model-metadata probes; none are
+user turns. The captures redact the prompt text, so the new 0.21 title prompt wording
+comes from the release source (`agent/title_generator.py`), not from the captures.
 
 ### Hooks and outbound webhooks
 
-Default `python -m tui_gateway.entry` does **not** register
-`hooks.outbound` or load user plugins. The first unwrapped basic-turn wrote
-an empty `webhooks.jsonl`. The CLI entry does register them.
+As in 0.20.0, default `tui_gateway.entry` registers neither plugins nor `hooks.outbound`;
+the census sidecar does. The gateway now registers shell hooks itself when it builds an
+agent.
 
-The census sidecar (`census/tui-gateway-census.py`) calls
-`register_from_config` and `discover_plugins` before the real entry. With
-that injection, the same turns produced both:
+Unchanged from 0.20.0 (the 0.20.0 captures already show all of it): every scenario fires
+the same hook sequence; new sessions fire `on_session_start` (resume does not), and
+shutdown fires `on_session_end` twice and `on_session_finalize` once. Every kwargs object
+carries `telemetry_schema_version: "hermes.observer.v1"`, and tool hooks carry `turn_id`,
+`api_request_id`, and `middleware_trace`.
 
-- plugin-hook dumps (`plugin-hooks.jsonl`);
-- outbound webhook POSTs (`X-Hermes-Event`, signed-capable body).
+What changed is a handful of kwargs, all additive: `post_api_request` gains
+`first_chunk_at` and `moa_references`, `pre_api_request` gains `system_prompt`, and
+`pre_approval_request` / `post_approval_response` gain `session_id`. That new kwarg fills
+the outbound webhook's top-level `session_id` for the two approval events, which was empty
+in 0.20.0; it carries the stored id, the same value as `session_key`. Hook payload schemas
+in the ASM are sampled from the census (`sampled` fidelity); hooks not encountered have none.
 
-New sessions fire `on_session_start`. Resume does not. Every gateway
-shutdown fired `on_session_end` twice in the plugin dump (once from the
-turn/lifecycle path, once from finalize) and `on_session_finalize` once.
-Interrupt had `pre_llm_call` / `pre_api_request` but no `post_llm_call`.
+## Adapter and Imposter implications
 
-`pre_approval_request` / `post_approval_response` fire on the gateway
-surface (`surface: "gateway"`). Outbound webhook top-level `session_id` was
-empty for those two events; the stored id is `extra.session_key`.
-`post_approval_response.choice` was `deny`.
+- `session.resume` sends only `session_id`; the resumed session keeps its recorded cwd.
+- The normalizer and monitor read server→client requests: `approval` →
+  `interaction:permission-requested` (`requestId` = the approval queue's `request_id`,
+  `presentation: native-tui`); `clarify` → `interaction:question-requested`, single or
+  batch, named by the `srq-` id; `request.cancel` → `permission-resolved` (`dismissed`)
+  or `question-resolved` (`cancelled`). The native TUI's answer never reaches the observer,
+  so an approval still open when its gated tool's `tool.complete` (the tool in flight when
+  it was raised) or the turn's `message.complete` arrives resolves with outcome `unknown`,
+  matching the monitor projection. Other server requests stay `adapter:native-event`.
+  The 0.20 event spellings remain accepted. Clarify answers are observed only in the native tool result, not by intercepting the TUI response.
+- The gateway host leaves a native fan-out Hermes as shipped.
+- Live test support recognizes the 0.21 title prompt.
+- The Imposter persona emits `approval` as a server request with `srq-` ids, includes the
+  required `replay_epoch` and `session.create`/`session.resume` result fields, and emits
+  hook kwargs in their native shape.
 
-Hooks remain a fallback observer. They are not live on an unmodified
-`--tui` tree unless Puppeteer registers them in the owned gateway process
-or enables a user plugin in the isolated home.
+## Privacy
 
-## Isolated home side effects
+Sanitization rules now also redact `arguments` (stringified tool-call arguments),
+`context` and `preview` (command previews), and pseudonymize the `X-Hermes-Delivery`
+header so it joins its body's `delivery_id`. Probe text has the checkout and environment
+roots redacted.
 
-The first `tui_gateway.entry` start in an empty `HERMES_HOME` created
-`SOUL.md`, `logs/agent.log`, `logs/errors.log`,
-`logs/tui_gateway_crash.log`, and `.update_check`. Census homes must stay
-disposable. The adapter must not create these in the user's real home as a
-side effect of detection.
+## Gateway shutdown correction — 2026-11-04
+
+The Puppeteer-owned WebSocket host previously relied on Hermes's `atexit` session
+cleanup. The pinned uvicorn server restores and re-raises `SIGTERM` after its
+shutdown cycle, so that Python callback is bypassed. Native session flushes and
+detached slash-worker cleanup must run in the application's lifespan shutdown.
+The host now invokes Hermes's own `_shutdown_sessions` there and gives its
+five-second flush plus worker teardown a ten-second termination grace period.
+
+A regression using the real host script and uvicorn failed before the change:
+the native shutdown callback never ran. It now passes, including a callback that
+outlasts the previous two-second termination timeout. All 210 local Hermes tests
+pass with the real native-TUI proofs enabled. Hosted reconstruction and native
+verification are being repeated; earlier disposable-home cleanup failures are
+not waived. The test harness also waits for the actual clarification menu's
+input instructions, because the question text appears earlier in its tool-call
+summary and is not proof that the answer handler is ready.
 
 ## Unverified / next census
 
-- tool, denial, interrupt, and resume scenarios through the attached real TUI
-  (the basic turn is proven by the live adapter test);
-- `approval.respond` while a real Node TUI is also attached;
-- allow once / session / always, smart auto-allow/deny, approval timeout;
-- `--resume` on `hermes --tui` itself (RPC resume is proven);
-- compression lineage and `session.compress`;
-- `state.db` snapshot vs live events (replay only);
-- nonzero tool exit, parallel tools, late `tool.complete`;
-- other execution platforms;
-- whether `--in <dir>` appears on this exact CLI.
+- protected four-platform native-TUI verification and promotion (source-archive and installed-console acquisition passed on all four platforms; local attached-TUI interactions passed on darwin-arm64);
+- allow once / session / always, smart approval, and approval timeout (denial and clarification interruption are now captured beside a native TUI);
+- batch clarify, `sudo`, `secret`, and the other server requests at runtime;
+- an approval raised before the native TUI attaches (expected to fail fast);
+- compression lineage and `session.compress`, subagent events, `session.usage` and
+  `todo.updated` consumption;
+- `state.db` schema 30 snapshot vs live events (replay only).
 
-The stdio event map is modeled in `model/hermes@0.20.0/` (28 events).
-`@vibefield/puppeteer-adapter-hermes` now owns a TUI-gateway client, a
-stateful normalizer, a private event fan-out host, and an attach recipe
-(`hermes --tui` + `HERMES_TUI_GATEWAY_URL`). Approvals stay `native-tui`.
-Prompt receipts confirm only a following `message.start` on that live session;
-otherwise they stay `uncertain`. Imposter `ai --hermes` is the interactive
-preview; `ai --hermes tui-gateway` is the stdio double of the owned gateway,
-not a native Hermes CLI subcommand. The protected reconstruction and live-TUI
-lane is implemented but has not completed on every platform, so this is still
-not a support or promotion claim.
+The model is `model/hermes@0.21.5/` (364 events: 237 methods, 13 server requests,
+73 events, 41 hooks), generated by `census/generate-model.mjs` from the retained contract,
+reference, probes, and captures.

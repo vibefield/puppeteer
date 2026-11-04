@@ -1,0 +1,14 @@
+{
+  "vendor": "kimi",
+  "vendorVersion": "2.4.1",
+  "artifact": "$PUPPETEER_KIMI_BIN",
+  "platform": "linux-x64",
+  "bytes": 192613568,
+  "fileDescription": "ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=5e67bdf95c7646325b62decd0ca8d375d325ea19, for GNU/Linux 3.2.0, with debug_info, not stripped, too many notes (256)",
+  "versionArgs": [
+    "--version"
+  ],
+  "versionOutput": "2.4.1",
+  "sha256": "f2b3634c17b604e5b0f0c578b6a787fd01bcafb40a3c0dd62203ae14ff2ea068",
+  "probedAt": "2026-11-03T19:30:14.499Z"
+}

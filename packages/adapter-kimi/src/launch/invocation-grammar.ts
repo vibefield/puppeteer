@@ -1,7 +1,7 @@
 import { readNativeInvocationArguments, type NativeInvocationGrammar } from '@vibefield/puppeteer-core';
 
 /** Native help and parser evidence: __fixtures__/README.md. Unknown arity is a refusal. */
-export const INVOCATION_GRAMMAR_VERSION = '2.0.2';
+export const INVOCATION_GRAMMAR_VERSION = '2.4.1';
 export const INVOCATION_GRAMMAR = {
   optionLikeValues: true,
   options: [
@@ -122,6 +122,11 @@ export const INVOCATION_GRAMMAR = {
       passthrough: 'utility',
     },
     {
+      // 2.4.1: a standalone interactive import screen that exits; it never starts an agent session.
+      names: ['import-sessions'],
+      passthrough: 'utility',
+    },
+    {
       names: ['upgrade', 'update'],
       passthrough: 'utility',
     },
@@ -143,6 +148,11 @@ export const INVOCATION_GRAMMAR = {
     },
     {
       names: ['vis'],
+      passthrough: 'elsewhere',
+    },
+    {
+      // 2.4.1: hands the directory to the desktop app through a `kimi-code://` URL.
+      names: ['app'],
       passthrough: 'elsewhere',
     },
   ],

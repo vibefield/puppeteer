@@ -1,0 +1,81 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "pre_llm_call",
+  "firstSeen": "0.21.5",
+  "lastVerified": "0.21.5",
+  "fixture": "captures/hermes@0.21.5/basic-turn/plugin-hooks.jsonl",
+  "channel": "plugin-hook",
+  "channels": ["plugin-hook", "shell-hook", "outbound-webhook"],
+  "transport": "hook-callback",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "conversation_history": {
+        "type": "array"
+      },
+      "is_first_turn": {
+        "type": "boolean"
+      },
+      "model": {
+        "type": "string"
+      },
+      "parent_session_id": {
+        "type": "string"
+      },
+      "platform": {
+        "type": "string"
+      },
+      "sender_id": {
+        "type": "string"
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "task_id": {
+        "type": "string"
+      },
+      "telemetry_schema_version": {
+        "type": "string"
+      },
+      "turn_id": {
+        "type": "string"
+      },
+      "user_message": {
+        "type": "string"
+      }
+    }
+  },
+  "resultSchema": {
+    "anyOf": [
+      {
+        "type": "object",
+        "properties": {
+          "context": {
+            "type": "string"
+          }
+        },
+        "required": ["context"]
+      },
+      {
+        "type": "string"
+      }
+    ]
+  },
+  "evidence": {
+    "existence": ["hermes-runtime-headless"],
+    "shape": ["hermes-runtime-headless"],
+    "result": ["hermes-exact-source"]
+  },
+  "schemaFidelity": {
+    "payload": "sampled",
+    "result": "structural",
+    "limitations": [
+      "The payload is the in-process plugin callback kwargs object, sampled from the census; shell-hook and outbound-webhook envelopes are retained in the source reference.",
+      "Arbitrary plugin return values and event-specific nested values remain unconstrained."
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "Outbound webhooks are a notify-only copy of the same hook name; the census sidecar registered them."
+}

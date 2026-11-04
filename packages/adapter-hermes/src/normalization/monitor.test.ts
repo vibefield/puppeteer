@@ -188,6 +188,111 @@ describe('HermesMonitorEvidence', () => {
     expect(state.blockers).toMatchObject([{ kind: 'permission' }]);
   });
 
+  it('projects 0.21.5 server-request approvals and clarifications, resolving them on tool completion or withdrawal', () => {
+    const projector = evidence();
+    const capabilities = projector.capabilitiesBatch(T0);
+    const request = (id: string, method: string, params: Record<string, unknown>): HermesGatewayFrame => ({
+      jsonrpc: '2.0',
+      id,
+      method,
+      params: { session_id: 'live-1', ...params },
+    });
+    const started = projector.recordBatch(frame('tool.start', { tool_id: 'call-rm', name: 'terminal' }), T0)!;
+    const approval = projector.recordBatch(
+      request('srq-000000000001', 'approval', { request_id: 'approval-1', command: 'rm -rf ./scratch' }),
+      T0,
+    )!;
+    const blocked = projector.recordBatch(
+      frame('tool.complete', { tool_id: 'call-rm', name: 'terminal', result: { status: 'blocked' } }),
+      T0,
+    )!;
+    const question = projector.recordBatch(request('srq-000000000002', 'clarify', { question: 'Which lane?' }), T0)!;
+    const withdrawn = projector.recordBatch(
+      frame('request.cancel', { id: 'srq-000000000002', method: 'clarify', reason: 'timeout' }),
+      T0,
+    )!;
+
+    expect(approval.updates[0]).toMatchObject({
+      family: 'status',
+      value: {
+        interactionId: 'approval-1',
+        interactionKind: 'permission',
+        state: 'pending',
+        permission: { requestId: 'approval-1', tool: 'terminal' },
+      },
+    });
+    expect(blocked.updates).toContainEqual(
+      expect.objectContaining({ value: expect.objectContaining({ interactionId: 'approval-1', state: 'resolved' }) }),
+    );
+    expect(question.updates[0]).toMatchObject({
+      value: { interactionId: 'srq-000000000002', interactionKind: 'free-form', state: 'pending' },
+    });
+    expect(withdrawn.updates).toEqual([
+      expect.objectContaining({
+        value: expect.objectContaining({ interactionId: 'srq-000000000002', state: 'cancelled' }),
+      }),
+    ]);
+    expect(project([capabilities, started, approval, blocked, question, withdrawn]).blockers ?? []).toEqual([]);
+  });
+
+  it.each([
+    ['correlated with the tool in flight', true],
+    ['raised with no tool in flight', false],
+  ])('cancels a withdrawn 0.21.5 approval %s and never resolves it later', (_label, withTool) => {
+    const projector = evidence();
+    const capabilities = projector.capabilitiesBatch(T0);
+    const batches = [capabilities];
+    if (withTool)
+      batches.push(projector.recordBatch(frame('tool.start', { tool_id: 'call-x', name: 'terminal' }), T0)!);
+    const approval = projector.recordBatch(
+      {
+        jsonrpc: '2.0',
+        id: 'srq-0000000000a1',
+        method: 'approval',
+        params: { session_id: 'live-1', request_id: 'approval-2', command: 'rm -rf ./scratch' },
+      },
+      T0,
+    )!;
+    const withdrawn = projector.recordBatch(
+      frame('request.cancel', { id: 'srq-0000000000a1', method: 'approval', reason: 'timeout' }),
+      T0,
+    )!;
+    batches.push(approval, withdrawn);
+
+    expect(withdrawn.updates).toEqual([
+      expect.objectContaining({
+        family: 'status',
+        operation: 'upsert',
+        key: 'permission:approval-2',
+        value: expect.objectContaining({
+          interactionId: 'approval-2',
+          interactionKind: 'permission',
+          state: 'cancelled',
+        }),
+      }),
+    ]);
+    expect(project(batches).blockers ?? []).toEqual([]);
+
+    // The pendingPermissions / uncorrelatedPermission entry is gone: neither the tool nor the turn re-resolves it.
+    const later = [
+      ...(withTool
+        ? [
+            projector.recordBatch(
+              frame('tool.complete', { tool_id: 'call-x', name: 'terminal', result: { status: 'blocked' } }),
+              T0,
+            )!,
+          ]
+        : []),
+      projector.recordBatch(frame('message.complete', { text: 'done', status: 'complete' }), T0)!,
+    ];
+    for (const batch of later) {
+      expect(batch.updates).not.toContainEqual(
+        expect.objectContaining({ value: expect.objectContaining({ interactionId: 'approval-2' }) }),
+      );
+    }
+    expect(project([...batches, ...later]).blockers ?? []).toEqual([]);
+  });
+
   it('tracks stable subagent identity, activity, model, and completion totals separately from root usage', () => {
     const projector = evidence();
     const capabilities = projector.capabilitiesBatch(T0);

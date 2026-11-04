@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { safeParseAgentEvent, type AdapterEventCandidate, type AgentEventEnvelope } from '@vibefield/puppeteer-core';
+import {
+  isAgentLaunchRefusedError,
+  safeParseAgentEvent,
+  type AdapterEventCandidate,
+  type AgentEventEnvelope,
+} from '@vibefield/puppeteer-core';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
@@ -11,6 +16,7 @@ import { createCodexObserver } from './observer.js';
 import { CODEX_HISTORY_LIMITS } from './thread-history.js';
 import * as rolloutContext from './rollout-context.js';
 import type { Transport } from '../transport/app-server-client.js';
+import { CodexModelProviderRefusedError } from '../transport/model-provider-error.js';
 
 /**
  * Which app-server generation the fake answers as. `paginated` is rust-v0.151.0 and later
@@ -34,6 +40,8 @@ interface ControllableOptions {
   turnsListUnanswered?: number;
   /** Answer `thread/read` with this error instead. */
   threadReadError?: { code: number; message: string };
+  /** Answer every `thread/resume` with this error instead. */
+  resumeError?: { code: number; message: string; data?: unknown };
   /** Answer every `thread/turns/list` page with the same turns and the same cursor. */
   repeatCursor?: boolean;
   /** Serve this many `thread/turns/list` pages of one new turn each, every one with a new cursor. */
@@ -71,8 +79,8 @@ function controllable(
   let deferredRead: { id: number; result: unknown } | undefined;
   let deferredCatalogId: number | undefined;
   const reply = (id: number | undefined, result: unknown) => onMsg?.({ jsonrpc: '2.0', id, result });
-  const refuse = (id: number | undefined, code: number, message: string) =>
-    onMsg?.({ jsonrpc: '2.0', id, error: { code, message } });
+  const refuse = (id: number | undefined, code: number, message: string, data?: unknown) =>
+    onMsg?.({ jsonrpc: '2.0', id, error: { code, message, ...(data === undefined ? {} : { data }) } });
   const turnsPage = (params: Record<string, unknown>) => {
     if (options.repeatCursor) return { data: storedTurns, nextCursor: 'same', backwardsCursor: null };
     if (options.distinctPages !== undefined) {
@@ -104,7 +112,9 @@ function controllable(
             return;
           }
           resumeAttempts++;
-          if (resumeFails > 0) {
+          if (options.resumeError) {
+            refuse(msg.id, options.resumeError.code, options.resumeError.message, options.resumeError.data);
+          } else if (resumeFails > 0) {
             resumeFails--;
             refuse(msg.id, -1, 'no rollout found for thread id');
           } else if (storedThread) {
@@ -226,6 +236,80 @@ describe('createCodexObserver attach resilience', () => {
     // The loop has stopped: no further resume attempts after dispose (allow one in-flight).
     expect(t.resumeAttempts()).toBeLessThanOrEqual(attemptsAtDispose + 1);
     projection.dispose();
+  });
+
+  // probes/codex@0.166.0/provider-mismatch-results.json (findings C9): a refusal no retry can clear.
+  const providerNotConfigured = {
+    code: -32600,
+    message: 'display text the adapter must not parse',
+    data: { type: 'modelProviderNotConfigured', modelProvider: 'fake' },
+  };
+
+  it('stops at a resume Codex refuses for its provider and says so, instead of retrying in preparing', async () => {
+    const t = controllable(0, {}, { resumeError: providerNotConfigured });
+    const obs = await createCodexObserver({ transport: t.transport });
+    const projection = projectAgentEvents(obs);
+    t.deliver(threadStarted);
+
+    await vi.waitFor(
+      () =>
+        expect(projection.envelopes.map(({ event }) => event)).toContainEqual(
+          expect.objectContaining({
+            type: 'adapter:native-event',
+            nativeType: 'thread.resume.refused',
+            diagnostic: {
+              code: 'codex-model-provider-refused',
+              message: 'This Codex thread uses model provider "fake", which is no longer configured.',
+            },
+          }),
+        ),
+      { timeout: 2000 },
+    );
+    await new Promise((r) => setTimeout(r, 600)); // longer than the first backoffs
+    expect(t.resumeAttempts()).toBe(1);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('publishes the refusal of a thread the native TUI picked, as well as rejecting its attach', async () => {
+    const t = controllable(0, {}, { resumeError: providerNotConfigured });
+    const obs = await createCodexObserver({ transport: t.transport });
+    const projection = projectAgentEvents(obs);
+
+    const outcome = await obs.attachThread('th-picked').then(
+      () => 'attached',
+      (error: unknown) => error,
+    );
+    expect(outcome).toBeInstanceOf(CodexModelProviderRefusedError);
+    expect(projection.envelopes.map(({ event }) => event)).toContainEqual(
+      expect.objectContaining({
+        type: 'adapter:native-event',
+        nativeType: 'thread.resume.refused',
+        diagnostic: {
+          code: 'codex-model-provider-refused',
+          message: 'This Codex thread uses model provider "fake", which is no longer configured.',
+        },
+      }),
+    );
+    expect(t.resumeAttempts()).toBe(1);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('refuses to open a known thread Codex will not resume for its provider', async () => {
+    const t = controllable(0, {}, { resumeError: providerNotConfigured });
+    const close = vi.spyOn(t.transport, 'close');
+    const outcome = await Promise.race([
+      createCodexObserver({ transport: t.transport, threadId: 'th-saved' }).then(
+        () => 'opened',
+        (error: unknown) => error,
+      ),
+      new Promise((r) => setTimeout(() => r('still retrying'), 2000)),
+    ]);
+    expect(isAgentLaunchRefusedError(outcome)).toBe(true);
+    expect(outcome).toMatchObject({ code: 'CODEX_MODEL_PROVIDER_NOT_CONFIGURED' });
+    expect(t.resumeAttempts()).toBe(1);
+    expect(close).toHaveBeenCalled();
   });
 });
 
@@ -488,6 +572,47 @@ describe('createCodexObserver controller-owned bootstrap', () => {
             update.value.actor?.nativeSessionId === 'th-child',
         ),
     ).toBe(true);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it("leaves the root turn running when a Guardian reviewer's forwarded abort arrives", async () => {
+    // rust-v0.165.0 #56124 (PrivateSessionEvent, bespoke_event_handling.rs): a private reviewer's
+    // turn abort reaches the parent's subscribers as turn/completed under the reviewer's own thread
+    // id, which no thread/started announced. It must not end the parent's turn (findings C9).
+    const t = controllable(0);
+    const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
+    const projection = projectAgentEvents(obs);
+    t.deliver({
+      jsonrpc: '2.0',
+      method: 'turn/started',
+      params: { threadId: 'th-owned', turn: { id: 'root-turn', items: [], status: 'inProgress' } },
+    });
+    // The root turn starts once its prompt is known (normalization/turn.ts).
+    t.deliver({
+      jsonrpc: '2.0',
+      method: 'item/completed',
+      params: {
+        threadId: 'th-owned',
+        turnId: 'root-turn',
+        item: { type: 'userMessage', id: 'u1', clientId: null, content: [{ type: 'text', text: 'review this' }] },
+      },
+    });
+    expect(projection.state.activeTurn).toBeDefined();
+    const events: string[] = [];
+    obs.events.onCandidate(({ event }) => events.push(event.type));
+
+    t.deliver({
+      jsonrpc: '2.0',
+      method: 'turn/completed',
+      params: {
+        threadId: 'th-guardian-review',
+        turn: { id: 'review-turn', items: [], status: 'interrupted', error: null },
+      },
+    });
+
+    expect(events).toEqual([]);
+    expect(projection.state.activeTurn).toBeDefined();
     projection.dispose();
     await obs.dispose();
   });

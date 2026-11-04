@@ -20,6 +20,7 @@ export function validateCandidatePaths({ vendor, version, persona, paths }) {
     `packages/surface/vendors/${vendor}/groundtruth.html`,
     `packages/surface/vendors/${vendor}/findings.md`,
     `packages/adapter-${vendor}/docs/event-map.html`,
+    `packages/adapter-${vendor}/groundtruth-map.json`,
     'support/agents.json',
   ]);
   return paths

@@ -1,0 +1,81 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "session.compacted",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      }
+    },
+    "required": [
+      "sessionID"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "session.compacted"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi",
+      "opencode-runtime-auto-compaction"
+    ],
+    "shape": [
+      "opencode-generated-openapi",
+      "opencode-runtime-auto-compaction"
+    ],
+    "carrier": [
+      "opencode-generated-openapi",
+      "opencode-runtime-auto-compaction"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "1.19.5",
+  "lastVerified": "1.19.5",
+  "fixture": "captures/opencode@1.19.5/auto-compaction/events.jsonl"
+}

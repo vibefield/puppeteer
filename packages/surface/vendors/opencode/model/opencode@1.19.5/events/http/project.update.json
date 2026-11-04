@@ -1,0 +1,362 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/project.update",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Update project — Update project properties such as name, icon, and commands.",
+  "payloadSchema": {
+    "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "commands": {
+            "$ref": "#/$defs/ProjectCommands"
+          },
+          "icon": {
+            "$ref": "#/$defs/ProjectIcon"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "method": {
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "projectID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params"
+    ],
+    "type": "object",
+    "$defs": {
+      "ProjectCommands": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "description": "Startup script to run when creating a new workspace (worktree)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ProjectIcon": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "override": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "properties": {
+      "body": {
+        "$ref": "#/$defs/Project"
+      },
+      "method": {
+        "enum": [
+          "PATCH"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "projectID": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectID"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "workspace": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/project/:projectID"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "Project": {
+        "additionalProperties": false,
+        "properties": {
+          "commands": {
+            "$ref": "#/$defs/ProjectCommands"
+          },
+          "icon": {
+            "$ref": "#/$defs/ProjectIcon"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sandboxes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "time": {
+            "$ref": "#/$defs/ProjectTime"
+          },
+          "vcs": {
+            "$ref": "#/$defs/ProjectVcs"
+          },
+          "worktree": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "worktree",
+          "time",
+          "sandboxes"
+        ],
+        "type": "object"
+      },
+      "ProjectCommands": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "description": "Startup script to run when creating a new workspace (worktree)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ProjectIcon": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "override": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ProjectTime": {
+        "additionalProperties": false,
+        "properties": {
+          "created": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "initialized": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "updated": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "created",
+          "updated"
+        ],
+        "type": "object"
+      },
+      "ProjectVcs": {
+        "enum": [
+          "git"
+        ],
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "body": {
+            "additionalProperties": false,
+            "properties": {
+              "commands": {
+                "$ref": "#/$defs/ProjectCommands"
+              },
+              "icon": {
+                "$ref": "#/$defs/ProjectIcon"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "PATCH"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "projectID": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "projectID"
+            ],
+            "type": "object"
+          },
+          "query": {
+            "properties": {
+              "directory": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/project/:projectID"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object",
+    "$defs": {
+      "ProjectCommands": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "description": "Startup script to run when creating a new workspace (worktree)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ProjectIcon": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "override": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId project.update; PATCH /project/{projectID}."
+}

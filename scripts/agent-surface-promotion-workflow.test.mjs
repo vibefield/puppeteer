@@ -9,15 +9,18 @@ const workflow = readFileSync(resolve(root, '.github/workflows/agent-surface-pro
 const adaptation = readFileSync(resolve(root, '.github/workflows/agent-adaptation.yml'), 'utf8');
 const live = readFileSync(resolve(root, '.github/workflows/agent-live.yml'), 'utf8');
 const adaptationVendorChoices = /options: \[antigravity, claude, codex, copilot, grok, hermes, kimi, opencode, pi\]/;
-const promotionVendorChoices = /options: \[claude, codex, grok, hermes, kimi, opencode\]/;
+const promotionVendorChoices = /options: \[antigravity, claude, codex, copilot, grok, hermes, kimi, opencode, pi\]/;
 const protectedLiveTests = Object.fromEntries(
   Object.entries({
+    antigravity: 'driver.live.test.ts',
     claude: 'native-tui.live.test.ts',
     codex: 'native-tui.live.test.ts',
     grok: 'acp.live.test.ts',
     hermes: 'driver.live.test.ts',
     kimi: 'driver.live.test.ts',
     opencode: 'opencode.live.test.ts',
+    pi: 'driver.live.test.ts',
+    copilot: 'driver.live.test.ts',
   }).map(([vendor, file]) => [
     vendor,
     readFileSync(resolve(root, 'packages', `adapter-${vendor}`, 'src', file), 'utf8'),
@@ -60,6 +63,28 @@ function runScripts(source) {
 
 const JOBS = ['guard', 'acquire', 'assemble', 'pinned-real', 'verify', 'transaction', 'promote'];
 const jobs = Object.fromEntries(JOBS.map((name, index) => [name, job(name, JOBS[index + 1])]));
+
+test('candidate confinement checks only changes produced from the dispatched commit', () => {
+  for (const name of ['Confine automated changes', 'Apply and revalidate the data-only candidate patch']) {
+    const source = step(adaptation, name);
+    assert.match(source, /--base "\$GITHUB_SHA"/);
+    assert.doesNotMatch(source, /origin\/main/);
+  }
+});
+
+test('optional Claude census retains network denial and uploads only audited evidence', () => {
+  const source = adaptation.slice(adaptation.indexOf('\n  claude-census:'), adaptation.indexOf('\n  assemble:'));
+  assert.match(source, /inputs\.claude_census && inputs\.vendor == 'claude'/);
+  assert.match(source, /needs: acquire/);
+  assert.match(source, /name: agent-artifact-linux-x64/);
+  assert.match(source, /census-artifact\/linux-x64\/agent/);
+  assert.match(source, /--lanes init,headless,api-error,interactive --sandbox netns/);
+  const audit = source.indexOf('--check ".agent-adaptation/census-reviewed/captures/claude@${AGENT_VERSION}"');
+  assert.ok(audit > 0 && audit < source.indexOf('uses: actions/upload-artifact'));
+  assert.match(source, /path: \.agent-adaptation\/census-reviewed\n/);
+  assert.doesNotMatch(source, /path: .*census-(?:raw|aux)/);
+  assert.doesNotMatch(source, /secrets\.|contents: write|persist-credentials: true/);
+});
 
 test('promotion binds one complete acquisition through test, verification, and the transaction', () => {
   const { 'pinned-real': pinnedReal, verify, transaction } = jobs;
@@ -199,7 +224,7 @@ test('the live lanes run on fresh GitHub-hosted runners that nothing later trust
     pinnedReal,
     /--version-output-file "\.agent-adaptation\/live-artifacts\/\$\{\{ matrix\.platform \}\}\/version\.txt"/,
   );
-  for (const vendor of ['claude', 'codex', 'grok', 'hermes', 'opencode', 'kimi']) {
+  for (const vendor of ['claude', 'codex', 'grok', 'hermes', 'opencode', 'kimi', 'pi', 'copilot']) {
     assert.ok(pinnedReal.includes(`@vibefield/puppeteer-adapter-${vendor} test --testTimeout=15000`), vendor);
   }
   // The acquisition is read again after a human approval, so it is kept as long as the verification.
@@ -351,7 +376,7 @@ test('every protected provider writes its artifact-bound receipt from an execute
   for (const [vendor, source] of Object.entries(protectedLiveTests)) {
     assert.match(source, /attestLiveAdapter/);
     assert.match(source, new RegExp(`vendor: '${vendor}'`));
-    assert.match(source, vendor === 'hermes' ? /artifact: promotionArtifact/ : /artifact: executable/);
+    assert.match(source, ['hermes', 'pi'].includes(vendor) ? /artifact: promotionArtifact/ : /artifact: executable/);
   }
 });
 
@@ -416,4 +441,44 @@ test('source-built Hermes is reconstructed generically before its protected nati
     protectedLiveTests.hermes,
     /host\.output\(resumed!\.runtimeSessionId\)\.includes\(HERMES_LIVE_RESPONSE_MARKER\)/,
   );
+});
+
+test('Pi preserves and verifies the complete release bundle around its native-TUI and journal resume proof', () => {
+  const { acquire, 'pinned-real': pinnedReal } = jobs;
+  for (const source of [acquire, step(pinnedReal, 'Probe the exact version again on the live runner')]) {
+    assert.match(source, /artifactKind == 'release-bundle'/);
+    assert.match(source, /scripts\/probe-agent-artifact\.mjs/);
+  }
+  const after = step(pinnedReal, 'Revalidate the complete release bundle after the live test');
+  assert.match(after, /scripts\/probe-agent-artifact\.mjs/);
+  assert.ok(pinnedReal.indexOf('Revalidate the complete release bundle') > pinnedReal.indexOf('Pi pinned-real'));
+  assert.ok(
+    pinnedReal.indexOf('Revalidate the complete release bundle') <
+      pinnedReal.indexOf('node scripts/write-platform-verification.mjs'),
+  );
+  assert.match(pinnedReal, /PUPPETEER_PI_BIN:.*steps\.policy\.outputs\.executablePath/);
+  assert.match(protectedLiveTests.pi, /testId: 'pi:native-tui-journal'/);
+  assert.match(protectedLiveTests.pi, /resume: sessionId/);
+  assert.match(protectedLiveTests.pi, /replay && source === 'native-log'/);
+  assert.match(protectedLiveTests.pi, /expect\(provider\.requests\)\.toHaveLength\(1\)/);
+});
+
+test('Copilot binds the exact executable to a native-TUI turn and same-session journal resume', () => {
+  const source = step(jobs['pinned-real'], 'Copilot pinned-real native-TUI/resume lane');
+  assert.match(source, /COPILOT_LIVE: '1'/);
+  assert.match(source, /PUPPETEER_COPILOT_BIN:.*outputs\.outputName/);
+  assert.match(protectedLiveTests.copilot, /testId: 'copilot:native-tui-journal'/);
+  assert.match(protectedLiveTests.copilot, /resume: sessionId/);
+  assert.match(protectedLiveTests.copilot, /replay && source === 'native-log'/);
+  assert.match(protectedLiveTests.copilot, /expect\(provider\.requests\)\.toHaveLength\(1\)/);
+});
+
+test('Antigravity requires explicit disposable consent and binds a native journal resume to unchanged bytes', () => {
+  const source = step(jobs['pinned-real'], 'Antigravity pinned-real native-TUI/resume lane');
+  assert.match(source, /ANTIGRAVITY_LIVE: '1'/);
+  assert.match(source, /inputs\.antigravity_disposable_terms_approved && '1' \|\| '0'/);
+  assert.match(protectedLiveTests.antigravity, /testId: 'antigravity:native-tui-journal'/);
+  assert.match(protectedLiveTests.antigravity, /resume: sessionId/);
+  assert.match(protectedLiveTests.antigravity, /replay && source === 'native-log'/);
+  assert.match(protectedLiveTests.antigravity, /expect\(digest\(\)\)\.toBe\(before\)/);
 });

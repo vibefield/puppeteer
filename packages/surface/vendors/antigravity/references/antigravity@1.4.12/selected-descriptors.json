@@ -1,0 +1,906 @@
+{
+  "exa.codeium_common_pb.ModelUsageStats": {
+    "name": "ModelUsageStats",
+    "field": [
+      {
+        "name": "model",
+        "number": 1,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_ENUM",
+        "type_name": ".exa.codeium_common_pb.Model",
+        "options": {},
+        "json_name": "model"
+      },
+      {
+        "name": "input_tokens",
+        "number": 2,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_UINT64",
+        "options": {},
+        "json_name": "inputTokens"
+      },
+      {
+        "name": "output_tokens",
+        "number": 3,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_UINT64",
+        "options": {},
+        "json_name": "outputTokens"
+      },
+      {
+        "name": "thinking_output_tokens",
+        "number": 9,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_UINT64",
+        "options": {},
+        "json_name": "thinkingOutputTokens"
+      },
+      {
+        "name": "response_output_tokens",
+        "number": 10,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_UINT64",
+        "options": {},
+        "json_name": "responseOutputTokens"
+      },
+      {
+        "name": "cache_write_tokens",
+        "number": 4,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_UINT64",
+        "options": {},
+        "json_name": "cacheWriteTokens"
+      },
+      {
+        "name": "cache_read_tokens",
+        "number": 5,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_UINT64",
+        "options": {},
+        "json_name": "cacheReadTokens"
+      },
+      {
+        "name": "api_provider",
+        "number": 6,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_ENUM",
+        "type_name": ".exa.codeium_common_pb.APIProvider",
+        "options": {},
+        "json_name": "apiProvider"
+      },
+      {
+        "name": "message_id",
+        "number": 7,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "messageId"
+      },
+      {
+        "name": "response_header",
+        "number": 8,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ModelUsageStats.ResponseHeaderEntry",
+        "options": {},
+        "json_name": "responseHeader"
+      },
+      {
+        "name": "response_id",
+        "number": 11,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "responseId"
+      },
+      {
+        "name": "provider_assigned_message_id",
+        "number": 12,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "providerAssignedMessageId"
+      },
+      {
+        "name": "service_tier",
+        "number": 13,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "serviceTier"
+      },
+      {
+        "name": "prompt_tokens_details",
+        "number": 14,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ModalityTokenCount",
+        "json_name": "promptTokensDetails"
+      },
+      {
+        "name": "cache_tokens_details",
+        "number": 15,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ModalityTokenCount",
+        "json_name": "cacheTokensDetails"
+      },
+      {
+        "name": "candidates_tokens_details",
+        "number": 16,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ModalityTokenCount",
+        "json_name": "candidatesTokensDetails"
+      },
+      {
+        "name": "tool_use_prompt_tokens_details",
+        "number": 17,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ModalityTokenCount",
+        "json_name": "toolUsePromptTokensDetails"
+      }
+    ],
+    "nested_type": [
+      {
+        "name": "ResponseHeaderEntry",
+        "field": [
+          {
+            "name": "key",
+            "number": 1,
+            "label": "LABEL_OPTIONAL",
+            "type": "TYPE_STRING",
+            "json_name": "key"
+          },
+          {
+            "name": "value",
+            "number": 2,
+            "label": "LABEL_OPTIONAL",
+            "type": "TYPE_STRING",
+            "json_name": "value"
+          }
+        ],
+        "options": {
+          "map_entry": true
+        }
+      }
+    ]
+  },
+  "exa.cortex_pb.ChatModelMetadata": {
+    "name": "ChatModelMetadata",
+    "field": [
+      {
+        "name": "system_prompt",
+        "number": 1,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "systemPrompt"
+      },
+      {
+        "name": "message_prompts",
+        "number": 2,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.chat_pb.ChatMessagePrompt",
+        "json_name": "messagePrompts"
+      },
+      {
+        "name": "message_metadata",
+        "number": 10,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.MessagePromptMetadata",
+        "json_name": "messageMetadata"
+      },
+      {
+        "name": "model",
+        "number": 3,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_ENUM",
+        "type_name": ".exa.codeium_common_pb.Model",
+        "options": {},
+        "json_name": "model"
+      },
+      {
+        "name": "usage",
+        "number": 4,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ModelUsageStats",
+        "json_name": "usage"
+      },
+      {
+        "name": "model_cost",
+        "number": 5,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_FLOAT",
+        "options": {},
+        "json_name": "modelCost"
+      },
+      {
+        "name": "tool_choice",
+        "number": 7,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.chat_pb.ChatToolChoice",
+        "json_name": "toolChoice"
+      },
+      {
+        "name": "tools",
+        "number": 8,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.chat_pb.ChatToolDefinition",
+        "json_name": "tools"
+      },
+      {
+        "name": "chat_start_metadata",
+        "number": 9,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.ChatStartMetadata",
+        "json_name": "chatStartMetadata"
+      },
+      {
+        "name": "time_to_first_token",
+        "number": 11,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".google.protobuf.Duration",
+        "options": {},
+        "json_name": "timeToFirstToken"
+      },
+      {
+        "name": "streaming_duration",
+        "number": 12,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".google.protobuf.Duration",
+        "options": {},
+        "json_name": "streamingDuration"
+      },
+      {
+        "name": "credit_cost",
+        "number": 13,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_INT32",
+        "options": {},
+        "json_name": "creditCost"
+      },
+      {
+        "name": "retries",
+        "number": 14,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_UINT32",
+        "options": {},
+        "json_name": "retries"
+      },
+      {
+        "name": "completion_config",
+        "number": 15,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.CompletionConfiguration",
+        "json_name": "completionConfig"
+      },
+      {
+        "name": "prompt_sections",
+        "number": 16,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.PromptSection",
+        "json_name": "promptSections"
+      },
+      {
+        "name": "retry_infos",
+        "number": 17,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.RetryInfo",
+        "json_name": "retryInfos"
+      },
+      {
+        "name": "consumed_credits",
+        "number": 18,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".google.internal.cloud.code.v1internal.Credits",
+        "json_name": "consumedCredits"
+      },
+      {
+        "name": "response_model",
+        "number": 19,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "responseModel"
+      },
+      {
+        "name": "response_model_full",
+        "number": 22,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "responseModelFull"
+      },
+      {
+        "name": "custom_metadata",
+        "number": 20,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.ChatModelMetadata.CustomMetadataEntry",
+        "options": {},
+        "json_name": "customMetadata"
+      },
+      {
+        "name": "model_display_name",
+        "number": 21,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "modelDisplayName"
+      },
+      {
+        "name": "last_cache_index",
+        "number": 6,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_UINT32",
+        "options": {
+          "deprecated": true
+        },
+        "json_name": "lastCacheIndex"
+      }
+    ],
+    "nested_type": [
+      {
+        "name": "CustomMetadataEntry",
+        "field": [
+          {
+            "name": "key",
+            "number": 1,
+            "label": "LABEL_OPTIONAL",
+            "type": "TYPE_STRING",
+            "json_name": "key"
+          },
+          {
+            "name": "value",
+            "number": 2,
+            "label": "LABEL_OPTIONAL",
+            "type": "TYPE_STRING",
+            "json_name": "value"
+          }
+        ],
+        "options": {
+          "map_entry": true
+        }
+      }
+    ]
+  },
+  "exa.cortex_pb.CortexStepGeneratorMetadata": {
+    "name": "CortexStepGeneratorMetadata",
+    "field": [
+      {
+        "name": "step_indices",
+        "number": 2,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_UINT32",
+        "options": {},
+        "json_name": "stepIndices"
+      },
+      {
+        "name": "chat_model",
+        "number": 1,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.ChatModelMetadata",
+        "oneof_index": 0,
+        "json_name": "chatModel"
+      },
+      {
+        "name": "injected",
+        "number": 7,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.InjectedResponseMetadata",
+        "oneof_index": 0,
+        "json_name": "injected"
+      },
+      {
+        "name": "planner_config",
+        "number": 3,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.CascadePlannerConfig",
+        "json_name": "plannerConfig"
+      },
+      {
+        "name": "execution_id",
+        "number": 4,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "executionId"
+      },
+      {
+        "name": "error",
+        "number": 5,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "error"
+      },
+      {
+        "name": "mendel_experiment_ids",
+        "number": 8,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_INT32",
+        "options": {},
+        "json_name": "mendelExperimentIds"
+      },
+      {
+        "name": "prompt_debug_str",
+        "number": 9,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "promptDebugStr"
+      },
+      {
+        "name": "has_ever_used_non_google_model",
+        "number": 10,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_BOOL",
+        "options": {},
+        "json_name": "hasEverUsedNonGoogleModel"
+      },
+      {
+        "name": "sensitivity_level",
+        "number": 11,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_ENUM",
+        "type_name": ".exa.cortex_pb.SensitivityLevel",
+        "options": {},
+        "json_name": "sensitivityLevel"
+      }
+    ],
+    "oneof_decl": [
+      {
+        "name": "metadata"
+      }
+    ],
+    "reserved_range": [
+      {
+        "start": 6,
+        "end": 7
+      }
+    ],
+    "reserved_name": [
+      "parallel_rollout_generator_metadata"
+    ]
+  },
+  "exa.cortex_pb.CortexStepMetadata": {
+    "name": "CortexStepMetadata",
+    "field": [
+      {
+        "name": "sensitivity_level",
+        "number": 39,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_ENUM",
+        "type_name": ".exa.cortex_pb.SensitivityLevel",
+        "options": {},
+        "json_name": "sensitivityLevel"
+      },
+      {
+        "name": "step_generation_version",
+        "number": 21,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_UINT32",
+        "options": {},
+        "json_name": "stepGenerationVersion"
+      },
+      {
+        "name": "created_at",
+        "number": 1,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".google.protobuf.Timestamp",
+        "options": {},
+        "json_name": "createdAt"
+      },
+      {
+        "name": "viewable_at",
+        "number": 6,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".google.protobuf.Timestamp",
+        "options": {},
+        "json_name": "viewableAt"
+      },
+      {
+        "name": "finished_generating_at",
+        "number": 7,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".google.protobuf.Timestamp",
+        "options": {},
+        "json_name": "finishedGeneratingAt"
+      },
+      {
+        "name": "last_completed_chunk_at",
+        "number": 22,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".google.protobuf.Timestamp",
+        "options": {},
+        "json_name": "lastCompletedChunkAt"
+      },
+      {
+        "name": "started_at",
+        "number": 32,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".google.protobuf.Timestamp",
+        "options": {},
+        "json_name": "startedAt"
+      },
+      {
+        "name": "completed_at",
+        "number": 8,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".google.protobuf.Timestamp",
+        "options": {},
+        "json_name": "completedAt"
+      },
+      {
+        "name": "source",
+        "number": 3,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_ENUM",
+        "type_name": ".exa.cortex_pb.CortexStepSource",
+        "options": {},
+        "json_name": "source"
+      },
+      {
+        "name": "tool_call",
+        "number": 4,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ChatToolCall",
+        "json_name": "toolCall"
+      },
+      {
+        "name": "modified_tool_call",
+        "number": 29,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ChatToolCall",
+        "json_name": "modifiedToolCall"
+      },
+      {
+        "name": "arguments_order",
+        "number": 5,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "argumentsOrder"
+      },
+      {
+        "name": "model_usage",
+        "number": 9,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ModelUsageStats",
+        "json_name": "modelUsage"
+      },
+      {
+        "name": "retry_infos",
+        "number": 28,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.RetryInfo",
+        "json_name": "retryInfos"
+      },
+      {
+        "name": "model_cost",
+        "number": 10,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_FLOAT",
+        "options": {},
+        "json_name": "modelCost"
+      },
+      {
+        "name": "generator_model",
+        "number": 11,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_ENUM",
+        "type_name": ".exa.codeium_common_pb.Model",
+        "options": {},
+        "json_name": "generatorModel"
+      },
+      {
+        "name": "requested_model",
+        "number": 13,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ModelOrAlias",
+        "options": {
+          "deprecated": true
+        },
+        "json_name": "requestedModel"
+      },
+      {
+        "name": "model_info",
+        "number": 24,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ModelInfo",
+        "json_name": "modelInfo"
+      },
+      {
+        "name": "execution_id",
+        "number": 12,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "executionId"
+      },
+      {
+        "name": "flow_credits_used",
+        "number": 14,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_INT32",
+        "options": {
+          "deprecated": true
+        },
+        "json_name": "flowCreditsUsed"
+      },
+      {
+        "name": "prompt_credits_used",
+        "number": 15,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_INT32",
+        "options": {},
+        "json_name": "promptCreditsUsed"
+      },
+      {
+        "name": "non_standard_credit_reasons",
+        "number": 18,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_ENUM",
+        "type_name": ".exa.cortex_pb.CortexStepCreditReason",
+        "options": {
+          "deprecated": true
+        },
+        "json_name": "nonStandardCreditReasons"
+      },
+      {
+        "name": "tool_call_choices",
+        "number": 16,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ChatToolCall",
+        "json_name": "toolCallChoices"
+      },
+      {
+        "name": "tool_call_choice_reason",
+        "number": 17,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "toolCallChoiceReason"
+      },
+      {
+        "name": "cortex_request_source",
+        "number": 19,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_ENUM",
+        "type_name": ".exa.cortex_pb.CortexRequestSource",
+        "options": {},
+        "json_name": "cortexRequestSource"
+      },
+      {
+        "name": "tool_call_output_tokens",
+        "number": 23,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_INT32",
+        "options": {},
+        "json_name": "toolCallOutputTokens"
+      },
+      {
+        "name": "source_trajectory_step_info",
+        "number": 20,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.SourceTrajectoryStepInfo",
+        "json_name": "sourceTrajectoryStepInfo"
+      },
+      {
+        "name": "snapshot_metadata",
+        "number": 25,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.SnapshotMetadata",
+        "json_name": "snapshotMetadata"
+      },
+      {
+        "name": "internal_metadata",
+        "number": 26,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.CortexStepInternalMetadata",
+        "json_name": "internalMetadata"
+      },
+      {
+        "name": "wait_for_previous_tools",
+        "number": 27,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_BOOL",
+        "options": {},
+        "json_name": "waitForPreviousTools"
+      },
+      {
+        "name": "tool_summary",
+        "number": 30,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "toolSummary"
+      },
+      {
+        "name": "tool_action",
+        "number": 31,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "toolAction"
+      },
+      {
+        "name": "is_interrupting_step",
+        "number": 33,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_BOOL",
+        "options": {},
+        "oneof_index": 0,
+        "json_name": "isInterruptingStep",
+        "proto3_optional": true
+      },
+      {
+        "name": "pre_tool_hook_results",
+        "number": 34,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.hooks_pb.PreToolHookResult",
+        "json_name": "preToolHookResults"
+      },
+      {
+        "name": "model_api_content_id",
+        "number": 35,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "modelApiContentId"
+      },
+      {
+        "name": "data_access",
+        "number": 36,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.cortex_pb.DataAccessMetadata",
+        "json_name": "dataAccess"
+      },
+      {
+        "name": "remote_control_details",
+        "number": 37,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.RemoteControlDetails",
+        "json_name": "remoteControlDetails"
+      },
+      {
+        "name": "tool_source",
+        "number": 38,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_ENUM",
+        "type_name": ".exa.cortex_pb.CortexComponentSource",
+        "options": {},
+        "json_name": "toolSource"
+      }
+    ],
+    "oneof_decl": [
+      {
+        "name": "_is_interrupting_step"
+      }
+    ],
+    "reserved_range": [
+      {
+        "start": 2,
+        "end": 3
+      }
+    ]
+  },
+  "exa.cortex_pb.RetryInfo": {
+    "name": "RetryInfo",
+    "field": [
+      {
+        "name": "sherlog_link",
+        "number": 1,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "sherlogLink"
+      },
+      {
+        "name": "usage",
+        "number": 2,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".exa.codeium_common_pb.ModelUsageStats",
+        "json_name": "usage"
+      },
+      {
+        "name": "error",
+        "number": 3,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "error"
+      },
+      {
+        "name": "trace_id",
+        "number": 4,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_STRING",
+        "options": {},
+        "json_name": "traceId"
+      },
+      {
+        "name": "retry_reason",
+        "number": 5,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_ENUM",
+        "type_name": ".exa.cortex_pb.RetryReason",
+        "options": {},
+        "json_name": "retryReason"
+      },
+      {
+        "name": "consumed_credits",
+        "number": 6,
+        "label": "LABEL_REPEATED",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".google.internal.cloud.code.v1internal.Credits",
+        "json_name": "consumedCredits"
+      },
+      {
+        "name": "wait_time",
+        "number": 7,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_MESSAGE",
+        "type_name": ".google.protobuf.Duration",
+        "options": {},
+        "json_name": "waitTime"
+      }
+    ]
+  },
+  "google.protobuf.Timestamp": {
+    "name": "Timestamp",
+    "field": [
+      {
+        "name": "seconds",
+        "number": 1,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_INT64",
+        "json_name": "seconds"
+      },
+      {
+        "name": "nanos",
+        "number": 2,
+        "label": "LABEL_OPTIONAL",
+        "type": "TYPE_INT32",
+        "json_name": "nanos"
+      }
+    ]
+  }
+}

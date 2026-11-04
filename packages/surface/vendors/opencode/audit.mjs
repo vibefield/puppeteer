@@ -11,7 +11,7 @@ import { checkCaptureDirectory, defaultRules } from '@vibefield/puppeteer-surfac
 import { digestTree } from '../../scripts/check-evidence.mjs';
 import { opencodeRules } from './privacy.mjs';
 
-const VERSION = '1.18.16';
+const VERSION = '1.19.5';
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(vendorRoot, '../../../..');
 const modelDir = join(vendorRoot, 'model', `opencode@${VERSION}`);
@@ -72,7 +72,7 @@ function compareTrees(expected, actual, label) {
 
 const model = loadModel(vendorRoot);
 if (model.manifest.vendor !== 'opencode' || model.manifest.vendorVersion !== VERSION) {
-  problems.push('model identity does not match opencode@1.18.16');
+  problems.push(`model identity does not match opencode@${VERSION}`);
 }
 const sse = new Map(model.events.filter((event) => event.channel === 'sse').map((event) => [event.event, event]));
 const http = new Map();
@@ -163,7 +163,9 @@ for (const record of evidence.records ?? []) {
   if (digest !== record.sha256) problems.push(`evidence ${record.id}: digest mismatch`);
 }
 const artifact = JSON.parse(readFileSync(join(probesDir, 'artifact.json'), 'utf8'));
-const evidenceArtifact = evidence.artifacts?.[0];
+const evidenceArtifact = evidence.artifacts?.find(
+  (entry) => entry.id === `opencode-${artifact.version}-${artifact.platform}`,
+);
 if (evidenceArtifact?.integrity?.sha256 !== `sha256:${artifact.sha256}`) {
   problems.push('evidence artifact SHA-256 does not match the binary probe');
 }

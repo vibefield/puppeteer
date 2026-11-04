@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { KimiWireNormalizer } from './pipeline.js';
 
 function capture(name: string): unknown[] {
-  const path = new URL(`../../../surface/vendors/kimi/captures/kimi@0.34.0/${name}/wire.jsonl`, import.meta.url);
+  const path = new URL(`../../../surface/vendors/kimi/captures/kimi@2.4.1/${name}/wire.jsonl`, import.meta.url);
   return readFileSync(path, 'utf8')
     .trim()
     .split('\n')
@@ -16,6 +16,19 @@ function normalize(records: unknown[]) {
 }
 
 describe('KimiWireNormalizer', () => {
+  it.each([
+    ['permission-deny', 'interaction:permission-resolved', { outcome: 'denied' }],
+    ['permission-allow', 'interaction:permission-resolved', { outcome: 'allowed' }],
+    ['escape-interrupt', 'turn:completed', { stopReason: 'cancelled' }],
+  ])('replays the native TUI %s capture exactly once', (scenario, type, expected) => {
+    const captured = JSON.parse(
+      readFileSync(new URL(`../test-support/fixtures/native-interactions/${scenario}.json`, import.meta.url), 'utf8'),
+    ) as { records: unknown[] };
+    expect(normalize(captured.records).filter((event) => event.type === type)).toEqual([
+      expect.objectContaining(expected),
+    ]);
+  });
+
   it('maps the captured basic turn without exposing hidden reasoning text', () => {
     const events = normalize(capture('basic-turn'));
 
@@ -32,12 +45,17 @@ describe('KimiWireNormalizer', () => {
       ]),
     );
     expect(events.find((event) => event.type === 'turn:started')).toMatchObject({ turnId: '0' });
-    expect(events.at(-1)).toMatchObject({
+    expect(events.find((event) => event.type === 'turn:completed')).toMatchObject({
       type: 'turn:completed',
       turnId: '0',
       stopReason: 'completed',
       lastAssistantMessage: '<redacted:text>',
     });
+    // 2.4.1 settles the prompt after the turn; that lifecycle fact stays native.
+    expect(events.slice(events.findIndex((event) => event.type === 'turn:completed') + 1)).toEqual([
+      { type: 'adapter:native-event', adapter: 'kimi', nativeType: 'token_counting.turn_recorded' },
+      { type: 'adapter:native-event', adapter: 'kimi', nativeType: 'prompt.completed' },
+    ]);
     const portable = JSON.stringify(events);
     expect(portable).not.toContain('<redacted:think>');
     expect(events.filter((event) => event.type === 'conversation:assistant-message').at(-1)).toMatchObject({
@@ -234,6 +252,137 @@ describe('KimiWireNormalizer', () => {
     expect(normalizer.normalize({ type: 'task.terminated', info: { ...info, status: 'completed' } }).events).toEqual([
       { type: 'delegation:subagent-stopped', subagentId: 'agent-1' },
     ]);
+  });
+
+  it('treats 2.4.1 engine-journal projections and configuration snapshots as known non-portable records', () => {
+    const normalizer = new KimiWireNormalizer();
+    const dispositions = capture('basic-turn')
+      .map((entry) => [(entry as { type: string }).type, normalizer.normalize(entry).disposition] as const)
+      .filter(([type]) => type.startsWith('agent.') || /^(?:runtime|changeNotifier|plugin)\./.test(type));
+    expect(new Set(dispositions.map(([, disposition]) => disposition))).toEqual(new Set(['no-output']));
+    expect(new Set(dispositions.map(([type]) => type))).toEqual(
+      new Set([
+        'runtime.set_binding',
+        'changeNotifier.snapshot',
+        'agent.message.appended',
+        'agent.turn.started',
+        'plugin.session_start',
+        'agent.turn.ended',
+      ]),
+    );
+  });
+
+  it('maps a captured foreground subagent from parent-journal subagent records', () => {
+    const events = normalize(capture('subagent-turn'));
+    const delegation = events.filter((event) => event.type.startsWith('delegation:'));
+    expect(delegation).toEqual([
+      { type: 'delegation:subagent-started', subagentId: 'agent-0', agentType: 'coder' },
+      { type: 'delegation:subagent-stopped', subagentId: 'agent-0' },
+    ]);
+    const started = events.findIndex((event) => event.type === 'delegation:subagent-started');
+    const requested = events.findIndex((event) => event.type === 'tool:requested');
+    const completed = events.findIndex((event) => event.type === 'turn:completed');
+    expect(requested).toBeLessThan(started);
+    expect(started).toBeLessThan(completed);
+  });
+
+  it('settles one child once when a background task and its subagent mirror share an id', () => {
+    const normalizer = new KimiWireNormalizer();
+    const info = { taskId: 'agent-x', kind: 'agent', agentId: 'agent-1', subagentType: 'explore', status: 'running' };
+    expect(normalizer.normalize({ type: 'task.started', agentId: 'main', info }).events).toEqual([
+      { type: 'delegation:subagent-started', subagentId: 'agent-1', agentType: 'explore' },
+    ]);
+    expect(
+      normalizer.normalize({ type: 'subagent.spawned', subagentId: 'agent-1', subagentName: 'explore' }),
+    ).toMatchObject({ events: [], disposition: 'no-output' });
+    expect(normalizer.normalize({ type: 'subagent.started', subagentId: 'agent-1' }).events).toEqual([]);
+    expect(normalizer.normalize({ type: 'subagent.failed', subagentId: 'agent-1', error: 'boom' }).events).toEqual([
+      { type: 'delegation:subagent-stopped', subagentId: 'agent-1' },
+    ]);
+    expect(
+      normalizer.normalize({ type: 'task.terminated', agentId: 'main', info: { ...info, status: 'failed' } }).events,
+    ).toEqual([]);
+    expect(normalizer.normalize({ type: 'subagent.future', subagentId: 'agent-1' })).toMatchObject({
+      disposition: 'retained-native',
+      events: [{ type: 'adapter:native-event', adapter: 'kimi', nativeType: 'subagent.future' }],
+    });
+  });
+
+  it('reports a background task.started that follows its subagent mirror as no-output', () => {
+    const normalizer = new KimiWireNormalizer();
+    const info = { taskId: 'agent-x', kind: 'agent', agentId: 'agent-1', subagentType: 'explore', status: 'running' };
+    expect(
+      normalizer.normalize({ type: 'subagent.spawned', subagentId: 'agent-1', subagentName: 'explore' }).events,
+    ).toEqual([{ type: 'delegation:subagent-started', subagentId: 'agent-1', agentType: 'explore' }]);
+    expect(normalizer.normalize({ type: 'task.started', agentId: 'main', info })).toMatchObject({
+      events: [],
+      disposition: 'no-output',
+    });
+  });
+
+  it('opens a new start/stop pair when a resumed foreground child reuses its id', () => {
+    const normalizer = new KimiWireNormalizer();
+    const run = () =>
+      [
+        { type: 'subagent.spawned', subagentId: 'agent-0', subagentName: 'coder' },
+        { type: 'subagent.started', subagentId: 'agent-0' },
+        { type: 'subagent.completed', subagentId: 'agent-0' },
+      ].flatMap((record) => normalizer.normalize(record).events);
+    const pair = [
+      { type: 'delegation:subagent-started', subagentId: 'agent-0', agentType: 'coder' },
+      { type: 'delegation:subagent-stopped', subagentId: 'agent-0' },
+    ];
+    expect(run()).toEqual(pair);
+    expect(run()).toEqual(pair);
+  });
+
+  it('opens a new start/stop pair when a resumed background child reuses its id', () => {
+    const normalizer = new KimiWireNormalizer();
+    const info = { taskId: 'agent-x', kind: 'agent', agentId: 'agent-1', subagentType: 'explore' };
+    const run = () =>
+      [
+        { type: 'task.started', agentId: 'main', info: { ...info, status: 'running' } },
+        { type: 'subagent.spawned', subagentId: 'agent-1', subagentName: 'explore' },
+        { type: 'subagent.started', subagentId: 'agent-1' },
+        { type: 'subagent.completed', subagentId: 'agent-1' },
+        { type: 'task.terminated', agentId: 'main', info: { ...info, status: 'completed' } },
+      ].flatMap((record) => normalizer.normalize(record).events);
+    const pair = [
+      { type: 'delegation:subagent-started', subagentId: 'agent-1', agentType: 'explore' },
+      { type: 'delegation:subagent-stopped', subagentId: 'agent-1' },
+    ];
+    expect(run()).toEqual(pair);
+    expect(run()).toEqual(pair);
+  });
+
+  it('closes a captured print-mode SIGINT as a cancelled turn and keeps cancel/abort facts native', () => {
+    const events = normalize(capture('interrupt-stream'));
+    expect(events.filter((event) => event.type.startsWith('turn:'))).toEqual([
+      expect.objectContaining({ type: 'turn:started', turnId: '0' }),
+      { type: 'turn:completed', turnId: '0', stopReason: 'cancelled' },
+    ]);
+    expect(events.filter((event) => event.type === 'adapter:native-event').map((event) => event.nativeType)).toEqual(
+      expect.arrayContaining(['turn.cancel', 'turn.step.interrupted', 'prompt.aborted']),
+    );
+  });
+
+  it('keeps a captured step retry inside one turn', () => {
+    for (const name of ['provider-retry', 'malformed-stream']) {
+      const events = normalize(capture(name));
+      expect(
+        events.filter((event) => event.type.startsWith('turn:')).map((event) => event.type),
+        name,
+      ).toEqual(['turn:started', 'turn:completed']);
+      expect(
+        events.some((event) => event.type === 'adapter:native-event' && event.nativeType === 'turn.step.retrying'),
+      ).toBe(true);
+    }
+  });
+
+  it('emits no turn for a captured UserPromptSubmit block and retains its blocked prompt outcome', () => {
+    const events = normalize(capture('hook-block-prompt'));
+    expect(events.some((event) => event.type.startsWith('turn:'))).toBe(false);
+    expect(events.at(-1)).toEqual({ type: 'adapter:native-event', adapter: 'kimi', nativeType: 'prompt.completed' });
   });
 
   it.each(['task.started', 'task.terminated', 'plan.revision'])('retains %s without task tracking', (type) => {

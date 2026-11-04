@@ -24,15 +24,15 @@ specifications versus historical material.
 ## Agent support
 
 <!-- agent-support:start -->
-[![Antigravity: baseline pending 1.1.20](https://img.shields.io/badge/Antigravity-baseline_pending_1.1.20-lightgrey)](packages/surface/vendors/antigravity/groundtruth.json)
-[![Claude Code: verified 2.1.308](https://img.shields.io/badge/Claude_Code-verified_2.1.308-blue)](packages/surface/vendors/claude/groundtruth.json)
-[![Codex: verified 0.164.0](https://img.shields.io/badge/Codex-verified_0.164.0-blue)](packages/surface/vendors/codex/groundtruth.json)
-[![GitHub Copilot CLI: baseline pending 1.0.80](https://img.shields.io/badge/GitHub_Copilot_CLI-baseline_pending_1.0.80-lightgrey)](packages/surface/vendors/copilot/groundtruth.json)
+[![Antigravity: verified 1.1.20](https://img.shields.io/badge/Antigravity-verified_1.1.20-blue)](packages/surface/vendors/antigravity/groundtruth.json)
+[![Claude Code: verified 2.1.311](https://img.shields.io/badge/Claude_Code-verified_2.1.311-blue)](packages/surface/vendors/claude/groundtruth.json)
+[![Codex: verified 0.166.0](https://img.shields.io/badge/Codex-verified_0.166.0-blue)](packages/surface/vendors/codex/groundtruth.json)
+[![GitHub Copilot CLI: verified 1.0.105](https://img.shields.io/badge/GitHub_Copilot_CLI-verified_1.0.105-blue)](packages/surface/vendors/copilot/groundtruth.json)
 [![Grok Build: verified 1.0.70](https://img.shields.io/badge/Grok_Build-verified_1.0.70-blue)](packages/surface/vendors/grok/groundtruth.json)
-[![Hermes Agent: baseline pending 0.20.0](https://img.shields.io/badge/Hermes_Agent-baseline_pending_0.20.0-lightgrey)](packages/surface/vendors/hermes/groundtruth.json)
-[![Kimi Code: baseline pending 0.34.0](https://img.shields.io/badge/Kimi_Code-baseline_pending_0.34.0-lightgrey)](packages/surface/vendors/kimi/groundtruth.json)
-[![OpenCode: baseline pending 1.18.16](https://img.shields.io/badge/OpenCode-baseline_pending_1.18.16-lightgrey)](packages/surface/vendors/opencode/groundtruth.json)
-[![Pi: baseline pending 0.84.3](https://img.shields.io/badge/Pi-baseline_pending_0.84.3-lightgrey)](packages/surface/vendors/pi/groundtruth.json)
+[![Hermes Agent: verified 0.21.5](https://img.shields.io/badge/Hermes_Agent-verified_0.21.5-blue)](packages/surface/vendors/hermes/groundtruth.json)
+[![Kimi Code: verified 2.4.1](https://img.shields.io/badge/Kimi_Code-verified_2.4.1-blue)](packages/surface/vendors/kimi/groundtruth.json)
+[![OpenCode: verified 1.19.5](https://img.shields.io/badge/OpenCode-verified_1.19.5-blue)](packages/surface/vendors/opencode/groundtruth.json)
+[![Pi: verified 1.5.0](https://img.shields.io/badge/Pi-verified_1.5.0-blue)](packages/surface/vendors/pi/groundtruth.json)
 <!-- agent-support:end -->
 
 `verified` means the claim-addressable ASM v2+ model and exact artifacts passed the

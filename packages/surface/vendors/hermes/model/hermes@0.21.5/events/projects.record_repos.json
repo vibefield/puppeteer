@@ -1,0 +1,488 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "projects.record_repos",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Persist repo roots found by the client's (desktop-side) scan; return the merged list.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ProjectsRecordReposParams",
+    "$defs": {
+      "ProjectsRecordReposParams": {
+        "additionalProperties": false,
+        "description": "Repos as ``{root, label}`` objects or bare root strings; entries without a root are skipped.",
+        "properties": {
+          "discovery_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RepoDiscoveryPolicyParams"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "repos": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/RecordRepoItem"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repos"
+          }
+        },
+        "title": "ProjectsRecordReposParams",
+        "type": "object"
+      },
+      "RepoDiscoveryPolicyParams": {
+        "additionalProperties": false,
+        "description": "The policy the desktop scanned under (short or ``repo_scan_*`` long keys both accepted).",
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Enabled"
+          },
+          "exclude_paths": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Exclude Paths"
+          },
+          "repo_scan_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repo Scan Enabled"
+          },
+          "repo_scan_exclude_paths": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repo Scan Exclude Paths"
+          },
+          "repo_scan_roots": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repo Scan Roots"
+          },
+          "roots": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Roots"
+          }
+        },
+        "title": "RepoDiscoveryPolicyParams",
+        "type": "object"
+      },
+      "RecordRepoItem": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Label"
+          },
+          "root": {
+            "title": "Root",
+            "type": "string"
+          }
+        },
+        "required": ["root"],
+        "title": "RecordRepoItem",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/ProjectsRecordReposResult",
+    "$defs": {
+      "ProjectsRecordReposResult": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "discovery_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RepoDiscoveryPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "repos": {
+            "items": {
+              "$ref": "#/$defs/DiscoveredRepo"
+            },
+            "title": "Repos",
+            "type": "array"
+          }
+        },
+        "required": ["repos", "accepted"],
+        "title": "ProjectsRecordReposResult",
+        "type": "object"
+      },
+      "RepoDiscoveryPolicy": {
+        "additionalProperties": false,
+        "description": "``methods_projects._repo_discovery_policy`` — the effective ``desktop.repo_scan_*`` config.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "exclude_paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Exclude Paths",
+            "type": "array"
+          },
+          "roots": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roots",
+            "type": "array"
+          }
+        },
+        "required": ["enabled", "roots", "exclude_paths"],
+        "title": "RepoDiscoveryPolicy",
+        "type": "object"
+      },
+      "DiscoveredRepo": {
+        "additionalProperties": false,
+        "description": "``methods_projects._discover_repos_payload`` row: a git root with session totals.",
+        "properties": {
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          },
+          "last_active": {
+            "default": 0,
+            "title": "Last Active",
+            "type": "number"
+          },
+          "root": {
+            "title": "Root",
+            "type": "string"
+          },
+          "sessions": {
+            "default": 0,
+            "title": "Sessions",
+            "type": "integer"
+          }
+        },
+        "required": ["root"],
+        "title": "DiscoveredRepo",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["projects.record_repos"]
+      },
+      "params": {
+        "$ref": "#/$defs/ProjectsRecordReposParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ProjectsRecordReposParams": {
+        "additionalProperties": false,
+        "description": "Repos as ``{root, label}`` objects or bare root strings; entries without a root are skipped.",
+        "properties": {
+          "discovery_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RepoDiscoveryPolicyParams"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "repos": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/RecordRepoItem"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repos"
+          }
+        },
+        "title": "ProjectsRecordReposParams",
+        "type": "object"
+      },
+      "RepoDiscoveryPolicyParams": {
+        "additionalProperties": false,
+        "description": "The policy the desktop scanned under (short or ``repo_scan_*`` long keys both accepted).",
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Enabled"
+          },
+          "exclude_paths": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Exclude Paths"
+          },
+          "repo_scan_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repo Scan Enabled"
+          },
+          "repo_scan_exclude_paths": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repo Scan Exclude Paths"
+          },
+          "repo_scan_roots": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repo Scan Roots"
+          },
+          "roots": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Roots"
+          }
+        },
+        "title": "RepoDiscoveryPolicyParams",
+        "type": "object"
+      },
+      "RecordRepoItem": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Label"
+          },
+          "root": {
+            "title": "Root",
+            "type": "string"
+          }
+        },
+        "required": ["root"],
+        "title": "RecordRepoItem",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

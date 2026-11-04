@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { AdapterEventCandidate, AgentEvent } from '@vibefield/puppeteer-core';
+import { isAgentLaunchRefusedError, type AdapterEventCandidate, type AgentEvent } from '@vibefield/puppeteer-core';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createCodexSession } from './driver.js';
 import type { Transport } from './transport/app-server-client.js';
@@ -82,8 +82,9 @@ interface Scripted {
 /** A minimal in-memory `codex app-server`: answers requests + streams notifications. */
 function scriptedAppServer(opts?: {
   onTurnStart?: (emit: (m: unknown) => void, id: number, params: Record<string, unknown>) => void;
-  turnStartError?: { code: number; message: string };
+  turnStartError?: { code: number; message: string; data?: unknown };
   threadStartError?: { code: number; message: string };
+  resumeError?: { code: number; message: string; data?: unknown };
   /** Answer `thread/resume` with `excludeTurns` as 0.150.x and 0.147.0 do (experimental gate). */
   gatedHistory?: boolean;
 }): Scripted {
@@ -122,6 +123,10 @@ function scriptedAppServer(opts?: {
           emit({ jsonrpc: '2.0', method: 'thread/started', params: { thread } });
           break;
         case 'thread/resume':
+          if (opts?.resumeError) {
+            emit({ jsonrpc: '2.0', id: m.id, error: opts.resumeError });
+            break;
+          }
           if (opts?.gatedHistory && (m.params as Record<string, unknown>)?.excludeTurns !== undefined) {
             emit({
               jsonrpc: '2.0',
@@ -411,6 +416,36 @@ describe('createCodexSession', () => {
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });
     const receipt = await session.services.prompt.submit({ text: 'x' });
     expect(receipt).toEqual({ status: 'rejected', reason: 'busy' });
+  });
+
+  // The answers of probes/codex@0.166.0/provider-mismatch-results.json (findings C9): the error text is
+  // Codex's own display string; only `data` is read.
+  const PROVIDER_MISMATCH = {
+    code: -32600,
+    message: 'display text the adapter must not parse',
+    data: { type: 'modelProviderMismatch', modelProvider: 'fake', currentModelProvider: 'other' },
+  };
+
+  it('rejects a prompt Codex refuses for its provider with what to change, read from the error data', async () => {
+    const s = scriptedAppServer({ turnStartError: PROVIDER_MISMATCH });
+    const session = await createCodexSession({ cwd: '/x', transport: s.transport });
+    const receipt = await session.services.prompt.submit({ text: 'x' });
+    expect(receipt).toEqual({
+      status: 'rejected',
+      reason: 'This Codex thread uses model provider "fake", but the configured provider is "other".',
+    });
+    await session.dispose();
+  });
+
+  it("refuses a resume Codex rejects for its provider as the adapter's launch refusal", async () => {
+    const s = scriptedAppServer({ resumeError: PROVIDER_MISMATCH });
+    const failure = await createCodexSession({ cwd: '/x', transport: s.transport, resume: THREAD }).catch(
+      (error: unknown) => error,
+    );
+    expect(isAgentLaunchRefusedError(failure)).toBe(true);
+    expect(failure).toMatchObject({ code: 'CODEX_MODEL_PROVIDER_MISMATCH' });
+    expect(s.sent.filter((message) => message.method === 'thread/resume')).toHaveLength(1);
+    expect(s.closed()).toBe(true);
   });
 
   it('does not claim confirmation when the exact client message echo is missing', async () => {

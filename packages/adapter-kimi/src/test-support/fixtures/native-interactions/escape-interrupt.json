@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "scenario": "escape-interrupt",
+  "startedAt": "2026-11-04T07:27:31.844Z",
+  "completedAt": "2026-11-04T07:27:36.309Z",
+  "platform": "darwin-arm64",
+  "artifactSha256": "sha256:1a8539eae87ffbd9bf480b8a47beafc9668f66b048b96cfa631310dc12dab3a7",
+  "scope": "selected durable records from the native TUI; not a promotion receipt",
+  "records": [
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "step.begin",
+        "uuid": "cef08954-f8e2-4e85-bc2d-e74cf3587800",
+        "turnId": "0",
+        "step": 1
+      },
+      "time": 1793777256110
+    },
+    {
+      "type": "turn.cancel",
+      "agentId": "main",
+      "turnId": 0,
+      "target": "active",
+      "reason": "user_cancelled",
+      "time": 1793777256220
+    },
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "content.part",
+        "uuid": "b0ad2744-e0e9-4d62-a7e7-6c51e487209f",
+        "turnId": "0",
+        "step": 1,
+        "stepUuid": "cef08954-f8e2-4e85-bc2d-e74cf3587800",
+        "part": {
+          "type": "text",
+          "text": "SURFACE_KIMI_"
+        }
+      },
+      "time": 1793777256251
+    },
+    {
+      "type": "turn.step.interrupted",
+      "agentId": "main",
+      "turnId": 0,
+      "step": 1,
+      "reason": "aborted",
+      "time": 1793777256252
+    },
+    {
+      "type": "turn.ended",
+      "agentId": "main",
+      "turnId": 0,
+      "reason": "cancelled",
+      "durationMs": 150,
+      "time": 1793777256253
+    },
+    {
+      "type": "prompt.aborted",
+      "agentId": "main",
+      "promptId": "msg_01M6JQ9HN2WNMYTH3Y4GJ77ZM6",
+      "abortedAt": "2026-11-04T07:27:36.255Z",
+      "time": 1793777256255
+    }
+  ]
+}

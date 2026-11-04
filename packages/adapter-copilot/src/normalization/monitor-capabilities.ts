@@ -1,5 +1,5 @@
 import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
-export const COPILOT_CONTRACT = 'copilot-session-events@1.0.80';
+export const COPILOT_CONTRACT = 'copilot-session-events@1.0.105';
 export const COPILOT_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   {
     family: 'status',

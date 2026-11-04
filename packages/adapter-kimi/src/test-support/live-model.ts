@@ -25,7 +25,12 @@ function openAiChunk(index: number, delta: Record<string, unknown>, finishReason
 }
 
 /** Deterministic local OpenAI-compatible provider for the native Kimi TUI. */
-export async function startKimiLoopbackProvider(): Promise<KimiLiveModelProvider> {
+export async function startKimiLoopbackProvider(
+  options: {
+    tool?: { name: string; arguments: Record<string, unknown> };
+    pauseAfterFirstChunk?: boolean;
+  } = {},
+): Promise<KimiLiveModelProvider> {
   const requests: unknown[] = [];
   const server: Server = createServer((request, response) => {
     void (async () => {
@@ -48,15 +53,43 @@ export async function startKimiLoopbackProvider(): Promise<KimiLiveModelProvider
         'cache-control': 'no-cache',
         connection: 'keep-alive',
       });
+      const messages = body && typeof body === 'object' ? Reflect.get(body, 'messages') : undefined;
+      const finishedTool = Array.isArray(messages) && messages.some((message) => message?.role === 'tool');
+      const invoke = options.tool && !finishedTool;
+      let index = 0;
       for (const chunk of [
         openAiChunk(0, { role: 'assistant' }, null),
         openAiChunk(1, { reasoning_content: 'Returning the requested controlled marker. ' }, null),
-        openAiChunk(2, { content: 'SURFACE_KIMI_' }, null),
-        openAiChunk(3, { content: 'TUI_OK' }, null),
-        openAiChunk(4, {}, 'stop', { prompt_tokens: 31, completion_tokens: 9, total_tokens: 40 }),
+        ...(invoke
+          ? [
+              openAiChunk(
+                2,
+                {
+                  tool_calls: [
+                    {
+                      index: 0,
+                      id: 'call_live_interaction',
+                      type: 'function',
+                      function: { name: options.tool!.name, arguments: JSON.stringify(options.tool!.arguments) },
+                    },
+                  ],
+                },
+                null,
+              ),
+            ]
+          : [openAiChunk(2, { content: 'SURFACE_KIMI_' }, null), openAiChunk(3, { content: 'TUI_OK' }, null)]),
+        openAiChunk(4, {}, invoke ? 'tool_calls' : 'stop', {
+          prompt_tokens: 31,
+          completion_tokens: 9,
+          total_tokens: 40,
+        }),
       ]) {
         response.write(`data: ${JSON.stringify(chunk)}\n\n`);
         await delay(15);
+        if (options.pauseAfterFirstChunk && index++ === 2) {
+          await new Promise<void>((resolve) => response.once('close', resolve));
+          return;
+        }
       }
       response.end('data: [DONE]\n\n');
     })().catch((error: unknown) => {

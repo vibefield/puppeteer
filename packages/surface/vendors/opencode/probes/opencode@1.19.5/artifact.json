@@ -1,0 +1,10 @@
+{
+  "vendor": "opencode",
+  "version": "1.19.5",
+  "platform": "linux-x64",
+  "sha256": "7df4e4136301f16589b0f30bf91a61380fca5f8ef22dd36570f5ebe1d4ec802c",
+  "capturedAt": "2026-11-03T19:16:55.054Z",
+  "sourceUrl": "https://registry.npmjs.org/opencode-linux-x64/-/opencode-linux-x64-1.19.5.tgz",
+  "sourceTag": "v1.19.5",
+  "sourceRevision": "810c0eba1a7348036f8bdf61e6632d0c36c6876c"
+}

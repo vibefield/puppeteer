@@ -1,0 +1,218 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "http/v2.session.switchModel",
+  "channel": "http",
+  "channels": [
+    "http"
+  ],
+  "transport": "http",
+  "direction": "client-to-agent",
+  "trigger": "Switch session model — Switch the model used by subsequent provider turns.",
+  "payloadSchema": {
+    "properties": {
+      "body": {
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "$ref": "#/$defs/ModelRef"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "type": "object"
+      },
+      "method": {
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "params",
+      "body"
+    ],
+    "type": "object",
+    "$defs": {
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "POST"
+        ],
+        "type": "string"
+      },
+      "params": {
+        "properties": {
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionID"
+        ],
+        "type": "object"
+      },
+      "route": {
+        "enum": [
+          "/api/session/:sessionID/model"
+        ],
+        "type": "string"
+      },
+      "status": {
+        "maximum": 299,
+        "minimum": 200,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "method",
+      "route",
+      "status",
+      "params"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "properties": {
+      "direction": {
+        "enum": [
+          "client-to-agent"
+        ],
+        "type": "string"
+      },
+      "request": {
+        "properties": {
+          "body": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "$ref": "#/$defs/ModelRef"
+              }
+            },
+            "required": [
+              "model"
+            ],
+            "type": "object"
+          },
+          "method": {
+            "enum": [
+              "POST"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "properties": {
+              "sessionID": {
+                "pattern": "^ses",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sessionID"
+            ],
+            "type": "object"
+          },
+          "route": {
+            "enum": [
+              "/api/session/:sessionID/model"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "route",
+          "params",
+          "body"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "direction",
+      "request"
+    ],
+    "type": "object",
+    "$defs": {
+      "ModelRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "providerID"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "schemaFidelity": {
+    "payload": "semantic",
+    "result": "semantic",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "result": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "OpenAPI operationId v2.session.switchModel; POST /api/session/{sessionID}/model."
+}

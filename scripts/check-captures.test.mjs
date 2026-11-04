@@ -26,6 +26,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { checkCaptureFile } from '@vibefield/puppeteer-surface/sanitize';
 import { claudeRepositoryGateRules } from '../packages/surface/vendors/claude/privacy.mjs';
+import { kimiRepositoryGateRules } from '../packages/surface/vendors/kimi/sanitize-captures.mjs';
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -48,10 +49,16 @@ const notACapture = /-settings\.json$/;
 /**
  * Vendor rule sets that relax the shared defaults on purpose. Claude's admits
  * only the closed StopFailure/SessionEnd enum values (protocol constants that
- * fall under the free-text `error`/`reason` keys); everything else is the
- * shared default detector. Any other vendor's captures use the defaults.
+ * fall under the free-text `error`/`reason` keys); Kimi's admits only its
+ * structural agent/runtime identifiers (`main`, `agent-<n>`, `local`) and the
+ * harness workdir key (`wd_workspace_<aliased hash>`), which fall under id keys,
+ * and adds its own free-text keys. Everything else is the shared default
+ * detector. Any other vendor's captures use the defaults.
  */
-const vendorRules = [['packages/surface/vendors/claude/captures/', claudeRepositoryGateRules]];
+const vendorRules = [
+  ['packages/surface/vendors/claude/captures/', claudeRepositoryGateRules],
+  ['packages/surface/vendors/kimi/captures/', kimiRepositoryGateRules],
+];
 
 function rulesFor(file) {
   return vendorRules.find(([prefix]) => file.startsWith(prefix))?.[1];

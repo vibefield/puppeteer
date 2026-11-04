@@ -80,6 +80,11 @@ export interface ServeServer {
   match?: InvocationMatch;
   /** ACP is strict JSON-RPC 2.0; Codex deliberately omits this field. */
   jsonrpc?: '2.0';
+  /**
+   * The prefix of agent-originated request ids when the vendor mints strings rather than integers
+   * (Hermes `srq-<12 hex>`). The imposter appends the sequence as twelve hex digits.
+   */
+  requestIdPrefix?: string;
   /** Extra fields on agent notifications, as ordinary session templates. */
   notification?: Record<string, unknown>;
   /** A long-lived coordination process that owns a vendor Unix socket. */

@@ -1,0 +1,146 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "reasoning.available",
+  "firstSeen": "0.21.5",
+  "lastVerified": "0.21.5",
+  "fixture": "captures/hermes@0.21.5/basic-turn/rpc.jsonl",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "A completed reasoning block (non-streaming providers).",
+  "payloadSchema": {
+    "$ref": "#/$defs/StreamDeltaPayload",
+    "$defs": {
+      "StreamDeltaPayload": {
+        "additionalProperties": false,
+        "description": "``prompt_turn._invoke_agent._stream`` (message.delta: ``text`` + optional ``rendered``),\n``agent_callbacks._agent_cbs`` (reasoning.delta / thinking.delta), ``tool_progress._progress_reasoning``\n(reasoning.available). ``verbose`` rides only when the session's verbose reasoning mode is on.",
+        "properties": {
+          "rendered": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rendered"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "verbose": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Verbose"
+          }
+        },
+        "required": ["text"],
+        "title": "StreamDeltaPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["reasoning.available"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/StreamDeltaPayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "StreamDeltaPayload": {
+        "additionalProperties": false,
+        "description": "``prompt_turn._invoke_agent._stream`` (message.delta: ``text`` + optional ``rendered``),\n``agent_callbacks._agent_cbs`` (reasoning.delta / thinking.delta), ``tool_progress._progress_reasoning``\n(reasoning.available). ``verbose`` rides only when the session's verbose reasoning mode is on.",
+        "properties": {
+          "rendered": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rendered"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "verbose": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Verbose"
+          }
+        },
+        "required": ["text"],
+        "title": "StreamDeltaPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-runtime-headless", "hermes-generated-contract"],
+    "shape": ["hermes-generated-contract", "hermes-runtime-headless"],
+    "carrier": ["hermes-runtime-headless"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "In these captures this echoed the assistant text."
+}

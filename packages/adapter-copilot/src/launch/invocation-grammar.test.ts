@@ -16,13 +16,42 @@ const invoke = (argv: string[], implementation: AgentNativeInvocation['implement
 const matrix: Record<'utility' | 'one-shot' | 'elsewhere' | 'reject', string[][]> & {
   mapped: [string[], Record<string, unknown>][];
 } = {
-  utility: [['--help'], ['version'], ['--model', 'example', 'plugin', 'list']],
+  utility: [
+    ['--help'],
+    ['version'],
+    ['--model', 'example', 'plugin', 'list'],
+    ['config'],
+    ['sandbox'],
+    // `--sync-session[=<on|off>]` takes its value only with `=`, so the command after it still counts.
+    ['--sync-session', 'version'],
+    ['--sync-session', '--version'],
+  ],
   'one-shot': [
     ['-p', 'hello'],
     ['--prompt=hello', '--allow-tool', 'read', 'write'],
+    ['workflow', 'run', 'x'],
   ],
-  elsewhere: [['--acp'], ['--connect'], ['app']],
-  reject: [['--resume'], ['--continue'], ['-i', 'hello'], ['--session-id', '../bad'], ['--model', '--help']],
+  elsewhere: [
+    ['--acp'],
+    ['--connect'],
+    ['app'],
+    ['--host-environment', 'x'],
+    // A refused modifier before it does not hide the headless environment.
+    ['--host-compute-id', 'y', '--host-environment', 'x'],
+  ],
+  reject: [
+    ['--resume'],
+    ['--continue'],
+    ['-i', 'hello'],
+    ['--session-id', '../bad'],
+    ['--model', '--help'],
+    ['--trust-folder'],
+    ['--sync-session'],
+    ['--sync-session=off'],
+    ['--host-compute-id', 'x'],
+    ['--remote'],
+    ['--no-remote-export'],
+  ],
   mapped: [
     [
       ['--model=example', '-nwork'],
@@ -53,6 +82,16 @@ describe('copilot strict invocation grammar', () => {
     expect([...new Set(table)].sort()).toEqual([...publicNames].sort());
     const allNames = INVOCATION_GRAMMAR.options.flatMap((row) => [...row.names]);
     expect(new Set(allNames).size).toBe(allNames.length);
+
+    // `--flag[=<value>]` is clap's require-equals notation: the row must never take the next argument as its value.
+    const requireEquals = [...help.matchAll(/^ {6}(--[A-Za-z0-9-]+)\[=</gmu)].map((match) => match[1]!);
+    expect(requireEquals).toEqual(['--sync-session']);
+    for (const name of requireEquals) {
+      const row = (INVOCATION_GRAMMAR.options as readonly NativeInvocationOption[]).find((option) =>
+        option.names.includes(name),
+      );
+      expect(row, name).toMatchObject({ arity: 'optional', requireEquals: true });
+    }
   });
 
   it('accounts for every public command and alias in the captured native help', () => {
@@ -70,6 +109,30 @@ describe('copilot strict invocation grammar', () => {
     }
     const declared = INVOCATION_GRAMMAR.commands.flatMap((row) => [...row.names]);
     expect([...new Set(declared)].sort()).toEqual([...names].sort());
+  });
+
+  it('classes the workflow group by its captured subcommands: one non-interactive `run`', () => {
+    const help = readFileSync(
+      new URL(`./__fixtures__/copilot-workflow-help-${INVOCATION_GRAMMAR_VERSION}.txt`, import.meta.url),
+      'utf8',
+    );
+    const subcommands = [
+      ...help
+        .split('Commands:')[1]!
+        .split('\n\n')[0]!
+        .matchAll(/^  ([a-z][a-z-]*)\b/gmu),
+    ].map((match) => match[1]);
+    expect(subcommands).toEqual(['run']);
+    const run = readFileSync(
+      new URL(`./__fixtures__/copilot-workflow-run-help-${INVOCATION_GRAMMAR_VERSION}.txt`, import.meta.url),
+      'utf8',
+    );
+    expect(run).toContain('without a parent agent turn');
+    expect(
+      INVOCATION_GRAMMAR.commands.find((row) => (row.names as readonly string[]).includes('workflow')),
+    ).toMatchObject({
+      passthrough: 'one-shot',
+    });
   });
 
   for (const kind of ['utility', 'one-shot', 'elsewhere'] as const) {

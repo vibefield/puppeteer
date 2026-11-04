@@ -1,0 +1,12 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "pi",
+  "vendorVersion": "1.5.0",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": [
+    "**/*.jsonl"
+  ],
+  "limitations": [
+    "Native JSONL keys, containers, primitive types, and ordering are retained while sensitive scalar values are redacted in place."
+  ]
+}

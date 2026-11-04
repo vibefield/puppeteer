@@ -600,8 +600,12 @@ function validateSchemaNode(
   // Sanitized evidence may intentionally replace a sensitive string while
   // preserving its JSON type. It cannot prove enum/pattern/length assertions,
   // but it must not make an otherwise shape-faithful carrier invalid either.
+  // That covers both a `<redacted…>` placeholder and the stable `anon-<16 hex>`
+  // pseudonym the sanitizer gives id-keyed values (for example a `modelId`).
   const redactedString =
-    allowRedactedPlaceholders && typeof value === 'string' && /^<redacted(?::[^>\r\n]+)?>$/.test(value);
+    allowRedactedPlaceholders &&
+    typeof value === 'string' &&
+    /^(?:<redacted(?::[^>\r\n]+)?>|anon-[a-f0-9]{16})$/.test(value);
   if (redactedString) return;
   if (schema.const !== undefined && !enumContains([schema.const], value)) {
     violations.push(`${label} does not equal const`);
@@ -1177,7 +1181,8 @@ function validateEventVariants(
       }
       const alternatives = nodes.map((node) => {
         const violations: string[] = [];
-        validateSchemaNode(node, expected, field, violations);
+        // A matched node may itself reference the payload schema's $defs (a generated enum).
+        validateSchemaNode(node, expected, field, violations, schema ?? node);
         return violations;
       });
       if (alternatives.every((violations) => violations.length > 0)) {

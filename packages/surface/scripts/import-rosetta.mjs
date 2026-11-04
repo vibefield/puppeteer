@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sanitizeRecord } from '@vibefield/puppeteer-surface/sanitize';
+import { checkCaptureDirectory, sanitizeRecord } from '@vibefield/puppeteer-surface/sanitize';
 import { writeCaptureFidelity } from './capture-fidelity.mjs';
 import { rosettaAgentConfig, rosettaPrivacyRules } from './rosetta-agents.mjs';
 
@@ -78,6 +78,7 @@ export function importRosettaSurface(vendor, options = {}) {
   rmSync(captureRoot, { recursive: true, force: true });
   mkdirSync(captureRoot, { recursive: true });
   const fixtureRoot = join(sourceRoot, 'fixtures', config.version);
+  const rules = rosettaPrivacyRules(vendor);
   const scenarios = [];
   let recordCount = 0;
   for (const scenarioEntry of readdirSync(fixtureRoot, { withFileTypes: true })
@@ -91,10 +92,19 @@ export function importRosettaSurface(vendor, options = {}) {
     scenarios.push(scenarioEntry.name);
     for (const [index, source] of sources.entries()) {
       const name = sources.length === 1 ? 'events.jsonl' : `events-${String(index + 1).padStart(2, '0')}.jsonl`;
-      recordCount += sanitizeJsonl(source, join(captureRoot, scenarioEntry.name, name), rosettaPrivacyRules(vendor));
+      recordCount += sanitizeJsonl(source, join(captureRoot, scenarioEntry.name, name), rules);
     }
   }
   if (recordCount === 0) throw new Error(`Rosetta fixture set has no ${config.primaryStream} records`);
+  // Gate the import on the detector, not only the redactor: a raw UUID left in an id-keyed map's KEY once shipped
+  // while every value was aliased. A leaky import leaves nothing behind to commit.
+  const leaks = checkCaptureDirectory(captureRoot, rules);
+  if (leaks.length > 0) {
+    rmSync(captureRoot, { recursive: true, force: true });
+    throw new Error(
+      `${leaks.length} privacy issue(s) in the imported ${vendor}@${config.version} captures:\n${leaks.slice(0, 20).join('\n')}`,
+    );
+  }
 
   writeJson(join(captureRoot, 'capture.json'), {
     schemaVersion: 2,
@@ -123,13 +133,13 @@ export function importRosettaSurface(vendor, options = {}) {
     format: 'puppeteer-rosetta-import/1',
     vendor,
     vendorVersion: config.version,
-    importedAt: '2026-08-28',
+    importedAt: config.importedAt ?? '2026-08-28',
     importer: relative(repositoryRoot, fileURLToPath(import.meta.url)).replaceAll('\\', '/'),
     source: { project: 'rosetta', canonicalSha256: sha256(canonicalPath), files: importedReferences },
     fixtureCorpus: {
       id: `${vendor}-${config.version}-rosetta-fixture-corpus`,
       versionOutput: config.version,
-      platform: 'darwin-arm64',
+      platform: config.platform ?? 'darwin-arm64',
       capturedAt: config.capturedAt,
       sha256: fixtureSource?.sha256 ?? sha256(canonicalPath),
     },

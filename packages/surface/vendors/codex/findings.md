@@ -1,6 +1,11 @@
 # C0 — Codex Surface Findings
 
-> **Current projection (2026-10-24):** the candidate model is Codex CLI **0.164.0** (C8), captured from the release
+> **Current projection (2026-11-03):** the candidate model is Codex CLI **0.166.0** (C9), captured on linux-x64
+> from the release package with its `codex-code-mode-host` companion, while promoted support remains the verified
+> 0.164.0. Only linux-x64 is acquired and probed for the candidate; the other three platforms are left to the
+> protected workflow.
+
+> **Previous projection (2026-10-24):** the candidate model is Codex CLI **0.164.0** (C8), captured from the release
 > package with its `codex-code-mode-host` companion, while promoted support remains the grandfathered 0.147.0
 > baseline. Only darwin-arm64 is acquired and probed. The paragraphs below describe the 0.150.0 candidate it
 > replaces.
@@ -1022,3 +1027,207 @@ reaching the observer) is not captured; VibeField's QA wave censuses it.
   `request_user_input` is unavailable in Default mode (C1d above), so it arises only in a mode that offers it.
 - **Unverified branches:** `functionCallOutput`, `agentMessage.questions`, `partial_answer`, `TurnError.misalignment`,
   `modelProvider/authRecovery*`, `thread/readState/changed`, `thread/prediction/updated`, `item/fileChange/patchUpdated`.
+
+# C9 — Codex 0.166.0 (2026-11-03)
+
+**Probed:** 2026-11-03, `codex-cli 0.166.0`, linux-x64. Artifact: the release package
+`codex-package-x86_64-unknown-linux-musl.tar.gz` from `https://github.com/openai/codex/releases/download/rust-v0.166.0/`
+(sha256 `1d44b28b…`; tag `rust-v0.166.0` = commit `6ff1e1ca…`), extracted into an empty directory: `bin/codex`
+`b8a11fed…` (byte-identical to what `pnpm surface:download` extracts) and `bin/codex-code-mode-host` `657f4e90…`. The
+asset digest GitHub publishes was not compared (its REST API was unreachable from the survey environment). Harness:
+`census/harness.mjs --package-root <extracted package>`. Records: `captures/codex@0.166.0/`, `probes/codex@0.166.0/`
+(README there), `references/codex@0.166.0/`, `candidates/codex@0.166.0/reconciliation.json`. Isolation as in C8.
+
+**A same-platform baseline.** Every earlier census ran on darwin-arm64; this one could run only on linux-x64. So the
+0.164.0 linux-x64 package was re-acquired (`bin/codex` `b93f6811…`, equal to the promoted linux-x64 digest) and the
+census, the schema generation, the help and the parse/config probes were run on both. Differences between the two
+linux runs are release drift; differences that also hold between the 0.164.0 linux and darwin runs are platform
+branches. Nothing from the 0.164.0 linux run is committed beyond its digests and the hand-merged `baseline` block of
+`probes/codex@0.166.0/provider-mismatch-results.json` (probes README, Method 6).
+
+## Census
+
+Six scenarios, all meeting their expectations. Per scenario, the method, result and item-type sequences equal 0.164.0's
+on linux-x64 exactly (the one known race — after a declined approval, `item/completed` and `thread/status/changed` in
+either order — fell the other way in one 0.166.0 run, as C8 records). 23 events are `verified-headless` (22 before):
+`configWarning` joined.
+
+- **`configWarning` is a linux branch, not drift.** On linux without a system bubblewrap, each app-server start sends
+  `configWarning {summary: "Codex could not find bubblewrap on PATH. … Codex will use the bundled bubblewrap in the
+  meantime.", details: null}` right after `initialize`. 0.164.0 sends the same on linux-x64; darwin never does. The
+  harness does not treat it as a failure (it fails only `warning` and `error`), and the adapter retains it as an
+  `adapter:native-event`, as before.
+- **Every `ThreadItem` now carries `startedAtMs` and `completedAtMs`** (rust-v0.166.0 #57172, #57420): on
+  `item/started` (`completedAtMs: null`), `item/completed`, `turn/completed.turn.items[]`, `thread/read` and
+  `thread/turns/list` pages. `ThreadItem` became a struct that flattens the old enum (now `ThreadItemPayload`) beside
+  the two optional integers, so every variant's own fields are unchanged on the wire. The notification-level
+  `startedAtMs`/`completedAtMs` remain. The sanitizer already rewrites both keys (`codexRules`).
+- **`emittedAtMs`** is still on every captured server notification and still absent from the generated union.
+
+## Protocol delta
+
+From the generated `--experimental` schema of the exact binary: 276 methods (85 server notifications, 11 server
+requests, 1 client notification, 179 client requests).
+
+- **4 added, all client requests:** `thread/memory/read` (#56465), `account/gcp/setup` (#57394), `accountSession/list`
+  and `accountSession/switch` (#57514). Unverified; the adapter sends none.
+- **0 removed.** No notification or server request was added or removed.
+- **One value removed:** `ReviewDelivery` is `["inline"]`; `detached` is gone (#57667; 0.164.0 answered it with a
+  deprecation notice). Nothing in the repository calls `review/start`.
+- **Optional additions** the adapter does not read: `ThreadItem.{startedAtMs, completedAtMs}`,
+  `imageGeneration.generationId`, `AdditionalContextEntry.name` (`turn/start`, `turn/steer`), `HooksListParams.threadId`,
+  `HookMetadata.environmentId`, `ThreadForkParams.attachToSource` and `ThreadListParams.attachedToThreadId` (attached
+  forks, 0.165.0 #56351), `ThreadSampleParams.threadSource`, `ProcessExitedNotification.outputDrainTimedOut`,
+  `CodexErrorInfo` values `modelNotFound` (0.165.0 #56445) and `policyCapacityUnavailable` (#57452).
+- **Outside the ASM** (results the ASM does not bind, C8 Known gaps): `Account` gains a `gcp` variant and
+  `chatgpt.workspaceName`; `ThreadUsage.nativeUsageUsdMicros`; `ConfigRequirements.otel`;
+  `NetworkRequirements.reviewDomains`. `services/profiles.ts` reports `account.type` as the sign-in method label as it
+  comes, so a Vertex sign-in reads `gcp`; no billing rule keys on it (`profile-plans.ts` keys only on `api-key`).
+- `HookRunSummary.sourcePath` names `LegacyAppPathString` instead of `AbsolutePathBuf` (both strings).
+- **New JSON-RPC error data: `ModelProviderError`** (`v2/ModelProviderError.json`, absent at rust-v0.164.0 and
+  rust-v0.165.0): `modelProviderMismatch {modelProvider, currentModelProvider}`, `modelProviderNotConfigured
+  {modelProvider}`, `modelProviderPolicyConflict {modelProvider, requiredModelProvider}`. No method's params or result
+  references it, so the method-name audit and the shape diff above cannot see it; it is the `data` of the refusals in
+  the next section. The ASM has no error-schema field, so `generate-model.mjs` names the definition in the `notes` of
+  the nine gated client requests: the seven resume and input requests (`thread/resume`, `turn/start`, `turn/steer`,
+  `review/start`, `thread/compact/start`, `thread/queue/start`, `thread/goal/set`), and `model/list` and
+  `thread/sample`, which run only the managed-policy check (`check_thread_model_provider`; `catalog_processor.rs`,
+  `model_catalog.rs`, `thread_processor.rs`) and so can carry only `modelProviderPolicyConflict`. Carrying error shapes
+  structurally needs a reviewed ASM field (Known gaps).
+
+Reconciliation (`candidates/codex@0.166.0/reconciliation.json`, local, linux-x64 only): 4 added, 0 removed, 21 changed
+documents, behavior, channels and detection unchanged, replay passed. It classifies `unsafe-or-unknown` only because
+three platforms are unacquired; with the artifacts complete the same diff classifies `adaptation-required` (changed
+shapes), which the review below answers with one semantic change: the model-provider admission refusals.
+
+## Behaviour read from source and release notes
+
+The tag commits carry the release notes; the source was read at both tags (`git clone --depth 1`).
+
+- **Model-provider admission: resume and input are refused on a provider change** (rust-v0.166.0; not in the release
+  notes; found in review). `ConfigManager::load_for_resume` (`app-server/src/config_manager.rs`) checks the saved and the
+  requested provider of a `thread/resume` before resume overrides or policy can replace them, and refuses
+  `modelProviderPolicyConflict`, `modelProviderNotConfigured` or `modelProviderMismatch`; 0.164.0's
+  `merge_persisted_resume_metadata` adopted the saved provider instead. `check_thread_model_provider_for_input` gates a
+  loaded thread's `thread/resume` and its input — `turn/start`, `turn/steer`, `review/start`, `thread/compact/start`,
+  `thread/queue/start`, and `thread/goal/set` when the goal ends active — against the provider the configuration selects
+  now. `config_load_error` (`request_processors/config_errors.rs`) answers each as `invalid_request` (-32600) with the
+  serialized error as `data`. **Measured** (`probes/codex@0.166.0` Method 6, `provider-mismatch-results.json`): a cold
+  resume after the configured provider changed is refused `modelProviderMismatch` (0.164.0: resumes); one whose saved
+  provider is no longer configured is refused `modelProviderNotConfigured` (0.164.0: -32600 too, but `data: null`);
+  after `config.toml` switches provider under a loaded thread, `turn/start` and `thread/resume` on the same connection
+  are refused `modelProviderMismatch` (0.164.0: both succeed). `modelProviderPolicyConflict` needs a managed requirements
+  layer and is source-read only. None of these clears by retrying: each lasts until the configuration changes.
+
+- **Guardian reviews forward to the parent's subscribers** (0.165.0 #56124): a private reviewer session's raw response
+  items and its turn abort reach connections subscribed to the parent thread as `rawResponseItem/completed` (a method
+  the generated schema does not export) and `turn/completed {status: interrupted}` under the reviewer's own `threadId`
+  (`bespoke_event_handling.rs` `PrivateSessionEvent`). Both the observer and the driver drop a notification whose
+  `threadId` is not their session's before normalizing it, and the monitor projects only the root and registered
+  children, so neither ends the parent's turn. Guardian review is opt-in; the census does not reach it.
+- **Resume and fork keep acknowledged permissions** (#57227) and reasoning-token accounting (#57839); the thread unload
+  delay is one minute (#57242); `thread/turns/list` backfills exec completion items (#57800). None changes a shape the
+  observer reads; the S1–S35 landing that measures resume-time permissions was not re-run (Known gaps).
+- **Approval routing is unchanged:** `outgoing_message.rs` only moves `process/*` replies to their own queue; requests
+  still go to every subscribed connection, and `serverRequest/resolved` is unchanged (C8, "Who answers an approval").
+- Rollout `token_count.info` gains an optional `last_usage_includes_reasoning`; `observation/rollout-context.ts` reads
+  `last_token_usage` and `model_context_window`, which are unchanged.
+- The npm wrapper (`codex-cli/bin/codex.js`) now `execve`s the native binary on POSIX when Node offers it (#57513), so
+  an npm-launched codex is one process. Surface pins the release package, not the npm tarball; not probed.
+
+## File-change semantics carried forward from exact source
+
+`census/source-contract.mjs --from 0.164.0 --version 0.166.0` refused: `ThreadItem::FileChange` no longer exists,
+because the enum is now `ThreadItemPayload`. The variant's text, with its attributes and doc comments, is byte-identical
+under the new owner, and so are the other six items. The script now takes a reviewed `--rename <old>=<new>`: it still
+extracts the item at both tags and refuses unless they are identical, and pins the new name. Run with
+`--rename ThreadItem::FileChange=ThreadItemPayload::FileChange`: the contract is carried forward with new pins only
+(`item_builders.rs` `b72abaf9…`, 15 593 B; `v2/item.rs` `92d9c734…`, 67 872 B; `sourceCommit` `6ff1e1ca…`). The
+contract's `fileChangeThreadItem` schema is open, so the new item-level timestamps validate. The runtime agrees
+(`file-change-results.json`, equal to 0.164.0's but for version and digests).
+
+## Packaging
+
+The package adds `bin/codex-exec-server` (the standalone remote executor, advertised as `codex-package.json`
+`execServer`; #57589, #57837) and `codex-resources/voice/` (a GStreamer runtime for `codex-voice-host`).
+`codex-resources/bwrap` and `codex-path/rg` remain. The census and probes start neither new part, so the only companion
+the census needs is still `codex-code-mode-host`, and `CODEX_COMPANIONS` is unchanged.
+
+## The typed invocation
+
+`codex --help` on linux-x64 is byte-identical between 0.164.0 and 0.166.0; `codex resume --help` equals the 0.164.0 (and
+0.157.1) file. Against the darwin-arm64 0.164.0 fixture, the linux help lacks only `app`, which is compiled for macOS and
+Windows alone in both releases. The clap `Subcommand` enum and the TUI's `cli.rs` are unchanged between the tags;
+`config_override_args.rs` moved its override collection into `codex_utils_cli::collect_config_overrides` with the same
+behaviour; `exec-server` moved to its own crate with the same command; `codex queue` gained `--resume` and rejects
+unsupported options (#57232, #57273). All 184 parse and config probes answer as on 0.164.0 (both platforms) but for
+the six that print the version. `features list`: `reasoning_effort_override` is now stable and on (0.165.0 #56163),
+`plugin_discovery_prefetch` and `prediction_preserve_parent_tools` are new, stable and on,
+`code_mode_tool_description_first` is removed, ten new rows are under development and off.
+
+So `CODEX_GRAMMAR_VERSION` stays `0.164.0` with its darwin fixtures: a linux-x64 fixture would drop the macOS-only `app`
+row the grammar must still classify, and no row's names, arity or values changed.
+
+## 0.165.0
+
+Not adapted separately; 0.166.0 includes it. Of the drift above, 0.165.0 brought `account/gcp/setup`'s provider
+(#56265), attached forks (#56351), `thread/memory/read` (#56465), managed network review domains (#56154),
+`modelNotFound` (#56445), Guardian forwarding to the parent's subscribers (#56124) and reasoning-effort overrides by
+default (#56163). Its app-server notifications and server requests are those of 0.164.0 and 0.166.0.
+
+## Live proof
+
+`native-tui.live.test.ts` (`CODEX_NATIVE_TUI_LIVE=1`, `PUPPETEER_CODEX_BIN` = the package's `bin/codex`, loopback model,
+throwaway homes) passes on 0.166.0 linux-x64 with the default, `unix` and `websocket` transports: one private
+app-server, structured observation, a prompt through the real TUI, resume with paged history replayed, and no native
+deprecation event reaching consumers. The other opt-in live tests were not run here.
+
+## Adapter stage (2026-11-03)
+
+- **One semantic change: model-provider refusals are permanent and typed.** Before it, the observer's attach loop
+  treated every `thread/resume` failure without briefing overrides as transient and retried it every ≤ 2 s until
+  disposed, so a provider refusal left a managed session in `preparing` with nothing said. Now
+  `transport/model-provider-error.ts` decodes the refusal from the error's `data` alone (never its text) into
+  `CodexModelProviderRefusedError`, the adapter's `AgentLaunchRefusedError` with codes
+  `CODEX_MODEL_PROVIDER_MISMATCH`, `CODEX_MODEL_PROVIDER_NOT_CONFIGURED` and `CODEX_MODEL_PROVIDER_POLICY_CONFLICT` and
+  a sentence built from the provider ids. `observation/thread-history.ts` throws it from either resume request; the
+  observer's attach stops on it — a known thread's attach (the TUI composition) and the driver's resume reject with it,
+  so the runtime carries code and words to the failure — and a passive attach, which nobody awaits, publishes
+  `adapter:native-event` `thread.resume.refused` with the diagnostic `codex-model-provider-refused`.
+  `services/prompt.ts` already answered a refused `turn/start` with `rejected`; its reason now comes from the same
+  decoding. The adapter sends no `turn/steer`, `review/start`, compaction, queue or goal requests. Every other failure is
+  handled as before (0.164.0's unconfigured-provider answer, with `data: null`, still retries). Tests:
+  `transport/model-provider-error.test.ts`, two observer and two driver cases built on the probe's `data`; each fails
+  with its half of the change removed.
+- Otherwise nothing the normalizers, observer, services or transport consume changed shape or meaning; the additions
+  are optional and unread, and unknown native events are still retained.
+- **A pin for the Guardian forwarding.** `observation/observer.test.ts` now proves that a `turn/completed`
+  (`interrupted`) under a thread id no `thread/started` announced reaches no consumer and leaves the root turn running;
+  with the observer's thread filter removed it fails.
+- **Monitor contract** `codex-app-server@0.166.0` (the capability claims the 0.166.0 census re-proves unchanged).
+- **Mapping lock:** 276 ground-truth events, 26 semantic, 28 observed or controlled, 222 unmapped.
+- **Grammar** stays `0.164.0` (above). **Imposter** unchanged: its served results and emitted items omit the optional
+  item timestamps, which the 0.166.0 schema accepts.
+- `docs/event-map.html` is unchanged; its `puppeteer-last-verified` stays `0.164.0` until promotion.
+
+## Known gaps (C9)
+
+- **Three platforms unacquired.** darwin-arm64, darwin-x64 and windows-x64 have no artifact in the candidate evidence;
+  the protected workflow acquires them. The census claims now name linux-x64; darwin behaviour at 0.166.0 is inferred
+  from the unchanged source and the 0.164.0 darwin record, not observed.
+- **Asset digest not compared** with the one GitHub publishes for the linux package.
+- **The S1–S35 landing and the `ema_auth` probe were not re-run.** #57227 changes what resume and fork keep, which the
+  landing's resume cases measure; the `ema_auth` probe needs macOS `sandbox-exec`.
+- **Imposter items lack the 0.166.0 timestamps.** Valid but less faithful; adding them belongs with the persona's
+  shared item builders, not scenario by scenario.
+- **Guardian forwarding is source-read only**, as is the backfilled exec history (#57800).
+- **Error shapes are not structural in Surface.** `ModelProviderError` is named in event notes only; an ASM field for
+  JSON-RPC error data (and the Imposter serving it) would let conformance hold the refusals to the schema.
+- **A policy refusal of `model/list` is not decoded.** The adapter sends `model/list` (display names in the observer
+  and driver, prewarm, and the model catalogue service); under a managed provider-policy conflict it can carry
+  `modelProviderPolicyConflict`, which those callers treat as an ordinary failure. Source-read only; not probed.
+- **A refusal mid-session is a rejected prompt, not a state.** After the provider configuration changes under a running
+  session, each `turn/start` is rejected with the provider sentence; Core has no field marking the session as unable
+  to take input until the configuration changes.
+- **Unverified branches** added at 0.166.0: `modelProviderPolicyConflict`, the four new client requests, `attachToSource` forks,
+  `policyCapacityUnavailable`, `modelNotFound`, `outputDrainTimedOut`.

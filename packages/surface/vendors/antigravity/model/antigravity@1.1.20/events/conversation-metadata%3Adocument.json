@@ -14,77 +14,71 @@
     "properties": {
       "conversations": {
         "type": "object",
-        "properties": {
-          "<dynamic>": {
-            "type": "object",
-            "properties": {
-              "is_internal": {
-                "type": "boolean"
-              },
-              "last_modified_time": {
-                "type": "string"
-              },
-              "summary": {
-                "type": "object",
-                "properties": {
-                  "AgentName": {
-                    "type": "string"
-                  },
-                  "AppDataDir": {
-                    "type": "string"
-                  },
-                  "ID": {
-                    "type": "string"
-                  },
-                  "Loaded": {
-                    "type": "boolean"
-                  },
-                  "NumSteps": {
-                    "type": "number"
-                  },
-                  "Preview": {
-                    "type": "string"
-                  },
-                  "ProjectID": {
-                    "type": "string"
-                  },
-                  "Title": {
-                    "type": "string"
-                  },
-                  "UpdatedAt": {
-                    "type": "string"
-                  },
-                  "WorkspaceURIs": {
-                    "type": "null"
-                  }
-                },
-                "required": [
-                  "AgentName",
-                  "AppDataDir",
-                  "ID",
-                  "Loaded",
-                  "NumSteps",
-                  "Preview",
-                  "ProjectID",
-                  "Title",
-                  "UpdatedAt",
-                  "WorkspaceURIs"
-                ],
-                "additionalProperties": true
-              }
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "is_internal": {
+              "type": "boolean"
             },
-            "required": [
-              "is_internal",
-              "last_modified_time",
-              "summary"
-            ],
-            "additionalProperties": true
-          }
-        },
-        "required": [
-          "<dynamic>"
-        ],
-        "additionalProperties": true
+            "last_modified_time": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "object",
+              "properties": {
+                "AgentName": {
+                  "type": "string"
+                },
+                "AppDataDir": {
+                  "type": "string"
+                },
+                "ID": {
+                  "type": "string"
+                },
+                "Loaded": {
+                  "type": "boolean"
+                },
+                "NumSteps": {
+                  "type": "number"
+                },
+                "Preview": {
+                  "type": "string"
+                },
+                "ProjectID": {
+                  "type": "string"
+                },
+                "Title": {
+                  "type": "string"
+                },
+                "UpdatedAt": {
+                  "type": "string"
+                },
+                "WorkspaceURIs": {
+                  "type": "null"
+                }
+              },
+              "required": [
+                "AgentName",
+                "AppDataDir",
+                "ID",
+                "Loaded",
+                "NumSteps",
+                "Preview",
+                "ProjectID",
+                "Title",
+                "UpdatedAt",
+                "WorkspaceURIs"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "is_internal",
+            "last_modified_time",
+            "summary"
+          ],
+          "additionalProperties": true
+        }
       }
     },
     "required": [

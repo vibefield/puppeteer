@@ -1,9 +1,9 @@
 import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 
-export const OPENCODE_CONTRACT = 'opencode@1.18.16:http-sse';
+export const OPENCODE_CONTRACT = 'opencode@1.19.5:http-sse';
 
 /**
- * Claims are bounded by the pinned 1.18.16 Surface captures. Provider model
+ * Claims are bounded by the pinned 1.19.5 Surface captures. Provider model
  * variants are not asserted to be literal reasoning effort for every custom
  * model configuration.
  */

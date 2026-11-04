@@ -1,0 +1,3473 @@
+{
+  "surface": "copilot",
+  "surfaceVersion": "1.0.105",
+  "event": "permission.requested",
+  "channel": "events",
+  "channels": [
+    "events"
+  ],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agentMode": {
+        "type": "string"
+      },
+      "fusion": {
+        "type": "object",
+        "properties": {
+          "commitId": {
+            "type": "string"
+          },
+          "conversationScope": {
+            "type": "string"
+          },
+          "fusionId": {
+            "type": "string"
+          },
+          "hasUserSteering": {
+            "type": "boolean"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "phaseId": {
+            "type": "string"
+          },
+          "phaseKind": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "sourceModel": {
+            "type": "string"
+          },
+          "sourcePhaseId": {
+            "type": "string"
+          },
+          "syntheticModel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fusionId",
+          "pattern",
+          "policy",
+          "syntheticModel"
+        ],
+        "additionalProperties": true
+      },
+      "ownerAgentId": {
+        "type": "string"
+      },
+      "ownerSessionId": {
+        "type": "string"
+      },
+      "permissionMode": {
+        "type": "string"
+      },
+      "permissionRequest": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "canOfferSessionApproval": {
+                "type": "boolean"
+              },
+              "commands": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "identifier": {},
+                    "readOnly": {}
+                  },
+                  "required": [
+                    "identifier",
+                    "readOnly"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "commandSegments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fullCommandText": {},
+                    "identifier": {}
+                  },
+                  "required": [
+                    "fullCommandText",
+                    "identifier"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "fullCommandText": {
+                "type": "string"
+              },
+              "hasWriteFileRedirection": {
+                "type": "boolean"
+              },
+              "intention": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "possiblePaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "possibleUrls": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "url": {}
+                  },
+                  "required": [
+                    "url"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "requestSandboxBypass": {
+                "type": "boolean"
+              },
+              "requestSandboxBypassReason": {
+                "type": "string"
+              },
+              "requestSandboxPermissive": {
+                "type": "boolean"
+              },
+              "resolvedPaths": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "resolvedWorkingDirectory": {
+                "type": "string"
+              },
+              "sandboxPathGrant": {
+                "type": "object",
+                "properties": {
+                  "access": {
+                    "type": "string"
+                  },
+                  "deniedPath": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "removedReadonlyPaths": {
+                    "type": "array",
+                    "items": {}
+                  }
+                },
+                "required": [
+                  "access",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "warning": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "canOfferSessionApproval",
+              "commands",
+              "fullCommandText",
+              "hasWriteFileRedirection",
+              "intention",
+              "kind",
+              "possiblePaths",
+              "possibleUrls"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "canOfferSessionApproval": {
+                "type": "boolean"
+              },
+              "diff": {
+                "type": "string"
+              },
+              "fileEdits": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "after": {},
+                    "before": {}
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "fileName": {
+                "type": "string"
+              },
+              "intention": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "newFileContents": {
+                "type": "string"
+              },
+              "requestSandboxBypass": {
+                "type": "boolean"
+              },
+              "requestSandboxBypassReason": {
+                "type": "string"
+              },
+              "resolvedPath": {
+                "type": "string"
+              },
+              "sandboxPathGrant": {
+                "type": "object",
+                "properties": {
+                  "access": {
+                    "type": "string"
+                  },
+                  "deniedPath": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "removedReadonlyPaths": {
+                    "type": "array",
+                    "items": {}
+                  }
+                },
+                "required": [
+                  "access",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "canOfferSessionApproval",
+              "diff",
+              "fileName",
+              "intention",
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "intention": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "path": {
+                "type": "string"
+              },
+              "requestSandboxBypass": {
+                "type": "boolean"
+              },
+              "requestSandboxBypassReason": {
+                "type": "string"
+              },
+              "resolvedPath": {
+                "type": "string"
+              },
+              "sandboxPathGrant": {
+                "type": "object",
+                "properties": {
+                  "access": {
+                    "type": "string"
+                  },
+                  "deniedPath": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "removedReadonlyPaths": {
+                    "type": "array",
+                    "items": {}
+                  }
+                },
+                "required": [
+                  "access",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "intention",
+              "kind",
+              "path"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "args": {},
+              "kind": {
+                "type": "string"
+              },
+              "permissionRecommendation": {
+                "type": "string"
+              },
+              "readOnly": {
+                "type": "boolean"
+              },
+              "serverDisplayName": {
+                "type": "string"
+              },
+              "serverName": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "toolTitle": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "readOnly",
+              "serverName",
+              "toolName",
+              "toolTitle"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "intention": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "redirectedFrom": {
+                "type": "string"
+              },
+              "requestSandboxBypass": {
+                "type": "boolean"
+              },
+              "requestSandboxBypassReason": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "intention",
+              "kind",
+              "url"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string"
+              },
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "citations": {
+                "type": "string"
+              },
+              "direction": {
+                "type": "string"
+              },
+              "fact": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "repoNwo": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fact",
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "args": {},
+              "kind": {
+                "type": "string"
+              },
+              "skipPermission": {
+                "type": "boolean"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolDescription": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "toolDescription",
+              "toolName"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "hookMessage": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "toolArgs": {},
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "toolName"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "extensionName": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "operation"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "approvalKey": {
+                "type": "string"
+              },
+              "canPersistApproval": {
+                "type": "boolean"
+              },
+              "declaredMaxAiCredits": {
+                "type": "number"
+              },
+              "declaredMaxConcurrentSubagents": {
+                "type": "number"
+              },
+              "declaredMaxTotalSubagents": {
+                "type": "number"
+              },
+              "declaredTimeoutSeconds": {
+                "type": "number"
+              },
+              "description": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "maxAiCredits": {
+                "type": "number"
+              },
+              "maxConcurrentSubagents": {
+                "type": "number"
+              },
+              "maxTotalSubagents": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "phases": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {},
+                    "title": {}
+                  },
+                  "required": [
+                    "title"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "timeoutSeconds": {
+                "type": "number"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "approvalKey",
+              "canPersistApproval",
+              "description",
+              "kind",
+              "name",
+              "operation",
+              "phases"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "capabilities": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "extensionName": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "capabilities",
+              "extensionName",
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "environmentVariables": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "extensionName": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "environmentVariables",
+              "extensionName",
+              "kind"
+            ],
+            "additionalProperties": true
+          }
+        ]
+      },
+      "promptRequest": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "canOfferSessionApproval": {
+                "type": "boolean"
+              },
+              "commandIdentifiers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "fullCommandText": {
+                "type": "string"
+              },
+              "intention": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "requestSandboxBypass": {
+                "type": "boolean"
+              },
+              "requestSandboxBypassReason": {
+                "type": "string"
+              },
+              "requestSandboxPermissive": {
+                "type": "boolean"
+              },
+              "sandboxPathGrant": {
+                "type": "object",
+                "properties": {
+                  "access": {
+                    "type": "string"
+                  },
+                  "deniedPath": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "removedReadonlyPaths": {
+                    "type": "array",
+                    "items": {}
+                  }
+                },
+                "required": [
+                  "access",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "warning": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "canOfferSessionApproval",
+              "commandIdentifiers",
+              "fullCommandText",
+              "intention",
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "canOfferSessionApproval": {
+                "type": "boolean"
+              },
+              "diff": {
+                "type": "string"
+              },
+              "fileEdits": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "after": {},
+                    "before": {}
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "fileName": {
+                "type": "string"
+              },
+              "intention": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "newFileContents": {
+                "type": "string"
+              },
+              "resolvedPath": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "canOfferSessionApproval",
+              "diff",
+              "fileName",
+              "intention",
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "intention": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "path": {
+                "type": "string"
+              },
+              "resolvedPath": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "intention",
+              "kind",
+              "path"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "args": {},
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "canOfferServerWideApproval": {
+                "type": "boolean"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "permissionRecommendation": {
+                "type": "string"
+              },
+              "serverDisplayName": {
+                "type": "string"
+              },
+              "serverName": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              },
+              "toolTitle": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "serverName",
+              "toolName",
+              "toolTitle"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "intention": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "redirectedFrom": {
+                "type": "string"
+              },
+              "requestSandboxBypass": {
+                "type": "boolean"
+              },
+              "requestSandboxBypassReason": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "intention",
+              "kind",
+              "url"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string"
+              },
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "citations": {
+                "type": "string"
+              },
+              "direction": {
+                "type": "string"
+              },
+              "fact": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fact",
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "args": {},
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "kind": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolDescription": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "toolDescription",
+              "toolName"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "accessKind": {
+                "type": "string"
+              },
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "kind": {
+                "type": "string"
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "readOnlyDirectories": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "accessKind",
+              "kind",
+              "paths"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "hookMessage": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "toolArgs": {},
+              "toolCallId": {
+                "type": "string"
+              },
+              "toolName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "toolName"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "extensionName": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "operation"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "approvalKey": {
+                "type": "string"
+              },
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "canPersistApproval": {
+                "type": "boolean"
+              },
+              "declaredMaxAiCredits": {
+                "type": "number"
+              },
+              "declaredMaxConcurrentSubagents": {
+                "type": "number"
+              },
+              "declaredMaxTotalSubagents": {
+                "type": "number"
+              },
+              "declaredTimeoutSeconds": {
+                "type": "number"
+              },
+              "description": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "managedApprovalRequired": {
+                "type": "boolean"
+              },
+              "maxAiCredits": {
+                "type": "number"
+              },
+              "maxConcurrentSubagents": {
+                "type": "number"
+              },
+              "maxTotalSubagents": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "phases": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "detail": {},
+                    "title": {}
+                  },
+                  "required": [
+                    "title"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "timeoutSeconds": {
+                "type": "number"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "approvalKey",
+              "canPersistApproval",
+              "description",
+              "kind",
+              "name",
+              "operation",
+              "phases"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "capabilities": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "extensionName": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "capabilities",
+              "extensionName",
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "assistedApproval": {
+                "type": "object",
+                "properties": {
+                  "evaluation": {
+                    "type": "object",
+                    "properties": {
+                      "evaluationStage": {},
+                      "judgeAttempted": {},
+                      "judgeStatus": {},
+                      "reasonCode": {}
+                    },
+                    "required": [
+                      "evaluationStage",
+                      "judgeStatus",
+                      "reasonCode"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "evaluationId": {
+                    "type": "string"
+                  },
+                  "failureReason": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "recommendation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "recommendation"
+                ],
+                "additionalProperties": true
+              },
+              "environmentVariables": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "extensionName": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "environmentVariables",
+              "extensionName",
+              "kind"
+            ],
+            "additionalProperties": true
+          }
+        ]
+      },
+      "recoveryEpisodeId": {
+        "type": "string"
+      },
+      "requestId": {
+        "type": "string"
+      },
+      "resolvedByHook": {
+        "type": "boolean"
+      },
+      "riskAssessment": {}
+    },
+    "required": [
+      "permissionRequest",
+      "requestId"
+    ],
+    "additionalProperties": true
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "agentMode": {
+            "type": "string"
+          },
+          "fusion": {
+            "type": "object",
+            "properties": {
+              "commitId": {
+                "type": "string"
+              },
+              "conversationScope": {
+                "type": "string"
+              },
+              "fusionId": {
+                "type": "string"
+              },
+              "hasUserSteering": {
+                "type": "boolean"
+              },
+              "pattern": {
+                "type": "string"
+              },
+              "phaseId": {
+                "type": "string"
+              },
+              "phaseKind": {
+                "type": "string"
+              },
+              "policy": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "sourceModel": {
+                "type": "string"
+              },
+              "sourcePhaseId": {
+                "type": "string"
+              },
+              "syntheticModel": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fusionId",
+              "pattern",
+              "policy",
+              "syntheticModel"
+            ],
+            "additionalProperties": true
+          },
+          "ownerAgentId": {
+            "type": "string"
+          },
+          "ownerSessionId": {
+            "type": "string"
+          },
+          "permissionMode": {
+            "type": "string"
+          },
+          "permissionRequest": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "canOfferSessionApproval": {
+                    "type": "boolean"
+                  },
+                  "commands": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "identifier": {},
+                        "readOnly": {}
+                      },
+                      "required": [
+                        "identifier",
+                        "readOnly"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "commandSegments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "fullCommandText": {},
+                        "identifier": {}
+                      },
+                      "required": [
+                        "fullCommandText",
+                        "identifier"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "fullCommandText": {
+                    "type": "string"
+                  },
+                  "hasWriteFileRedirection": {
+                    "type": "boolean"
+                  },
+                  "intention": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "managedApprovalRequired": {
+                    "type": "boolean"
+                  },
+                  "possiblePaths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "possibleUrls": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "url": {}
+                      },
+                      "required": [
+                        "url"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "requestSandboxBypass": {
+                    "type": "boolean"
+                  },
+                  "requestSandboxBypassReason": {
+                    "type": "string"
+                  },
+                  "requestSandboxPermissive": {
+                    "type": "boolean"
+                  },
+                  "resolvedPaths": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "resolvedWorkingDirectory": {
+                    "type": "string"
+                  },
+                  "sandboxPathGrant": {
+                    "type": "object",
+                    "properties": {
+                      "access": {
+                        "type": "string"
+                      },
+                      "deniedPath": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "removedReadonlyPaths": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    },
+                    "required": [
+                      "access",
+                      "path"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  },
+                  "warning": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "canOfferSessionApproval",
+                  "commands",
+                  "fullCommandText",
+                  "hasWriteFileRedirection",
+                  "intention",
+                  "kind",
+                  "possiblePaths",
+                  "possibleUrls"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "canOfferSessionApproval": {
+                    "type": "boolean"
+                  },
+                  "diff": {
+                    "type": "string"
+                  },
+                  "fileEdits": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "after": {},
+                        "before": {}
+                      },
+                      "additionalProperties": true
+                    }
+                  },
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "intention": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "managedApprovalRequired": {
+                    "type": "boolean"
+                  },
+                  "newFileContents": {
+                    "type": "string"
+                  },
+                  "requestSandboxBypass": {
+                    "type": "boolean"
+                  },
+                  "requestSandboxBypassReason": {
+                    "type": "string"
+                  },
+                  "resolvedPath": {
+                    "type": "string"
+                  },
+                  "sandboxPathGrant": {
+                    "type": "object",
+                    "properties": {
+                      "access": {
+                        "type": "string"
+                      },
+                      "deniedPath": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "removedReadonlyPaths": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    },
+                    "required": [
+                      "access",
+                      "path"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "canOfferSessionApproval",
+                  "diff",
+                  "fileName",
+                  "intention",
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "intention": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "managedApprovalRequired": {
+                    "type": "boolean"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "requestSandboxBypass": {
+                    "type": "boolean"
+                  },
+                  "requestSandboxBypassReason": {
+                    "type": "string"
+                  },
+                  "resolvedPath": {
+                    "type": "string"
+                  },
+                  "sandboxPathGrant": {
+                    "type": "object",
+                    "properties": {
+                      "access": {
+                        "type": "string"
+                      },
+                      "deniedPath": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "removedReadonlyPaths": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    },
+                    "required": [
+                      "access",
+                      "path"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "intention",
+                  "kind",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "args": {},
+                  "kind": {
+                    "type": "string"
+                  },
+                  "permissionRecommendation": {
+                    "type": "string"
+                  },
+                  "readOnly": {
+                    "type": "boolean"
+                  },
+                  "serverDisplayName": {
+                    "type": "string"
+                  },
+                  "serverName": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  },
+                  "toolName": {
+                    "type": "string"
+                  },
+                  "toolTitle": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "readOnly",
+                  "serverName",
+                  "toolName",
+                  "toolTitle"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "intention": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "managedApprovalRequired": {
+                    "type": "boolean"
+                  },
+                  "redirectedFrom": {
+                    "type": "string"
+                  },
+                  "requestSandboxBypass": {
+                    "type": "boolean"
+                  },
+                  "requestSandboxBypassReason": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "intention",
+                  "kind",
+                  "url"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  },
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "citations": {
+                    "type": "string"
+                  },
+                  "direction": {
+                    "type": "string"
+                  },
+                  "fact": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "repoNwo": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "fact",
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "args": {},
+                  "kind": {
+                    "type": "string"
+                  },
+                  "skipPermission": {
+                    "type": "boolean"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  },
+                  "toolDescription": {
+                    "type": "string"
+                  },
+                  "toolName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "toolDescription",
+                  "toolName"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "hookMessage": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "toolArgs": {},
+                  "toolCallId": {
+                    "type": "string"
+                  },
+                  "toolName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "toolName"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "extensionName": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "operation"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "approvalKey": {
+                    "type": "string"
+                  },
+                  "canPersistApproval": {
+                    "type": "boolean"
+                  },
+                  "declaredMaxAiCredits": {
+                    "type": "number"
+                  },
+                  "declaredMaxConcurrentSubagents": {
+                    "type": "number"
+                  },
+                  "declaredMaxTotalSubagents": {
+                    "type": "number"
+                  },
+                  "declaredTimeoutSeconds": {
+                    "type": "number"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "managedApprovalRequired": {
+                    "type": "boolean"
+                  },
+                  "maxAiCredits": {
+                    "type": "number"
+                  },
+                  "maxConcurrentSubagents": {
+                    "type": "number"
+                  },
+                  "maxTotalSubagents": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "phases": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "detail": {},
+                        "title": {}
+                      },
+                      "required": [
+                        "title"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "timeoutSeconds": {
+                    "type": "number"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "approvalKey",
+                  "canPersistApproval",
+                  "description",
+                  "kind",
+                  "name",
+                  "operation",
+                  "phases"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "capabilities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "extensionName": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "capabilities",
+                  "extensionName",
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "environmentVariables": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "extensionName": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "environmentVariables",
+                  "extensionName",
+                  "kind"
+                ],
+                "additionalProperties": true
+              }
+            ]
+          },
+          "promptRequest": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "canOfferSessionApproval": {
+                    "type": "boolean"
+                  },
+                  "commandIdentifiers": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "fullCommandText": {
+                    "type": "string"
+                  },
+                  "intention": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "managedApprovalRequired": {
+                    "type": "boolean"
+                  },
+                  "requestSandboxBypass": {
+                    "type": "boolean"
+                  },
+                  "requestSandboxBypassReason": {
+                    "type": "string"
+                  },
+                  "requestSandboxPermissive": {
+                    "type": "boolean"
+                  },
+                  "sandboxPathGrant": {
+                    "type": "object",
+                    "properties": {
+                      "access": {
+                        "type": "string"
+                      },
+                      "deniedPath": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "removedReadonlyPaths": {
+                        "type": "array",
+                        "items": {}
+                      }
+                    },
+                    "required": [
+                      "access",
+                      "path"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  },
+                  "warning": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "canOfferSessionApproval",
+                  "commandIdentifiers",
+                  "fullCommandText",
+                  "intention",
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "canOfferSessionApproval": {
+                    "type": "boolean"
+                  },
+                  "diff": {
+                    "type": "string"
+                  },
+                  "fileEdits": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "after": {},
+                        "before": {}
+                      },
+                      "additionalProperties": true
+                    }
+                  },
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "intention": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "managedApprovalRequired": {
+                    "type": "boolean"
+                  },
+                  "newFileContents": {
+                    "type": "string"
+                  },
+                  "resolvedPath": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "canOfferSessionApproval",
+                  "diff",
+                  "fileName",
+                  "intention",
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "intention": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "managedApprovalRequired": {
+                    "type": "boolean"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "resolvedPath": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "intention",
+                  "kind",
+                  "path"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "args": {},
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "canOfferServerWideApproval": {
+                    "type": "boolean"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "permissionRecommendation": {
+                    "type": "string"
+                  },
+                  "serverDisplayName": {
+                    "type": "string"
+                  },
+                  "serverName": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  },
+                  "toolName": {
+                    "type": "string"
+                  },
+                  "toolTitle": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "serverName",
+                  "toolName",
+                  "toolTitle"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "intention": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "managedApprovalRequired": {
+                    "type": "boolean"
+                  },
+                  "redirectedFrom": {
+                    "type": "string"
+                  },
+                  "requestSandboxBypass": {
+                    "type": "boolean"
+                  },
+                  "requestSandboxBypassReason": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "intention",
+                  "kind",
+                  "url"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string"
+                  },
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "citations": {
+                    "type": "string"
+                  },
+                  "direction": {
+                    "type": "string"
+                  },
+                  "fact": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "fact",
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "args": {},
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  },
+                  "toolDescription": {
+                    "type": "string"
+                  },
+                  "toolName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "toolDescription",
+                  "toolName"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "accessKind": {
+                    "type": "string"
+                  },
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "readOnlyDirectories": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "accessKind",
+                  "kind",
+                  "paths"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "hookMessage": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "toolArgs": {},
+                  "toolCallId": {
+                    "type": "string"
+                  },
+                  "toolName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "toolName"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "extensionName": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "operation"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "approvalKey": {
+                    "type": "string"
+                  },
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "canPersistApproval": {
+                    "type": "boolean"
+                  },
+                  "declaredMaxAiCredits": {
+                    "type": "number"
+                  },
+                  "declaredMaxConcurrentSubagents": {
+                    "type": "number"
+                  },
+                  "declaredMaxTotalSubagents": {
+                    "type": "number"
+                  },
+                  "declaredTimeoutSeconds": {
+                    "type": "number"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "managedApprovalRequired": {
+                    "type": "boolean"
+                  },
+                  "maxAiCredits": {
+                    "type": "number"
+                  },
+                  "maxConcurrentSubagents": {
+                    "type": "number"
+                  },
+                  "maxTotalSubagents": {
+                    "type": "number"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "phases": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "detail": {},
+                        "title": {}
+                      },
+                      "required": [
+                        "title"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "timeoutSeconds": {
+                    "type": "number"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "approvalKey",
+                  "canPersistApproval",
+                  "description",
+                  "kind",
+                  "name",
+                  "operation",
+                  "phases"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "capabilities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "extensionName": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "capabilities",
+                  "extensionName",
+                  "kind"
+                ],
+                "additionalProperties": true
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "assistedApproval": {
+                    "type": "object",
+                    "properties": {
+                      "evaluation": {
+                        "type": "object",
+                        "properties": {
+                          "evaluationStage": {},
+                          "judgeAttempted": {},
+                          "judgeStatus": {},
+                          "reasonCode": {}
+                        },
+                        "required": [
+                          "evaluationStage",
+                          "judgeStatus",
+                          "reasonCode"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "evaluationId": {
+                        "type": "string"
+                      },
+                      "failureReason": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "recommendation": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommendation"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "environmentVariables": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "extensionName": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "toolCallId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "environmentVariables",
+                  "extensionName",
+                  "kind"
+                ],
+                "additionalProperties": true
+              }
+            ]
+          },
+          "recoveryEpisodeId": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "resolvedByHook": {
+            "type": "boolean"
+          },
+          "riskAssessment": {}
+        },
+        "required": [
+          "permissionRequest",
+          "requestId"
+        ],
+        "additionalProperties": true
+      },
+      "ephemeral": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "parentId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "timestamp": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "data",
+      "id",
+      "parentId",
+      "timestamp",
+      "type"
+    ],
+    "additionalProperties": true
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Rosetta retains observed/writer field types and requiredness, but its shape algebra intentionally omits some native validation constraints."
+    ]
+  },
+  "evidence": {
+    "existence": [
+      "copilot-rosetta-contract"
+    ],
+    "shape": [
+      "copilot-rosetta-contract"
+    ],
+    "carrier": [
+      "copilot-rosetta-contract"
+    ]
+  },
+  "confidence": "unverified",
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s) in the 1.0.105 sources; source evidence: writer."
+}

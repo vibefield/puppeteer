@@ -1,0 +1,146 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "2.4.1",
+  "event": "profile.bind",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "modelAlias": {
+        "type": "string"
+      },
+      "profileName": {
+        "type": "string"
+      },
+      "thinkingEffort": {
+        "type": "string"
+      },
+      "systemPrompt": {
+        "type": "string"
+      },
+      "environmentDisclosure": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string"
+          }
+        },
+        "required": ["cwd"]
+      },
+      "renderGeneration": {
+        "type": "number"
+      },
+      "agentsMdPaths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "disallowedTools": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "activeToolNames": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "subagents": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": ["agentId", "thinkingEffort", "systemPrompt", "disallowedTools"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["profile.bind"]
+      },
+      "agentId": {
+        "type": "string"
+      },
+      "modelAlias": {
+        "type": "string"
+      },
+      "profileName": {
+        "type": "string"
+      },
+      "thinkingEffort": {
+        "type": "string"
+      },
+      "systemPrompt": {
+        "type": "string"
+      },
+      "environmentDisclosure": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string"
+          }
+        },
+        "required": ["cwd"]
+      },
+      "renderGeneration": {
+        "type": "number"
+      },
+      "agentsMdPaths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "disallowedTools": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "activeToolNames": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "subagents": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "agentId", "thinkingEffort", "systemPrompt", "disallowedTools", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-runtime-headless"],
+    "shape": ["kimi-runtime-headless", "kimi-exact-release-source"],
+    "carrier": ["kimi-runtime-headless", "kimi-exact-release-source"]
+  },
+  "confidence": "verified-headless",
+  "fixture": "captures/kimi@2.4.1/basic-turn/wire.jsonl"
+}

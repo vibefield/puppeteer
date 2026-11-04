@@ -39,6 +39,7 @@ import {
 } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { AppServerClient, type Transport } from '../transport/app-server-client.js';
+import { CodexModelProviderRefusedError } from '../transport/model-provider-error.js';
 import { CodexApprovalService } from '../services/approvals.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
 import { CodexNotificationNormalizer } from '../normalization/pipeline.js';
@@ -119,7 +120,11 @@ export interface CodexObserver {
   readonly events: AgentAdapterEventSource;
   /** Fires once a thread is picked up and its live stream is open. */
   onThread(listener: (info: CodexThreadInfo) => void): () => void;
-  /** Bind a thread discovered by a native TUI resume request. */
+  /**
+   * Bind a thread discovered by a native TUI resume request. Rejects with
+   * `CodexModelProviderRefusedError` when Codex refuses the thread for its model
+   * provider, after publishing the `codex-model-provider-refused` diagnostic.
+   */
   attachThread(threadId: string): Promise<void>;
   dispose(): Promise<void>;
 }
@@ -395,8 +400,9 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         attaching = false;
         flushHistoryReplay();
       } catch (error) {
-        // An explicit briefing resume must surface rejected native config instead of retrying it forever.
-        if (Object.keys(pickAgentBriefing(overrides ?? {})).length) {
+        // An explicit briefing resume must surface rejected native config instead of retrying it forever,
+        // and so must a provider admission refusal (0.166.0): it lasts until the configuration changes.
+        if (Object.keys(pickAgentBriefing(overrides ?? {})).length || error instanceof CodexModelProviderRefusedError) {
           attaching = false;
           throw error;
         }
@@ -412,6 +418,20 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     for (const l of threadListeners) l({ threadId, path: threadPath });
   }
 
+  /** No caller awaits a passive or TUI-requested attach, so a provider refusal is published, not only thrown. */
+  function publishProviderRefusal(threadId: string, error: CodexModelProviderRefusedError): void {
+    apply(
+      {
+        type: 'adapter:native-event',
+        adapter: 'codex',
+        nativeType: 'thread.resume.refused',
+        diagnostic: { code: 'codex-model-provider-refused', message: error.message },
+      },
+      'runtime',
+      { threadId, refusal: error.refusal },
+    );
+  }
+
   client.onNotification((method, params) => {
     if (!attached) {
       const notificationParams = params ?? {};
@@ -424,7 +444,12 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       if (!opts.threadId && !opts.start && method === 'thread/started') {
         const thread = rec(params?.thread);
         const tid = str(thread?.id);
-        if (tid && (!opts.selectThread || opts.selectThread(tid))) void attach(tid, thread);
+        if (tid && (!opts.selectThread || opts.selectThread(tid))) {
+          void attach(tid, thread).catch((error: unknown) => {
+            if (!(error instanceof CodexModelProviderRefusedError)) throw error;
+            publishProviderRefusal(tid, error);
+          });
+        }
       }
       return; // ignore everything until we've attached to a thread
     }
@@ -578,7 +603,11 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       threadListeners.add(listener);
       return () => threadListeners.delete(listener);
     },
-    attachThread: (threadId) => attach(threadId, undefined),
+    attachThread: (threadId) =>
+      attach(threadId, undefined).catch((error: unknown) => {
+        if (error instanceof CodexModelProviderRefusedError) publishProviderRefusal(threadId, error);
+        throw error;
+      }),
     async dispose() {
       approvals.settleAll('unknown', { lifecycle: 'dispose' });
       disposed = true; // stop the attach retry loop if it is still running

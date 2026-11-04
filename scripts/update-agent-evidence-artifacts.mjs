@@ -31,7 +31,7 @@ function plainHttpsUrl(value) {
 /**
  * The reviewed byte identity a platform already has, if any: an executable whose SHA-256 was verified when the
  * evidence was authored. A fixture corpus (it carries a `kind`) or a legacy entry without a digest is not one,
- * and acquisition replaces it.
+ * and acquisition cannot transfer its claims onto newly acquired bytes.
  */
 function reviewedArtifact(existing) {
   return existing &&
@@ -56,9 +56,19 @@ export function mergeArtifactReport({ evidence, report, requiredPlatforms }) {
   const acquired = new Map(report.artifacts.map((artifact) => [artifact.platform, artifact]));
   const missing = requiredPlatforms.filter((platform) => !acquired.has(platform));
   if (missing.length > 0) throw new Error(`artifact report is missing: ${missing.join(', ')}`);
-  const existingByPlatform = new Map((evidence.artifacts ?? []).map((artifact) => [artifact.platform, artifact]));
-  const idByPlatform = new Map();
-  evidence.artifacts = requiredPlatforms.map((platform) => {
+  const oldArtifacts = new Map((evidence.artifacts ?? []).map((artifact) => [artifact.id, artifact]));
+  const retained = (evidence.artifacts ?? []).filter(
+    (artifact) => !reviewedArtifact(artifact) && evidence.claims.some((claim) => claim.artifact === artifact.id),
+  );
+  const retainedIds = new Set(retained.map((artifact) => artifact.id));
+  for (const claim of evidence.claims) {
+    if (!claim.artifact) continue;
+    const old = oldArtifacts.get(claim.artifact);
+    if (!old || !requiredPlatforms.includes(claim.platform ?? old.platform)) {
+      throw new Error(`claim ${claim.id} artifact cannot be assigned to a required platform`);
+    }
+  }
+  const acquiredArtifacts = requiredPlatforms.map((platform) => {
     const artifact = acquired.get(platform);
     if (!/^sha256:[0-9a-f]{64}$/.test(artifact.sha256 ?? '')) throw new Error(`${platform} has no SHA-256`);
     // Acquisition refuses these, but a report written before it did may still carry a
@@ -66,8 +76,9 @@ export function mergeArtifactReport({ evidence, report, requiredPlatforms }) {
     if (artifact.sourceUrl !== undefined && !plainHttpsUrl(artifact.sourceUrl)) {
       throw new Error(`${platform} artifact source URL is not a plain https URL`);
     }
-    const existing = existingByPlatform.get(platform);
-    const reviewed = reviewedArtifact(existing);
+    const reviewed = (evidence.artifacts ?? []).find(
+      (artifact) => artifact.platform === platform && reviewedArtifact(artifact),
+    );
     // The claims on a reviewed artifact were captured on its bytes. Different bytes under the same version are
     // a republished artifact: an incident to quarantine, never an update that silently rebinds those claims.
     if (reviewed && reviewed.integrity.sha256 !== artifact.sha256) {
@@ -76,8 +87,8 @@ export function mergeArtifactReport({ evidence, report, requiredPlatforms }) {
           `acquisition holds ${artifact.sha256}; a republished artifact is an incident, not an update`,
       );
     }
-    const id = existing?.id ?? `${evidence.vendor}-${evidence.vendorVersion}-${platform}`;
-    idByPlatform.set(platform, id);
+    const proposedId = reviewed?.id ?? `${evidence.vendor}-${evidence.vendorVersion}-${platform}`;
+    const id = retainedIds.has(proposedId) ? `${proposedId}-acquired` : proposedId;
     if (reviewed) {
       // The same bytes again: keep the reviewed provenance (package, companions, and the first acquisition the
       // captures followed) and add only what this acquisition attests.
@@ -107,18 +118,9 @@ export function mergeArtifactReport({ evidence, report, requiredPlatforms }) {
       integrity: { status: 'verified', sha256: artifact.sha256 },
     };
   });
-  const oldArtifacts = new Map(
-    (existingByPlatform.size ? [...existingByPlatform.values()] : []).map((item) => [item.id, item]),
-  );
-  for (const claim of evidence.claims) {
-    if (!claim.artifact) continue;
-    const old = oldArtifacts.get(claim.artifact);
-    const platform = claim.platform ?? old?.platform;
-    if (!platform || !idByPlatform.has(platform)) {
-      throw new Error(`claim ${claim.id} artifact cannot be assigned to a required platform`);
-    }
-    claim.artifact = idByPlatform.get(platform);
-  }
+  // Survey/fixture identities remain historical evidence. Only a capture made
+  // on the acquired bytes may claim their identity; acquisition alone proves no runtime behavior.
+  evidence.artifacts = [...retained, ...acquiredArtifacts];
   return evidence;
 }
 
@@ -147,5 +149,7 @@ if (invokedDirectly) {
   });
   writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   writeGroundTruthArtifacts(modelRoot);
-  console.log(`updated ${evidencePath} with ${evidence.artifacts.length} immutable artifact identities`);
+  console.log(
+    `updated ${evidencePath} with ${evidence.artifacts.length} artifact records, preserving capture bindings`,
+  );
 }

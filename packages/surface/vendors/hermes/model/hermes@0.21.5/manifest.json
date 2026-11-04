@@ -1,0 +1,8 @@
+{
+  "asmVersion": 3,
+  "vendor": "hermes",
+  "vendorVersion": "0.21.5",
+  "generatedAt": "2026-11-03",
+  "source": "Upstream-generated OpenRPC gateway contract and VALID_HOOKS of the exact v2026.9.24 source revision, joined to isolated-home type-preserving stdio tui_gateway runtime evidence.",
+  "evidence": "evidence.json"
+}

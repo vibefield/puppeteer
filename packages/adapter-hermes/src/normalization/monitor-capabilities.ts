@@ -1,11 +1,11 @@
 import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 
-export const HERMES_CONTRACT = 'hermes@0.20.0:tui-gateway';
+export const HERMES_CONTRACT = 'hermes@0.21.5:tui-gateway';
 
 /**
- * Runtime-verified claims come from the pinned 0.20.0 captures. Claims for
+ * Runtime-verified claims come from the pinned 0.21.5 captures. Claims for
  * context, clarification, compaction, and subagents are deliberately
- * degraded because only the exact release source establishes those branches.
+ * degraded because only the exact release contract and source establish those branches.
  */
 export const HERMES_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   {
@@ -16,8 +16,10 @@ export const HERMES_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     source: 'hermes-gateway-message-tool-and-blocker-events',
     contractVersion: HERMES_CONTRACT,
     limitations: [
-      'Root turn, tool, and approval activity is runtime verified.',
-      'Structured clarify choices and subagent activity are exact-release-source-backed but not pinned-runtime captured.',
+      'Root turn and tool activity, and the frame shape of the server→client approval request, are runtime verified; the approval shape was captured by a census client that advertises server_requests.',
+      'Delivery of approval, clarify, and request.cancel to this non-advertising observer beside the attached native TUI is exact-release-source-backed (server.write_json → FanoutTransport.write; session_transports._session_client_answers_requests) but not runtime captured.',
+      'Structured clarify choices and subagent activity are exact-release-contract-backed but not pinned-runtime captured.',
+      "The native TUI answers approvals and clarifications and the answer never reaches this observer; an approval settles on its tool's or turn's completion, or on a request.cancel withdrawal.",
       'Loss of the gateway rail degrades observation and never proves that the attached native TUI exited.',
     ],
   },
@@ -43,8 +45,8 @@ export const HERMES_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     contractVersion: HERMES_CONTRACT,
     limitations: [
       'Current occupancy and capacity are emitted only after the context engine has a real prompt measurement.',
-      'The fields are exact-release-source-backed but were absent from the pinned fake-provider runtime captures.',
-      'Hermes 0.20.0 refreshes the gateway gauge at response boundaries rather than continuously during a turn.',
+      'The pinned 0.21.5 fake-provider census carried them only on session.info and message.complete usage.',
+      'Hermes refreshes the gateway gauge at response boundaries rather than continuously during a turn.',
     ],
   },
   {

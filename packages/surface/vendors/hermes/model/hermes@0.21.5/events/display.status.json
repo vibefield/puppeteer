@@ -1,0 +1,438 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "display.status",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "This profile's screen started or stopped (also for transitions made outside hermes serve).",
+  "payloadSchema": {
+    "$ref": "#/$defs/DisplayStatusPayload",
+    "$defs": {
+      "DisplayStatusPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Blocker"
+          },
+          "browser": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Browser"
+          },
+          "display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display"
+          },
+          "geometry": {
+            "title": "Geometry",
+            "type": "string"
+          },
+          "install_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Install Command"
+          },
+          "installed": {
+            "title": "Installed",
+            "type": "boolean"
+          },
+          "lease": {
+            "$ref": "#/$defs/DisplayLease"
+          },
+          "memory_available_mb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Memory Available Mb"
+          },
+          "memory_limit_mb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Memory Limit Mb"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "pid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pid"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "profile_key": {
+            "title": "Profile Key",
+            "type": "string"
+          },
+          "running": {
+            "title": "Running",
+            "type": "boolean"
+          },
+          "socket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Socket"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          }
+        },
+        "required": ["profile", "supported", "installed", "missing", "running", "geometry", "lease", "profile_key"],
+        "title": "DisplayStatusPayload",
+        "type": "object"
+      },
+      "DisplayLease": {
+        "additionalProperties": false,
+        "description": "``tools/bot_desktop/lease.py::Lease`` as clients may see it: the holder's viewer id is a\ncapability and never leaves the gateway; ``viewer_hash`` lets the holder recognise itself.",
+        "properties": {
+          "epoch": {
+            "title": "Epoch",
+            "type": "integer"
+          },
+          "holder": {
+            "$ref": "#/$defs/LeaseHolder"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "since": {
+            "title": "Since",
+            "type": "number"
+          },
+          "viewer_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Viewer Hash"
+          },
+          "viewer_id": {
+            "default": null,
+            "title": "Viewer Id",
+            "type": "null"
+          }
+        },
+        "required": ["holder", "since", "epoch"],
+        "title": "DisplayLease",
+        "type": "object"
+      },
+      "LeaseHolder": {
+        "enum": ["agent", "human"],
+        "title": "LeaseHolder",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["display.status"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/DisplayStatusPayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "DisplayStatusPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Blocker"
+          },
+          "browser": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Browser"
+          },
+          "display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display"
+          },
+          "geometry": {
+            "title": "Geometry",
+            "type": "string"
+          },
+          "install_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Install Command"
+          },
+          "installed": {
+            "title": "Installed",
+            "type": "boolean"
+          },
+          "lease": {
+            "$ref": "#/$defs/DisplayLease"
+          },
+          "memory_available_mb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Memory Available Mb"
+          },
+          "memory_limit_mb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Memory Limit Mb"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "pid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pid"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "profile_key": {
+            "title": "Profile Key",
+            "type": "string"
+          },
+          "running": {
+            "title": "Running",
+            "type": "boolean"
+          },
+          "socket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Socket"
+          },
+          "supported": {
+            "title": "Supported",
+            "type": "boolean"
+          }
+        },
+        "required": ["profile", "supported", "installed", "missing", "running", "geometry", "lease", "profile_key"],
+        "title": "DisplayStatusPayload",
+        "type": "object"
+      },
+      "DisplayLease": {
+        "additionalProperties": false,
+        "description": "``tools/bot_desktop/lease.py::Lease`` as clients may see it: the holder's viewer id is a\ncapability and never leaves the gateway; ``viewer_hash`` lets the holder recognise itself.",
+        "properties": {
+          "epoch": {
+            "title": "Epoch",
+            "type": "integer"
+          },
+          "holder": {
+            "$ref": "#/$defs/LeaseHolder"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "since": {
+            "title": "Since",
+            "type": "number"
+          },
+          "viewer_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Viewer Hash"
+          },
+          "viewer_id": {
+            "default": null,
+            "title": "Viewer Id",
+            "type": "null"
+          }
+        },
+        "required": ["holder", "since", "epoch"],
+        "title": "DisplayLease",
+        "type": "object"
+      },
+      "LeaseHolder": {
+        "enum": ["agent", "human"],
+        "title": "LeaseHolder",
+        "type": "string"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -1,0 +1,109 @@
+{
+  "surface": "opencode",
+  "surfaceVersion": "1.19.5",
+  "event": "session.next.shell.started",
+  "channel": "sse",
+  "channels": [
+    "sse"
+  ],
+  "transport": "sse-event",
+  "direction": "agent-to-client",
+  "trigger": "Published on the native GET /event stream.",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "callID": {
+        "type": "string"
+      },
+      "command": {
+        "type": "string"
+      },
+      "messageID": {
+        "pattern": "^msg_",
+        "type": "string"
+      },
+      "sessionID": {
+        "pattern": "^ses",
+        "type": "string"
+      },
+      "timestamp": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "timestamp",
+      "sessionID",
+      "messageID",
+      "callID",
+      "command"
+    ],
+    "type": "object"
+  },
+  "recordSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "pattern": "^evt_",
+        "type": "string"
+      },
+      "properties": {
+        "additionalProperties": false,
+        "properties": {
+          "callID": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "messageID": {
+            "pattern": "^msg_",
+            "type": "string"
+          },
+          "sessionID": {
+            "pattern": "^ses",
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "sessionID",
+          "messageID",
+          "callID",
+          "command"
+        ],
+        "type": "object"
+      },
+      "type": {
+        "enum": [
+          "session.next.shell.started"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "properties"
+    ],
+    "type": "object"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "opencode-generated-openapi"
+    ],
+    "shape": [
+      "opencode-generated-openapi"
+    ],
+    "carrier": [
+      "opencode-generated-openapi"
+    ]
+  },
+  "confidence": "unverified"
+}

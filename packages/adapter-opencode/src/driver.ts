@@ -1,7 +1,7 @@
 /** Complete OpenCode native-TUI recipe: private backend + REST/SSE + exact attach. */
 
 import { randomUUID } from 'node:crypto';
-import { resolve } from 'node:path';
+import { sameOpenCodeDirectory } from './launch/directory.js';
 import {
   type AgentEvent,
   type AgentAdapterBinding,
@@ -333,7 +333,7 @@ export async function prepareOpenCodeTuiSession(
 
     if (options.resume) {
       sessionInfo = await client.getSession(options.resume);
-      if (resolve(sessionInfo.directory) !== resolve(options.cwd)) {
+      if (!(await sameOpenCodeDirectory(sessionInfo.directory, options.cwd))) {
         throw new Error(`OpenCode session ${options.resume} belongs to ${sessionInfo.directory}, not ${options.cwd}`);
       }
     } else {

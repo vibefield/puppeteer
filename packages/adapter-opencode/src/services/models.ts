@@ -11,7 +11,8 @@ import {
   type NativeModelProbeOptions,
 } from '@vibefield/puppeteer-native-observation';
 import { resolveOpenCodeExecutable } from '../detection.js';
-import { startOpenCodeBackend } from '../launch/backend.js';
+import { startOpenCodeBackend, type OpenCodeBackend } from '../launch/backend.js';
+import { loopbackFetch } from '../transport/loopback-fetch.js';
 import { createOpenCodeProfileService, OPENCODE_PROFILE_ROOT_VARIABLE } from './profiles.js';
 
 /** The global catalog contains disconnected providers; only connected choices may be launched immediately. */
@@ -48,11 +49,30 @@ export function decodeOpenCodeModels(value: unknown): AgentModelChoice[] {
   });
 }
 
+/**
+ * `GET /provider` on the probe's private backend. A `serve --port 0` backend usually reuses the origin a stopped
+ * predecessor held, so the request goes through the loopback fetch that survives that predecessor's stale socket.
+ */
+export async function readOpenCodeProviders(
+  backend: Pick<OpenCodeBackend, 'origin' | 'username' | 'password'>,
+  directory: string,
+  signal: AbortSignal | undefined,
+  fetchImpl: typeof fetch = loopbackFetch,
+): Promise<unknown> {
+  const response = await fetchImpl(backend.origin + '/provider?directory=' + encodeURIComponent(directory), {
+    headers: {
+      Authorization: 'Basic ' + Buffer.from(backend.username + ':' + backend.password).toString('base64'),
+    },
+    ...(signal ? { signal } : {}),
+  });
+  return readNativeJsonResponse(response);
+}
+
 export function createOpenCodeModelService(options: NativeModelProbeOptions = {}): AgentModelService {
   const profiles = createOpenCodeProfileService(options);
   return defineModelService({
     // The private server sets a session's model only when it creates one (POST /session); session.update carries
-    // title, metadata, permission and time (openapi 1.18.16), and the managed TUI's `attach` takes no --model
+    // title, metadata, permission and time (openapi 1.18.16 and 1.19.5), and the managed TUI's `attach` takes no --model
     // (1.18.34, draft/artifacts/resume-selection-2026-10-12), so a resumed session keeps its own model.
     provider: { id: 'opencode', label: 'OpenCode', discovery: 'prelaunch', resumeSelection: false },
     async discover(context) {
@@ -73,13 +93,7 @@ export function createOpenCodeModelService(options: NativeModelProbeOptions = {}
         env: Object.fromEntries(Object.entries(env).filter((pair): pair is [string, string] => pair[1] !== undefined)),
       });
       try {
-        const response = await fetch(backend.origin + '/provider?directory=' + encodeURIComponent(context.cwd), {
-          headers: {
-            Authorization: 'Basic ' + Buffer.from(backend.username + ':' + backend.password).toString('base64'),
-          },
-          signal: probe.signal!,
-        });
-        const document = await readNativeJsonResponse(response);
+        const document = await readOpenCodeProviders(backend, context.cwd, probe.signal);
         return {
           status: 'available',
           catalog: {

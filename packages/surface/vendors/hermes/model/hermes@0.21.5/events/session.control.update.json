@@ -1,0 +1,954 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "session.control.update",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "Persisted goal / loop / heartbeat state changed.",
+  "payloadSchema": {
+    "$ref": "#/$defs/SessionControlUpdatePayload",
+    "$defs": {
+      "SessionControlUpdatePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "control": {
+            "$ref": "#/$defs/SessionControlSnapshot"
+          }
+        },
+        "required": ["control"],
+        "title": "SessionControlUpdatePayload",
+        "type": "object"
+      },
+      "SessionControlSnapshot": {
+        "additionalProperties": false,
+        "description": "``_snapshot_control`` — ``revision`` is a hash of the visible state (``\"\"`` when empty);\n``updated_at`` is the newest persisted timestamp (``0`` when none).",
+        "properties": {
+          "goal": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/GoalSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "heartbeat": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/HeartbeatSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "loop": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LoopSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "number"
+          }
+        },
+        "required": ["goal", "loop", "heartbeat", "revision", "updated_at"],
+        "title": "SessionControlSnapshot",
+        "type": "object"
+      },
+      "GoalSnapshot": {
+        "additionalProperties": false,
+        "description": "``methods_session_control.py::_safe_goal_snapshot`` — the frontend-safe GoalState subset.",
+        "properties": {
+          "contract": {
+            "$ref": "#/$defs/GoalContractSnapshot"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created At"
+          },
+          "gates": {
+            "items": {
+              "$ref": "#/$defs/GoalGateSnapshot"
+            },
+            "title": "Gates",
+            "type": "array"
+          },
+          "last_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Reason"
+          },
+          "last_verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Verdict"
+          },
+          "max_turns": {
+            "title": "Max Turns",
+            "type": "integer"
+          },
+          "paused_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Paused Reason"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subgoals": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Subgoals",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "turns_used": {
+            "title": "Turns Used",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Updated At"
+          },
+          "wait_barrier": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "pid": "#/components/schemas/WaitBarrierTarget",
+                    "session": "#/components/schemas/WaitBarrierTarget",
+                    "until": "#/components/schemas/WaitBarrierUntil"
+                  },
+                  "propertyName": "type"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/WaitBarrierUntil"
+                  },
+                  {
+                    "$ref": "#/$defs/WaitBarrierTarget"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Wait Barrier"
+          }
+        },
+        "required": ["title", "status", "turns_used", "max_turns", "contract", "subgoals", "gates"],
+        "title": "GoalSnapshot",
+        "type": "object"
+      },
+      "HeartbeatSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "fire_count": {
+            "title": "Fire Count",
+            "type": "integer"
+          },
+          "interval_seconds": {
+            "title": "Interval Seconds",
+            "type": "integer"
+          },
+          "last_fired_at": {
+            "title": "Last Fired At",
+            "type": "number"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": ["prompt", "status", "interval_seconds", "created_at", "last_fired_at", "fire_count"],
+        "title": "HeartbeatSnapshot",
+        "type": "object"
+      },
+      "LoopSnapshot": {
+        "additionalProperties": false,
+        "description": "``_safe_loop_snapshot`` — persisted LoopState fields, never its route.",
+        "properties": {
+          "awaiting_response": {
+            "title": "Awaiting Response",
+            "type": "boolean"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "current_delay": {
+            "title": "Current Delay",
+            "type": "number"
+          },
+          "deferred_by_goal": {
+            "title": "Deferred By Goal",
+            "type": "boolean"
+          },
+          "interval_seconds": {
+            "title": "Interval Seconds",
+            "type": "number"
+          },
+          "last_fired_at": {
+            "title": "Last Fired At",
+            "type": "number"
+          },
+          "last_stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Stop Reason"
+          },
+          "max_ticks": {
+            "title": "Max Ticks",
+            "type": "integer"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "next_due_at": {
+            "title": "Next Due At",
+            "type": "number"
+          },
+          "paused_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Paused Reason"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "ticks_fired": {
+            "title": "Ticks Fired",
+            "type": "integer"
+          },
+          "times": {
+            "title": "Times",
+            "type": "integer"
+          },
+          "until": {
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt",
+          "status",
+          "mode",
+          "interval_seconds",
+          "current_delay",
+          "times",
+          "until",
+          "max_ticks",
+          "ticks_fired",
+          "created_at",
+          "last_fired_at",
+          "next_due_at",
+          "awaiting_response",
+          "deferred_by_goal"
+        ],
+        "title": "LoopSnapshot",
+        "type": "object"
+      },
+      "GoalContractSnapshot": {
+        "additionalProperties": false,
+        "description": "``hermes_cli/goals.py::GoalContract.to_dict``.",
+        "properties": {
+          "boundaries": {
+            "default": "",
+            "title": "Boundaries",
+            "type": "string"
+          },
+          "constraints": {
+            "default": "",
+            "title": "Constraints",
+            "type": "string"
+          },
+          "outcome": {
+            "default": "",
+            "title": "Outcome",
+            "type": "string"
+          },
+          "stop_when": {
+            "default": "",
+            "title": "Stop When",
+            "type": "string"
+          },
+          "verification": {
+            "default": "",
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "title": "GoalContractSnapshot",
+        "type": "object"
+      },
+      "GoalGateSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "last_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Exit Code"
+          },
+          "max_retries": {
+            "title": "Max Retries",
+            "type": "integer"
+          },
+          "timeout_seconds": {
+            "title": "Timeout Seconds",
+            "type": "integer"
+          }
+        },
+        "required": ["command", "timeout_seconds", "max_retries", "attempts"],
+        "title": "GoalGateSnapshot",
+        "type": "object"
+      },
+      "WaitBarrierUntil": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "type": {
+            "const": "until",
+            "title": "Type",
+            "type": "string"
+          },
+          "until_at": {
+            "title": "Until At",
+            "type": "number"
+          }
+        },
+        "required": ["type", "until_at"],
+        "title": "WaitBarrierUntil",
+        "type": "object"
+      },
+      "WaitBarrierTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Target"
+          },
+          "type": {
+            "enum": ["session", "pid"],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "target"],
+        "title": "WaitBarrierTarget",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["session.control.update"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/SessionControlUpdatePayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "SessionControlUpdatePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "control": {
+            "$ref": "#/$defs/SessionControlSnapshot"
+          }
+        },
+        "required": ["control"],
+        "title": "SessionControlUpdatePayload",
+        "type": "object"
+      },
+      "SessionControlSnapshot": {
+        "additionalProperties": false,
+        "description": "``_snapshot_control`` — ``revision`` is a hash of the visible state (``\"\"`` when empty);\n``updated_at`` is the newest persisted timestamp (``0`` when none).",
+        "properties": {
+          "goal": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/GoalSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "heartbeat": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/HeartbeatSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "loop": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LoopSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "number"
+          }
+        },
+        "required": ["goal", "loop", "heartbeat", "revision", "updated_at"],
+        "title": "SessionControlSnapshot",
+        "type": "object"
+      },
+      "GoalSnapshot": {
+        "additionalProperties": false,
+        "description": "``methods_session_control.py::_safe_goal_snapshot`` — the frontend-safe GoalState subset.",
+        "properties": {
+          "contract": {
+            "$ref": "#/$defs/GoalContractSnapshot"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created At"
+          },
+          "gates": {
+            "items": {
+              "$ref": "#/$defs/GoalGateSnapshot"
+            },
+            "title": "Gates",
+            "type": "array"
+          },
+          "last_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Reason"
+          },
+          "last_verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Verdict"
+          },
+          "max_turns": {
+            "title": "Max Turns",
+            "type": "integer"
+          },
+          "paused_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Paused Reason"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subgoals": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Subgoals",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "turns_used": {
+            "title": "Turns Used",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Updated At"
+          },
+          "wait_barrier": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "pid": "#/components/schemas/WaitBarrierTarget",
+                    "session": "#/components/schemas/WaitBarrierTarget",
+                    "until": "#/components/schemas/WaitBarrierUntil"
+                  },
+                  "propertyName": "type"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/WaitBarrierUntil"
+                  },
+                  {
+                    "$ref": "#/$defs/WaitBarrierTarget"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Wait Barrier"
+          }
+        },
+        "required": ["title", "status", "turns_used", "max_turns", "contract", "subgoals", "gates"],
+        "title": "GoalSnapshot",
+        "type": "object"
+      },
+      "HeartbeatSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "fire_count": {
+            "title": "Fire Count",
+            "type": "integer"
+          },
+          "interval_seconds": {
+            "title": "Interval Seconds",
+            "type": "integer"
+          },
+          "last_fired_at": {
+            "title": "Last Fired At",
+            "type": "number"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": ["prompt", "status", "interval_seconds", "created_at", "last_fired_at", "fire_count"],
+        "title": "HeartbeatSnapshot",
+        "type": "object"
+      },
+      "LoopSnapshot": {
+        "additionalProperties": false,
+        "description": "``_safe_loop_snapshot`` — persisted LoopState fields, never its route.",
+        "properties": {
+          "awaiting_response": {
+            "title": "Awaiting Response",
+            "type": "boolean"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "number"
+          },
+          "current_delay": {
+            "title": "Current Delay",
+            "type": "number"
+          },
+          "deferred_by_goal": {
+            "title": "Deferred By Goal",
+            "type": "boolean"
+          },
+          "interval_seconds": {
+            "title": "Interval Seconds",
+            "type": "number"
+          },
+          "last_fired_at": {
+            "title": "Last Fired At",
+            "type": "number"
+          },
+          "last_stop_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Stop Reason"
+          },
+          "max_ticks": {
+            "title": "Max Ticks",
+            "type": "integer"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "next_due_at": {
+            "title": "Next Due At",
+            "type": "number"
+          },
+          "paused_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Paused Reason"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "ticks_fired": {
+            "title": "Ticks Fired",
+            "type": "integer"
+          },
+          "times": {
+            "title": "Times",
+            "type": "integer"
+          },
+          "until": {
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt",
+          "status",
+          "mode",
+          "interval_seconds",
+          "current_delay",
+          "times",
+          "until",
+          "max_ticks",
+          "ticks_fired",
+          "created_at",
+          "last_fired_at",
+          "next_due_at",
+          "awaiting_response",
+          "deferred_by_goal"
+        ],
+        "title": "LoopSnapshot",
+        "type": "object"
+      },
+      "GoalContractSnapshot": {
+        "additionalProperties": false,
+        "description": "``hermes_cli/goals.py::GoalContract.to_dict``.",
+        "properties": {
+          "boundaries": {
+            "default": "",
+            "title": "Boundaries",
+            "type": "string"
+          },
+          "constraints": {
+            "default": "",
+            "title": "Constraints",
+            "type": "string"
+          },
+          "outcome": {
+            "default": "",
+            "title": "Outcome",
+            "type": "string"
+          },
+          "stop_when": {
+            "default": "",
+            "title": "Stop When",
+            "type": "string"
+          },
+          "verification": {
+            "default": "",
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "title": "GoalContractSnapshot",
+        "type": "object"
+      },
+      "GoalGateSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "last_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Exit Code"
+          },
+          "max_retries": {
+            "title": "Max Retries",
+            "type": "integer"
+          },
+          "timeout_seconds": {
+            "title": "Timeout Seconds",
+            "type": "integer"
+          }
+        },
+        "required": ["command", "timeout_seconds", "max_retries", "attempts"],
+        "title": "GoalGateSnapshot",
+        "type": "object"
+      },
+      "WaitBarrierUntil": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "type": {
+            "const": "until",
+            "title": "Type",
+            "type": "string"
+          },
+          "until_at": {
+            "title": "Until At",
+            "type": "number"
+          }
+        },
+        "required": ["type", "until_at"],
+        "title": "WaitBarrierUntil",
+        "type": "object"
+      },
+      "WaitBarrierTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Target"
+          },
+          "type": {
+            "enum": ["session", "pid"],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": ["type", "target"],
+        "title": "WaitBarrierTarget",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "unverified"
+}

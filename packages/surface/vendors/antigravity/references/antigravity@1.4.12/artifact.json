@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "vendor": "antigravity",
+  "version": "1.4.12",
+  "platform": "darwin-arm64",
+  "artifactKind": "standalone-executable",
+  "bytes": 197589952,
+  "sourceUrl": "https://github.com/google-antigravity/antigravity-cli/releases/download/1.4.12/agy_cli_mac_arm64.tar.gz",
+  "versionOutput": "1.4.12",
+  "sha256": "34423fc9b0af3841e7646aa72a2d40ffeab8218b22d1cb99eac7355f9eba31e3"
+}

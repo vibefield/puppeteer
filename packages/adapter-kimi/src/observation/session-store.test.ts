@@ -25,7 +25,7 @@ afterEach(async () => {
 });
 
 describe('Kimi session-store addressing', () => {
-  it('matches Kimi 0.34.0 workdir keys and home precedence', () => {
+  it('matches Kimi 0.34.0–2.4.1 workdir keys and home precedence', () => {
     expect(encodeKimiWorkDirKey('/Users/example/Projects/puppeteer')).toBe('wd_puppeteer_8be84339a83f');
     expect(encodeKimiWorkDirKey('/Users/example/Projects/puppeteer/')).toBe('wd_puppeteer_8be84339a83f');
     expect(encodeKimiWorkDirKey('/')).toBe('wd_workspace_8a5edab28263');

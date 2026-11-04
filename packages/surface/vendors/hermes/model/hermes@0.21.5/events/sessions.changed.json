@@ -1,0 +1,86 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "sessions.changed",
+  "firstSeen": "0.21.5",
+  "lastVerified": "0.21.5",
+  "fixture": "captures/hermes@0.21.5/basic-turn/rpc.jsonl",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "state.db moved; refetch the session list.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ChangeSignalPayload",
+    "$defs": {
+      "ChangeSignalPayload": {
+        "additionalProperties": true,
+        "description": "``change_watcher._CHANGE_WATCHES`` payload fn — ``{}`` for every watch except pet.changed.",
+        "properties": {},
+        "title": "ChangeSignalPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["event"]
+      },
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["sessions.changed"]
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload": {
+            "$ref": "#/$defs/ChangeSignalPayload"
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": ["method", "params"],
+    "$defs": {
+      "ChangeSignalPayload": {
+        "additionalProperties": true,
+        "description": "``change_watcher._CHANGE_WATCHES`` payload fn — ``{}`` for every watch except pet.changed.",
+        "properties": {},
+        "title": "ChangeSignalPayload",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-runtime-headless", "hermes-generated-contract"],
+    "shape": ["hermes-generated-contract", "hermes-runtime-headless"],
+    "carrier": ["hermes-runtime-headless"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the event_publisher frame; seq is stamped only on session-scoped events."
+    ]
+  },
+  "confidence": "verified-headless",
+  "notes": "Session-less broadcast: it carries no seq."
+}

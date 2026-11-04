@@ -465,6 +465,62 @@ export class KimiMonitorEvidence {
         break;
       }
 
+      // 2.4.1 mirrors every Agent run into the parent journal. spawned/started/
+      // completed are pinned-runtime verified; failed/cancelled are exact-source only.
+      case 'subagent.spawned':
+      case 'subagent.started':
+      case 'subagent.completed':
+      case 'subagent.failed':
+      case 'subagent.cancelled': {
+        const childId = text(body.subagentId);
+        if (!childId) break;
+        if (type === 'subagent.failed' || type === 'subagent.cancelled') markSourceOnly();
+        const terminal = type !== 'subagent.spawned' && type !== 'subagent.started';
+        if (type === 'subagent.spawned') {
+          this.parentAgents.set(childId, text(body.parentAgentId) ?? observed.agentId);
+          const childType = text(body.subagentName);
+          if (childType) this.agentTypes.set(childId, childType);
+        } else if (!this.parentAgents.has(childId)) {
+          this.parentAgents.set(childId, observed.agentId);
+        }
+        // A resumed child reuses its id, so a parent-journal spawned/started opens a new run.
+        if (terminal) this.stoppedAgents.add(childId);
+        else this.stoppedAgents.delete(childId);
+        const child = this.actor(childId)!;
+        const state = terminal ? 'stopped' : 'active';
+        updates.push(
+          upsert('delegation', `actor:${child.runKey}`, {
+            kind: 'actor',
+            actor: child,
+            state,
+            ...(state === 'active' ? { activity: 'Subagent active' } : {}),
+          }),
+        );
+        const model = type === 'subagent.spawned' ? text(body.model) : undefined;
+        if (model) {
+          updates.push(
+            upsert('model', `configured:actor:${child.runKey}`, {
+              kind: 'model',
+              actor: child,
+              providerModelId: model,
+              intent: 'configured',
+            }),
+          );
+        }
+        const effort = type === 'subagent.spawned' ? text(body.thinkingEffort) : undefined;
+        if (effort) {
+          updates.push(
+            upsert('effort', `configured:actor:${child.runKey}`, {
+              kind: 'effort',
+              actor: child,
+              value: effort,
+              intent: 'configured',
+            }),
+          );
+        }
+        break;
+      }
+
       case 'interaction.request': {
         if (body.kind !== 'question') break;
         markSourceOnly();

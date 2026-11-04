@@ -33,7 +33,7 @@ export function resolveKimiHome(
   return resolve(configured ?? env.KIMI_CODE_HOME ?? join(homedir(), '.kimi-code'));
 }
 
-/** Exact 0.34.0 workdir bucket algorithm (`wd_<slug>_<sha256-12>`). */
+/** Kimi workdir bucket algorithm (`wd_<slug>_<sha256-12>`), unchanged from 0.34.0 through 2.4.1. */
 export function normalizeKimiWorkDir(workDir: string): string {
   if (WINDOWS_ABSOLUTE.test(workDir)) return win32.resolve(workDir).replaceAll('\\', '/');
   if (workDir.startsWith('/')) return posix.resolve(workDir);

@@ -33,10 +33,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - vendor: antigravity
+            enabled: ${{ vars.ANTIGRAVITY_LIVE_ENABLED }}
           - vendor: claude
             enabled: ${{ vars.CLAUDE_LIVE_ENABLED }}
           - vendor: codex
             enabled: ${{ vars.CODEX_LIVE_ENABLED }}
+          - vendor: copilot
+            enabled: ${{ vars.COPILOT_LIVE_ENABLED }}
           - vendor: grok
             enabled: ${{ vars.GROK_LIVE_ENABLED }}
           - vendor: hermes
@@ -46,6 +50,8 @@ jobs:
             enabled: ${{ vars.KIMI_LIVE_ENABLED }}
           - vendor: opencode
             enabled: ${{ vars.OPENCODE_LIVE_ENABLED }}
+          - vendor: pi
+            enabled: ${{ vars.PI_LIVE_ENABLED }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         if: ${{ matrix.enabled == 'true' }}
@@ -80,6 +86,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VENDOR: ${{ matrix.vendor }}
+          ANTIGRAVITY_TERMS_APPROVED: ${{ vars.ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED || 'false' }}
           VERSION: ${{ steps.select.outputs.version }}
           GROUND_TRUTH: ${{ steps.select.outputs.ground_truth }}
           SOURCE_REFERENCE: ${{ matrix.source_reference }}
@@ -90,5 +97,6 @@ jobs:
             -f version="$VERSION" \
             -f ground_truth="$GROUND_TRUTH" \
             -f source_reference="$SOURCE_REFERENCE" \
+            -f antigravity_disposable_terms_approved="$ANTIGRAVITY_TERMS_APPROVED" \
             -f confirm=rehearse
           echo "rehearsing $VENDOR $VERSION from $GITHUB_REF_NAME" >> "$GITHUB_STEP_SUMMARY"

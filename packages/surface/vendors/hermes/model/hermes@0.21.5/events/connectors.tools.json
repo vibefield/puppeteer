@@ -1,0 +1,216 @@
+{
+  "surface": "hermes",
+  "surfaceVersion": "0.21.5",
+  "event": "connectors.tools",
+  "channel": "tui-gateway",
+  "channels": ["tui-gateway"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "The scoped profile's cached or current tool list for one connector.",
+  "payloadSchema": {
+    "$ref": "#/$defs/ConnectorToolsParams",
+    "$defs": {
+      "ConnectorToolsParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "refresh": {
+            "default": false,
+            "title": "Refresh",
+            "type": "boolean"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": ["slug"],
+        "title": "ConnectorToolsParams",
+        "type": "object"
+      }
+    }
+  },
+  "resultSchema": {
+    "$ref": "#/$defs/ConnectorToolsResult",
+    "$defs": {
+      "ConnectorToolsResult": {
+        "additionalProperties": false,
+        "properties": {
+          "connector": {
+            "title": "Connector",
+            "type": "string"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": "number"
+          },
+          "source": {
+            "$ref": "#/$defs/ConnectorToolsSource"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "toolkit_version": {
+            "title": "Toolkit Version",
+            "type": "string"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/$defs/ConnectorToolRow"
+            },
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "required": ["connector", "toolkit_version", "etag", "fetched_at", "source", "stale", "tools"],
+        "title": "ConnectorToolsResult",
+        "type": "object"
+      },
+      "ConnectorToolsSource": {
+        "enum": ["cache", "network", "revalidated"],
+        "title": "ConnectorToolsSource",
+        "type": "string"
+      },
+      "ConnectorToolRow": {
+        "additionalProperties": false,
+        "properties": {
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "deprecated": {
+            "title": "Deprecated",
+            "type": "boolean"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "facet": {
+            "$ref": "#/$defs/ConnectorToolFacet"
+          },
+          "hints": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hints",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "no_auth": {
+            "title": "No Auth",
+            "type": "boolean"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": ["slug", "name", "description", "facet", "hints", "categories", "no_auth", "deprecated"],
+        "title": "ConnectorToolRow",
+        "type": "object"
+      },
+      "ConnectorToolFacet": {
+        "enum": ["read", "write", "destructive", "unclassified"],
+        "title": "ConnectorToolFacet",
+        "type": "string"
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "direction": {
+        "type": "string",
+        "enum": ["client"]
+      },
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["connectors.tools"]
+      },
+      "params": {
+        "$ref": "#/$defs/ConnectorToolsParams"
+      }
+    },
+    "required": ["direction", "jsonrpc", "id", "method", "params"],
+    "$defs": {
+      "ConnectorToolsParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "refresh": {
+            "default": false,
+            "title": "Refresh",
+            "type": "boolean"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": ["slug"],
+        "title": "ConnectorToolsParams",
+        "type": "object"
+      }
+    }
+  },
+  "recordChannel": "tui-gateway",
+  "evidence": {
+    "existence": ["hermes-generated-contract"],
+    "shape": ["hermes-generated-contract"],
+    "result": ["hermes-generated-contract"],
+    "carrier": ["hermes-generated-contract"]
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Contract models are enforced at dispatch for unknown params keys only; production logs, rather than rejects, a result or payload that violates its model, so runtime captures remain the occurrence authority.",
+      "OpenModel payloads (additionalProperties true) admit producer-owned fields that the contract does not enumerate.",
+      "Contract declarations establish legal shape and existence, not runtime reachability.",
+      "The carrier is the JSON-RPC frame as the stdio census records it; the census marks its own outbound frames with direction \"client\"."
+    ]
+  },
+  "confidence": "unverified"
+}

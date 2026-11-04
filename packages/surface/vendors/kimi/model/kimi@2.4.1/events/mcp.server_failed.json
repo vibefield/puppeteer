@@ -1,0 +1,69 @@
+{
+  "surface": "kimi",
+  "surfaceVersion": "2.4.1",
+  "event": "mcp.server_failed",
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances."
+    ]
+  },
+  "channel": "wire",
+  "channels": ["wire"],
+  "transport": "jsonl-record",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agentId": {
+        "type": "string"
+      },
+      "serverName": {
+        "type": "string"
+      },
+      "transport": {
+        "type": "string",
+        "enum": ["stdio", "http", "sse"]
+      },
+      "error": {
+        "type": "string"
+      }
+    },
+    "required": ["agentId", "serverName", "transport"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": ["mcp.server_failed"]
+      },
+      "agentId": {
+        "type": "string"
+      },
+      "serverName": {
+        "type": "string"
+      },
+      "transport": {
+        "type": "string",
+        "enum": ["stdio", "http", "sse"]
+      },
+      "error": {
+        "type": "string"
+      },
+      "time": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": ["type", "agentId", "serverName", "transport", "time"]
+  },
+  "recordChannel": "wire",
+  "evidence": {
+    "existence": ["kimi-exact-release-source"],
+    "shape": ["kimi-exact-release-source"],
+    "carrier": ["kimi-exact-release-source"]
+  },
+  "confidence": "unverified"
+}

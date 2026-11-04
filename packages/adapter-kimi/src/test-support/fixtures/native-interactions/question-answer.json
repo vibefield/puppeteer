@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "scenario": "question-answer",
+  "startedAt": "2026-11-04T07:27:28.923Z",
+  "completedAt": "2026-11-04T07:27:31.695Z",
+  "platform": "darwin-arm64",
+  "artifactSha256": "sha256:1a8539eae87ffbd9bf480b8a47beafc9668f66b048b96cfa631310dc12dab3a7",
+  "scope": "selected durable records from the native TUI; not a promotion receipt",
+  "records": [
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "step.begin",
+        "uuid": "4a650905-e51d-4662-8e2d-eb60c9e15353",
+        "turnId": "0",
+        "step": 1
+      },
+      "time": 1793777251428
+    },
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "content.part",
+        "uuid": "70e01166-ad96-4c4d-99ef-a00ad560fa23",
+        "turnId": "0",
+        "step": 1,
+        "stepUuid": "4a650905-e51d-4662-8e2d-eb60c9e15353",
+        "part": {
+          "type": "think",
+          "think": "Returning the requested controlled marker. ",
+          "reasoningKey": "reasoning_content"
+        }
+      },
+      "time": 1793777251506
+    },
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "tool.call",
+        "uuid": "96fdc8b8-4d02-453d-ba4f-892d28932bbe",
+        "turnId": "0",
+        "step": 1,
+        "stepUuid": "4a650905-e51d-4662-8e2d-eb60c9e15353",
+        "toolCallId": "call_live_interaction",
+        "name": "AskUserQuestion",
+        "args": {
+          "questions": [
+            {
+              "question": "SURFACE_KIMI_QUESTION",
+              "options": [
+                {
+                  "label": "Alpha"
+                },
+                {
+                  "label": "Beta"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "time": 1793777251526
+    },
+    {
+      "type": "interaction.request",
+      "agentId": "main",
+      "id": "question_096d7dec-704d-4891-b5e3-203101b502cf",
+      "kind": "question",
+      "toolCallId": "call_live_interaction",
+      "request": {
+        "turnId": 0,
+        "toolCallId": "call_live_interaction",
+        "questions": [
+          {
+            "question": "SURFACE_KIMI_QUESTION",
+            "options": [
+              {
+                "label": "Alpha"
+              },
+              {
+                "label": "Beta"
+              }
+            ]
+          }
+        ]
+      },
+      "time": 1793777251527
+    },
+    {
+      "type": "interaction.resolved",
+      "agentId": "main",
+      "id": "question_096d7dec-704d-4891-b5e3-203101b502cf",
+      "response": {
+        "answers": {
+          "SURFACE_KIMI_QUESTION": "Alpha"
+        },
+        "method": "enter"
+      },
+      "time": 1793777251569
+    },
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "tool.result",
+        "parentUuid": "96fdc8b8-4d02-453d-ba4f-892d28932bbe",
+        "toolCallId": "call_live_interaction",
+        "result": {
+          "output": "{\"answers\":{\"SURFACE_KIMI_QUESTION\":\"Alpha\"}}",
+          "durationMs": 43
+        }
+      },
+      "time": 1793777251571
+    },
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "content.part",
+        "uuid": "2f5723ab-aa50-4a03-a2d5-fdc6fc7c49a2",
+        "turnId": "0",
+        "step": 2,
+        "stepUuid": "52cb429d-6785-4be2-abfc-bbb50366641d",
+        "part": {
+          "type": "think",
+          "think": "Returning the requested controlled marker. ",
+          "reasoningKey": "reasoning_content"
+        }
+      },
+      "time": 1793777251657
+    },
+    {
+      "type": "context.append_loop_event",
+      "agentId": "main",
+      "event": {
+        "type": "content.part",
+        "uuid": "c6b97270-6abf-4b5d-8022-9940d41b6d35",
+        "turnId": "0",
+        "step": 2,
+        "stepUuid": "52cb429d-6785-4be2-abfc-bbb50366641d",
+        "part": {
+          "type": "text",
+          "text": "SURFACE_KIMI_TUI_OK"
+        }
+      },
+      "time": 1793777251657
+    },
+    {
+      "type": "turn.ended",
+      "agentId": "main",
+      "turnId": 0,
+      "reason": "completed",
+      "durationMs": 238,
+      "time": 1793777251660
+    }
+  ]
+}

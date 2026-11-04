@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "vendor": "codex",
+  "vendorVersion": "0.166.0",
+  "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
+  "currentVersion": "0.164.0",
+  "classification": "adaptation-required",
+  "detectorStatus": "candidate",
+  "artifactStatus": "complete",
+  "missingPlatforms": [],
+  "replay": {
+    "status": "passed",
+    "frames": 247,
+    "results": 25,
+    "digest": "fd509bc0b2e955f895fd8951ca5d276b5c3cdcf5e3bf34a868dc3f99731f22e6",
+    "issues": []
+  },
+  "modelDiff": {
+    "added": [
+      "account/gcp/setup",
+      "accountSession/list",
+      "accountSession/switch",
+      "thread/memory/read"
+    ],
+    "removed": [],
+    "changed": [
+      "configWarning",
+      "error",
+      "hook/completed",
+      "hook/started",
+      "hooks/list",
+      "item/completed",
+      "item/started",
+      "process/exited",
+      "review/start",
+      "thread/fork",
+      "thread/list",
+      "thread/read",
+      "thread/resume",
+      "thread/sample",
+      "thread/start",
+      "thread/started",
+      "thread/turns/list",
+      "turn/completed",
+      "turn/start",
+      "turn/started",
+      "turn/steer"
+    ],
+    "behaviorChanged": false,
+    "channelsChanged": false,
+    "detectionChanged": false,
+    "baselineMissing": false
+  },
+  "recommendation": "prepare a draft report; update adapter/persona semantics under human review"
+}
