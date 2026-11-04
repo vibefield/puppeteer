@@ -210,9 +210,15 @@ The check reads `Config.getGlobal()`. At `v1.18.16`,
 `loadGlobal` merges `config.json`, then `opencode.json`, then
 `opencode.jsonc` from the global config directory, so a later file's
 `autoupdate` wins, and a global config that fails to load falls back to
-defaults. The service reads all three files in that order. Any file it cannot
-read the way OpenCode would (JSONC comments, `{env:}` substitution, a
-permission error) leaves the merged view unreadable.
+defaults. The service reads all three files in that order using the same
+`jsonc-parser` library and `allowTrailingComma: true` option as upstream's
+`packages/opencode/src/config/parse.ts`. Comments and trailing commas work
+in every config filename. Parse errors reject the whole document; the
+parser's recovered partial value is never used as configuration evidence.
+Unresolved `{env:}`/`{file:}` substitutions or a permission error leave
+the merged view unreadable. Substitutions happen before upstream parses
+the text and can change keys or make the config fail to load, even when
+the literal document contains an off switch.
 
 `services/distribution.ts` therefore reports:
 

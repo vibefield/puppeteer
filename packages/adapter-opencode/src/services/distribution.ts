@@ -23,6 +23,7 @@ import type {
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
 import { OPENCODE_VERSION_FLAG, parseOpenCodeVersion } from '../detection.js';
+import { parseOpenCodeJsonc } from './config-jsonc.js';
 
 const OPENCODE_NPM_PACKAGE = 'opencode-ai';
 /**
@@ -157,9 +158,12 @@ function selfInstallingRelease(version: string): boolean {
 export type OpenCodeAutoUpdateConfig = { kind: 'absent' } | { kind: 'value'; value: unknown } | { kind: 'unreadable' };
 
 export function readOpenCodeAutoUpdateConfig(document: string): OpenCodeAutoUpdateConfig {
+  // OpenCode substitutes these before parsing, even in keys. Until those inputs are resolved, the literal
+  // document cannot establish the effective off switch or whether the whole config falls back to defaults.
+  if (/\{(?:env|file):[^}]+\}/u.test(document)) return { kind: 'unreadable' };
   let parsed: unknown;
   try {
-    parsed = JSON.parse(document);
+    parsed = parseOpenCodeJsonc(document);
   } catch {
     return { kind: 'unreadable' };
   }
@@ -216,8 +220,8 @@ export function openCodeAutoUpdateState(evidence: OpenCodeAutoUpdateEvidence): A
 export const OPENCODE_GLOBAL_CONFIG_FILES = ['config.json', 'opencode.json', 'opencode.jsonc'] as const;
 
 /**
- * One view of the merged global config. A file Puppeteer cannot read the way OpenCode would (JSONC comments,
- * `{env:}` substitution, permissions) makes the whole view `unreadable`: OpenCode then either reads it differently
+ * One view of the merged global config. A file Puppeteer cannot read the way OpenCode would (unresolved
+ * substitutions, invalid JSONC, permissions) makes the whole view `unreadable`: OpenCode then either reads it differently
  * or falls back to defaults, and Puppeteer cannot tell which.
  */
 export function mergeOpenCodeAutoUpdateConfig(files: readonly OpenCodeAutoUpdateConfig[]): OpenCodeAutoUpdateConfig {

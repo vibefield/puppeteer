@@ -80,6 +80,7 @@ import {
   type SkillItem,
 } from '@vibefield/puppeteer-core';
 import { resolveOpenCodeExecutable } from '../detection.js';
+import { parseOpenCodeJsonc } from './config-jsonc.js';
 import { OPENCODE_PROFILE_ROOT_VARIABLE, openCodeDataHome } from './profiles.js';
 
 export interface OpenCodeExtensionOptions {
@@ -126,66 +127,6 @@ const absent = (error: unknown): boolean => {
   return code === 'ENOENT' || code === 'ENOTDIR';
 };
 
-/** The end of the JSON string that opens at `start`, one past its closing quote. */
-function stringEnd(source: string, start: number): number {
-  let index = start + 1;
-  while (index < source.length) {
-    if (source[index] === '\\') index += 2;
-    else if (source[index] === '"') return index + 1;
-    else index += 1;
-  }
-  return source.length;
-}
-
-/**
- * OpenCode parses every config document as JSONC: comments, and a comma
- * before a closing bracket. Both are dropped outside strings, then the rest is
- * plain JSON.
- */
-function parseJsonc(source: string): unknown {
-  let uncommented = '';
-  for (let index = 0; index < source.length;) {
-    const char = source[index]!;
-    if (char === '"') {
-      const end = stringEnd(source, index);
-      uncommented += source.slice(index, end);
-      index = end;
-    } else if (char === '/' && source[index + 1] === '/') {
-      const end = source.indexOf('\n', index);
-      index = end < 0 ? source.length : end;
-    } else if (char === '/' && source[index + 1] === '*') {
-      const end = source.indexOf('*/', index + 2);
-      if (end < 0) throw new SyntaxError('unterminated comment');
-      uncommented += ' ';
-      index = end + 2;
-    } else {
-      uncommented += char;
-      index += 1;
-    }
-  }
-  let json = '';
-  for (let index = 0; index < uncommented.length;) {
-    const char = uncommented[index]!;
-    if (char === '"') {
-      const end = stringEnd(uncommented, index);
-      json += uncommented.slice(index, end);
-      index = end;
-      continue;
-    }
-    if (char === ',') {
-      let next = index + 1;
-      while (next < uncommented.length && /\s/u.test(uncommented[next]!)) next += 1;
-      if (uncommented[next] === '}' || uncommented[next] === ']') {
-        index += 1;
-        continue;
-      }
-    }
-    json += char;
-    index += 1;
-  }
-  return JSON.parse(json);
-}
-
 /** Objects merge key by key; anything else from the later document replaces. */
 function mergeDeep(target: Json, source: Json): Json {
   const merged: Json = { ...target };
@@ -216,7 +157,7 @@ async function readDocument(path: string): Promise<DocumentRead> {
   if (size > MAX_CONFIG_BYTES) return 'unreadable';
   try {
     // A parser's message can quote the text around a fault, secrets and all: it is never kept.
-    const body = rec(parseJsonc((await readFile(path, 'utf8')).replace(/^﻿/u, '')));
+    const body = rec(parseOpenCodeJsonc((await readFile(path, 'utf8')).replace(/^﻿/u, '')));
     return body ? { path, body } : 'unreadable';
   } catch {
     return 'unreadable';
@@ -225,7 +166,7 @@ async function readDocument(path: string): Promise<DocumentRead> {
 
 function contentDocument(content: string): DocumentRead {
   try {
-    const body = rec(parseJsonc(content));
+    const body = rec(parseOpenCodeJsonc(content));
     return body ? { body } : 'unreadable';
   } catch {
     return 'unreadable';

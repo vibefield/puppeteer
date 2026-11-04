@@ -253,8 +253,62 @@ describe('OpenCode auto-update evidence', () => {
       await at({ 'opencode.json': '{"autoupdate":true}', 'opencode.jsonc': '{"autoupdate":"notify"}' }),
     ).toMatchObject({ autoUpdate: 'disabled' });
     expect(await at({ 'opencode.json': '{"mcp":{}}' })).toMatchObject({ autoUpdate: 'enabled' });
-    // JSONC comments are OpenCode's syntax, not one this service parses, so the merged view stays unknown.
-    expect(await at({ 'opencode.jsonc': '// mine\n{"autoupdate":false}' })).toMatchObject({ autoUpdate: 'unknown' });
+    expect(
+      await at({
+        'config.json': '{"autoupdate":true}',
+        'opencode.json': '// overrides the default\n{"autoupdate":false,}',
+        'opencode.jsonc': '{/* final override */"autoupdate":"notify",}',
+      }),
+    ).toMatchObject({ autoUpdate: 'disabled' });
+    expect(
+      await at({
+        'opencode.json': '{"autoupdate":false}',
+        'opencode.jsonc': '{/* final override */"autoupdate":true,}',
+      }),
+    ).toMatchObject({ autoUpdate: 'enabled' });
+    expect(
+      await at({
+        'opencode.json': '{"autoupdate":false}',
+        'opencode.jsonc': '{"autoupdate":true,,}',
+      }),
+    ).toMatchObject({ autoUpdate: 'unknown' });
+  });
+
+  it('reads JSONC comments and trailing commas without changing strings', () => {
+    const document = [
+      '{',
+      '  // "autoupdate": true,',
+      '  "mcp": {"example": {"url": "https://example.test/a/*literal*/,}"}},',
+      '  "autoupdate": /* preserve the actual switch */ false,',
+      '}',
+    ].join('\r');
+    expect(readOpenCodeAutoUpdateConfig(document)).toEqual({ kind: 'value', value: false });
+    expect(state(document, '1.18.16')).toBe('disabled');
+  });
+
+  it('does not use a partial document recovered from invalid JSONC', () => {
+    for (const document of [
+      '{"autoupdate":false,,}',
+      '{"autoupdate":false, "mcp": {,}}',
+      '{"autoupdate":false} trailing',
+      '{"autoupdate":false /* unterminated',
+    ]) {
+      expect(readOpenCodeAutoUpdateConfig(document)).toEqual({ kind: 'unreadable' });
+      expect(state(document, '1.18.16')).toBe('unknown');
+    }
+  });
+
+  it('does not infer an off switch before OpenCode resolves config substitutions', () => {
+    for (const document of [
+      '{"autoupdate":"{env:UPDATE_MODE}"}',
+      '{"autoupdate":false,"mcp":{"example":{"url":"{env:MCP_URL}"}}}',
+      '{"{env:CONFIG_KEY}":false}',
+      '{"autoupdate":false,"instructions":["{file:instructions.txt}"]}',
+    ]) {
+      expect(readOpenCodeAutoUpdateConfig(document)).toEqual({ kind: 'unreadable' });
+      expect(state(document, '1.18.16')).toBe('unknown');
+      expect(state(document, '1.19.0')).toBe('disabled');
+    }
   });
 
   it('reads the config beside the XDG config root', async () => {
