@@ -12,6 +12,7 @@ import {
   loadCaptureFidelity,
 } from '../packages/surface/scripts/capture-fidelity.mjs';
 import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
+import { ROSETTA_AGENT_CONFIGS } from '../packages/surface/scripts/rosetta-agents.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -202,6 +203,7 @@ export function replayAgentSurface({
     throw new Error(`Imposter persona ${vendor} does not target ${vendor}@${model.manifest.vendorVersion}`);
   }
   const events = new Map(model.events.map((event) => [event.event, event]));
+  const journal = ROSETTA_AGENT_CONFIGS[vendor];
   const httpEvents = httpEventsByRoute(events);
   const kimiFixtures = vendor === 'kimi' ? kimiReplayFiles(captureAbsolute) : undefined;
   const captureFiles = kimiFixtures
@@ -425,14 +427,16 @@ export function replayAgentSurface({
           continue;
         }
         const payload =
-          carrier.type === eventName
-            ? event.transport === 'sse-event' &&
-              carrier.properties !== null &&
-              typeof carrier.properties === 'object' &&
-              !Array.isArray(carrier.properties)
-              ? carrier.properties
-              : Object.fromEntries(Object.entries(carrier).filter(([field]) => field !== 'type' && field !== 'time'))
-            : carrier;
+          journal?.primaryPayloadPath && event.channel === journal.primaryStream
+            ? valueAt(carrier, journal.primaryPayloadPath)
+            : carrier.type === eventName
+              ? event.transport === 'sse-event' &&
+                carrier.properties !== null &&
+                typeof carrier.properties === 'object' &&
+                !Array.isArray(carrier.properties)
+                ? carrier.properties
+                : Object.fromEntries(Object.entries(carrier).filter(([field]) => field !== 'type' && field !== 'time'))
+              : carrier;
         for (const message of validateCaptured(event.payloadSchema, payload, representation)) {
           issues.push({ kind: 'payload-mismatch', location, event: eventName, message });
         }

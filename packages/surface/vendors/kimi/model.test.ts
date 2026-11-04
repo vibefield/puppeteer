@@ -289,7 +289,9 @@ describe(`the Kimi ${version} candidate ASM`, () => {
   });
 
   it('binds the exact candidate identity and contains no detectable private material', () => {
-    const artifact = model.evidenceIndex?.artifacts[0] as Record<string, unknown>;
+    const artifact = model.evidenceIndex?.artifacts.find(
+      (entry) => entry.id === `installed-kimi-${version}-linux-x64`,
+    ) as Record<string, unknown>;
     expect(artifact.versionOutput).toBe(version);
     expect((artifact.integrity as Record<string, unknown>).sha256).toBe(
       'sha256:f2b3634c17b604e5b0f0c578b6a787fd01bcafb40a3c0dd62203ae14ff2ea068',
