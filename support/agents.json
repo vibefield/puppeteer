@@ -13,7 +13,7 @@
       "status": "baseline-pending",
       "blockers": [
         "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed.",
-        "Upstream stable is 1.4.12; the candidate stays 1.1.20 because 1.4.12 is not yet captured into Surface. A hermetic linux-x64 Rosetta farm of 1.4.12 runs end to end once Rosetta commit a6fbaadfbc3b3d9f7daa3ba64779383542aa5083 (Gemini mock follows the declared run_command schema; unpushed) is in place, but importing it still needs: (1) a 1.4.12 writer document extracted from the 1.4.12 binary's FileDescriptorSet, since the only protobuf grammar is the 1.2.9 extraction and Rosetta pins the newest farmed release with writer evidence; (2) Rosetta antigravity raw types and goldens for the transcript drift (run_command results are recorded as GENERIC steps with no exit_code, PLANNER_RESPONSE carries input/cache_read/output token counts, CHECKPOINT no longer appears, run_command arguments are CommandLine/toolSummary/WaitMsBeforeAsync); (3) adapter rework, because tool results are correlated by the RUN_COMMAND step type and exit_code and would stay unresolved on 1.4.12; and (4) the Surface census harness re-run for 1.4.12 on all four platforms."
+        "Upstream stable is 1.4.12; the candidate stays 1.1.20 because 1.4.12 is not yet captured into Surface. A hermetic linux-x64 Rosetta farm of 1.4.12 runs end to end once Rosetta commit a6fbaadfbc3b3d9f7daa3ba64779383542aa5083 (Gemini mock follows the declared run_command schema; vibefield/rosetta#39, not yet merged) is in place, but importing it still needs: (1) a 1.4.12 writer document extracted from the 1.4.12 binary's FileDescriptorSet, since the only protobuf grammar is the 1.2.9 extraction and Rosetta pins the newest farmed release with writer evidence; (2) Rosetta antigravity raw types and goldens for the transcript drift (run_command results are recorded as GENERIC steps with no exit_code, PLANNER_RESPONSE carries input/cache_read/output token counts, CHECKPOINT no longer appears, run_command arguments are CommandLine/toolSummary/WaitMsBeforeAsync); (3) adapter rework, because tool results are correlated by the RUN_COMMAND step type and exit_code and would stay unresolved on 1.4.12; and (4) the Surface census harness re-run for 1.4.12 on all four platforms."
       ]
     },
     {
@@ -111,7 +111,7 @@
       "status": "baseline-pending",
       "blockers": [
         "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed.",
-        "The 1.0.105 Surface evidence is imported from Rosetta commit 8ebdd48d2cd52586ee7c524b6a36261295ce4ead (hermetic linux-x64 BYOK farm), which is not yet landed in vibefield/rosetta; land it before relying on this candidate, then re-run surface:census:copilot and confirm the import is byte-identical. The other three platforms carry no 1.0.105 capture."
+        "The 1.0.105 Surface evidence is imported from Rosetta commit 8ebdd48d2cd52586ee7c524b6a36261295ce4ead (hermetic linux-x64 BYOK farm), which is pushed on the vibefield/rosetta branch groundtruth/upstream-rosetta-trio (draft PR vibefield/rosetta#39) but not yet merged; merge it before relying on this candidate, then re-run surface:census:copilot from Rosetta main and confirm the import is byte-identical. The other three platforms carry no 1.0.105 capture."
       ]
     },
     {
@@ -210,7 +210,7 @@
       "status": "baseline-pending",
       "blockers": [
         "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed.",
-        "The 1.5.0 Surface evidence is imported from Rosetta commit 768de81d529d187523cbdf2f0995c6f63a6be8fc (hermetic linux-x64 farm of the npm package, plus a writer document derived from the v0.84.3..v1.5.0 source diff), which is not yet landed in vibefield/rosetta; land it, then re-run surface:census:pi and confirm the import is byte-identical. The acquired GitHub release binaries carry no 1.5.0 capture on any platform."
+        "The 1.5.0 Surface evidence is imported from Rosetta commit 768de81d529d187523cbdf2f0995c6f63a6be8fc (hermetic linux-x64 farm of the npm package, plus a writer document derived from the v0.84.3..v1.5.0 source diff), which is pushed on the vibefield/rosetta branch groundtruth/upstream-rosetta-trio (draft PR vibefield/rosetta#39) but not yet merged; merge it, then re-run surface:census:pi from Rosetta main and confirm the import is byte-identical. The acquired GitHub release binaries carry no 1.5.0 capture on any platform."
       ]
     }
   ]

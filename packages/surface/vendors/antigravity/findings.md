@@ -67,7 +67,7 @@ the exact `1.1.20` artifacts before promotion.
 On 2026-11-03 Rosetta farmed `agy_cli_linux_x64.tar.gz` 1.4.12 (archive
 SHA-256 `3368d1923fc869f21ec8fce83252a8c96c89283aac9393958ac91fbf7a3949e4`)
 hermetically against its loopback Gemini mock. The run needed a mock fix
-(Rosetta `a6fbaadfbc3b3d9f7daa3ba64779383542aa5083`, unpushed): 1.4.12
+(Rosetta `a6fbaadfbc3b3d9f7daa3ba64779383542aa5083`, vibefield/rosetta#39, not yet merged): 1.4.12
 declares `run_command` with a strict schema (`CommandLine`, `toolSummary`,
 `WaitMsBeforeAsync` required) and records the old `commandLine` call as an
 INVALID step. With the fix the farm completes, and it shows real drift that

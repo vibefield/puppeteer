@@ -21,7 +21,8 @@ extracted artifact before it can enter the evidence workflow.
 ## 1.0.105 capture and drift from 1.0.80
 
 The 1.0.105 corpus was farmed by Rosetta (commit
-`8ebdd48d2cd52586ee7c524b6a36261295ce4ead`, not yet landed upstream) from the
+`8ebdd48d2cd52586ee7c524b6a36261295ce4ead`, on branch `groundtruth/upstream-rosetta-trio`,
+vibefield/rosetta#39, not yet merged) from the
 npm `@github/copilot-linux-x64` executable on linux-x64, offline, against
 Rosetta's loopback BYOK mock model; the 1.0.80 corpus was farmed on
 darwin-arm64. Unlike the 1.0.80 package, the 1.0.105 platform package is a
