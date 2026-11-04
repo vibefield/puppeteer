@@ -30,14 +30,18 @@ export const kimiRules = extendRules(
     idKey: /^(?:hash|systemPromptHash|toolsHash|promptCacheKey)$/,
     timestampKey: /^(?:created|created_at)$/,
     pathKey: /^(?:agentsMdPaths|homedir|sessionDir|workDir)$/,
-    // 2.4.1 moved the date disclosure into injection origins (`origin.disclosure`).
-    sensitiveTextKey: /^(?:arguments|description|systemPrompt|think|localDate|timeZone)$/,
+    // 2.4.1 persists the date disclosure in `date_change` injection origins (`origin.disclosure`).
+    // `resultSummary` (subagent.completed) and `errorMessage` (turn.step.retrying,
+    // agent.turn.ended) carry model output and provider error text; the hook
+    // copies of the same text are already redacted under `message`/`error`.
+    sensitiveTextKey: /^(?:arguments|description|systemPrompt|think|localDate|timeZone|resultSummary|errorMessage)$/,
     sensitiveContainer: /^(?:args|environmentDisclosure|tool_output)$/,
     // Native structural identifiers, not host facts: `main`/`agent-<n>` name the
     // journal directory (`agents/<id>/wire.jsonl`, already disclosed by the
     // fixture path) and the parent/child join; `local` is the runtime binding.
-    // A `wd_<slug>_a11a5ed0…` value is a workdir key whose hash was aliased below.
-    structuralEnumValue: /^(?:main|agent-\d{1,4}|local|wd_[a-z0-9._-]{1,40}_a11a5ed0[0-9a-f]{4})$/,
+    // `wd_workspace_a11a5ed0…` is a workdir key whose slug and hash were pinned below;
+    // any other slug is a real cwd basename and stays a leak.
+    structuralEnumValue: /^(?:main|agent-\d{1,4}|local|wd_workspace_a11a5ed0[0-9a-f]{4})$/,
     unsafeTextPatterns: [
       /\/private\/var\/folders\/[^\s"']+/,
       /\/private\/tmp\/puppeteer-kimi-census-[^\s"']+/,
@@ -52,10 +56,11 @@ export const kimiRules = extendRules(
 /**
  * What the repository-wide capture gate applies to committed Kimi captures: the
  * shared defaults plus only the closed structural-identifier allowance above
- * (`main`, `agent-<n>`, `local`, and an aliased workdir key).
+ * (`main`, `agent-<n>`, `local`, and a pinned workdir key), and Kimi's
+ * free-text keys, so the gate is never looser than the redactor about them.
  */
 export const kimiRepositoryGateRules = extendRules(
-  { structuralEnumValue: kimiRules.structuralEnumValue },
+  { structuralEnumValue: kimiRules.structuralEnumValue, sensitiveTextKey: kimiRules.sensitiveTextKey },
   defaultRules,
 );
 
@@ -78,8 +83,10 @@ const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 /**
  * Pin ISO-8601 wall-clock strings to the shared redacted epoch, and keep Kimi's
  * `wd_<slug>_<sha256-12>` workdir-key shape. The hash covers the
- * harness temp path, so it is replaced with a marker-prefixed digest of itself;
- * the slug is the bounded basename slug Kimi derives (`workspace` here).
+ * harness temp path, so it is replaced with a marker-prefixed digest of itself.
+ * The slug is the basename slug Kimi derives from the cwd; the harness runs in
+ * `workspace`, and any other slug names a real directory, so it is pinned to
+ * `workspace` too.
  */
 function pinNativeShapes(value) {
   if (Array.isArray(value)) return value.map(pinNativeShapes);
@@ -87,8 +94,9 @@ function pinNativeShapes(value) {
     if (typeof value !== 'string') return value;
     if (ISO_INSTANT.test(value)) return REDACTED_ISO;
     const match = WORKDIR_KEY.exec(value);
-    if (!match || match[2].startsWith('a11a5ed0')) return value;
-    return `wd_${match[1]}_a11a5ed0${createHash('sha256').update(match[2]).digest('hex').slice(0, 4)}`;
+    if (!match) return value;
+    if (match[2].startsWith('a11a5ed0')) return `wd_workspace_${match[2]}`;
+    return `wd_workspace_a11a5ed0${createHash('sha256').update(match[2]).digest('hex').slice(0, 4)}`;
   }
   return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, pinNativeShapes(child)]));
 }

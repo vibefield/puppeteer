@@ -51,6 +51,15 @@ describe('Kimi capture privacy', () => {
         { type: 'runtime.set_binding', workspaceId: 'wd_workspace_f9c0591d22a8', runtimeId: 'local', agentId: 'main' },
         { type: 'prompt.completed', agentId: 'main', promptId: 'msg_01M6', finishedAt: '2026-11-03T19:16:32.874Z' },
         { type: 'subagent.spawned', subagentId: 'agent-0', parentAgentId: 'main', taskId: 'agent-30o4xo9n' },
+        // A cwd basename other than the harness `workspace` is a real directory name.
+        {
+          type: 'runtime.set_binding',
+          workspaceId: 'wd_acme-project_f9c0591d22a8',
+          runtimeId: 'local',
+          agentId: 'main',
+        },
+        { type: 'subagent.completed', subagentId: 'agent-0', resultSummary: 'private child answer' },
+        { type: 'turn.step.retrying', agentId: 'main', errorName: 'APIError', errorMessage: 'private provider text' },
       ];
       writeFileSync(join(session, 'agents', 'main', 'wire.jsonl'), wire.map((r) => JSON.stringify(r)).join('\n'));
       writeFileSync(join(session, 'state.json'), JSON.stringify({ id: 'session_x', cwd: '/tmp/a/workspace' }));
@@ -74,6 +83,9 @@ describe('Kimi capture privacy', () => {
       expect(records[2].finishedAt).toBe('2026-01-01T00:00:00.000Z');
       expect(records[3]).toMatchObject({ subagentId: 'agent-0', parentAgentId: 'main' });
       expect(records[3].taskId).toMatch(/^anon-[0-9a-f]{16}$/);
+      expect(records[4].workspaceId).toMatch(/^wd_workspace_a11a5ed0[0-9a-f]{4}$/);
+      expect(records[5].resultSummary).toBe('<redacted:resultSummary>');
+      expect(records[6]).toMatchObject({ errorName: 'APIError', errorMessage: '<redacted:errorMessage>' });
       for (const record of records) {
         expect(checkRecord(record, kimiRules)).toEqual([]);
         expect(checkRecord(record, kimiRepositoryGateRules)).toEqual([]);
@@ -81,6 +93,23 @@ describe('Kimi capture privacy', () => {
       expect(checkRecord({ finishedAt: '2026-11-03T19:16:32.874Z' }, kimiRules)).not.toEqual([]);
     } finally {
       rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('flags a workdir key whose slug is not the harness workspace in both the redactor and the repository gate', () => {
+    for (const rules of [kimiRules, kimiRepositoryGateRules]) {
+      expect(checkRecord({ workspaceId: 'wd_workspace_a11a5ed01234' }, rules)).toEqual([]);
+      expect(checkRecord({ workspaceId: 'wd_acme-project_a11a5ed01234' }, rules)).not.toEqual([]);
+    }
+  });
+
+  it('flags verbatim subagent summaries and provider error text in the repository gate', () => {
+    for (const record of [
+      { type: 'subagent.completed', resultSummary: 'private child answer' },
+      { type: 'turn.step.retrying', errorMessage: 'private provider text' },
+      { type: 'agent.turn.ended', errorMessage: 'private provider text' },
+    ]) {
+      expect(checkRecord(record, kimiRepositoryGateRules)).not.toEqual([]);
     }
   });
 });

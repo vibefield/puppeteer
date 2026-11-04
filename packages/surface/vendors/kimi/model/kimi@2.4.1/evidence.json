@@ -32,7 +32,7 @@
       "kind": "capture-set",
       "path": "packages/surface/vendors/kimi/captures/kimi@2.4.1",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "b3e84b5c5430eeb4413bdf4404e321acf4b89721f6e200a69a0188e470d49bdd"
+      "sha256": "a930ca027f80d8d5572ea8f6afefed6acea27891dc8ddaddf0a5cf9710c51585"
     },
     {
       "id": "binary-probes",
@@ -52,7 +52,9 @@
       "id": "agent-surface-model",
       "kind": "model-tree",
       "path": "packages/surface/vendors/kimi/model/kimi@2.4.1",
-      "exclude": ["evidence.json"],
+      "exclude": [
+        "evidence.json"
+      ],
       "digestAlgorithm": "sha256-path-content-v1",
       "sha256": "32538767ff8cf45f6a30bca6f430d43ab41c590109eeb6d84eca1cb6dcbd63b0"
     }

@@ -3,7 +3,7 @@
   "provider": "kimi",
   "adapterPackage": "@vibefield/puppeteer-adapter-kimi",
   "groundTruth": "packages/surface/vendors/kimi/groundtruth.json",
-  "groundTruthSha256": "b5785d494177c919e2878ba3931bf3b2de539375b010fe2f39f408c464465d3a",
+  "groundTruthSha256": "9d39359bca5fec64ced493d83749c120edca7119782d23ab4ba81541318b11c1",
   "semanticEvents": [
     "agent.message.appended",
     "agent.turn.ended",

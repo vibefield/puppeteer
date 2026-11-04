@@ -292,4 +292,19 @@ describe('Kimi 2.4.1 captures', () => {
     expect(checkCaptureDirectory(capturesRoot, kimiRules)).toEqual([]);
     expect(checkCaptureDirectory(capturesRoot, kimiRepositoryGateRules)).toEqual([]);
   });
+
+  it('redacts subagent result summaries and provider error text while keeping structural error names', () => {
+    expect(wire('subagent-turn').find((record) => record.type === 'subagent.completed')).toMatchObject({
+      resultSummary: '<redacted:resultSummary>',
+    });
+    for (const name of ['provider-retry', 'malformed-stream']) {
+      const retrying = wire(name).find((record) => record.type === 'turn.step.retrying');
+      expect(retrying.errorMessage).toBe('<redacted:errorMessage>');
+      expect(retrying.errorName).toMatch(/Error$/);
+    }
+    expect(wire('provider-error').find((record) => record.type === 'agent.turn.ended')).toMatchObject({
+      outcome: 'failed',
+      errorMessage: '<redacted:errorMessage>',
+    });
+  });
 });

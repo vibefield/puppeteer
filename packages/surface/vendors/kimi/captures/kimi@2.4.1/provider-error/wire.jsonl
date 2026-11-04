@@ -15,7 +15,7 @@
 {"type":"llm.request","agentId":"main","kind":"loop","provider":"openai","model":"puppeteer-kimi-census","modelAlias":"__kimi_env_model__","thinkingEffort":"on","thinkingKeep":"all","toolSelect":false,"systemPromptHash":"anon-b2d53db5b33b2c54","toolsHash":"anon-5a5d617d483a8c1b","messageCount":3,"turnStep":"0.1","time":1767225600000}
 {"type":"context.append_loop_event","agentId":"main","event":{"type":"step.end","uuid":"a11a5ed0-4933-42c1-92ae-c98196b4672f","turnId":"0","step":1,"finishReason":"error"},"time":1767225600000}
 {"type":"turn.step.interrupted","agentId":"main","turnId":0,"step":1,"reason":"error","message":"<redacted:message>","time":1767225600000}
-{"turnId":0,"outcome":"failed","errorMessage":"[object Object]","type":"agent.turn.ended","time":1767225600000,"kind":"event"}
+{"turnId":0,"outcome":"failed","errorMessage":"<redacted:errorMessage>","type":"agent.turn.ended","time":1767225600000,"kind":"event"}
 {"type":"turn.ended","agentId":"main","turnId":0,"reason":"failed","error":{"code":"provider.auth_error","message":"<redacted:message>","name":"APIStatusError","details":{"statusCode":401,"requestId":null,"traceId":null},"retryable":false},"durationMs":76,"time":1767225600000}
 {"type":"token_counting.turn_recorded","agentId":"main","turnId":0,"length":4,"tokens":188,"time":1767225600000}
 {"type":"prompt.completed","agentId":"main","promptId":"msg_a11a5ed0e9388cabb8aac47733","finishedAt":"2026-01-01T00:00:00.000Z","reason":"failed","time":1767225600000}
