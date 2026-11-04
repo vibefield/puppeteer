@@ -9,7 +9,7 @@ const workflow = readFileSync(resolve(root, '.github/workflows/agent-surface-pro
 const adaptation = readFileSync(resolve(root, '.github/workflows/agent-adaptation.yml'), 'utf8');
 const live = readFileSync(resolve(root, '.github/workflows/agent-live.yml'), 'utf8');
 const adaptationVendorChoices = /options: \[antigravity, claude, codex, copilot, grok, hermes, kimi, opencode, pi\]/;
-const promotionVendorChoices = /options: \[claude, codex, grok, hermes, kimi, opencode, pi\]/;
+const promotionVendorChoices = /options: \[claude, codex, copilot, grok, hermes, kimi, opencode, pi\]/;
 const protectedLiveTests = Object.fromEntries(
   Object.entries({
     claude: 'native-tui.live.test.ts',
@@ -19,6 +19,7 @@ const protectedLiveTests = Object.fromEntries(
     kimi: 'driver.live.test.ts',
     opencode: 'opencode.live.test.ts',
     pi: 'driver.live.test.ts',
+    copilot: 'driver.live.test.ts',
   }).map(([vendor, file]) => [
     vendor,
     readFileSync(resolve(root, 'packages', `adapter-${vendor}`, 'src', file), 'utf8'),
@@ -222,7 +223,7 @@ test('the live lanes run on fresh GitHub-hosted runners that nothing later trust
     pinnedReal,
     /--version-output-file "\.agent-adaptation\/live-artifacts\/\$\{\{ matrix\.platform \}\}\/version\.txt"/,
   );
-  for (const vendor of ['claude', 'codex', 'grok', 'hermes', 'opencode', 'kimi', 'pi']) {
+  for (const vendor of ['claude', 'codex', 'grok', 'hermes', 'opencode', 'kimi', 'pi', 'copilot']) {
     assert.ok(pinnedReal.includes(`@vibefield/puppeteer-adapter-${vendor} test --testTimeout=15000`), vendor);
   }
   // The acquisition is read again after a human approval, so it is kept as long as the verification.
@@ -459,4 +460,14 @@ test('Pi preserves and verifies the complete release bundle around its native-TU
   assert.match(protectedLiveTests.pi, /resume: sessionId/);
   assert.match(protectedLiveTests.pi, /replay && source === 'native-log'/);
   assert.match(protectedLiveTests.pi, /expect\(provider\.requests\)\.toHaveLength\(1\)/);
+});
+
+test('Copilot binds the exact executable to a native-TUI turn and same-session journal resume', () => {
+  const source = step(jobs['pinned-real'], 'Copilot pinned-real native-TUI/resume lane');
+  assert.match(source, /COPILOT_LIVE: '1'/);
+  assert.match(source, /PUPPETEER_COPILOT_BIN:.*outputs\.outputName/);
+  assert.match(protectedLiveTests.copilot, /testId: 'copilot:native-tui-journal'/);
+  assert.match(protectedLiveTests.copilot, /resume: sessionId/);
+  assert.match(protectedLiveTests.copilot, /replay && source === 'native-log'/);
+  assert.match(protectedLiveTests.copilot, /expect\(provider\.requests\)\.toHaveLength\(1\)/);
 });

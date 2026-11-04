@@ -108,7 +108,7 @@
       "candidateVersion": "1.0.105",
       "status": "baseline-pending",
       "blockers": [
-        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed.",
+        "The protected four-platform native-TUI/resume lane is implemented. All 130 local adapter tests pass with the exact 1.0.105 executable, including prompt confirmation, native completion and same-session journal replay against a loopback provider. Matching-platform workflow verification and protected promotion are still pending.",
         "The 1.0.105 Surface evidence is imported from Rosetta commit 8ebdd48d2cd52586ee7c524b6a36261295ce4ead (hermetic linux-x64 BYOK farm), whose contents are now merged via vibefield/rosetta#39 as 4282c44276d070958fbc442ca7a5b7021354aa5e. On 2026-11-04, re-importing and rebuilding the model from that Rosetta main commit reproduced the committed evidence byte for byte. The other three platforms carry no 1.0.105 capture."
       ]
     },

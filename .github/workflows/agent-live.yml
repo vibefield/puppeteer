@@ -37,6 +37,8 @@ jobs:
             enabled: ${{ vars.CLAUDE_LIVE_ENABLED }}
           - vendor: codex
             enabled: ${{ vars.CODEX_LIVE_ENABLED }}
+          - vendor: copilot
+            enabled: ${{ vars.COPILOT_LIVE_ENABLED }}
           - vendor: grok
             enabled: ${{ vars.GROK_LIVE_ENABLED }}
           - vendor: hermes

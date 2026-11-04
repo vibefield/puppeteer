@@ -175,7 +175,8 @@ Residual items the fixers recorded but could not close in a container:
   path and still checks the complete envelope. All nine vendors' committed captures now have replay tests.
   The corrected acquisition and analysis completed successfully in
   [run 41787728386](https://github.com/vibefield/puppeteer/actions/runs/41787728386).
-- **Copilot and Antigravity** still have no protected promotion lane. Pi now joins Claude, Codex, Grok, Hermes, Kimi and OpenCode in the protected workflow.
+- **Copilot:** the protected native-TUI/resume lane is now implemented. All 130 local adapter tests pass with the exact 1.0.105 executable; the live proof confirms prompt submission, native completion and same-session journal replay with exactly one loopback provider request. Four-platform rehearsal and protected promotion remain pending.
+- **Antigravity** is now the only vendor without a protected promotion lane; its upstream writer and adapter migration must precede that proof.
 
 ### 4. Promotion
 
