@@ -1,0 +1,23 @@
+{
+  "binarySha256": "34423fc9b0af3841e7646aa72a2d40ffeab8218b22d1cb99eac7355f9eba31e3",
+  "files": [
+    {
+      "name": "third_party/jetski/cortex_pb/cortex.proto",
+      "offset": 65005537,
+      "length": 209821,
+      "sha256": "da744c4a5c398581560b190a316d8654ff4db0ec0a9dfb7408b8f54675a69469"
+    },
+    {
+      "name": "third_party/jetski/codeium_common_pb/codeium_common.proto",
+      "offset": 64631738,
+      "length": 185840,
+      "sha256": "482b9040e9501e805e80aaf6830a61001cb634d6da12def6cdb13519d51fcb19"
+    },
+    {
+      "name": "google/protobuf/timestamp.proto",
+      "offset": 58363757,
+      "length": 258,
+      "sha256": "677ffd2bf8f2b78cd407039ddf76d8033df80f0a885e23a793c99298b926895f"
+    }
+  ]
+}

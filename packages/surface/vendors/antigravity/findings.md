@@ -89,6 +89,16 @@ writer evidence, and its only protobuf grammar is the 1.2.9 FileDescriptorSet
 extraction, so 1.4.12 first needs its own descriptor extraction, plus Rosetta
 raw types for the transcript drift. The ledger's blockers list these steps.
 
+On 2026-11-04 the six writer message schemas were independently extracted from
+1.4.12's official darwin-arm64 executable. Their projected field shapes match
+1.2.9 exactly. The pinned binary identity, descriptor offsets/hashes, selected
+message descriptors and reproducible extractor are retained in
+[`references/antigravity@1.4.12`](references/antigravity@1.4.12/README.md).
+This closes the missing descriptor-extraction step; the store-binding, transcript
+fixture, Rosetta raw-type and adapter migration work is still outstanding. The
+active canonical model remains 1.1.20.
+
+
 ## Historical survey: 1.1.12
 
 Status: Stage 0 complete. Stage 1 authorized print-mode survey in progress on

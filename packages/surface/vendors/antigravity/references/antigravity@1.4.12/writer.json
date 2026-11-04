@@ -1,0 +1,1926 @@
+{
+  "format": "rosetta-groundtruth/1",
+  "agent": "antigravity",
+  "agent_version": "1.4.12",
+  "writer_version": "1.4.12",
+  "evidence": "writer",
+  "generator": "Antigravity 1.4.12 darwin-arm64 embedded FileDescriptorProto extraction; schema only, no payloads; see extraction.json",
+  "data_root": "~/.gemini/antigravity-cli",
+  "streams": [
+    {
+      "id": "conversation-db",
+      "glob": "conversations/*.db*",
+      "file_format": "sqlite",
+      "discipline": "database",
+      "evidence": "writer",
+      "notes": "Descriptor evidence establishes field numbers and types only. Store layout, occurrence, token accounting and response semantics require independent runtime evidence.",
+      "discriminator": "table",
+      "facets": [
+        {
+          "id": "protobuf",
+          "path": "steps.metadata / gen_metadata.data; candidate bindings inherited from the prior survey, requiring runtime validation for this release",
+          "discriminator": "message",
+          "record_types": {
+            "exa.cortex_pb.CortexStepMetadata": {
+              "observed": 0,
+              "shape": {
+                "kind": "object",
+                "fields": {
+                  "arguments_order#5": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "string"
+                      }
+                    },
+                    "required": false
+                  },
+                  "completed_at#8": {
+                    "shape": {
+                      "kind": "object",
+                      "fields": {
+                        "nanos#2": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "seconds#1": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        }
+                      }
+                    },
+                    "required": false
+                  },
+                  "cortex_request_source#19": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "created_at#1": {
+                    "shape": {
+                      "kind": "object",
+                      "fields": {
+                        "nanos#2": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "seconds#1": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        }
+                      }
+                    },
+                    "required": false
+                  },
+                  "data_access#36": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "execution_id#12": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "finished_generating_at#7": {
+                    "shape": {
+                      "kind": "object",
+                      "fields": {
+                        "nanos#2": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "seconds#1": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        }
+                      }
+                    },
+                    "required": false
+                  },
+                  "flow_credits_used#14": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "generator_model#11": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "internal_metadata#26": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "is_interrupting_step#33": {
+                    "shape": {
+                      "kind": "boolean"
+                    },
+                    "required": false
+                  },
+                  "last_completed_chunk_at#22": {
+                    "shape": {
+                      "kind": "object",
+                      "fields": {
+                        "nanos#2": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "seconds#1": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        }
+                      }
+                    },
+                    "required": false
+                  },
+                  "model_api_content_id#35": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "model_cost#10": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "model_info#24": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "model_usage#9": {
+                    "shape": {
+                      "kind": "object",
+                      "fields": {
+                        "api_provider#6": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "cache_read_tokens#5": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "cache_tokens_details#15": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "cache_write_tokens#4": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "candidates_tokens_details#16": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "input_tokens#2": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "message_id#7": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "model#1": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "output_tokens#3": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "prompt_tokens_details#14": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "provider_assigned_message_id#12": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "response_header#8": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "response_id#11": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "response_output_tokens#10": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "service_tier#13": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "thinking_output_tokens#9": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "tool_use_prompt_tokens_details#17": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        }
+                      }
+                    },
+                    "required": false
+                  },
+                  "modified_tool_call#29": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "non_standard_credit_reasons#18": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "number"
+                      }
+                    },
+                    "required": false
+                  },
+                  "pre_tool_hook_results#34": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "prompt_credits_used#15": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "remote_control_details#37": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "requested_model#13": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "retry_infos#28": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "object",
+                        "fields": {
+                          "consumed_credits#6": {
+                            "shape": {
+                              "kind": "array",
+                              "items": {
+                                "kind": "unknown"
+                              }
+                            },
+                            "required": false
+                          },
+                          "error#3": {
+                            "shape": {
+                              "kind": "string"
+                            },
+                            "required": false
+                          },
+                          "retry_reason#5": {
+                            "shape": {
+                              "kind": "number"
+                            },
+                            "required": false
+                          },
+                          "sherlog_link#1": {
+                            "shape": {
+                              "kind": "string"
+                            },
+                            "required": false
+                          },
+                          "trace_id#4": {
+                            "shape": {
+                              "kind": "string"
+                            },
+                            "required": false
+                          },
+                          "usage#2": {
+                            "shape": {
+                              "kind": "object",
+                              "fields": {
+                                "api_provider#6": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "cache_read_tokens#5": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "cache_tokens_details#15": {
+                                  "shape": {
+                                    "kind": "array",
+                                    "items": {
+                                      "kind": "unknown"
+                                    }
+                                  },
+                                  "required": false
+                                },
+                                "cache_write_tokens#4": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "candidates_tokens_details#16": {
+                                  "shape": {
+                                    "kind": "array",
+                                    "items": {
+                                      "kind": "unknown"
+                                    }
+                                  },
+                                  "required": false
+                                },
+                                "input_tokens#2": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "message_id#7": {
+                                  "shape": {
+                                    "kind": "string"
+                                  },
+                                  "required": false
+                                },
+                                "model#1": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "output_tokens#3": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "prompt_tokens_details#14": {
+                                  "shape": {
+                                    "kind": "array",
+                                    "items": {
+                                      "kind": "unknown"
+                                    }
+                                  },
+                                  "required": false
+                                },
+                                "provider_assigned_message_id#12": {
+                                  "shape": {
+                                    "kind": "string"
+                                  },
+                                  "required": false
+                                },
+                                "response_header#8": {
+                                  "shape": {
+                                    "kind": "array",
+                                    "items": {
+                                      "kind": "unknown"
+                                    }
+                                  },
+                                  "required": false
+                                },
+                                "response_id#11": {
+                                  "shape": {
+                                    "kind": "string"
+                                  },
+                                  "required": false
+                                },
+                                "response_output_tokens#10": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "service_tier#13": {
+                                  "shape": {
+                                    "kind": "string"
+                                  },
+                                  "required": false
+                                },
+                                "thinking_output_tokens#9": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "tool_use_prompt_tokens_details#17": {
+                                  "shape": {
+                                    "kind": "array",
+                                    "items": {
+                                      "kind": "unknown"
+                                    }
+                                  },
+                                  "required": false
+                                }
+                              }
+                            },
+                            "required": false
+                          },
+                          "wait_time#7": {
+                            "shape": {
+                              "kind": "unknown"
+                            },
+                            "required": false
+                          }
+                        }
+                      }
+                    },
+                    "required": false
+                  },
+                  "sensitivity_level#39": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "snapshot_metadata#25": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "source#3": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "source_trajectory_step_info#20": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "started_at#32": {
+                    "shape": {
+                      "kind": "object",
+                      "fields": {
+                        "nanos#2": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "seconds#1": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        }
+                      }
+                    },
+                    "required": false
+                  },
+                  "step_generation_version#21": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "tool_action#31": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "tool_call#4": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "tool_call_choice_reason#17": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "tool_call_choices#16": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "tool_call_output_tokens#23": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "tool_source#38": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "tool_summary#30": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "viewable_at#6": {
+                    "shape": {
+                      "kind": "object",
+                      "fields": {
+                        "nanos#2": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "seconds#1": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        }
+                      }
+                    },
+                    "required": false
+                  },
+                  "wait_for_previous_tools#27": {
+                    "shape": {
+                      "kind": "boolean"
+                    },
+                    "required": false
+                  }
+                }
+              }
+            },
+            "exa.cortex_pb.CortexStepGeneratorMetadata": {
+              "observed": 0,
+              "shape": {
+                "kind": "object",
+                "fields": {
+                  "chat_model#1": {
+                    "shape": {
+                      "kind": "object",
+                      "fields": {
+                        "chat_start_metadata#9": {
+                          "shape": {
+                            "kind": "unknown"
+                          },
+                          "required": false
+                        },
+                        "completion_config#15": {
+                          "shape": {
+                            "kind": "unknown"
+                          },
+                          "required": false
+                        },
+                        "consumed_credits#18": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "credit_cost#13": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "custom_metadata#20": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "last_cache_index#6": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "message_metadata#10": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "message_prompts#2": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "model#3": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "model_cost#5": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "model_display_name#21": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "prompt_sections#16": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "response_model#19": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "response_model_full#22": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "retries#14": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "retry_infos#17": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "object",
+                              "fields": {
+                                "consumed_credits#6": {
+                                  "shape": {
+                                    "kind": "array",
+                                    "items": {
+                                      "kind": "unknown"
+                                    }
+                                  },
+                                  "required": false
+                                },
+                                "error#3": {
+                                  "shape": {
+                                    "kind": "string"
+                                  },
+                                  "required": false
+                                },
+                                "retry_reason#5": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "sherlog_link#1": {
+                                  "shape": {
+                                    "kind": "string"
+                                  },
+                                  "required": false
+                                },
+                                "trace_id#4": {
+                                  "shape": {
+                                    "kind": "string"
+                                  },
+                                  "required": false
+                                },
+                                "usage#2": {
+                                  "shape": {
+                                    "kind": "object",
+                                    "fields": {
+                                      "api_provider#6": {
+                                        "shape": {
+                                          "kind": "number"
+                                        },
+                                        "required": false
+                                      },
+                                      "cache_read_tokens#5": {
+                                        "shape": {
+                                          "kind": "number"
+                                        },
+                                        "required": false
+                                      },
+                                      "cache_tokens_details#15": {
+                                        "shape": {
+                                          "kind": "array",
+                                          "items": {
+                                            "kind": "unknown"
+                                          }
+                                        },
+                                        "required": false
+                                      },
+                                      "cache_write_tokens#4": {
+                                        "shape": {
+                                          "kind": "number"
+                                        },
+                                        "required": false
+                                      },
+                                      "candidates_tokens_details#16": {
+                                        "shape": {
+                                          "kind": "array",
+                                          "items": {
+                                            "kind": "unknown"
+                                          }
+                                        },
+                                        "required": false
+                                      },
+                                      "input_tokens#2": {
+                                        "shape": {
+                                          "kind": "number"
+                                        },
+                                        "required": false
+                                      },
+                                      "message_id#7": {
+                                        "shape": {
+                                          "kind": "string"
+                                        },
+                                        "required": false
+                                      },
+                                      "model#1": {
+                                        "shape": {
+                                          "kind": "number"
+                                        },
+                                        "required": false
+                                      },
+                                      "output_tokens#3": {
+                                        "shape": {
+                                          "kind": "number"
+                                        },
+                                        "required": false
+                                      },
+                                      "prompt_tokens_details#14": {
+                                        "shape": {
+                                          "kind": "array",
+                                          "items": {
+                                            "kind": "unknown"
+                                          }
+                                        },
+                                        "required": false
+                                      },
+                                      "provider_assigned_message_id#12": {
+                                        "shape": {
+                                          "kind": "string"
+                                        },
+                                        "required": false
+                                      },
+                                      "response_header#8": {
+                                        "shape": {
+                                          "kind": "array",
+                                          "items": {
+                                            "kind": "unknown"
+                                          }
+                                        },
+                                        "required": false
+                                      },
+                                      "response_id#11": {
+                                        "shape": {
+                                          "kind": "string"
+                                        },
+                                        "required": false
+                                      },
+                                      "response_output_tokens#10": {
+                                        "shape": {
+                                          "kind": "number"
+                                        },
+                                        "required": false
+                                      },
+                                      "service_tier#13": {
+                                        "shape": {
+                                          "kind": "string"
+                                        },
+                                        "required": false
+                                      },
+                                      "thinking_output_tokens#9": {
+                                        "shape": {
+                                          "kind": "number"
+                                        },
+                                        "required": false
+                                      },
+                                      "tool_use_prompt_tokens_details#17": {
+                                        "shape": {
+                                          "kind": "array",
+                                          "items": {
+                                            "kind": "unknown"
+                                          }
+                                        },
+                                        "required": false
+                                      }
+                                    }
+                                  },
+                                  "required": false
+                                },
+                                "wait_time#7": {
+                                  "shape": {
+                                    "kind": "unknown"
+                                  },
+                                  "required": false
+                                }
+                              }
+                            }
+                          },
+                          "required": false
+                        },
+                        "streaming_duration#12": {
+                          "shape": {
+                            "kind": "unknown"
+                          },
+                          "required": false
+                        },
+                        "system_prompt#1": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "time_to_first_token#11": {
+                          "shape": {
+                            "kind": "unknown"
+                          },
+                          "required": false
+                        },
+                        "tool_choice#7": {
+                          "shape": {
+                            "kind": "unknown"
+                          },
+                          "required": false
+                        },
+                        "tools#8": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "usage#4": {
+                          "shape": {
+                            "kind": "object",
+                            "fields": {
+                              "api_provider#6": {
+                                "shape": {
+                                  "kind": "number"
+                                },
+                                "required": false
+                              },
+                              "cache_read_tokens#5": {
+                                "shape": {
+                                  "kind": "number"
+                                },
+                                "required": false
+                              },
+                              "cache_tokens_details#15": {
+                                "shape": {
+                                  "kind": "array",
+                                  "items": {
+                                    "kind": "unknown"
+                                  }
+                                },
+                                "required": false
+                              },
+                              "cache_write_tokens#4": {
+                                "shape": {
+                                  "kind": "number"
+                                },
+                                "required": false
+                              },
+                              "candidates_tokens_details#16": {
+                                "shape": {
+                                  "kind": "array",
+                                  "items": {
+                                    "kind": "unknown"
+                                  }
+                                },
+                                "required": false
+                              },
+                              "input_tokens#2": {
+                                "shape": {
+                                  "kind": "number"
+                                },
+                                "required": false
+                              },
+                              "message_id#7": {
+                                "shape": {
+                                  "kind": "string"
+                                },
+                                "required": false
+                              },
+                              "model#1": {
+                                "shape": {
+                                  "kind": "number"
+                                },
+                                "required": false
+                              },
+                              "output_tokens#3": {
+                                "shape": {
+                                  "kind": "number"
+                                },
+                                "required": false
+                              },
+                              "prompt_tokens_details#14": {
+                                "shape": {
+                                  "kind": "array",
+                                  "items": {
+                                    "kind": "unknown"
+                                  }
+                                },
+                                "required": false
+                              },
+                              "provider_assigned_message_id#12": {
+                                "shape": {
+                                  "kind": "string"
+                                },
+                                "required": false
+                              },
+                              "response_header#8": {
+                                "shape": {
+                                  "kind": "array",
+                                  "items": {
+                                    "kind": "unknown"
+                                  }
+                                },
+                                "required": false
+                              },
+                              "response_id#11": {
+                                "shape": {
+                                  "kind": "string"
+                                },
+                                "required": false
+                              },
+                              "response_output_tokens#10": {
+                                "shape": {
+                                  "kind": "number"
+                                },
+                                "required": false
+                              },
+                              "service_tier#13": {
+                                "shape": {
+                                  "kind": "string"
+                                },
+                                "required": false
+                              },
+                              "thinking_output_tokens#9": {
+                                "shape": {
+                                  "kind": "number"
+                                },
+                                "required": false
+                              },
+                              "tool_use_prompt_tokens_details#17": {
+                                "shape": {
+                                  "kind": "array",
+                                  "items": {
+                                    "kind": "unknown"
+                                  }
+                                },
+                                "required": false
+                              }
+                            }
+                          },
+                          "required": false
+                        }
+                      }
+                    },
+                    "required": false
+                  },
+                  "error#5": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "execution_id#4": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "has_ever_used_non_google_model#10": {
+                    "shape": {
+                      "kind": "boolean"
+                    },
+                    "required": false
+                  },
+                  "injected#7": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "mendel_experiment_ids#8": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "number"
+                      }
+                    },
+                    "required": false
+                  },
+                  "planner_config#3": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "prompt_debug_str#9": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "sensitivity_level#11": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "step_indices#2": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "number"
+                      }
+                    },
+                    "required": false
+                  }
+                }
+              }
+            },
+            "exa.cortex_pb.ChatModelMetadata": {
+              "observed": 0,
+              "shape": {
+                "kind": "object",
+                "fields": {
+                  "chat_start_metadata#9": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "completion_config#15": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "consumed_credits#18": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "credit_cost#13": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "custom_metadata#20": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "last_cache_index#6": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "message_metadata#10": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "message_prompts#2": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "model#3": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "model_cost#5": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "model_display_name#21": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "prompt_sections#16": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "response_model#19": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "response_model_full#22": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "retries#14": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "retry_infos#17": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "object",
+                        "fields": {
+                          "consumed_credits#6": {
+                            "shape": {
+                              "kind": "array",
+                              "items": {
+                                "kind": "unknown"
+                              }
+                            },
+                            "required": false
+                          },
+                          "error#3": {
+                            "shape": {
+                              "kind": "string"
+                            },
+                            "required": false
+                          },
+                          "retry_reason#5": {
+                            "shape": {
+                              "kind": "number"
+                            },
+                            "required": false
+                          },
+                          "sherlog_link#1": {
+                            "shape": {
+                              "kind": "string"
+                            },
+                            "required": false
+                          },
+                          "trace_id#4": {
+                            "shape": {
+                              "kind": "string"
+                            },
+                            "required": false
+                          },
+                          "usage#2": {
+                            "shape": {
+                              "kind": "object",
+                              "fields": {
+                                "api_provider#6": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "cache_read_tokens#5": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "cache_tokens_details#15": {
+                                  "shape": {
+                                    "kind": "array",
+                                    "items": {
+                                      "kind": "unknown"
+                                    }
+                                  },
+                                  "required": false
+                                },
+                                "cache_write_tokens#4": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "candidates_tokens_details#16": {
+                                  "shape": {
+                                    "kind": "array",
+                                    "items": {
+                                      "kind": "unknown"
+                                    }
+                                  },
+                                  "required": false
+                                },
+                                "input_tokens#2": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "message_id#7": {
+                                  "shape": {
+                                    "kind": "string"
+                                  },
+                                  "required": false
+                                },
+                                "model#1": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "output_tokens#3": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "prompt_tokens_details#14": {
+                                  "shape": {
+                                    "kind": "array",
+                                    "items": {
+                                      "kind": "unknown"
+                                    }
+                                  },
+                                  "required": false
+                                },
+                                "provider_assigned_message_id#12": {
+                                  "shape": {
+                                    "kind": "string"
+                                  },
+                                  "required": false
+                                },
+                                "response_header#8": {
+                                  "shape": {
+                                    "kind": "array",
+                                    "items": {
+                                      "kind": "unknown"
+                                    }
+                                  },
+                                  "required": false
+                                },
+                                "response_id#11": {
+                                  "shape": {
+                                    "kind": "string"
+                                  },
+                                  "required": false
+                                },
+                                "response_output_tokens#10": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "service_tier#13": {
+                                  "shape": {
+                                    "kind": "string"
+                                  },
+                                  "required": false
+                                },
+                                "thinking_output_tokens#9": {
+                                  "shape": {
+                                    "kind": "number"
+                                  },
+                                  "required": false
+                                },
+                                "tool_use_prompt_tokens_details#17": {
+                                  "shape": {
+                                    "kind": "array",
+                                    "items": {
+                                      "kind": "unknown"
+                                    }
+                                  },
+                                  "required": false
+                                }
+                              }
+                            },
+                            "required": false
+                          },
+                          "wait_time#7": {
+                            "shape": {
+                              "kind": "unknown"
+                            },
+                            "required": false
+                          }
+                        }
+                      }
+                    },
+                    "required": false
+                  },
+                  "streaming_duration#12": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "system_prompt#1": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "time_to_first_token#11": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "tool_choice#7": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  },
+                  "tools#8": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "usage#4": {
+                    "shape": {
+                      "kind": "object",
+                      "fields": {
+                        "api_provider#6": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "cache_read_tokens#5": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "cache_tokens_details#15": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "cache_write_tokens#4": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "candidates_tokens_details#16": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "input_tokens#2": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "message_id#7": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "model#1": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "output_tokens#3": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "prompt_tokens_details#14": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "provider_assigned_message_id#12": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "response_header#8": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "response_id#11": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "response_output_tokens#10": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "service_tier#13": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "thinking_output_tokens#9": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "tool_use_prompt_tokens_details#17": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        }
+                      }
+                    },
+                    "required": false
+                  }
+                }
+              }
+            },
+            "exa.cortex_pb.RetryInfo": {
+              "observed": 0,
+              "shape": {
+                "kind": "object",
+                "fields": {
+                  "consumed_credits#6": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "error#3": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "retry_reason#5": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "sherlog_link#1": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "trace_id#4": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "usage#2": {
+                    "shape": {
+                      "kind": "object",
+                      "fields": {
+                        "api_provider#6": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "cache_read_tokens#5": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "cache_tokens_details#15": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "cache_write_tokens#4": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "candidates_tokens_details#16": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "input_tokens#2": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "message_id#7": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "model#1": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "output_tokens#3": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "prompt_tokens_details#14": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "provider_assigned_message_id#12": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "response_header#8": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        },
+                        "response_id#11": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "response_output_tokens#10": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "service_tier#13": {
+                          "shape": {
+                            "kind": "string"
+                          },
+                          "required": false
+                        },
+                        "thinking_output_tokens#9": {
+                          "shape": {
+                            "kind": "number"
+                          },
+                          "required": false
+                        },
+                        "tool_use_prompt_tokens_details#17": {
+                          "shape": {
+                            "kind": "array",
+                            "items": {
+                              "kind": "unknown"
+                            }
+                          },
+                          "required": false
+                        }
+                      }
+                    },
+                    "required": false
+                  },
+                  "wait_time#7": {
+                    "shape": {
+                      "kind": "unknown"
+                    },
+                    "required": false
+                  }
+                }
+              }
+            },
+            "exa.codeium_common_pb.ModelUsageStats": {
+              "observed": 0,
+              "shape": {
+                "kind": "object",
+                "fields": {
+                  "api_provider#6": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "cache_read_tokens#5": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "cache_tokens_details#15": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "cache_write_tokens#4": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "candidates_tokens_details#16": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "input_tokens#2": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "message_id#7": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "model#1": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "output_tokens#3": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "prompt_tokens_details#14": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "provider_assigned_message_id#12": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "response_header#8": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  },
+                  "response_id#11": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "response_output_tokens#10": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "service_tier#13": {
+                    "shape": {
+                      "kind": "string"
+                    },
+                    "required": false
+                  },
+                  "thinking_output_tokens#9": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "tool_use_prompt_tokens_details#17": {
+                    "shape": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "unknown"
+                      }
+                    },
+                    "required": false
+                  }
+                }
+              }
+            },
+            "google.protobuf.Timestamp": {
+              "observed": 0,
+              "shape": {
+                "kind": "object",
+                "fields": {
+                  "nanos#2": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  },
+                  "seconds#1": {
+                    "shape": {
+                      "kind": "number"
+                    },
+                    "required": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
