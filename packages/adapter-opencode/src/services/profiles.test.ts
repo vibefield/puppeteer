@@ -499,11 +499,16 @@ describe('OpenCode profile verification', () => {
 /**
  * A stand-in for `opencode serve`: the readiness line, Basic auth from the
  * environment, and the org route, whose one org name reports what the server
- * was given. It is the adapter's own fixture, not the vendor binary.
+ * was given. `--version` answers as 1.19.5, which the backend reads before it
+ * starts. It is the adapter's own fixture, not the vendor binary.
  */
 const FAKE_SERVE = (hang: boolean) => `
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:http';
+if (process.argv[2] === '--version') {
+  console.log('1.19.5');
+  process.exit(0);
+}
 const expected = 'Basic ' + Buffer.from(process.env.OPENCODE_SERVER_USERNAME + ':' + process.env.OPENCODE_SERVER_PASSWORD).toString('base64');
 const server = createServer((request, response) => {
   const url = new URL(request.url, 'http://127.0.0.1');
@@ -639,9 +644,23 @@ describe('OpenCode stores a 2.x binary has opened', () => {
     expect(warning?.message).toContain('invisible to OpenCode 2');
     expect(JSON.stringify(warning)).not.toContain(SECRET);
 
-    expect(
-      await readOpenCodeStoreLine(store(join(root, 'copying'), { kv: { 'migration.v1-v2': '{"phase":"sessions"}' } })),
-    ).toMatchObject({ migration: 'sessions' });
+    expect(warning).toMatchObject({ migration: 'completed' });
+    expect(warning?.message).toContain('completed its one-time copy');
+
+    // A copy still under way is told apart from a completed one.
+    const copying = await readOpenCodeStoreLine(
+      store(join(root, 'copying'), { kv: { 'migration.v1-v2': '{"phase":"sessions","cursor":"ses_1"}' } }),
+    );
+    expect(copying).toMatchObject({ migration: 'sessions' });
+    const [inProgress] = openCodeStoreWarnings(copying);
+    expect(inProgress).toMatchObject({ confidence: 'derived', migration: 'sessions' });
+    expect(inProgress?.message).toContain('has not finished');
+    expect(inProgress?.message).not.toContain('completed its one-time copy');
+
+    const odd = await readOpenCodeStoreLine(store(join(root, 'odd'), { kv: { 'migration.v1-v2': '{"phase":"x"}' } }));
+    const [unrecognized] = openCodeStoreWarnings(odd);
+    expect(unrecognized).toMatchObject({ confidence: 'derived', migration: 'unrecognized' });
+    expect(unrecognized?.message).toContain('does not recognize');
   });
 
   it('warns, inferred, when only the 2.x tables are present', async () => {

@@ -473,6 +473,8 @@ export interface OpenCodeProfileWarning {
   code: 'store-opened-by-release-line-2';
   confidence: Extract<AgentEventConfidence, 'derived' | 'inferred'>;
   evidence: OpenCodeStoreEvidence[];
+  /** The copy's recorded phase, when the store records one. */
+  migration?: 'completed' | 'sessions' | 'unrecognized';
   message: string;
 }
 
@@ -480,17 +482,29 @@ export interface OpenCodeProfileWarning {
 export function openCodeStoreWarnings(reading: OpenCodeStoreReading): OpenCodeProfileWarning[] {
   if (reading.status !== 'opened-by-release-line-2') return [];
   const recorded = reading.evidence.includes('kv:migration.v1-v2');
+  // Only a completed copy was observed leaving later 1.x sessions behind (2.2.5). Upstream writes `sessions` with a
+  // cursor while the copy is under way and resumes it on the next start, so what it then takes is not observed.
+  const message = !recorded
+    ? 'This profile holds OpenCode 2 tables, so OpenCode 2 has probably opened it. If it has copied the OpenCode 1' +
+      ' sessions, sessions OpenCode 1 creates here from now on stay invisible to OpenCode 2, which copies them only' +
+      ' once (observed on OpenCode 2.2.5).'
+    : reading.migration === 'completed'
+      ? 'OpenCode 2 has opened this profile and completed its one-time copy of OpenCode 1 sessions. Sessions' +
+        ' OpenCode 1 creates here from now on stay invisible to OpenCode 2, which copies them only once (observed on' +
+        ' OpenCode 2.2.5).'
+      : reading.migration === 'sessions'
+        ? 'OpenCode 2 has opened this profile and started its one-time copy of OpenCode 1 sessions, which has not' +
+          ' finished. It resumes the copy the next time it starts; once the copy completes, sessions OpenCode 1' +
+          ' creates here stay invisible to OpenCode 2 (observed on OpenCode 2.2.5).'
+        : 'OpenCode 2 has opened this profile and recorded a one-time copy of OpenCode 1 sessions in a state this' +
+          ' adapter does not recognize. Sessions OpenCode 1 creates here may stay invisible to OpenCode 2.';
   return [
     {
       code: 'store-opened-by-release-line-2',
       confidence: recorded ? 'derived' : 'inferred',
       evidence: [...reading.evidence],
-      message:
-        (recorded
-          ? 'OpenCode 2 has opened this profile and recorded its one-time copy of OpenCode 1 sessions'
-          : 'This profile holds OpenCode 2 tables, so OpenCode 2 has probably opened it') +
-        '. Sessions OpenCode 1 creates here from now on stay invisible to OpenCode 2, which copies them only once' +
-        ' (observed on OpenCode 2.2.5).',
+      ...(reading.migration ? { migration: reading.migration } : {}),
+      message,
     },
   ];
 }

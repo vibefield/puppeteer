@@ -1,8 +1,11 @@
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLoopbackFetch, loopbackFetch } from '../transport/loopback-fetch.js';
-import { readOpenCodeProviders } from './models.js';
+import { createOpenCodeModelService, readOpenCodeProviders } from './models.js';
 
 vi.mock('../transport/loopback-fetch.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../transport/loopback-fetch.js')>();
@@ -55,4 +58,68 @@ describe('OpenCode provider catalog read', () => {
     expect(pooled.mock.calls[0]?.[1]?.signal).toBe(signal);
     expect(target.seen).toHaveLength(1);
   });
+});
+
+describe('OpenCode model discovery release line', () => {
+  const roots = new Set<string>();
+  afterEach(() => {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+    roots.clear();
+  });
+
+  /** A shell fake: `--version` records its password variables and prints `version`; anything else records its argv. */
+  function fakeOpenCode(version: string): { executable: string; versionLog: string; serveLog: string; cwd: string } {
+    const root = mkdtempSync(join(tmpdir(), 'opencode-models-line-'));
+    roots.add(root);
+    const executable = join(root, 'opencode');
+    const versionLog = join(root, 'version.log');
+    const serveLog = join(root, 'serve.log');
+    writeFileSync(
+      executable,
+      [
+        '#!/bin/sh',
+        'if [ "$1" = "--version" ]; then',
+        `  echo "password=\${OPENCODE_PASSWORD-unset} server=\${OPENCODE_SERVER_PASSWORD-unset}" >> '${versionLog}'`,
+        `  echo '${version}'`,
+        '  exit 0',
+        'fi',
+        `echo "$*" >> '${serveLog}'`,
+        'exit 1',
+        '',
+      ].join('\n'),
+    );
+    chmodSync(executable, 0o755);
+    return { executable, versionLog, serveLog, cwd: root };
+  }
+
+  it.skipIf(process.platform === 'win32')(
+    'refuses a 2.x executable as unsupported before serve runs, and reads its version once without passwords',
+    async () => {
+      const fake = fakeOpenCode('opencode v2.2.5');
+      const service = createOpenCodeModelService({
+        executable: fake.executable,
+        env: { ...process.env, OPENCODE_PASSWORD: 'inherited', OPENCODE_SERVER_PASSWORD: 'inherited' },
+      });
+      const result = await service.discover({ cwd: fake.cwd, timeoutMs: 10_000 });
+      expect(result).toMatchObject({ provider: 'opencode', status: 'unsupported', code: 'unsupported' });
+      expect(existsSync(fake.serveLog)).toBe(false);
+      expect(readFileSync(fake.versionLog, 'utf8')).toBe('password=unset server=unset\n');
+    },
+  );
+
+  it.skipIf(process.platform === 'win32')(
+    'reads a 1.x version once, scrubbed, and lets the backend start without a second read',
+    async () => {
+      const fake = fakeOpenCode('1.19.5');
+      const service = createOpenCodeModelService({
+        executable: fake.executable,
+        env: { ...process.env, OPENCODE_PASSWORD: 'inherited', OPENCODE_SERVER_PASSWORD: 'inherited' },
+      });
+      const result = await service.discover({ cwd: fake.cwd, timeoutMs: 10_000 });
+      // The fake's serve exits, so discovery fails after the one version read.
+      expect(result).toMatchObject({ provider: 'opencode', status: 'error' });
+      expect(readFileSync(fake.versionLog, 'utf8')).toBe('password=unset server=unset\n');
+      expect(readFileSync(fake.serveLog, 'utf8')).toBe('serve --hostname 127.0.0.1 --port 0 --pure\n');
+    },
+  );
 });

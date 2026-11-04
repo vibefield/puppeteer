@@ -297,16 +297,19 @@ export class OpenCodeEventStream {
     this.seenThisConnection.add(aggregateID);
     // A duplicate or an older seq says nothing about loss and must not move the mark back.
     if (last !== undefined && seq <= last) return;
+    // The first seq an aggregate shows this stream is its starting point, not a gap: history before the
+    // subscription was never this stream's to deliver.
+    if (last !== undefined && seq !== last + 1) {
+      // The mark moves only once the hook has handled the gap. A hook that fails (a rehydrate that could not reach
+      // the server) leaves it where it was, so the stream's reconnect reports the gap again instead of losing it.
+      await this.options.onSequenceGap?.({ aggregateID, expected: last + 1, received: seq, acrossReconnect, record });
+    }
     this.lastSeq.delete(aggregateID);
     this.lastSeq.set(aggregateID, seq);
     if (this.lastSeq.size > MAX_TRACKED_AGGREGATES) {
       const oldest = this.lastSeq.keys().next().value;
       if (oldest !== undefined) this.lastSeq.delete(oldest);
     }
-    // The first seq an aggregate shows this stream is its starting point, not a gap: history before the
-    // subscription was never this stream's to deliver.
-    if (last === undefined || seq === last + 1) return;
-    await this.options.onSequenceGap?.({ aggregateID, expected: last + 1, received: seq, acrossReconnect, record });
   }
 
   private waitToReconnect(): Promise<void> {

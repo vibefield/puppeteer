@@ -260,6 +260,55 @@ describe('OpenCode SSE transport', () => {
     ]);
   });
 
+  it('keeps a gap that its hook failed to handle, so the reconnect reports it again', async () => {
+    const stamp = (seq: number) => ({
+      id: `evt_${seq}`,
+      type: 'session.renamed',
+      data: {},
+      durable: { aggregateID: 'ses_a', seq, version: 1 },
+    });
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls += 1;
+      // First connection: 0, then 2 (1 lost) and the hook fails. Second connection: 3 arrives after the reconnect.
+      return calls === 1 ? sseResponse([stamp(0), stamp(2)], true) : sseResponse([stamp(3)], true);
+    }) as typeof fetch;
+    const gaps: Omit<OpenCodeSseSequenceGap, 'record'>[] = [];
+    const delivered: string[] = [];
+    const errors: string[] = [];
+    let resolveDone!: () => void;
+    const done = new Promise<void>((resolve) => {
+      resolveDone = resolve;
+    });
+    const stream = new OpenCodeEventStream({
+      client: client(fetchImpl),
+      fetchImpl,
+      reconnectDelayMs: 1,
+      envelope: dataEnvelope,
+      onSequenceGap({ record: _record, ...gap }) {
+        gaps.push(gap);
+        if (gaps.length === 1) throw new Error('rehydrate failed');
+      },
+      onRecord(record) {
+        delivered.push(record.id);
+        if (record.id === 'evt_3') resolveDone();
+      },
+      onError(error) {
+        errors.push(error.message);
+      },
+    });
+    await stream.start();
+    await done;
+    await stream.stop();
+    expect(errors).toEqual(['rehydrate failed']);
+    // The failed record is not delivered, and the mark stayed at 0: the next record reports the gap from 1 again.
+    expect(delivered).toEqual(['evt_0', 'evt_3']);
+    expect(gaps).toEqual([
+      { aggregateID: 'ses_a', expected: 1, received: 2, acrossReconnect: false },
+      { aggregateID: 'ses_a', expected: 1, received: 3, acrossReconnect: true },
+    ]);
+  });
+
   it('refuses a gap hook on an envelope that names no durable stamp', () => {
     const fetchImpl = vi.fn() as unknown as typeof fetch;
     expect(() => new OpenCodeEventStream({ client: client(fetchImpl), onRecord() {}, onSequenceGap() {} })).toThrow(

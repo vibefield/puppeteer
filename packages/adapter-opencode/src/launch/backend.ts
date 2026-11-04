@@ -40,8 +40,9 @@ export function openCodeBackendArguments(spec: OpenCodeBackendLaunchSpec, hostna
 }
 
 /**
- * The executable is OpenCode 2.x, which this adapter refuses. Raised only when a start failed before readiness and
- * the executable's own `--version` then named the 2.x line, so a supported binary never pays for the check.
+ * The executable is OpenCode 2.x, which this adapter refuses. Raised before `serve` is spawned: 2.x opens and
+ * migrates the profile's shared `opencode.db` at startup (the plan's draft/OPENCODE-2-MIGRATION-PLAN.md §2.2), so the
+ * refusal must come from `--version` alone, never from how a start went.
  */
 export class OpenCodeUnsupportedReleaseLineError extends Error {
   readonly code = 'OPENCODE_UNSUPPORTED_RELEASE_LINE';
@@ -67,6 +68,12 @@ export interface StartOpenCodeBackendOptions {
   shutdownTimeoutMs?: number | undefined;
   /** How the server starts and announces readiness. Default: {@link OPENCODE_1_BACKEND_LAUNCH}. */
   launch?: OpenCodeBackendLaunchSpec | undefined;
+  /**
+   * Read `--version` before spawning and refuse the 2.x line with {@link OpenCodeUnsupportedReleaseLineError}.
+   * Default: true for the 1.x launch, false for any other. False only when the caller has just read this
+   * executable's `--version` itself.
+   */
+  checkReleaseLine?: boolean | undefined;
 }
 
 export interface OpenCodeBackend {
@@ -82,7 +89,7 @@ export interface OpenCodeBackend {
 const MAX_STARTUP_OUTPUT = 256 * 1024;
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
 
-/** The 2.x check after a failed start is bounded so it never holds a failure much longer than the start did. */
+/** The pre-start `--version` read is bounded; a read that fails or times out lets the start report its own error. */
 const RELEASE_LINE_CHECK_TIMEOUT_MS = 5_000;
 
 export function openCodeReadinessOrigin(
@@ -102,6 +109,10 @@ export function openCodeReadinessOrigin(
   if (requestedHostname !== 'localhost' && url.hostname !== requestedHostname) return undefined;
   if (!url.port || url.pathname !== '/') return undefined;
   return url.origin;
+}
+
+function startupCancelled(signal: AbortSignal | undefined): Error {
+  return signal?.reason instanceof Error ? signal.reason : new Error('OpenCode startup cancelled');
 }
 
 async function terminateChild(child: ChildProcess, timeoutMs: number): Promise<void> {
@@ -140,16 +151,25 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
     throw new Error(`OpenCode backend must bind loopback, got ${hostname}`);
   }
   const launch = options.launch ?? OPENCODE_1_BACKEND_LAUNCH;
-  const username = 'opencode';
-  const password = randomBytes(32).toString('base64url');
-  // Node scripts (including the conformance fixture) cannot be spawned via
-  // a shebang on Windows. Keep argv as an array and avoid a command shell.
-  const nodeScript = /\.(?:mjs|cjs|js)$/i.test(executable);
   // A password this start did not generate never reaches the server; only its own is set below.
   const baseEnvironment = withoutOpenCodeServerPasswords({
     ...(options.inheritEnvironment === false ? {} : process.env),
     ...options.env,
   });
+  if (options.checkReleaseLine ?? launch === OPENCODE_1_BACKEND_LAUNCH) {
+    const reading = await inspectOpenCodeVersion(executable, {
+      env: baseEnvironment,
+      timeoutMs: RELEASE_LINE_CHECK_TIMEOUT_MS,
+      signal: options.signal,
+    });
+    if (options.signal?.aborted) throw startupCancelled(options.signal);
+    if (reading.status === 'unsupported-release-line') throw new OpenCodeUnsupportedReleaseLineError(reading.version);
+  }
+  const username = 'opencode';
+  const password = randomBytes(32).toString('base64url');
+  // Node scripts (including the conformance fixture) cannot be spawned via
+  // a shebang on Windows. Keep argv as an array and avoid a command shell.
+  const nodeScript = /\.(?:mjs|cjs|js)$/i.test(executable);
   const child = spawn(
     nodeScript ? process.execPath : executable,
     [...(nodeScript ? [executable] : []), ...openCodeBackendArguments(launch, hostname)],
@@ -167,8 +187,6 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
 
   let startupOutput = '';
   let settled = false;
-  // Set when the start failed in a way a 2.x binary would cause: it exited or never announced readiness.
-  let checkReleaseLine = false;
   let timeout: NodeJS.Timeout | undefined;
   const startupTimeoutMs = options.startupTimeoutMs ?? 15_000;
 
@@ -203,13 +221,9 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
         }
       };
       const onError = (error: Error): void => finish(error);
-      const onAbort = (): void =>
-        finish(
-          options.signal?.reason instanceof Error ? options.signal.reason : new Error('OpenCode startup cancelled'),
-        );
+      const onAbort = (): void => finish(startupCancelled(options.signal));
       const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
         const detail = code === null ? `signal ${signal ?? 'unknown'}` : `exit ${code}`;
-        checkReleaseLine = true;
         finish(new Error(`OpenCode backend stopped before readiness (${detail})`));
       };
 
@@ -225,7 +239,6 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
         return;
       }
       timeout = setTimeout(() => {
-        checkReleaseLine = true;
         finish(new Error(`OpenCode backend did not become ready within ${startupTimeoutMs}ms`));
       }, startupTimeoutMs);
       timeout.unref();
@@ -247,15 +260,6 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
     };
   } catch (error) {
     await terminateChild(child, options.shutdownTimeoutMs ?? 2_000);
-    if (checkReleaseLine && !options.signal?.aborted) {
-      const reading = await inspectOpenCodeVersion(executable, {
-        env: baseEnvironment,
-        timeoutMs: RELEASE_LINE_CHECK_TIMEOUT_MS,
-      });
-      if (reading.status === 'unsupported-release-line') {
-        throw new OpenCodeUnsupportedReleaseLineError(reading.version, { cause: error });
-      }
-    }
     throw error;
   }
 }

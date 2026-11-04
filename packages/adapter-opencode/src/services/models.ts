@@ -4,14 +4,15 @@ import {
   nativeArray,
   nativeRecord,
   nativeStrings,
-  nativeVersion,
   nativeProbeOptions,
   nativeModelEnvironment,
   readNativeJsonResponse,
+  runNativeCommand,
   type NativeModelProbeOptions,
 } from '@vibefield/puppeteer-native-observation';
-import { resolveOpenCodeExecutable } from '../detection.js';
+import { OPENCODE_VERSION_FLAG, readOpenCodeVersion, resolveOpenCodeExecutable } from '../detection.js';
 import { startOpenCodeBackend, type OpenCodeBackend } from '../launch/backend.js';
+import { withoutOpenCodeServerPasswords } from '../launch/credentials.js';
 import { loopbackFetch } from '../transport/loopback-fetch.js';
 import { createOpenCodeProfileService, OPENCODE_PROFILE_ROOT_VARIABLE } from './profiles.js';
 
@@ -83,8 +84,19 @@ export function createOpenCodeModelService(options: NativeModelProbeOptions = {}
       );
       if (context.profile) delete env.OPENCODE_AUTH_CONTENT;
       const probe = nativeProbeOptions(resolveOpenCodeExecutable(options.executable), context, env);
-      const version = await nativeVersion(probe);
+      // The version read is this discovery's release-line check: 2.x is refused before `serve` can open the
+      // profile's store, and the backend below does not read it again. It runs without inherited server passwords.
+      const { stdout } = await runNativeCommand({
+        ...probe,
+        env: withoutOpenCodeServerPasswords(probe.env),
+        args: [OPENCODE_VERSION_FLAG],
+        maxOutputBytes: 64 * 1024,
+      });
+      const reading = readOpenCodeVersion(stdout);
+      if (reading.status === 'unsupported-release-line') throw new NativeProbeError('unsupported');
+      const version = reading.status === 'supported' ? reading.version : undefined;
       const backend = await startOpenCodeBackend({
+        checkReleaseLine: false,
         executable: probe.executable,
         cwd: context.cwd,
         signal: probe.signal,

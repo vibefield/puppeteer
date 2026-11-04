@@ -77,6 +77,8 @@ export interface InspectOpenCodeVersionOptions {
   /** The environment the version command runs in; server passwords are removed from it. Default: this process's. */
   env?: Readonly<Record<string, string | undefined>> | undefined;
   timeoutMs?: number | undefined;
+  /** Stops the version command; an aborted read is `failed`, and the caller decides what the abort means. */
+  signal?: AbortSignal | undefined;
 }
 
 /**
@@ -95,6 +97,7 @@ export async function inspectOpenCodeVersion(
       {
         encoding: 'utf8',
         timeout: options.timeoutMs ?? 10_000,
+        ...(options.signal ? { signal: options.signal } : {}),
         env: {
           ...withoutOpenCodeServerPasswords(options.env ?? process.env),
           ...(nodeScript && process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
