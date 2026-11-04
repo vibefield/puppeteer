@@ -1,0 +1,41 @@
+Usage: copilot workflow run [OPTIONS] <name>
+
+Run a registered dynamic workflow directly without a parent agent turn.
+
+Workflow arguments may be inline JSON or a path prefixed with @. Progress is
+written before the final result unless --silent is set.
+
+Arguments:
+  <name>
+          Registered dynamic workflow name
+
+Options:
+      --args <json|@path>
+          Workflow arguments as inline JSON or an @-prefixed JSON file
+
+      --result-file <path>
+          Write only the workflow result to this JSON file
+
+  -s, --silent
+          Suppress workflow progress output
+
+      --output-format <format>
+          Output format: 'text' (default) or 'json' (JSONL)
+
+          [possible values: text, json]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  # Run a workflow without arguments
+  $ copilot workflow run summarize
+
+  # Pass inline JSON arguments
+  $ copilot workflow run phased --args '{"tag":"demo"}'
+
+  # Read arguments from a JSON file and write the result to another file
+  $ copilot workflow run phased --args @input.json --result-file result.json
+
+  # Emit one machine-readable result
+  $ copilot workflow run echo --args '{"value":42}' --silent --output-format json

@@ -85,8 +85,10 @@ an unverified contract lead with zero 1.0.105 occurrences.
   grammar reads `--sync-session[=<on|off>]` as require-equals (a following
   command is never its value), passes `--host-environment` through as
   `elsewhere` (a headless Mission Control environment, like `--acp`), and
-  classes the `workflow` group as `one-shot` from its help summary alone
-  ("Run dynamic workflows"); its subcommand help is not captured.
+  classes the `workflow` group as `one-shot`: its captured `workflow --help`
+  lists a single subcommand, `run <name>`, which runs a registered workflow
+  "without a parent agent turn" (`workflow --help` and `workflow run --help`
+  captured offline in a network-deny namespace, 2026-11-04).
 
 ## Adapter boundary
 

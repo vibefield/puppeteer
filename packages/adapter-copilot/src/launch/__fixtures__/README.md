@@ -16,9 +16,15 @@ Prompt mode and stdio/ACP server mode pass through before managed preparation.
 Initial interactive prompts, custom configuration directories, and unsupported
 permission clauses are explicit refusals. A name on an exact resume is refused
 because the existing launch recipe can name new sessions only. `--reasoning-effort`
-is supported; no undocumented `--effort` alias is invented. No subcommand help
-(for example `workflow --help`) is captured: the `workflow` group is classed
-one-shot from its root summary, "Run dynamic workflows", alone.
+is supported; no undocumented `--effort` alias is invented.
+
+`copilot-workflow-help-1.0.105.txt` and `copilot-workflow-run-help-1.0.105.txt`
+were captured 2026-11-04 from the same 1.0.105 executable with `workflow --help`
+and `workflow run --help`, offline (`COPILOT_OFFLINE=1`) in a disposable home
+inside a network namespace with no route off the machine. The group has exactly
+one subcommand, `run <name>`, which runs a registered workflow without a parent
+agent turn, so the whole `workflow` group stays classed one-shot; `workflow list`
+is a native parse error. No other subcommand help is captured.
 
 Reference: https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference
 

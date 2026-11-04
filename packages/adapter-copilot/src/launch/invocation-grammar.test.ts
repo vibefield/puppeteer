@@ -111,6 +111,28 @@ describe('copilot strict invocation grammar', () => {
     expect([...new Set(declared)].sort()).toEqual([...names].sort());
   });
 
+  it('classes the workflow group by its captured subcommands: one non-interactive `run`', () => {
+    const help = readFileSync(
+      new URL(`./__fixtures__/copilot-workflow-help-${INVOCATION_GRAMMAR_VERSION}.txt`, import.meta.url),
+      'utf8',
+    );
+    const subcommands = [
+      ...help
+        .split('Commands:')[1]!
+        .split('\n\n')[0]!
+        .matchAll(/^  ([a-z][a-z-]*)\b/gmu),
+    ].map((match) => match[1]);
+    expect(subcommands).toEqual(['run']);
+    const run = readFileSync(
+      new URL(`./__fixtures__/copilot-workflow-run-help-${INVOCATION_GRAMMAR_VERSION}.txt`, import.meta.url),
+      'utf8',
+    );
+    expect(run).toContain('without a parent agent turn');
+    expect(INVOCATION_GRAMMAR.commands.find((row) => row.names.includes('workflow'))).toMatchObject({
+      passthrough: 'one-shot',
+    });
+  });
+
   for (const kind of ['utility', 'one-shot', 'elsewhere'] as const) {
     it.each(matrix[kind])(`passes through ${kind}: %j`, (...argv) => {
       expect(invoke(argv)).toMatchObject({ status: 'passthrough', kind });

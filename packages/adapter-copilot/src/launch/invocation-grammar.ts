@@ -438,8 +438,8 @@ export const INVOCATION_GRAMMAR = {
       passthrough: 'utility',
     },
     {
-      // Help lists only "workflow  Run dynamic workflows"; its subcommand help is not captured, so the whole group is
-      // classed by that summary as a non-interactive run. Any form still runs as typed, never as a managed session.
+      // `workflow --help` (captured) lists one subcommand, `run <name>`, which runs a registered workflow "without a
+      // parent agent turn": a non-interactive run. A bare `workflow` only prints usage. Every form runs as typed.
       names: ['workflow'],
       passthrough: 'one-shot',
     },

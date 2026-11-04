@@ -1,0 +1,10 @@
+Usage: copilot workflow <COMMAND>
+
+Run registered dynamic workflows directly without a parent agent turn.
+
+Commands:
+  run  Run a registered dynamic workflow
+
+Options:
+  -h, --help
+          Print help (see a summary with '-h')
