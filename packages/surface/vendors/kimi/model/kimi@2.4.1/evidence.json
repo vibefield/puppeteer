@@ -4,6 +4,34 @@
   "vendorVersion": "2.4.1",
   "artifacts": [
     {
+      "id": "kimi-2.4.1-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-11-04T06:26:59.844Z",
+      "versionOutput": "2.4.1",
+      "sourceUrl": "https://github.com/MoonshotAI/kimi-code/releases/download/%40moonshot-ai%2Fkimi-code%402.4.1/kimi-code-darwin-arm64.zip",
+      "acquisitionKey": "kimi@2.4.1@darwin-arm64@sha256:1a8539eae87ffbd9bf480b8a47beafc9668f66b048b96cfa631310dc12dab3a7",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:1a8539eae87ffbd9bf480b8a47beafc9668f66b048b96cfa631310dc12dab3a7"
+      }
+    },
+    {
+      "id": "kimi-2.4.1-darwin-x64",
+      "platform": "darwin-x64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-11-04T06:27:00.037Z",
+      "versionOutput": "2.4.1",
+      "sourceUrl": "https://github.com/MoonshotAI/kimi-code/releases/download/%40moonshot-ai%2Fkimi-code%402.4.1/kimi-code-darwin-x64.zip",
+      "acquisitionKey": "kimi@2.4.1@darwin-x64@sha256:cfd1134641fe864b4b55134668ad56124a679286b56342fad9d5b8d624932fc8",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:cfd1134641fe864b4b55134668ad56124a679286b56342fad9d5b8d624932fc8"
+      }
+    },
+    {
       "id": "installed-kimi-2.4.1-linux-x64",
       "platform": "linux-x64",
       "channel": "stable",
@@ -14,6 +42,23 @@
       "integrity": {
         "status": "verified",
         "sha256": "sha256:f2b3634c17b604e5b0f0c578b6a787fd01bcafb40a3c0dd62203ae14ff2ea068"
+      },
+      "artifactKind": "standalone-executable",
+      "sourceUrl": "https://github.com/MoonshotAI/kimi-code/releases/download/%40moonshot-ai%2Fkimi-code%402.4.1/kimi-code-linux-x64.zip",
+      "acquisitionKey": "kimi@2.4.1@linux-x64@sha256:f2b3634c17b604e5b0f0c578b6a787fd01bcafb40a3c0dd62203ae14ff2ea068"
+    },
+    {
+      "id": "kimi-2.4.1-windows-x64",
+      "platform": "windows-x64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-11-04T06:27:00.410Z",
+      "versionOutput": "2.4.1",
+      "sourceUrl": "https://github.com/MoonshotAI/kimi-code/releases/download/%40moonshot-ai%2Fkimi-code%402.4.1/kimi-code-win32-x64.zip",
+      "acquisitionKey": "kimi@2.4.1@windows-x64@sha256:f785736784a1d3cdbf71d76c1e09826acff6267d38f4b277bece47194b948dce",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:f785736784a1d3cdbf71d76c1e09826acff6267d38f4b277bece47194b948dce"
       }
     }
   ],
