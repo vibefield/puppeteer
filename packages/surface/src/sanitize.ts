@@ -67,7 +67,11 @@ export interface EncodedValueCodec {
   key: RegExp;
   /** The decoded document, or `undefined` when this string is not one; it is then sanitized as text. */
   decode(value: string): unknown;
-  /** Serialize the sanitized document back into the carrier's string form. */
+  /**
+   * Serialize the sanitized document back into the carrier's string form.
+   * Must be deterministic: the detector accepts an encoded string only when it
+   * equals `encode(decode(string))`, the only form the redactor writes.
+   */
   encode(value: unknown): string;
 }
 
@@ -476,10 +480,23 @@ function inspect(
     // as if inline, and the encoded text is not scanned again: the redactor
     // keeps what an inline document may keep (a non-clock number, say), so a
     // raw-text scan of its own output would break the lockstep.
+    //
+    // That shortcut holds only for text the redactor could have written, which
+    // is always `encode(decode(text))`. Anything else (duplicate keys, where
+    // JSON.parse keeps only the last; odd spacing or escapes) can hold content
+    // the decoded document does not show, so it is flagged as unsanitized and
+    // the raw text is scanned as well.
     const encoded = decodeEncodedValue(value, key, rules);
     if (encoded) {
       inspect(encoded.decoded, issues, `${location}<decoded>`, key, inContainer, rules);
-      return;
+      let canonical: string | undefined;
+      try {
+        canonical = encoded.codec.encode(encoded.decoded);
+      } catch {
+        canonical = undefined;
+      }
+      if (canonical === value) return;
+      issues.push(`${location}: encoded document at ${key} is not in the sanitizer's canonical form`);
     }
     if (rules.unsafeTextPatterns.some((pattern) => pattern.test(value))) {
       issues.push(`${location}: unsafe text at ${key}`);

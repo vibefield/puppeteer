@@ -334,10 +334,29 @@ describe('decode-before-redact for string-encoded documents', () => {
     expect(sanitizeRecord(once, rules)).toEqual(once);
   });
 
-  it('does not rescan the encoded text, so a kept number is not a false positive', () => {
+  it('does not rescan canonical encoded text, so a kept number is not a false positive', () => {
     const out = sanitizeRecord({ data: JSON.stringify({ count: 1793818352832 }) }, rules);
     expect(out).toEqual({ data: '{"count":1793818352832}' });
     expect(checkRecord(out, rules)).toEqual([]);
+  });
+
+  it('flags encoded text the redactor could not have written, and scans it as text', () => {
+    // JSON.parse keeps the last of two duplicate keys, so a decoded-only check
+    // would never see the secret in the first one.
+    const secret = `sk-ant-api03-${'A'.repeat(40)}`;
+    const duplicate = { data: `{"note":"${secret}","note":"ok"}` };
+    const issues = checkRecord(duplicate, rules);
+    expect(issues).toContain("<record>.data: encoded document at data is not in the sanitizer's canonical form");
+    expect(issues).toContain('<record>.data: unsafe text at data');
+    expect(checkRecord(duplicate)).toEqual(['<record>.data: unsafe text at data']);
+    // Re-sanitizing yields the canonical form, which then passes.
+    const clean = sanitizeRecord(duplicate, rules);
+    expect(clean).toEqual({ data: '{"note":"ok"}' });
+    expect(checkRecord(clean, rules)).toEqual([]);
+    // Non-canonical spacing alone is enough: a committed fixture is always redactor output.
+    expect(checkRecord({ data: '{ "seq": 3 }' }, rules)).toEqual([
+      "<record>.data: encoded document at data is not in the sanitizer's canonical form",
+    ]);
   });
 
   it('leaves strings that are not encoded documents to the text rules', () => {
