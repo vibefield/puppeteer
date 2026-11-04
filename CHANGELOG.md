@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/vibefield/puppeteer/compare/v0.3.3...v0.3.4) (2026-11-04)
+
+
+### Features
+
+* **adapters:** refresh evidence and add protected native-TUI promotion proofs ([#59](https://github.com/vibefield/puppeteer/issues/59)) ([5a5f285](https://github.com/vibefield/puppeteer/commit/5a5f285e4817ab12f6c27787f92f8215f60f73ed))
+
 ## [0.3.3](https://github.com/vibefield/puppeteer/compare/v0.3.2...v0.3.3) (2026-11-02)
 
 
