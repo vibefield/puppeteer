@@ -76,13 +76,18 @@ the exact tag (sha256 `d224c1a7…`). The runtime `/doc` (1,107,898 bytes,
 sha256 `df260865…`) matches it apart from the source copy's `x-codeSamples`.
 Against 1.18.16 the path set (162), the schema set (472), and every SSE event
 and HTTP operation are unchanged. The ASM again has 188 HTTP operations and
-90 SSE types. Only six documents changed, all **additive-unconsumed**:
+90 SSE types. Only six documents changed. The structural changes are
+**additive-unconsumed**; the `autoupdate` description records
+**consumed config-semantics drift** (§0.7):
 
 - `config.get/update` and `global.config.get/update` gained the model
   `reasoning_options` and changed `ProviderConfig.options.chunkTimeout` from
   an integer to `integer | false`. Two descriptions changed: `headerTimeout`
-  and `autoupdate`, which is now notify-only: "Updates are never installed
-  automatically".
+  and `autoupdate`. The `autoupdate` change is not wording: the key's values
+  keep their schema, but no value installs anything any more ("Updates are
+  never installed automatically; run /update or `opencode upgrade`. Set to
+  false to disable update checks. true and 'notify' behave the same"), and
+  the adapter's distribution service reads that key (§0.7).
 - `global.upgrade` now requires `target` (a semver).
 - `server.heartbeat` changed evidence only (§0.5).
 
@@ -110,6 +115,10 @@ of the ones on a Puppeteer rail found:
 - The `account/`, database-migration and `storage/schema.ts` changes do not
   touch the account tables `services/profiles.ts` reads. That is a source
   reading only, with no probe on 1.19.5.
+- `cli/upgrade.ts` no longer installs anything: the background update check
+  only reports an available release. `services/distribution.ts` reads this
+  file's semantics, so it is consumed config-semantics drift (§0.7), not an
+  additive change.
 
 ### 0.5 Runtime census drift
 
@@ -135,9 +144,11 @@ durable message count) gives:
   `server.heartbeat` is now runtime-verified only by the attach captures
   (`verified-interactive`). It was `verified-headless` on 1.18.16.
 
-Classification: **additive-unconsumed / no consumed-surface drift**. The
-adapter's fixture-backed normalization, monitor and history suites pass
-unchanged against the 1.19.5 captures. Only native-ID literals were updated
+Classification: **consumed config-semantics drift** in one place, the
+`autoupdate` key (§0.7), which the distribution service now maps by installed
+version. The HTTP/SSE protocol surface is **additive-unconsumed** with no
+consumed protocol drift: the adapter's fixture-backed normalization, monitor
+and history suites pass unchanged against the 1.19.5 captures. Only native-ID literals were updated
 for the new pseudonyms. `pnpm surface:replay` passes: 3,423 frames, 209
 results, digest `ee55ce57…`.
 `pnpm surface:reconcile` classifies the candidate `unsafe-or-unknown` because
@@ -156,12 +167,68 @@ backend to a random port and the failure disappeared.
 
 The census harness's `exact-resume` scenario and the adapter's opt-in
 `opencode.live.test.ts` resume step both failed this way. It is not version
-drift: the 1.18.16 linux-x64 artifact fails the same live test. The adapter
-transport now retries exactly once on that pre-response socket failure
-(`transport/loopback-fetch.ts`). With that retry, the live proof (private
-backend, structured prompt, HTTP/SSE observation, real native TUI in a PTY,
-and native resume) passes on linux-x64 1.19.5. That local run is not a
-protected-lane receipt.
+drift: the 1.18.16 linux-x64 artifact fails the same live test. A reset does
+not prove the backend never received the request, so the adapter transport
+(`transport/loopback-fetch.ts`) retries only idempotent methods (GET/HEAD,
+which includes the SSE subscription) once after that socket failure. Every
+other method (`prompt_async`, `POST /session`, permission and question
+replies, abort) goes out once on a connection of its own, which no stale
+pooled socket can fail, and is never re-sent. The model probe's `/provider`
+read and the profile verifier's `/experimental/console/orgs` read, both on
+fresh `serve --port 0` backends, use the same fetch. The census harness
+follows the same rule and records each retried attempt in the scenario's
+`http-roundtrip.jsonl` as a `client-transport` record. With the original
+retry, the live proof (private backend, structured prompt, HTTP/SSE
+observation, real native TUI in a PTY, and native resume) passed on linux-x64
+1.19.5. That local run is not a protected-lane receipt, and it predates the
+idempotent-only rule.
+
+### 0.7 Auto-update semantics: the 1.19.0 boundary
+
+The `autoupdate` change in §0.3 is consumed config-semantics drift: the
+distribution service reports whether an install replaces itself, and the
+answer changed with the release, not with the key's schema. The boundary is
+**1.19.0**, from upstream source at exact tags. The files were fetched
+2026-11-04 from `raw.githubusercontent.com/anomalyco/opencode/<tag>/…`
+(`sst/opencode` serves the same bytes):
+
+| Tag        | `packages/opencode/src/cli/upgrade.ts` sha256 | Behaviour |
+| ---------- | --------------------------------------------- | --------- |
+| `v1.18.16` | `4819069725ef38dfd57846c92fd3ef4f29580e3ca1268794019c3c5c30c0925d` | Returns for `autoupdate === false` or `Flag.OPENCODE_DISABLE_AUTOUPDATE`; emits `UpdateAvailable` for `"notify"` or a non-patch release; returns when `Installation.method()` is `"unknown"`; otherwise calls `Installation.upgrade(method, latest)`. An absent key is `undefined` and takes the same path as `true`. |
+| `v1.18.35` | same digest as `v1.18.16`                      | Same. |
+| `v1.19.0`  | `d3a1d64897d05cc4a9d2933cbd59d01a4015a9dc81f9edddbe06af119b4e1839` | "Checking never installs anything. Updates only happen when the user runs `/update` or `opencode upgrade`." `upgrade()` returns `{type:"available"}` or `{type:"major"}`; `Installation.upgrade` is gone. |
+
+`Flag.OPENCODE_DISABLE_AUTOUPDATE` is `truthy("OPENCODE_DISABLE_AUTOUPDATE")`
+in `packages/core/src/flag/flag.ts` at `v1.18.16`: only `"true"` or `"1"`,
+case-insensitively. The committed schemas agree at both ends: the 1.18.16
+`autoupdate` description is "Set to true to auto-update, false to disable, or
+'notify' …", and the 1.19.5 one is the notify-only text quoted in §0.3.
+
+The check reads `Config.getGlobal()`. At `v1.18.16`,
+`packages/opencode/src/config/config.ts` (sha256
+`b0fd57d860661ce70e7fbd06e7f2cc24417c70d3db4207ad97129ac1b649997e`)
+`loadGlobal` merges `config.json`, then `opencode.json`, then
+`opencode.jsonc` from the global config directory, so a later file's
+`autoupdate` wins, and a global config that fails to load falls back to
+defaults. The service reads all three files in that order. Any file it cannot
+read the way OpenCode would (JSONC comments, `{env:}` substitution, a
+permission error) leaves the merged view unreadable.
+
+`services/distribution.ts` therefore reports:
+
+- **≥ 1.19.0**: `disabled` for every config state — missing file, no key,
+  `true`, `false`, `"notify"`, or a value OpenCode would reject.
+- **1.18.x**: `disabled` for `false`, `"notify"` or a truthy
+  `OPENCODE_DISABLE_AUTOUPDATE` in the environment the service was given;
+  `enabled` for `true`, an absent key, or no global config file at all (patch
+  releases install themselves); `unknown` for an unreadable config or when
+  Puppeteer could not classify the install method, because upstream returns
+  before upgrading when its own method probe finds nothing.
+- **No parsed version, or a line before 1.18**: only the explicit off switches
+  count (`disabled`); everything else is `unknown`.
+
+Installs from 1.18.17 to 1.18.34 and 1.19.1 to 1.19.4 are classified by this
+source reading, not by a probe of those binaries.
 
 
 ## 1. Candidate identity
