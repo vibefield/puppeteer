@@ -48,6 +48,46 @@ describe('ClaudeHookNormalizer against captured fixtures', () => {
     });
   });
 
+  it('fails the turn on every captured StopFailure and closes what that turn left open', () => {
+    // The API-error lanes are the only source of real StopFailure payloads once a release has no headless lane.
+    const failures = loadHookFixtures('StopFailure');
+    expect(failures.length).toBeGreaterThan(0);
+    for (const failure of failures) {
+      expect(normalizeOne(failure as ClaudeHookPayload).events).toEqual([
+        { type: 'turn:failed', turnId: failure.prompt_id, error: failure.error },
+      ]);
+    }
+
+    const failure = failures[0]!;
+    const promptId = failure.prompt_id as string;
+    const normalizer = new ClaudeHookNormalizer();
+    const bash = { prompt_id: promptId, tool_name: 'Bash', tool_input: { command: 'pwd' }, tool_use_id: 'tool-bash' };
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', bash) as ClaudeHookPayload);
+    const requested = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', bash) as ClaudeHookPayload);
+    const requestId = (requested.events[0] as { requestId: string }).requestId;
+    normalizer.normalize(
+      fakeClaudeHookPayload('PreToolUse', {
+        prompt_id: promptId,
+        tool_name: 'AskUserQuestion',
+        tool_use_id: 'tool-question',
+        tool_input: { questions: [{ question: 'Which approach?', options: [{ label: 'Safe' }] }] },
+      }) as ClaudeHookPayload,
+    );
+    const started = normalizer.normalize(
+      fakeClaudeHookPayload('PreCompact', { prompt_id: promptId, trigger: 'auto', custom_instructions: '' }),
+    );
+    const compactionId = (started.events[0] as { compactionId: string }).compactionId;
+
+    expect(normalizer.normalize(failure as ClaudeHookPayload).events).toEqual([
+      { type: 'interaction:permission-resolved', requestId, outcome: 'unknown' },
+      { type: 'interaction:question-resolved', requestId: 'question:tool-question', outcome: 'failed' },
+      expect.objectContaining({ type: 'compaction:completed', compactionId, outcome: 'failed' }),
+      { type: 'turn:failed', turnId: promptId, error: failure.error },
+    ]);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+    expect(normalizer.pendingQuestionRequests()).toHaveLength(0);
+  });
+
   it('maps tool events with their native ids', () => {
     const pre = fakeClaudeHookPayload('PreToolUse', {
       prompt_id: 'prompt-tool',
