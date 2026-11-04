@@ -1,7 +1,12 @@
-# Upstream adaptation handoff — 2026-11-03
+# Upstream adaptation handoff — 2026-11-04
 
-**Status:** In progress. Every vendor has a staged candidate or a recorded blocker. Nothing is promoted. This file is
-the resume point for the draft PR on `claude/nice-darwin-0vugls`. Delete it when the PR is ready for review.
+**Status:** Review work done; landing and promotion remain. Every vendor has a staged candidate or a recorded blocker.
+Every confirmed review finding is fixed. Nothing is promoted. This file is the resume point for the draft PR
+[vibefield/puppeteer#59](https://github.com/vibefield/puppeteer/pull/59). Delete it when the PR is ready for review.
+
+The PR's original head is `claude/nice-darwin-0vugls` (`b32f857`). The review-completion work continues on
+`claude/compassionate-newton-azrskr`, which is `b32f857` plus the commits listed in §2. Fast-forward the PR branch to
+it, or retarget the PR, before review.
 
 Goal: bring every agent in `support/agents.json` up to its latest upstream stable release, following
 [`docs/guides/adapting-an-agent.md`](../docs/guides/adapting-an-agent.md) and
@@ -12,36 +17,33 @@ Goal: bring every agent in `support/agents.json` up to its latest upstream stabl
 Upstream versions were read on 2026-11-03 from git tags, npm and the vendor channels. The session's GitHub REST API
 was scoped to this repository, so `pnpm upstream:detect` could not read GitHub releases.
 
-| Agent       | Ledger before         | Latest upstream stable                                | Staged in this branch     | Commits                     |
-| ----------- | --------------------- | ----------------------------------------------------- | ------------------------- | --------------------------- |
-| Claude Code | verified 2.1.308      | 2.1.311 (`stable` channel; `latest` is 2.1.317)       | candidate 2.1.311         | `d817eed`                   |
-| Codex       | verified 0.164.0      | 0.166.0 (`rust-v0.166.0`)                             | candidate 0.166.0         | `e9fab8a`, `c76adca`        |
-| Grok Build  | verified 1.0.70       | 1.0.70                                                | — (already current)       | —                           |
-| Hermes      | pending 0.20.0        | 0.21.5 (`v2026.9.24`)                                 | candidate 0.21.5          | `919aded`                   |
-| Kimi Code   | pending 0.34.0        | 2.4.1 (`@moonshot-ai/kimi-code@2.4.1`)                | candidate 2.4.1           | `4ac97ba`                   |
-| OpenCode    | pending 1.18.16       | 1.19.5 on the default 1.x line; 2.2.5 (`@opencode/cli`) | candidate 1.19.5        | `1cff3a8`, `e78b8b3`, `b08a638` |
-| Copilot CLI | pending 1.0.80        | 1.0.105                                               | candidate 1.0.105         | `da3d9df`, `eed27fb`        |
-| Pi          | pending 0.84.3        | 1.5.0                                                 | candidate 1.5.0           | `9cd192e`                   |
-| Antigravity | pending 1.1.20        | 1.4.12                                                | none — blocker recorded   | `45ca9f8`                   |
+| Agent       | Ledger before    | Latest upstream stable                                  | Staged in this branch   | Adaptation commits              | Review fixes (merge) |
+| ----------- | ---------------- | ------------------------------------------------------- | ----------------------- | ------------------------------- | -------------------- |
+| Claude Code | verified 2.1.308 | 2.1.311 (`stable` channel; `latest` is 2.1.317)         | candidate 2.1.311       | `d817eed`                       | `2b75e0f`, `6e4bdb7` |
+| Codex       | verified 0.164.0 | 0.166.0 (`rust-v0.166.0`)                               | candidate 0.166.0       | `e9fab8a`, `c76adca`            | `a2bb042`            |
+| Grok Build  | verified 1.0.70  | 1.0.70                                                  | — (already current)     | —                               | —                    |
+| Hermes      | pending 0.20.0   | 0.21.5 (`v2026.9.24`)                                   | candidate 0.21.5        | `919aded`                       | `3673427`            |
+| Kimi Code   | pending 0.34.0   | 2.4.1 (`@moonshot-ai/kimi-code@2.4.1`)                  | candidate 2.4.1         | `4ac97ba`                       | `eb2e28c`            |
+| OpenCode    | pending 1.18.16  | 1.19.5 on the default 1.x line; 2.2.5 (`@opencode/cli`) | candidate 1.19.5        | `1cff3a8`, `e78b8b3`, `b08a638` | `611a05d`            |
+| Copilot CLI | pending 1.0.80   | 1.0.105                                                 | candidate 1.0.105       | `da3d9df`, `eed27fb`            | `845ce4d`, `cab3aa5` |
+| Pi          | pending 0.84.3   | 1.5.0                                                   | candidate 1.5.0         | `9cd192e`                       | `bedd9d5`, `5e4d98f` |
+| Antigravity | pending 1.1.20   | 1.4.12                                                  | none — blocker recorded | `45ca9f8`                       | —                    |
 
 Verified entries keep `currentVersion` and `verification`, with `candidateVersion` staged beside them by
 `scripts/stage-agent-candidate.mjs`. Pending entries keep `baseline-pending` and carry updated `blockers`. No artifact
 digest, receipt or `currentVersion` was written by hand. Only **linux-x64** was acquired and run, so darwin-arm64,
 darwin-x64 and windows-x64 are unacquired everywhere.
 
-The merged tree passes `support:check`, `groundtruth:mapping:check`, `upstream:check`, `surface:groundtruth:check`,
-`surface:audit`, `surface:workflow:check`, `packages:check` and `format:check`. The PR description has the
-`pnpm test` result.
+The tree passes `support:check`, `groundtruth:mapping:check`, `upstream:check`, `surface:groundtruth:check`,
+`surface:audit`, `surface:workflow:check`, `packages:check`, `format:check` and `COLORTERM=truecolor pnpm test`. The
+PR description has the details.
 
 ## Must-do before this PR is ready
 
-### 1. Land the Rosetta dependency (Copilot, Pi)
+### 1. Merge the Rosetta dependency (Copilot, Pi), then re-import
 
-The Copilot and Pi imports read Rosetta commits on the `vibefield/rosetta` branch
-`groundtruth/upstream-rosetta-trio`, based on `main` at `972d090`. The branch is pushed but not merged; its draft PR is
-[vibefield/rosetta#39](https://github.com/vibefield/rosetta/pull/39). Merge it, then confirm a clean re-import before
-this PR is ready. To work on it, clone
-it as the sibling `../rosetta` and check out that branch.
+The Copilot and Pi imports read the `vibefield/rosetta` branch `groundtruth/upstream-rosetta-trio`, based on `main` at
+`972d090`, in draft PR [vibefield/rosetta#39](https://github.com/vibefield/rosetta/pull/39):
 
 - `8ebdd48d2cd52586ee7c524b6a36261295ce4ead` — capture Copilot CLI 1.0.105, with farm fixes for single-executable
   packages, FTS5 store reduction and empty lock files.
@@ -51,103 +53,91 @@ it as the sibling `../rosetta` and check out that branch.
 - `a6fbaadfbc3b3d9f7daa3ba64779383542aa5083` — the Gemini mock fills whatever shell-tool schema is declared, which
   Antigravity 1.4.12 needs.
 
-If that branch is ever lost, re-create the commits from `972d090`:
-`ROSETTA_FARM_ISOLATED=1 python3 -m tools.groundtruth farm copilot --version 1.0.105`, and the same for `pi --version 1.5.0`.
-Repeat the fixes listed above, then run `build_canonical`. Re-import into Puppeteer with
-`pnpm --filter @vibefield/puppeteer-surface run surface:census:<vendor>` and `surface:model:<vendor>`, and confirm the
-committed output is byte-identical (`git diff --exit-code`).
+**Re-import verified on 2026-11-04.** With that branch checked out as the sibling `../rosetta`, `surface:census:copilot`,
+`surface:model:copilot`, `surface:census:pi`, `surface:model:pi` and `surface:groundtruth:write` reproduce this
+branch's committed output byte for byte. That includes the Copilot and Pi sanitizer fixes from §2, which change the
+import but not Rosetta.
 
-### 2. Resolve confirmed review findings
+**rosetta#39's two privacy questions, checked against its fixtures:**
 
-Each vendor commit got an independent multi-dimension review. Every finding then went to three skeptics, and a
-finding is "confirmed" when at least two upheld it.
+- Copilot's raw session UUIDs as `usageAccountingWatermarks` keys. In Rosetta these are random ids the farm generated
+  on a disposable VM. Rosetta keeps them unredacted everywhere (session directory names, `sessionId`, and the 1.0.80
+  corpus), so the keys add nothing. In Puppeteer they reversed the `sessionId` pseudonym. Fixed on the Puppeteer side
+  (§2, Copilot).
+- Pi's SystemMessage `sections`/`toolsAdded`. In these fixtures this is Pi's own built-in harness prompt, and the
+  only environment values (cwd, install path) are already `<PROJECT>`/`<WORK>`. No user-authored text is present. A
+  non-hermetic capture could carry context files, so Puppeteer now redacts these fields (§2, Pi).
 
-**OpenCode** (review of `1cff3a8`, `e78b8b3`):
+Remaining steps: merge rosetta#39, re-run the re-import above from Rosetta `main`, and confirm `git diff --exit-code`.
 
-- [x] MAJOR — 1.19.0 made `autoupdate: true` notify-only, but the adapter still reported such an install as
-  self-updating. Code fixed in `b08a638`. **Still open:** correct `findings.md` (§0 around L79/L138) and the
-  reconcile narrative. This is consumed config-semantics drift, not additive-unconsumed.
-- [ ] MAJOR — `packages/adapter-opencode/src/transport/loopback-fetch.ts` retries once on ECONNRESET for every method.
-  A non-idempotent POST that the server already received gets sent again: `prompt_async` (a duplicate turn),
-  `POST /session` (an orphan session), or a permission or question reply (a double answer). Retry only when the request
-  provably never left the client, or only for idempotent methods (GET/HEAD and the SSE subscribe), and handle a POST
-  after a backend restart by using a fresh connection. Apply the same rule to the census harness retry, and record
-  every retried attempt in the HTTP trace evidence.
-- [ ] MINOR — the stale-socket fix does not cover the other fetches to fresh `serve --port 0` backends:
-  `services/models.ts:76` (`/provider`) and the profile-verification `/experimental/console/orgs` request. Route both
-  through the corrected loopback fetch.
+### 2. Review findings: all confirmed findings fixed
 
-**Codex** (review of fix commit `c76adca`):
+Each vendor's commits got independent reviewers for the dimensions that had not run: integrity, privacy, drift-claims
+and code. Every candidate, whether carried over from the 2026-11-03 review or newly found, then went to three
+independent verifiers with different lenses (reproduce, refute, impact). It was confirmed when at least two upheld it.
+The fixes were made on per-vendor branches and merged.
 
-- [ ] MAJOR (2/2 votes) — `launch/tui-session.ts:220`. `attachThread` now rejects on a provider refusal, but the TUI
-  resume tap discards its promise with `void`. The rejection goes unhandled and no diagnostic is published.
-- [ ] MINOR — `transport/model-provider-error.ts:35` rejects valid `ModelProviderError` data whose provider id falls
-  outside an ASCII-only pattern, which brings back the endless resume retry. Decode the variant from `data.type`, and
-  sanitise ids only for display.
-- [ ] MINOR — `census/generate-model.mjs:377`: the list of "seven gated requests" leaves out `model/list`, which the
-  adapter sends, and `thread/sample`. Both return `ModelProviderError` data in 0.166.0.
-- [ ] MINOR — `probes/codex@0.166.0/README.md` L18 and L28 contradict Method 6: a 0.164.0 baseline result block and a
-  new script are committed, and the `baseline` block was merged in by hand.
-- [ ] MINOR — `model/codex@0.166.0/evidence.json:71`: the `codex-binary-probe` claim's `capturedAt` predates the
-  provider-mismatch probe that was added to its harness.
+- **OpenCode** (`611a05d`). OC-1..3 plus four new findings.
+  - The loopback fetch re-sends only GET/HEAD/OPTIONS. Every other method goes out once on its own connection; the
+    census harness follows the same rule and traces each retry.
+  - `/provider` and `/experimental/console/orgs` now go through it.
+  - Auto-update is classified for every config state on both release lines. It reads `config.json`, `opencode.json`
+    and `opencode.jsonc` in upstream merge order.
+  - The 1.19.0 boundary is cited from upstream source digests (findings §0.7), and the migration plan's "1.19.5" is
+    corrected.
+- **Codex** (`a2bb042`). CX-1..5.
+  - The TUI resume tap now handles and publishes the provider refusal.
+  - Any provider id decodes.
+  - The gated-request list now includes `model/list` and `thread/sample`.
+  - The probe README is truthful about how the baseline was produced, and the probe has its own `capturedAt`.
+- **Kimi** (`eb2e28c`). 11 confirmed.
+  - The workdir-slug and free-text leaks are closed.
+  - Resumed subagents reopen in delegation and in the monitor.
+  - The drift and live-lane claims are corrected.
+  - Rejected: KI-D6, KI-D7.
+- **Copilot** (`845ce4d`, `cab3aa5`). 13 confirmed.
+  - UUID map keys are aliased and the session clocks pinned.
+  - The 1.0.105 model is built from 1.0.105 sources only, and the model date comes from the import.
+  - New commands are classified, and the assisted permission mode has its own label.
+  - The persona's tool start now matches 1.0.105.
+  - `workflow --help` and `workflow run --help` were captured offline in a network-deny namespace; the group has one
+    subcommand, `run`.
+  - Rejected: CO-D2.
+- **Pi** (`bedd9d5`). 7 confirmed.
+  - SystemMessage sections and tool text are redacted.
+  - The model is built from 1.5.0 sources only.
+  - Monitor-capability families no longer mark native events consumed.
+  - The 1.5.0 session-file rule is stated, and a malformed tool call's `{}` is not reported as input.
+- **Claude Code** (`2b75e0f`, `6e4bdb7`). 7 confirmed.
+  - Egress and credential claims are scoped to the evidence.
+  - The headless claim is emitted only for captured print lanes.
+  - The second `/compact` stop is labelled as 2.1.311's summary retry (read from the bytes, not recaptured).
+  - The event-map footer matches the ledger.
+  - Rejected: CC-4, CC-5.
+- **Hermes** (`3673427`). 11 confirmed.
+  - The `resumed` stored id is aliased.
+  - Results are correlated through the census direction marker.
+  - Native-TUI approvals settle on their tool or turn.
+  - Drift and census claims are corrected, including the hand-written `findings.md`.
+  - Rejected: HM-3, HE-C3, HE-D5.
 
-### 3. Finish the reviews that were cut short
+Residual items the fixers recorded but could not close in a container:
 
-A usage limit stopped most verification votes for the reviews below. Their candidate findings were **neither upheld
-nor refuted**. Verify each one before the PR is marked ready, starting with the privacy items.
+- **Claude Code:**
+  - Only `headless` ran inside the network-deny sandbox. init, api-error, interactive and resume are still the
+    2026-11-03 captures, taken without it.
+  - The nominal single-stop `/compact` path on 2.1.311 is read from code, not captured.
+  - All claims share one `capturedAt`.
+- **OpenCode:**
+  - The census-harness retry change is reviewed statically only; the harness was not re-run against the binary.
+  - Installs from 1.18.17 to 1.18.34 and from 1.19.1 to 1.19.4 are classified by source reading.
 
-- **Kimi** (`4ac97ba`; the drift-claims dimension never ran):
-  - **privacy:** the shared leak-detector allowance in `packages/surface/src/sanitize.ts` and the Kimi workdir-key
-    allowance may admit a real cwd basename slug, in both the redactor and the repository gate.
-  - **privacy:** the new free-text fields `resultSummary` and `errorMessage` are committed verbatim, while the same
-    text is redacted in the hook copies.
-  - deduplicating subagent start/stop by `subagentId` may permanently swallow resumed subagent runs.
-  - the monitor never reopens a child on `subagent.spawned`/`started`, so a resumed child is projected as stopped.
-  - a background `task.started` deduplicated against an earlier `subagent.spawned` is reported as mapped with zero
-    events.
-  - `findings.md` says the 2.4.1 TUI lane passed, while the ledger blocker says it never ran.
-- **Copilot** (`da3d9df`, `eed27fb`; the drift-claims and code dimensions never ran):
-  - **privacy:** raw native session UUIDs may leak as object keys in `session.shutdown.usageAccountingWatermarks`,
-    which would reverse the `sessionId` pseudonym.
-  - **privacy:** `accountingSnapshot.sessionStartTime`, as an ISO string and as an epoch, may slip past timestamp
-    pinning.
-  - shapes and occurrences seen only in 1.0.80 may be recorded as 1.0.105 runtime claims, because Rosetta's canonical
-    inventory is cumulative across versions.
-  - the 1.0.105 manifest `generatedAt` is hard-coded to 2026-08-28.
-- **Pi** (`9cd192e`; the code dimension never ran):
-  - **privacy (1 vote upheld):** the Pi privacy rules were not extended for the new 1.5.0 `SystemMessage`, so
-    system-prompt text in `sections`/`toolsAdded` may be kept verbatim.
-  - 0.84.3 darwin-arm64 records and fields only in the 0.84.3 writer may be counted as 1.5.0 linux-x64 evidence.
-  - the mapping lock may mark the new writer-only `usage` entry as semantically consumed.
-  - 1.5.0 writes the session file at the first user message, but the adapter and findings still state the 0.84.3
-    "first assistant record" rule.
-  - undeclared `ToolCall.argumentsError` drift may change the meaning of `toolCall.arguments`.
-- **Claude Code** (`d817eed`; the code dimension and all verification votes never ran):
-  - the fail-closed `ANTHROPIC_BASE_URL` default may leave the binary's hard-coded OAuth and account endpoints
-    reachable, so "no non-loopback egress" is asserted but never observed. See the incident below.
-  - the committed 2.1.311 probe records say no owner account or config was read, yet one run read a host credential.
-  - the second compaction `SubagentStop` may be 2.1.311's summary retry, set off by the loopback model's summary-less
-    reply, rather than fixed `/compact` behaviour.
-  - possible undeclared change to when `SubagentStop` fires; the adapter reads this event.
-  - the credential-less StopFailure assertion is now skipped when the headless lane is missing, while the model still
-    claims that path as verified-headless.
-  - the edited `event-map.html` footer may still name 2.1.207 and call 2.1.308 a candidate.
-- **Hermes** (`919aded`; the code and drift-claims dimensions never ran):
-  - **privacy:** the raw stored session id may leak through the `resumed` field, which breaks the documented
-    session-id join.
-  - the replay test claims every `tui_gateway` frame is shape-validated, but none of the 17 method and server-request
-    results are attributed or validated.
-  - the rejection reason in the negative evidence for the breaking `session.resume` claim is redacted.
+### 3. Remaining per-vendor blockers (survey work)
 
-The review harness is a Workflow script: four dimensions (integrity, privacy, drift-claims, code), then three
-refutation votes per finding. Re-run it per vendor with the base commit set to the parent of that vendor's commits.
-
-### 4. Remaining per-vendor blockers (survey work)
-
-- **Claude Code 2.1.311:** no `headless` capture. In the authoring container, the "no credential" lane made one real,
-  billed Haiku call (about $0.0005) because the binary found a host credential. That run was discarded, and
-  `census/isolation.mjs` now defaults `ANTHROPIC_BASE_URL` to `http://127.0.0.1:0`. Re-run that lane on a host where
-  the binary holds no credential, and confirm with a network-deny sandbox that no lane reaches a non-loopback host.
+- **Claude Code 2.1.311:** the headless lane is now captured. `census/sandbox.mjs` runs every census CLI that executes
+  the binary inside a user+network+mount namespace that has only loopback. It hides the binary's hard-coded credential
+  directory `/home/claude/.claude/remote` and the caller's home, and refuses to run unless it proves no outside host is
+  reachable. The run recorded 0 egress attempts. Re-running the other modes inside the sandbox is a follow-up.
 - **Hermes 0.21.5:** there are no source-archive bytes (codeload.github.com was blocked) and no `installed-console.json`.
   That manifest needs the pinned Python 3.11.9 / uv 0.9.28 and Node 22.22.0, but the survey used 3.11.18, 0.11.32 and
   22.23.4. Approval, clarify and `request.cancel` were not exercised against a real attached TUI.
@@ -164,9 +154,9 @@ refutation votes per finding. Re-run it per vendor with the base commit set to t
 - **Copilot, Pi and Antigravity** have no protected promotion lane: `agent-surface-promotion.yml` offers only claude,
   codex, grok, hermes, kimi and opencode. This blocker predates this work.
 
-### 5. Promotion (needs the repository owner)
+### 4. Promotion (needs the repository owner)
 
-For each staged vendor whose review findings are closed:
+For each staged vendor:
 
 1. `gh workflow run agent-adaptation.yml --ref <branch> -f vendor=<v> -f version=<ver> -f ground_truth=packages/surface/vendors/<v>/groundtruth.json -f publish_draft=false`.
    Add `-f source_reference=v2026.9.24` for Hermes. This acquires and attests the other three platforms.
@@ -178,10 +168,12 @@ For each staged vendor whose review findings are closed:
 ## Environment notes for the next session
 
 - In a cloud container, GitHub REST and web are blocked outside the session's repo scope, and so is codeload.
-  Release-asset downloads (via redirect), raw.githubusercontent.com and npm all work.
+  Release-asset downloads (via redirect), raw.githubusercontent.com and npm all work. Public repositories such as
+  `vibefield/rosetta` clone anonymously; pushing to them needs the repository attached with push access.
 - `pnpm install` needs the sibling Ghosttea checkout: run `node scripts/prepare-ghosttea-ci.mjs`, then
   `ELECTRON_SKIP_BINARY_DOWNLOAD=1 pnpm install --frozen-lockfile`.
 - Two environment-only test failures appear in containers. `packages/imposter/src/tui/app.test.ts` ("paints in violet
-  and blue") needs `COLORTERM=truecolor`. `apps/imposter-control` `src/main/plane.test.ts` needs an Electron binary.
-- Hermes's `findings.md` was written through the shell because the file tool refused a `.md` write. Review it like any
-  other change.
+  and blue") needs `COLORTERM=truecolor`. `apps/imposter-control` `src/main/plane.test.ts` needs an Electron binary;
+  run `node install.js` in `node_modules/.pnpm/electron@<version>/node_modules/electron` to fetch it.
+- Running a vendor binary in a container: use an unprivileged network namespace (`unshare -rn`) with a scrubbed
+  environment and a throwaway HOME. `ip` is absent; `census/netns-enter.py` brings loopback up with an ioctl.
