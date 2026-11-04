@@ -51,8 +51,11 @@ export function parseOpenCodeVersion(output: string): string | undefined {
   return OPENCODE_VERSION_PATTERN.test(candidate) ? candidate : undefined;
 }
 
+/** The words every 2.x refusal carries, so a record that holds only the message (an install's warnings) names it. */
+export const OPENCODE_UNSUPPORTED_LINE_MARK = 'is the 2.x release line, which this adapter does not support';
+
 export function unsupportedOpenCodeLineMessage(version: string): string {
-  return `OpenCode ${version} is the 2.x release line, which this adapter does not support; it supports OpenCode 1.x`;
+  return `OpenCode ${version} ${OPENCODE_UNSUPPORTED_LINE_MARK}; it supports OpenCode 1.x`;
 }
 
 export function readOpenCodeVersion(output: string): OpenCodeVersionReading {

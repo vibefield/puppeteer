@@ -216,8 +216,10 @@ describe('OpenCode private backend', () => {
   });
 
   it('refuses an OpenCode 2.x executable from --version alone, before serve can open the store', async () => {
-    // 2.2.5 prints `opencode v2.2.5`. Whether its `serve` would reject `--pure` is unproven, so this fixture starts
-    // and announces 2.x readiness as if it accepted the flag: the refusal must not depend on the start failing.
+    // 2.2.5 prints `opencode v2.2.5`, and its real `serve` rejects `--pure` (exit 1, "Unrecognized flag: --pure in
+    // command opencode serve", before any opencode.db exists; probe 2026-11-04 in an isolated home). The guard is
+    // defense in depth against a later 2.x that accepts the flag, which this fixture models: it starts and announces
+    // 2.x readiness, so the refusal must not depend on the start failing.
     const server = recordingServer('server listening on http://127.0.0.1:45681', 'opencode v2.2.5');
     const started = Date.now();
     const failure = await startOpenCodeBackend({ executable: server.executable, startupTimeoutMs: 5_000 }).catch(
@@ -228,6 +230,23 @@ describe('OpenCode private backend', () => {
     expect(Date.now() - started).toBeLessThan(5_000);
     expect(versionReads(server.versions)).toHaveLength(1);
     expect(() => readFileSync(server.record, 'utf8')).toThrow();
+  });
+
+  it('refuses 2.x the way 2.2.5 really behaves, rejecting --pure, with the typed error and no serve', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'opencode-backend-v2-'));
+    roots.add(root);
+    const serves = join(root, 'serves.log');
+    const real = join(root, 'opencode-2.2.5.mjs');
+    writeFileSync(
+      real,
+      `import {appendFileSync} from 'node:fs';
+       if (process.argv[2] === '--version') console.log('opencode v2.2.5');
+       else { appendFileSync(${JSON.stringify(serves)}, 'serve\\n'); process.exit(process.argv.includes('--pure') ? 1 : 0); }`,
+    );
+    await expect(startOpenCodeBackend({ executable: real, startupTimeoutMs: 5_000 })).rejects.toBeInstanceOf(
+      OpenCodeUnsupportedReleaseLineError,
+    );
+    expect(() => readFileSync(serves, 'utf8')).toThrow();
   });
 
   it('keeps a supported start failure as its own error with no second version read', async () => {

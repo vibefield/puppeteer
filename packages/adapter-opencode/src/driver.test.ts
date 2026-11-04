@@ -31,7 +31,9 @@ async function waitFor(predicate: () => boolean, label: string, timeoutMs = 5_00
   throw new Error(`timed out waiting for ${label}`);
 }
 
-describe('OpenCode native-TUI session composition', () => {
+// Each case boots real Imposter processes (the release-line `--version` read, then `serve`), whose start alone can
+// pass vitest's 5 s default on a loaded machine; 20 s matches the Imposter suite's own testTimeout.
+describe('OpenCode native-TUI session composition', { timeout: 20_000 }, () => {
   it('attaches the exact session and confirms REST prompts only from the matching native echo', async () => {
     const fixture = createOpenCodeImposterFixture();
     roots.add(fixture.root);

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import {
   InstalledAgentSchema,
   InstallRecipeSchema,
+  UpdateRecipeSchema,
   type InstallCandidate,
   type InstalledAgent,
 } from '@vibefield/puppeteer-core';
@@ -420,5 +421,30 @@ describe('OpenCode 2.x installs', () => {
     expect(install?.warnings).toEqual([
       expect.stringContaining('OpenCode 2.2.5 is the 2.x release line, which this adapter does not support'),
     ]);
+  });
+
+  it('claims no auto-update state from the 1.x rules, whatever the config or environment says', async () => {
+    const disabled = await service({
+      exec: async () => ({ stdout: 'opencode v2.2.5\n', stderr: '' }),
+      readConfigFile: async () => '{ "autoupdate": false }',
+      env: { OPENCODE_DISABLE_AUTOUPDATE: '1' },
+    }).inspect(candidate({ realPath: '/home/tester/.opencode/bin/opencode' }));
+    expect(disabled?.autoUpdate).toBe('unknown');
+  });
+
+  it('offers no upgrade command for a 2.x install, only a manual recipe', async () => {
+    const twoLine = service({ exec: async () => ({ stdout: 'opencode v2.2.5\n', stderr: '' }) });
+    const install = await twoLine.inspect(candidate({ realPath: '/home/tester/.opencode/bin/opencode' }));
+    expect(install).toBeDefined();
+    // The runtime keeps the install as a record, so the recipe comes from the record alone.
+    const recipe = service().recipeFor(JSON.parse(JSON.stringify(install)) as InstalledAgent);
+    expect(UpdateRecipeSchema.parse(recipe)).toMatchObject({ kind: 'manual' });
+    expect(
+      service().recipeFor(installed({ method: 'npm-global', packageName: 'opencode-ai', warnings: install!.warnings })),
+    ).toMatchObject({ kind: 'manual' });
+    // A 1.x install whose version could not be read keeps its upgrade.
+    expect(service().recipeFor(installed({ warnings: ['opencode --version failed: timeout'] }))).toMatchObject({
+      kind: 'native-self-update',
+    });
   });
 });

@@ -509,7 +509,12 @@ export function openCodeStoreWarnings(reading: OpenCodeStoreReading): OpenCodePr
   ];
 }
 
-/** OpenCode's profile capability plus the root warnings Core has no field for yet. */
+/**
+ * OpenCode's profile capability plus the root warnings Core has no field for yet. Nothing outside this adapter
+ * calls `storeWarnings` today: `verify()` cannot carry them, because Core's `ProfileIdentitySchema` is strict and has
+ * no warnings field, so a user sees them only once Core, the runtime's `verifyProfile` and a view gain one (plan §4 A1
+ * is open until then).
+ */
 export interface OpenCodeProfileService extends ProfileService {
   /** Qualified warnings about the root's store; reading them never writes the store. */
   storeWarnings(profile: AgentProfile): Promise<OpenCodeProfileWarning[]>;

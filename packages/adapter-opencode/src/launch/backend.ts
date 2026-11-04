@@ -43,6 +43,10 @@ export function openCodeBackendArguments(spec: OpenCodeBackendLaunchSpec, hostna
  * The executable is OpenCode 2.x, which this adapter refuses. Raised before `serve` is spawned: 2.x opens and
  * migrates the profile's shared `opencode.db` at startup (the plan's draft/OPENCODE-2-MIGRATION-PLAN.md §2.2), so the
  * refusal must come from `--version` alone, never from how a start went.
+ *
+ * 2.2.5's own `serve` rejects the 1.x `--pure` flag (exit 1, before any `opencode.db` exists; probe 2026-11-04), so
+ * today the pre-spawn read is defense in depth against a later 2.x that accepts it. Its price is one deliberate 1.x
+ * change: every 1.x start spawns `opencode --version` (bounded at 5 s, failing open) before `serve`.
  */
 export class OpenCodeUnsupportedReleaseLineError extends Error {
   readonly code = 'OPENCODE_UNSUPPORTED_RELEASE_LINE';

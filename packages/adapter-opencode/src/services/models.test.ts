@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLoopbackFetch, loopbackFetch } from '../transport/loopback-fetch.js';
-import { createOpenCodeModelService, readOpenCodeProviders } from './models.js';
+import { createOpenCodeModelService, openCodeCatalogVersion, readOpenCodeProviders } from './models.js';
 
 vi.mock('../transport/loopback-fetch.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../transport/loopback-fetch.js')>();
@@ -61,6 +61,16 @@ describe('OpenCode provider catalog read', () => {
 });
 
 describe('OpenCode model discovery release line', () => {
+  it('stamps the catalog as the shared probe did, and refuses only the 2.x line', () => {
+    expect(openCodeCatalogVersion('1.19.5\n')).toBe('1.19.5');
+    // Outputs the strict launch pattern does not accept keep their stamp, as nativeVersion gave them.
+    expect(openCodeCatalogVersion('1.20.0-beta.1\n')).toBe('1.20.0-beta.1');
+    expect(openCodeCatalogVersion('A new version is available\n1.19.5\n')).toBe('1.19.5');
+    expect(openCodeCatalogVersion('v1.19.5')).toBe('1.19.5');
+    expect(openCodeCatalogVersion('no version here')).toBeUndefined();
+    expect(() => openCodeCatalogVersion('opencode v2.2.5\n')).toThrow(expect.objectContaining({ code: 'unsupported' }));
+  });
+
   const roots = new Set<string>();
   afterEach(() => {
     for (const root of roots) rmSync(root, { recursive: true, force: true });
