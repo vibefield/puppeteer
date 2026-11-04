@@ -68,7 +68,12 @@ export const ROSETTA_AGENT_CONFIGS = Object.freeze({
       context: '--context',
       name: '--name',
     },
-    privacy: { sensitiveTextKey: /^(?:timestamp|startTime|transformedContent|intentionSummary|displayMessage)$/i },
+    // `sessionStartTime` (accountingSnapshot, ISO string and epoch-ms forms) and `resumeTime` are wall clocks beside the
+    // redacted `timestamp`; the epoch form is pinned by the default camelCase `…Time` timestamp rule.
+    privacy: {
+      sensitiveTextKey:
+        /^(?:timestamp|startTime|sessionStartTime|resumeTime|transformedContent|intentionSummary|displayMessage)$/i,
+    },
   }),
   pi: Object.freeze({
     vendor: 'pi',
