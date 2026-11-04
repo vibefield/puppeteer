@@ -75,6 +75,37 @@ export interface HttpServeRoute {
     | 'vcs.diff';
 }
 
+/**
+ * How one SSE frame carries an event. OpenCode 1.x frames `{id,type,properties}`;
+ * 2.x frames `{id,created,type,data}` and leaves the clock off its connect frame.
+ * Key order on the wire follows this record: id, clock, type, payload.
+ */
+export interface HttpServeEnvelope {
+  /** Record key holding the event payload. */
+  payloadKey: string;
+  /** Optional wall-clock (epoch ms) key stamped on every frame except the connect frame. */
+  clockKey?: string;
+  /** Type of the frame every stream opens with. */
+  connectedType: string;
+}
+
+/**
+ * How the native viewer reaches an existing server. Exactly one of `command`
+ * (`opencode attach <url>`) or `serverFlag` (`opencode --server <url> … <dir>`)
+ * selects the invocation; flag lists are aliases, first match wins.
+ */
+export interface HttpServeAttach {
+  command?: string;
+  serverFlag?: string;
+  sessionFlag: string[];
+  /** Directory flag, or `undefined` when the directory is the first positional argument. */
+  directoryFlag?: string;
+  /** Root flags that take a value, so the positional directory is not mistaken for one. */
+  valueFlags: string[];
+  /** Prompt body template; whole-string `$text` and `$messageId` are substituted. */
+  promptBody: Record<string, unknown>;
+}
+
 export interface HttpServeDocument {
   $server: {
     command: string;
@@ -84,16 +115,19 @@ export interface HttpServeDocument {
     defaultPort: number;
     directoryQuery: string;
     directoryHeader: string;
+    /** Machine-readable stdout readiness line; `$origin` is substituted. */
+    readiness: string;
     auth: {
-      usernameEnv: string;
-      passwordEnv: string;
+      /** Absent when the vendor fixes the username. */
+      usernameEnv?: string;
+      /** Ordered: the first variable that is set supplies the password. */
+      passwordEnv: string[];
       defaultUsername: string;
+      realm: string;
+      unauthorizedBody: unknown;
     };
-    attach: {
-      command: string;
-      sessionFlag: string;
-      directoryFlag: string;
-    };
+    envelope: HttpServeEnvelope;
+    attach: HttpServeAttach;
   };
   routes: HttpServeRoute[];
 }

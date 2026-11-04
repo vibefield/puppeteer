@@ -5,6 +5,9 @@
  * implements the small action vocabulary declared by `HttpServeRoute`. Every
  * inbound request, successful response, SSE payload, and SSE carrier crosses
  * the persona's capture-derived ASM validator.
+ *
+ * The store reads events through the persona's envelope codec, never through a
+ * carrier key, so the same reducer state survives a change of frame shape.
  */
 
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -12,12 +15,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Persona } from '../persona/types.ts';
 import {
+  createSseEnvelope,
   createSseHub,
   HttpSseError,
   listenHttpSse,
   type HttpSseHandlerResult,
   type HttpSseRequest,
   type HttpSseServer,
+  type SseEvent,
   type SseRecord,
 } from './channels/http-sse.ts';
 import { createImposterSession, type BehaviorDocument, type ImposterSession } from './session.ts';
@@ -62,8 +67,8 @@ export interface HttpPersonaServerOptions {
 }
 
 export interface HttpPersonaServer extends HttpSseServer {
-  /** Publish a raw native event through the same ASM/SSE/store boundary. */
-  emit(sessionID: string, event: string, properties: Record<string, unknown>): Promise<void>;
+  /** Publish a raw native event payload through the same ASM/SSE/store boundary. */
+  emit(sessionID: string, event: string, payload: Record<string, unknown>): Promise<void>;
   readonly sessionIDs: readonly string[];
 }
 
@@ -83,10 +88,10 @@ function cloneRecord<T>(value: T): T {
   return structuredClone(value);
 }
 
-function sessionIDOf(record: SseRecord): string | undefined {
-  const direct = record.properties.sessionID;
+function sessionIDOf(payload: Record<string, unknown>): string | undefined {
+  const direct = payload.sessionID;
   if (typeof direct === 'string') return direct;
-  const info = record.properties.info;
+  const info = payload.info;
   return isRecord(info) && typeof info.id === 'string' ? info.id : undefined;
 }
 
@@ -131,6 +136,7 @@ export async function createHttpPersonaServer(options: HttpPersonaServerOptions)
   const document = persona.httpServe;
   if (!document) throw new Error(`persona ${persona.vendor} has no HTTP serve document`);
   const log = options.log ?? (() => {});
+  const envelope = createSseEnvelope(document.$server.envelope);
   const ownedRoot = options.storePath === undefined && options.env.PUPPETEER_IMPOSTER_HOME === undefined;
   const root = options.env.PUPPETEER_IMPOSTER_HOME ?? mkdtempSync(join(tmpdir(), `puppeteer-${persona.vendor}-http-`));
   const storePath = options.storePath ?? join(root, 'http-session-store.json');
@@ -143,33 +149,32 @@ export async function createHttpPersonaServer(options: HttpPersonaServerOptions)
 
   const persist = (): void => writeStored(storePath, sessions.values());
 
-  const apply = (record: SseRecord): void => {
-    const sessionID = sessionIDOf(record);
+  const apply = ({ type, payload }: SseEvent): void => {
+    const sessionID = sessionIDOf(payload);
     if (!sessionID) return;
-    let stored = sessions.get(sessionID);
-    if (record.type === 'session.deleted') {
+    const stored = sessions.get(sessionID);
+    if (type === 'session.deleted') {
       sessions.delete(sessionID);
       persist();
       return;
     }
     if (!stored) return;
 
-    const properties = record.properties;
-    if ((record.type === 'session.created' || record.type === 'session.updated') && isRecord(properties.info)) {
-      stored.info = { ...stored.info, ...cloneRecord(properties.info) };
-    } else if (record.type === 'session.status' && isRecord(properties.status)) {
-      stored.status = cloneRecord(properties.status);
-    } else if (record.type === 'session.idle') {
+    if ((type === 'session.created' || type === 'session.updated') && isRecord(payload.info)) {
+      stored.info = { ...stored.info, ...cloneRecord(payload.info) };
+    } else if (type === 'session.status' && isRecord(payload.status)) {
+      stored.status = cloneRecord(payload.status);
+    } else if (type === 'session.idle') {
       stored.status = { type: 'idle' };
-    } else if (record.type === 'message.updated' && isRecord(properties.info)) {
-      const id = properties.info.id;
+    } else if (type === 'message.updated' && isRecord(payload.info)) {
+      const id = payload.info.id;
       if (typeof id === 'string') {
         const found = stored.messages.find((message) => messageID(message) === id);
-        if (found) found.info = { ...found.info, ...cloneRecord(properties.info) };
-        else stored.messages.push({ info: cloneRecord(properties.info), parts: [] });
+        if (found) found.info = { ...found.info, ...cloneRecord(payload.info) };
+        else stored.messages.push({ info: cloneRecord(payload.info), parts: [] });
       }
-    } else if (record.type === 'message.part.updated' && isRecord(properties.part)) {
-      const part = properties.part;
+    } else if (type === 'message.part.updated' && isRecord(payload.part)) {
+      const part = payload.part;
       const owner = typeof part.messageID === 'string' ? part.messageID : undefined;
       const id = typeof part.id === 'string' ? part.id : undefined;
       const message = stored.messages.find((entry) => messageID(entry) === owner);
@@ -178,28 +183,20 @@ export async function createHttpPersonaServer(options: HttpPersonaServerOptions)
         if (index >= 0) message.parts[index] = { ...message.parts[index], ...cloneRecord(part) };
         else message.parts.push(cloneRecord(part));
       }
-    } else if (record.type === 'permission.asked') {
-      stored.permissions = [
-        ...stored.permissions.filter((entry) => entry.id !== properties.id),
-        cloneRecord(properties),
-      ];
-    } else if (record.type === 'permission.replied') {
-      stored.permissions = stored.permissions.filter((entry) => entry.id !== properties.requestID);
-    } else if (record.type === 'question.asked') {
-      stored.questions = [...stored.questions.filter((entry) => entry.id !== properties.id), cloneRecord(properties)];
-    } else if (record.type === 'question.replied' || record.type === 'question.rejected') {
-      stored.questions = stored.questions.filter((entry) => entry.id !== properties.requestID);
+    } else if (type === 'permission.asked') {
+      stored.permissions = [...stored.permissions.filter((entry) => entry.id !== payload.id), cloneRecord(payload)];
+    } else if (type === 'permission.replied') {
+      stored.permissions = stored.permissions.filter((entry) => entry.id !== payload.requestID);
+    } else if (type === 'question.asked') {
+      stored.questions = [...stored.questions.filter((entry) => entry.id !== payload.id), cloneRecord(payload)];
+    } else if (type === 'question.replied' || type === 'question.rejected') {
+      stored.questions = stored.questions.filter((entry) => entry.id !== payload.requestID);
     }
     persist();
   };
 
-  const connectedRecord = (): SseRecord => ({
-    id: nativeId('evt'),
-    type: 'server.connected',
-    properties: {},
-  });
   const hub = createSseHub({
-    connected: connectedRecord,
+    connected: () => envelope.connected(),
     validate: (record) => persona.validateRecord(record.type, record, persona.channelFor('sse')),
   });
 
@@ -213,7 +210,9 @@ export async function createHttpPersonaServer(options: HttpPersonaServerOptions)
     // afterwards, but its final event must not leak onto another directory's
     // stream merely because the lookup no longer has an answer.
     const directory = directoryFor(sessionID);
-    apply(record);
+    const event = envelope.read(record);
+    if (!event) throw new Error(`imposter refused an SSE carrier without a ${envelope.spec.payloadKey} object`);
+    apply(event);
     hub.publish(record, directory);
   };
 
@@ -248,7 +247,7 @@ export async function createHttpPersonaServer(options: HttpPersonaServerOptions)
       sse: {
         publish: (record) => publish(record, sessionID),
         request: (record) => {
-          const requestID = record.properties.id;
+          const requestID = envelope.payloadOf(record)?.id;
           if (typeof requestID !== 'string' || requestID.length === 0) {
             return Promise.reject(new Error(`${record.type} blocker has no id`));
           }
@@ -266,8 +265,8 @@ export async function createHttpPersonaServer(options: HttpPersonaServerOptions)
     return runtime;
   };
 
-  const emit = async (sessionID: string, event: string, properties: Record<string, unknown>): Promise<void> => {
-    await runtimeFor(sessionID).emit(event, properties, persona.channelFor('sse'));
+  const emit = async (sessionID: string, event: string, payload: Record<string, unknown>): Promise<void> => {
+    await runtimeFor(sessionID).emit(event, payload, persona.channelFor('sse'));
   };
 
   const findBlocker = (
