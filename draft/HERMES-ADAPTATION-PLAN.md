@@ -93,7 +93,7 @@ Official docs describe three programmatic protocols:
 The TUI gateway (`tui_gateway/server.py`) is the protocol the native TUI
 already speaks. Selected methods: `prompt.submit`, `prompt.background`,
 `session.create` / `resume` / `interrupt` / `history` / `compress` / `branch`
-/ `usage` / `status`, `approval.respond`, `clarify.respond`, `command.dispatch`,
+/ `usage` / `status`, `approval.respond`, `clarify.respond` (0.20 only; removed in 0.21.5), `command.dispatch`,
 `subagent.interrupt`. Selected events: `message.delta`, `message.complete`,
 `tool.start` / `progress` / `complete`, `approval.request`, `gateway.ready`.
 

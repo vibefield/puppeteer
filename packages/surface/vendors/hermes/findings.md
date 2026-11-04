@@ -81,18 +81,20 @@ as unattested. Observed:
 | Area | 0.20.0 | 0.21.5 | Classification |
 | --- | --- | --- | --- |
 | Gateway contract | Methods discovered by scanning `@method` in Python | Upstream-generated OpenRPC 1.3.2 contract; registry, handler table, and contract agree (237 methods) | additive authority: exact schemas replace structural guesses |
-| Methods | 130 | 237; the dispatcher rejects any undeclared params key with error 4000 | adaptation-required (see `session.resume`) |
+| Methods | 130 | 237 (+111, −4: `clarify.respond`, `secret.respond`, `sudo.respond`, `terminal.read.respond` removed, because those flows are now answered by a response frame to the server→client request); the dispatcher rejects any undeclared params key with error 4000 | adaptation-required (see `session.resume`); the removals have no adapter impact, since the adapter never sent them |
 | `session.resume` | Ignored an unread `cwd` | Contract has no `cwd`; `{session_id, cwd}` is refused with 4000 (captured in `resume-turn/rejections.jsonl`) | **breaking for the adapter**, fixed |
 | Approvals | `approval.request` event, `approval.respond` method | Server→client JSON-RPC request `approval` (`srq-<12 hex>` id, params with `request_id`), answered by a response frame; `approval.respond` remains | **breaking for observation**, fixed |
-| Clarify, sudo, secret, ... | `*.request` / `*.expire` events | 13 server→client requests; a timeout or cancel emits `request.cancel {id, method, reason}` | **breaking for observation**, fixed for `clarify` |
+| Clarify, sudo, secret, ... | `*.request` / `*.expire` events, answered by `clarify.respond` / `sudo.respond` / `secret.respond` / `terminal.read.respond` | 13 server→client requests, answered by a response frame; the four `*.respond` methods are gone (only `approval.respond` remains); a timeout or cancel emits `request.cancel {id, method, reason}` | **breaking for observation**, fixed for `clarify`; breaking for any client that answered by method (not the adapter) |
 | Client capability | none | `client.capabilities {server_requests: true}`; a WebSocket session whose every client never sent it gets server requests failed fast | additive; the native TUI sends it on `gateway.ready` |
 | Live session attach | One scalar transport; `session.resume` rebinds it | `FanoutTransport`: a resuming client joins the session's existing clients | additive; the host's 0.20 fan-out shim is now skipped |
 | Events | 60 (source scan) | 73; removed `approval.request`, `clarify.*`, `secret.*`, `sudo.*`, `terminal.read.*`, `subagent.text`; added `request.cancel`, `session.usage`, `todo.updated`, `message.reaction`, `session.control.update`, and others | removals adaptation-required (above); additions additive-unconsumed |
+| Ground-truth keys for names that are both a method and a notification | The method keeps the bare key; the notification is `gateway-event:<name>` (only `session.title` collided) | The notification keeps the bare key; the method is `gateway-method:<name>` (`session.title`, `session.usage`, `display.status`) | key remap, not a native change: `session.title` and `session.usage` now name the agent notification, the 0.20 methods of those names are `gateway-method:session.title` / `gateway-method:session.usage`, and 0.20 `gateway-event:session.title` is renamed to `session.title`, not removed. The `session.title` notification already existed in 0.20.0 and is only newly runtime-captured; the `session.usage` notification and both `display.status` entries are new |
 | Event carrier | `params {type, session_id, payload}` | adds a per-session monotonic `params.seq` on session-scoped events | additive-unconsumed |
 | `gateway.ready` | `skin`, `change_events` | adds required `replay_epoch`, optional `heartbeat` | additive-unconsumed |
 | `prompt.submit` result | `{status}` | `{status, user_row_id, ...}`; still no prompt id | additive-unconsumed |
-| Hooks | 23 `VALID_HOOKS` | 41 (stream, auxiliary-call, kanban, room, skill, transcription hooks added; none removed) | additive-unconsumed |
+| Hooks | 23 `VALID_HOOKS` | 41 (18 added: stream, auxiliary-call, kanban, room, skill, and transcription hooks, plus others such as `pre_command`, `on_interim_message`, `agent_loop_stopped`, `gateway_platform_event`, and `transform_api_error_classification`; none removed) | additive-unconsumed |
 | Hook envelopes | shell / outbound fields | both add `profile` | additive-unconsumed |
+| Hook kwargs | captured kwargs per hook | `post_api_request` +`first_chunk_at`, +`moa_references`; `pre_api_request` +`system_prompt`; `pre_approval_request` / `post_approval_response` +`session_id` (fills the webhook's top-level `session_id`, empty in 0.20.0); hook sequence, `telemetry_schema_version`, and tool-hook `turn_id` / `api_request_id` / `middleware_trace` unchanged | additive-unconsumed |
 | Inline diff | `tool.complete.inline_diff` | same bounds (6 files, 80 lines) and tools; preview produced only for a local terminal backend | no drift for the adapter |
 | Title request | "Generate a short, descriptive title ..." | "You name chat sessions. ..." | test-support only |
 | `state.db` | schema 25 | schema 30 | unconsumed (resume and replay go through the gateway) |
@@ -168,8 +170,8 @@ only on the following `message.start` and are otherwise `uncertain`.
 
 | Scenario | Distinct native traffic |
 | --- | --- |
-| basic-turn | `gateway.ready`, `client.capabilities`, `session.create`, `session.info`, `prompt.submit`, `message.start`, `sessions.changed`, `session.title`, `thinking.delta`, `message.delta`, `reasoning.available`, `session.usage`, `message.complete` |
-| tool-success | plus `tool.generating`, `tool.start`, `tool.complete` |
+| basic-turn | `gateway.ready`, `client.capabilities`, `session.create`, `session.info`, `prompt.submit`, `message.start`, `sessions.changed`, `session.title`, `thinking.delta`, `message.delta`, `reasoning.available`, `message.complete` |
+| tool-success | plus `tool.generating`, `tool.start`, `tool.complete`, `session.usage` (emitted mid-turn, after `tool.start`; absent from the tool-less scenarios) |
 | permission-deny | plus server request `approval` and the client's response |
 | interrupt | `session.interrupt` → `{status: "interrupted"}`; `message.complete` status `interrupted` with `persisted_turn` |
 | resume-turn | refused `session.resume {session_id, cwd}` (kept in `rejections.jsonl`), then `session.resume {session_id}` and the basic stream |
@@ -179,18 +181,30 @@ carries no payload. `sessions.changed` is session-less and carries no `seq`. A d
 terminal call completes with `exit_code: -1`, `status: "blocked"`, and a new
 `user_summary`. The approval request params carried `pattern_key` and `pattern_keys`
 beyond the declared fields, which the open `ApprovalRequestParams` model admits.
-Besides the user turn, the provider again saw two auxiliary requests (one with the new
-title prompt) and several model-metadata probes; none are user turns.
+Besides the user turn, the provider again saw two auxiliary requests, which in 0.21.5
+are byte-identical structured session-title requests (`response_format` json_schema
+`session_title`, `reasoning_effort: "none"`), and several model-metadata probes; none are
+user turns. The captures redact the prompt text, so the new 0.21 title prompt wording
+comes from the release source (`agent/title_generator.py`), not from the captures.
 
 ### Hooks and outbound webhooks
 
 As in 0.20.0, default `tui_gateway.entry` registers neither plugins nor `hooks.outbound`;
 the census sidecar does. The gateway now registers shell hooks itself when it builds an
-agent. New sessions fire `on_session_start` (resume does not), and shutdown fires
-`on_session_end` twice and `on_session_finalize` once. Every kwargs object now carries
-`telemetry_schema_version: "hermes.observer.v1"`, and tool hooks carry `turn_id`,
-`api_request_id`, and `middleware_trace`. Hook payload schemas in the ASM are sampled
-from the census (`sampled` fidelity); hooks not encountered have none.
+agent.
+
+Unchanged from 0.20.0 (the 0.20.0 captures already show all of it): every scenario fires
+the same hook sequence; new sessions fire `on_session_start` (resume does not), and
+shutdown fires `on_session_end` twice and `on_session_finalize` once. Every kwargs object
+carries `telemetry_schema_version: "hermes.observer.v1"`, and tool hooks carry `turn_id`,
+`api_request_id`, and `middleware_trace`.
+
+What changed is a handful of kwargs, all additive: `post_api_request` gains
+`first_chunk_at` and `moa_references`, `pre_api_request` gains `system_prompt`, and
+`pre_approval_request` / `post_approval_response` gain `session_id`. That new kwarg fills
+the outbound webhook's top-level `session_id` for the two approval events, which was empty
+in 0.20.0; it carries the stored id, the same value as `session_key`. Hook payload schemas
+in the ASM are sampled from the census (`sampled` fidelity); hooks not encountered have none.
 
 ## Adapter and Imposter implications
 
