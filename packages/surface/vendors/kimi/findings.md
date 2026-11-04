@@ -301,8 +301,7 @@ Native carriers are type-preserving redactions. These Kimi rules are new in
 
 - Interactive TUI paths beyond the unattested basic local lane: resize, clean/abrupt
   exit, explicit folder trust behavior changes, guarded paste under manual
-  input, permission accept/deny, question answer/dismiss, queueing, steer
-  (`turn.steer`, `prompt.steered`), and Esc-cancel.
+  input, question dismissal, queueing and steer (`turn.steer`, `prompt.steered`). Permission accept/deny, question submission and Esc-cancel now have retained native-TUI records.
 - Undo/branch switching (`agent.switched`, `context.undone`) and its effect on
   observers that tail an append-only file containing abandoned branches.
 - Compaction, swarm, tower mode, goals, file history, MCP failure records, and
@@ -316,13 +315,16 @@ Native carriers are type-preserving redactions. These Kimi rules are new in
   census never signs in.
 - The 52 of 95 modelled surfaces that have only exact-source evidence; runtime
   evidence covers 43.
-- darwin-arm64, darwin-x64, and windows-x64 artifacts and runtime behavior.
+- Four-platform protected native-TUI/runtime verification. Artifact acquisition has passed for all four platforms; local native-TUI coverage now includes darwin-arm64.
+
+## Attached native-TUI interactions (2026-11-04)
+
+The exact acquired darwin-arm64 2.4.1 executable (`sha256:1a8539eae87ffbd9bf480b8a47beafc9668f66b048b96cfa631310dc12dab3a7`) now passes native permission allow/deny, question answer with its separate review/submit step, and Escape cancellation. The same live suite proves startup, native folder-trust acceptance, prompt confirmation and resume. All 167 tests passed with live mode enabled (one unrelated opt-in test skipped). The retained records and ordinary replay tests are in [`native-interactions`](../../../adapter-kimi/src/test-support/fixtures/native-interactions/README.md).
+
+Approval resolution records report `approved` or `rejected`; the adapter reports allowed or denied. A question resolves with `{answers: {SURFACE_KIMI_QUESTION: "Alpha"}, method: "enter"}`, and the monitor moves it from pending to resolved. Escape writes `turn.cancel` with `reason: "user_cancelled"`, `turn.step.interrupted` with `reason: "aborted"`, and `prompt.aborted`; the adapter finishes that turn once with `stopReason: "cancelled"` and preserves its partial response.
+
+This run used disposable state and a loopback model provider without an OS network-deny boundary. It is local survey evidence, not a protected promotion receipt. The earlier Surface model's runtime/source classifications and source-census claims are unchanged by these additional adapter fixtures.
 
 ## Promotion status
 
-Support remains `baseline-pending`; only the protected promotion workflow may
-change it. The local reconciliation passed exact replay and then classified the
-candidate `unsafe-or-unknown`, as designed, because darwin-arm64, darwin-x64,
-and windows-x64 artifact evidence was not acquired here. Those platforms are
-acquired and attested by `agent-adaptation.yml`; no digest for them is recorded
-in this candidate.
+Support remains `baseline-pending`; only the protected promotion workflow may change it. Four-platform artifact acquisition passed in [run 41785477841](https://github.com/vibefield/puppeteer/actions/runs/41785477841), and those identities are recorded. Protected four-platform native-TUI/resume verification remains required.

@@ -16,6 +16,22 @@ function evidence(): KimiMonitorEvidence {
   return new KimiMonitorEvidence({ nativeSessionId: () => SESSION, epoch: 'test' });
 }
 
+it('resolves the question captured through the native TUI review-and-submit flow', () => {
+  const capture = JSON.parse(
+    readFileSync(new URL('../test-support/fixtures/native-interactions/question-answer.json', import.meta.url), 'utf8'),
+  ) as { records: Record<string, unknown>[] };
+  const projector = evidence();
+  const states: string[] = [];
+  for (const record of capture.records) {
+    const batch = projector.recordBatch(observed(record), AT);
+    for (const update of batch?.updates ?? []) {
+      if (update.operation === 'upsert' && update.family === 'status' && update.value.kind === 'interaction')
+        states.push(update.value.state);
+    }
+  }
+  expect(states).toEqual(['pending', 'resolved']);
+});
+
 function observed(
   record: Record<string, unknown>,
   options: { agentId?: string; replay?: boolean; cursorStart?: number; cursorEnd?: number } = {},

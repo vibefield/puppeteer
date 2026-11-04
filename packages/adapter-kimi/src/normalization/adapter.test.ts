@@ -16,6 +16,19 @@ function normalize(records: unknown[]) {
 }
 
 describe('KimiWireNormalizer', () => {
+  it.each([
+    ['permission-deny', 'interaction:permission-resolved', { outcome: 'denied' }],
+    ['permission-allow', 'interaction:permission-resolved', { outcome: 'allowed' }],
+    ['escape-interrupt', 'turn:completed', { stopReason: 'cancelled' }],
+  ])('replays the native TUI %s capture exactly once', (scenario, type, expected) => {
+    const captured = JSON.parse(
+      readFileSync(new URL(`../test-support/fixtures/native-interactions/${scenario}.json`, import.meta.url), 'utf8'),
+    ) as { records: unknown[] };
+    expect(normalize(captured.records).filter((event) => event.type === type)).toEqual([
+      expect.objectContaining(expected),
+    ]);
+  });
+
   it('maps the captured basic turn without exposing hidden reasoning text', () => {
     const events = normalize(capture('basic-turn'));
 
