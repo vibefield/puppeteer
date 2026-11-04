@@ -33,6 +33,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - vendor: antigravity
+            enabled: ${{ vars.ANTIGRAVITY_LIVE_ENABLED }}
           - vendor: claude
             enabled: ${{ vars.CLAUDE_LIVE_ENABLED }}
           - vendor: codex
@@ -84,6 +86,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VENDOR: ${{ matrix.vendor }}
+          ANTIGRAVITY_TERMS_APPROVED: ${{ vars.ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED || 'false' }}
           VERSION: ${{ steps.select.outputs.version }}
           GROUND_TRUTH: ${{ steps.select.outputs.ground_truth }}
           SOURCE_REFERENCE: ${{ matrix.source_reference }}
@@ -94,5 +97,6 @@ jobs:
             -f version="$VERSION" \
             -f ground_truth="$GROUND_TRUTH" \
             -f source_reference="$SOURCE_REFERENCE" \
+            -f antigravity_disposable_terms_approved="$ANTIGRAVITY_TERMS_APPROVED" \
             -f confirm=rehearse
           echo "rehearsing $VENDOR $VERSION from $GITHUB_REF_NAME" >> "$GITHUB_STEP_SUMMARY"

@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
@@ -54,3 +57,31 @@ test('probes require download metadata for the same standalone executable', () =
 test('the probe refuses source archives before touching their bytes', () => {
   assert.throws(() => probeAgentArtifact({ artifactKind: 'source-archive' }), /cannot execute artifact kind/);
 });
+
+test(
+  'Antigravity version probes pin the native update switch and reject changed executable bytes',
+  { skip: process.platform === 'win32' },
+  () => {
+    const parent = fileURLToPath(new URL('../.agent-adaptation/', import.meta.url));
+    mkdirSync(parent, { recursive: true });
+    const root = mkdtempSync(join(parent, 'probe-update-test-'));
+    const artifact = join(root, 'agent');
+    const script = '#!/bin/sh\n[ "$AGY_CLI_DISABLE_AUTO_UPDATE" = true ] || exit 23\nprintf "1.1.20\\n"\n';
+    const options = {
+      artifact,
+      artifactKind: 'standalone-executable',
+      vendor: 'antigravity',
+      version: '1.1.20',
+      output: join(root, 'version.txt'),
+      home: join(root, 'home'),
+    };
+    try {
+      writeFileSync(artifact, script);
+      assert.equal(probeAgentArtifact(options), '1.1.20');
+      writeFileSync(artifact, script + 'printf "# replaced\\n" >> "$0"\n');
+      assert.throws(() => probeAgentArtifact(options), /artifact changed during the version probe/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  },
+);

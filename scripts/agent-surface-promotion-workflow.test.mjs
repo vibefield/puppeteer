@@ -9,9 +9,10 @@ const workflow = readFileSync(resolve(root, '.github/workflows/agent-surface-pro
 const adaptation = readFileSync(resolve(root, '.github/workflows/agent-adaptation.yml'), 'utf8');
 const live = readFileSync(resolve(root, '.github/workflows/agent-live.yml'), 'utf8');
 const adaptationVendorChoices = /options: \[antigravity, claude, codex, copilot, grok, hermes, kimi, opencode, pi\]/;
-const promotionVendorChoices = /options: \[claude, codex, copilot, grok, hermes, kimi, opencode, pi\]/;
+const promotionVendorChoices = /options: \[antigravity, claude, codex, copilot, grok, hermes, kimi, opencode, pi\]/;
 const protectedLiveTests = Object.fromEntries(
   Object.entries({
+    antigravity: 'driver.live.test.ts',
     claude: 'native-tui.live.test.ts',
     codex: 'native-tui.live.test.ts',
     grok: 'acp.live.test.ts',
@@ -470,4 +471,14 @@ test('Copilot binds the exact executable to a native-TUI turn and same-session j
   assert.match(protectedLiveTests.copilot, /resume: sessionId/);
   assert.match(protectedLiveTests.copilot, /replay && source === 'native-log'/);
   assert.match(protectedLiveTests.copilot, /expect\(provider\.requests\)\.toHaveLength\(1\)/);
+});
+
+test('Antigravity requires explicit disposable consent and binds a native journal resume to unchanged bytes', () => {
+  const source = step(jobs['pinned-real'], 'Antigravity pinned-real native-TUI/resume lane');
+  assert.match(source, /ANTIGRAVITY_LIVE: '1'/);
+  assert.match(source, /inputs\.antigravity_disposable_terms_approved && '1' \|\| '0'/);
+  assert.match(protectedLiveTests.antigravity, /testId: 'antigravity:native-tui-journal'/);
+  assert.match(protectedLiveTests.antigravity, /resume: sessionId/);
+  assert.match(protectedLiveTests.antigravity, /replay && source === 'native-log'/);
+  assert.match(protectedLiveTests.antigravity, /expect\(digest\(\)\)\.toBe\(before\)/);
 });

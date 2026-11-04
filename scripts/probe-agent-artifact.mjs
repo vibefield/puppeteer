@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Execute only the bounded `--version` probe in an isolated home. */
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -96,6 +97,9 @@ export function probeAgentArtifact({
   env.HOME = homePath;
   env.USERPROFILE = homePath;
   env.NO_COLOR = '1';
+  if (vendor === 'antigravity') env.AGY_CLI_DISABLE_AUTO_UPDATE = 'true';
+  const digest = () => createHash('sha256').update(readFileSync(artifactPath)).digest('hex');
+  const before = digest();
   const result = spawnSync(artifactPath, ['--version'], {
     cwd: homePath,
     encoding: 'utf8',
@@ -109,6 +113,7 @@ export function probeAgentArtifact({
       `artifact version probe failed: ${result.error?.message ?? result.stderr ?? `exit ${result.status}`}`,
     );
   }
+  if (digest() !== before) throw new Error('artifact changed during the version probe');
   verifyBundle?.();
   const value = normalizeVersionOutput(result.stdout || result.stderr, version, config?.acquisition?.versionOutput);
   mkdirSync(dirname(outputPath), { recursive: true });

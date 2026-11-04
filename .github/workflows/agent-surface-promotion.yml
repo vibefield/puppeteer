@@ -7,7 +7,12 @@ on:
         description: Candidate vendor
         required: true
         type: choice
-        options: [claude, codex, copilot, grok, hermes, kimi, opencode, pi]
+        options: [antigravity, claude, codex, copilot, grok, hermes, kimi, opencode, pi]
+      antigravity_disposable_terms_approved:
+        description: Approve Antigravity native first-run terms only in disposable test homes, with interaction-data collection off
+        required: false
+        type: boolean
+        default: false
       version:
         description: Exact normalized vendor version
         required: true
@@ -435,6 +440,14 @@ jobs:
           PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
         run: pnpm --filter @vibefield/puppeteer-adapter-kimi test --testTimeout=15000
+      - name: Antigravity pinned-real native-TUI/resume lane
+        if: ${{ inputs.vendor == 'antigravity' }}
+        env:
+          ANTIGRAVITY_LIVE: '1'
+          ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED: ${{ inputs.antigravity_disposable_terms_approved && '1' || '0' }}
+          PUPPETEER_ANTIGRAVITY_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+          PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
+        run: pnpm --filter @vibefield/puppeteer-adapter-antigravity test --testTimeout=15000
       - name: Copilot pinned-real native-TUI/resume lane
         if: ${{ inputs.vendor == 'copilot' }}
         env:
