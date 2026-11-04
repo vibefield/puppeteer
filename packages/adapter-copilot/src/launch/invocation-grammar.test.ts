@@ -128,7 +128,9 @@ describe('copilot strict invocation grammar', () => {
       'utf8',
     );
     expect(run).toContain('without a parent agent turn');
-    expect(INVOCATION_GRAMMAR.commands.find((row) => row.names.includes('workflow'))).toMatchObject({
+    expect(
+      INVOCATION_GRAMMAR.commands.find((row) => (row.names as readonly string[]).includes('workflow')),
+    ).toMatchObject({
       passthrough: 'one-shot',
     });
   });
