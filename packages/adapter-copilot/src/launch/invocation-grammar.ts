@@ -388,14 +388,18 @@ export const INVOCATION_GRAMMAR = {
       reason: 'the managed launch cannot preserve this option',
     },
     {
+      // Help shows `--sync-session[=<on|off>]`: the value attaches only with `=`, so a following command is not taken.
       names: ['--sync-session'],
       arity: 'optional',
+      requireEquals: true,
       reason: 'the managed launch cannot preserve this option',
     },
     {
+      // Help: "Start a headless Mission Control environment (no local listener unless --host-ahp is also set)".
       names: ['--host-environment'],
       arity: 'one',
-      reason: 'the managed launch cannot preserve this option',
+      passthrough: 'elsewhere',
+      reason: 'starts a headless Mission Control environment, not a session in this terminal',
     },
     {
       names: ['--host-compute-id'],
@@ -434,7 +438,8 @@ export const INVOCATION_GRAMMAR = {
       passthrough: 'utility',
     },
     {
-      // `workflow run` executes a registered workflow without a parent agent turn and exits.
+      // Help lists only "workflow  Run dynamic workflows"; its subcommand help is not captured, so the whole group is
+      // classed by that summary as a non-interactive run. Any form still runs as typed, never as a managed session.
       names: ['workflow'],
       passthrough: 'one-shot',
     },
