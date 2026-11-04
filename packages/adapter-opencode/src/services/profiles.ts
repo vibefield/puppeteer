@@ -51,6 +51,7 @@ import type {
 import { resolveOpenCodeExecutable } from '../detection.js';
 import { startOpenCodeBackend, type OpenCodeBackend } from '../launch/backend.js';
 import { OpenCodeClient } from '../transport/client.js';
+import { loopbackFetch } from '../transport/loopback-fetch.js';
 
 /** The XDG variable OpenCode reads its data root from. */
 export const OPENCODE_PROFILE_ROOT_VARIABLE = 'XDG_DATA_HOME';
@@ -351,6 +352,26 @@ async function readConsoleAccounts(path: string): Promise<ConsoleAccount[] | Pro
 }
 
 /**
+ * The verification backend's client. Each request is bounded by `timeoutMs` and goes through the loopback fetch:
+ * a `serve --port 0` backend usually reuses the origin a stopped predecessor held, and that predecessor's stale
+ * pooled socket must not fail the read.
+ */
+export function openCodeVerificationClient(
+  backend: Pick<OpenCodeBackend, 'origin' | 'username' | 'password'>,
+  directory: string,
+  timeoutMs: number,
+  fetchImpl: typeof fetch = loopbackFetch,
+): OpenCodeClient {
+  return new OpenCodeClient({
+    origin: backend.origin,
+    directory,
+    username: backend.username,
+    password: backend.password,
+    fetchImpl: (input, init) => fetchImpl(input, { ...init, signal: AbortSignal.timeout(timeoutMs) }),
+  });
+}
+
+/**
  * The adapter's own private backend, answering one request under the binding
  * and disposed. The request loads a fresh empty directory: outside any
  * repository that is OpenCode's global project, so the read records no project
@@ -363,14 +384,7 @@ const readConsoleOrgsFromServe: OpenCodeConsoleOrgsReader = async ({ executable,
   let backend: OpenCodeBackend | undefined;
   try {
     backend = await startOpenCodeBackend({ executable, env });
-    const client = new OpenCodeClient({
-      origin: backend.origin,
-      directory,
-      username: backend.username,
-      password: backend.password,
-      fetchImpl: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(timeoutMs) }),
-    });
-    return await client.listConsoleOrgs();
+    return await openCodeVerificationClient(backend, directory, timeoutMs).listConsoleOrgs();
   } finally {
     await backend?.dispose();
     await rm(directory, { recursive: true, force: true }).catch(() => undefined);

@@ -107,5 +107,6 @@ normalization, not a version bump.
 - Is `durable.seq` a replay cursor for `/api/event`? If it is, the reconnect rule ("no replay; rehydrate over REST")
   changes.
 - `opencode-ai@1.x` clients run `opencode upgrade --major` to move to 2. A Puppeteer-managed 1.x binary must not
-  self-upgrade. 1.19.5 made autoupdate notify-only ("Updates are never installed automatically"), and the census keeps
+  self-upgrade. 1.19.0 made autoupdate notify-only ("Updates are never installed automatically"; upstream
+  `v1.19.0` `packages/opencode/src/cli/upgrade.ts`, recorded in the Surface findings §0.7), and the census keeps
   `OPENCODE_DISABLE_AUTOUPDATE=1`.
