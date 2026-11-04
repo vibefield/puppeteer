@@ -19,7 +19,7 @@ was scoped to this repository, so `pnpm upstream:detect` could not read GitHub r
 
 | Agent       | Ledger before    | Latest upstream stable                                  | Staged in this branch   | Adaptation commits              | Review fixes (merge) |
 | ----------- | ---------------- | ------------------------------------------------------- | ----------------------- | ------------------------------- | -------------------- |
-| Claude Code | verified 2.1.308 | 2.1.311 (`stable` channel; `latest` is 2.1.317)         | candidate 2.1.311       | `d817eed`                       | `2b75e0f`, `6e4bdb7` |
+| Claude Code | verified 2.1.308 | 2.1.311 (`stable` channel; `latest` is 2.1.317)         | verified 2.1.311        | `d817eed`                       | `2b75e0f`, `6e4bdb7` |
 | Codex       | verified 0.164.0 | 0.166.0 (`rust-v0.166.0`)                               | verified 0.166.0        | `e9fab8a`, `c76adca`            | `a2bb042`            |
 | Grok Build  | verified 1.0.70  | 1.0.70                                                  | — (already current)     | —                               | —                    |
 | Hermes      | pending 0.20.0   | 0.21.5 (`v2026.9.24`)                                   | candidate 0.21.5        | `919aded`                       | `3673427`            |
@@ -152,7 +152,7 @@ Residual items the fixers recorded but could not close in a container:
 - **Claude Code 2.1.311:** all nine census modes were recaptured inside the strict network-deny namespace in
   [run 41782999182](https://github.com/vibefield/puppeteer/actions/runs/41782999182), with zero non-loopback
   attempts. The whole sanitized set replaces the earlier mixed set; runtime and probe dates are separate.
-  Four-platform acquisition passed. Protected native-TUI/resume promotion remains.
+  Four-platform acquisition and protected native-TUI/resume promotion passed in [run 41788894962](https://github.com/vibefield/puppeteer/actions/runs/41788894962).
 - **Hermes 0.21.5:** source archive and all four installed consoles were acquired with the pinned toolchain in
   [run 41781642980](https://github.com/vibefield/puppeteer/actions/runs/41781642980). Earlier survey claims
   still reference their original source identity. Approval denial, clarify answer and `request.cancel` now pass against a real attached TUI on macOS arm64, with retained adapter regression fixtures. That run found and fixed unanswered adapter question state after a native TUI answer. The local Python runtime identity is recorded separately; four-platform protected verification remains.
@@ -187,9 +187,11 @@ protected-environment approval. Its generated commit `1ec8cc98` was merged into 
 The first attempt was correctly refused because its snapshot preceded the OpenCode fixture-ID corrections.
 Claude 2.1.311 rehearsal passed on `claude/claude-2.1.311-promotion` in
 [run 41787723616](https://github.com/vibefield/puppeteer/actions/runs/41787723616). Its promote run
-[41788894962](https://github.com/vibefield/puppeteer/actions/runs/41788894962) passed acquisition, all native lanes, verification and the full transaction, and is waiting for the repository owner's protected-environment approval.
+[41788894962](https://github.com/vibefield/puppeteer/actions/runs/41788894962) completed successfully after the repository owner approved the protected environment. Generated commit `ce70f3df` was merged into PR #59 as `6638394c`.
 Its earlier attempt passed all native lanes but the final transaction caught Kimi's artifact-order test assumption;
-the successful rehearsal and pending promotion include that correction.
+the successful rehearsal and promotion include that correction.
+
+Hermes 0.21.5 is rehearsing the complete four-platform workflow with the new attached-TUI interaction checks in [run 41791044639](https://github.com/vibefield/puppeteer/actions/runs/41791044639), from `fea59d0c` on `claude/hermes-0.21.5-promotion`. It has not been promoted.
 
 For each staged vendor:
 
