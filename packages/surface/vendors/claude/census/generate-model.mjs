@@ -887,8 +887,11 @@ function evidenceFor(...claims) {
   return { existence: claims, shape: claims };
 }
 
-/** The print-lane description for the modes this capture set holds. */
-function headlessLanes(modes) {
+/**
+ * The print-lane description for the modes this capture set holds. A set with
+ * no print lane has no headless claim to describe, so that is a caller error.
+ */
+export function headlessLanes(modes) {
   const lanes = [
     ['init', '--init-only'],
     ['headless', 'credential-less print'],
@@ -896,10 +899,13 @@ function headlessLanes(modes) {
   ].filter(([mode]) =>
     mode === 'api-error-<status>' ? modes.some((m) => m.startsWith('api-error-')) : modes.includes(mode),
   );
+  if (lanes.length === 0) {
+    throw new Error(`capture set holds no init, headless or api-error lane for ${RUNTIME_CLAIM}`);
+  }
   const names = lanes.map(([, name]) => name);
   const list =
     names.length > 1 ? `${names.slice(0, -1).join(', ')}${names.length > 2 ? ',' : ''} and ${names.at(-1)}` : names[0];
-  return `${list} lanes (${lanes.map(([mode]) => mode).join(', ')})`;
+  return `${list} ${names.length > 1 ? 'lanes' : 'lane'} (${lanes.map(([mode]) => mode).join(', ')})`;
 }
 
 /** Capture modes present in the sanitized set, each mapped to the claim its lane supports. */
@@ -1168,6 +1174,8 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
 
   const artifactId = `installed-claude-${version}-${artifactPlatform}`;
   const evidencePath = join(modelRoot, 'evidence.json');
+  // Each runtime claim exists only when one of its lanes was captured; event claims come from the same modes.
+  const headlessCaptured = modes.some((mode) => MODE_CLAIMS.get(mode) === RUNTIME_CLAIM);
   const interactiveCaptured = modes.some((mode) => MODE_CLAIMS.get(mode) === INTERACTIVE_CLAIM);
   writeJson(evidencePath, {
     evidenceVersion: 2,
@@ -1191,16 +1199,20 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       },
     ],
     claims: [
-      {
-        id: RUNTIME_CLAIM,
-        kind: 'runtime-capture',
-        confidence: 'verified-headless',
-        record: 'sanitized-captures',
-        artifact: artifactId,
-        platform: artifactPlatform,
-        harness: `Isolated ${headlessLanes(modes)} recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs`,
-        capturedAt,
-      },
+      ...(headlessCaptured
+        ? [
+            {
+              id: RUNTIME_CLAIM,
+              kind: 'runtime-capture',
+              confidence: 'verified-headless',
+              record: 'sanitized-captures',
+              artifact: artifactId,
+              platform: artifactPlatform,
+              harness: `Isolated ${headlessLanes(modes)} recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs`,
+              capturedAt,
+            },
+          ]
+        : []),
       ...(interactiveCaptured
         ? [
             {
