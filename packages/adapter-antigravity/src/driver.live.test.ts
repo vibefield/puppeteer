@@ -61,13 +61,15 @@ describe.runIf(process.env.ANTIGRAVITY_LIVE === '1')('Antigravity adapter throug
       expect(session.observationLevel()).toBe('native-log');
       const sessionId = session.sessionId;
       expect(sessionId).not.toContain('pending');
-      const requestCount = provider.requests.length;
-      expect(requestCount).toBeGreaterThan(0);
       projection.dispose();
       projection = undefined;
       await host.disposeTerminal(session.runtimeSessionId);
       await session.dispose();
       session = undefined;
+      // The first process can finish a checkpoint-summary request while shutting down.
+      // Snapshot after it exits so the count isolates requests made by the resumed process.
+      const requestCount = provider.requests.length;
+      expect(requestCount).toBeGreaterThan(0);
       session = await createAntigravityTuiSession({
         cwd,
         host,
