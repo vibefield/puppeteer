@@ -152,6 +152,9 @@ export function isolatedEnvironment(workRoot, names, environment = process.env) 
   value.NO_COLOR = '1';
   value.PYTHONDONTWRITEBYTECODE = '1';
   value.UV_NO_ENV_FILE = '1';
+  // Diagnostic only: compare two independent builds with normalized Rust paths and timestamps.
+  value.RUSTFLAGS = `--remap-path-prefix=${workRoot}=/hermes-build`;
+  value.SOURCE_DATE_EPOCH = '0';
   // Source-built Python dependencies may use the installed Rust toolchain.
   // Retain its location, while Cargo's config and credentials stay in the disposable home.
   const rustupHome = environment.RUSTUP_HOME ?? (environment.HOME && join(environment.HOME, '.rustup'));

@@ -11,6 +11,6 @@ for entry in dist.files:
     if not source.is_file() or "__pycache__" in name.parts: continue
     data = source.read_bytes()
     entries.append({"path": str(name), "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})
-    if source.suffix == ".so":
+    if source.suffix == ".so" or "sboms" in name.parts:
         target = output / name; target.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(source, target)
 (output / "files.json").write_text(json.dumps(entries, indent=2) + "\n")
