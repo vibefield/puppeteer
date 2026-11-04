@@ -50,9 +50,10 @@ const notACapture = /-settings\.json$/;
  * Vendor rule sets that relax the shared defaults on purpose. Claude's admits
  * only the closed StopFailure/SessionEnd enum values (protocol constants that
  * fall under the free-text `error`/`reason` keys); Kimi's admits only its
- * structural agent/runtime identifiers (`main`, `agent-<n>`, `local`) and an
- * aliased workdir key, which fall under id keys. Everything else is the shared
- * default detector. Any other vendor's captures use the defaults.
+ * structural agent/runtime identifiers (`main`, `agent-<n>`, `local`) and the
+ * harness workdir key (`wd_workspace_<aliased hash>`), which fall under id keys,
+ * and adds its own free-text keys. Everything else is the shared default
+ * detector. Any other vendor's captures use the defaults.
  */
 const vendorRules = [
   ['packages/surface/vendors/claude/captures/', claudeRepositoryGateRules],

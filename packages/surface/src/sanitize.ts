@@ -395,7 +395,7 @@ function inspect(
     if (
       // A vendor-declared structural value is kept under any key by the
       // redactor (`sanitizeString`), so the detector must accept it there too.
-      ((rules.idKey.test(key) && !safeOrdinalId(value, key) && !rules.structuralEnumValue.test(value)) ||
+      ((rules.idKey.test(key) && !safeOrdinalId(value, key) && !safeStructuralEnum(value, key, rules)) ||
         rules.pathKey.test(key) ||
         rules.urlKey.test(key) ||
         (rules.sensitiveTextKey.test(key) && !safeStructuralEnum(value, key, rules)) ||

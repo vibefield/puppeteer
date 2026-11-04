@@ -89,13 +89,19 @@ requirement that broke the Imposter persona.
   `subagentId` instead. The adapter takes the agent from the journal path and
   was unaffected; the Imposter persona emitted off-model payloads until it
   was updated.
-- `profile.bind`/`config.update` `environmentDisclosure` lost its `date`
-  member. The date disclosure moved into injection-message origins
-  (`origin.disclosure: { kind: "date", localDate, timeZone }`, typed `unknown`
-  in source).
+- `profile.bind`/`config.update` `environmentDisclosure` no longer carries a
+  `date` member (observed; 0.34.0 source left the object untyped, 2.4.1 types
+  it as `{ cwd }`). Instead, every captured 2.4.1 session that reaches a turn
+  (all but `hook-block-prompt`) persists a `context.append_message` injection
+  with `origin: { kind: "injection", variant: "date_change", disclosure: {
+kind: "date", renderGeneration, localDate, timeZone } }` (observed; no
+  0.34.0 capture has one). The `origin.disclosure` slot itself is not new:
+  0.34.0 source already declared it as a fully typed, all-required date
+  object, and 2.4.1 loosened its source type to an unconstrained `{}`.
 - `plan.revision.path` became `key`; `context.apply_compaction` gained
   `wireLines`; `task.*` info gained `resumeReminded`, `parentToolCallId`, and
-  `stopCode`.
+  `stopCode`. Further field drift is listed under "Additive fields" below;
+  neither list is exhaustive, and the source contract is the full record.
 - The manifest is now drained from `EVENT2_REGISTRY`, where every listed type
   is durable. The 0.34.0 transient `cron.*` and `token_counting.*` types are now
   durable; `permission.rules.add` and `skill.activate` are retired.
@@ -137,9 +143,21 @@ aborted)` → `turn.ended(reason: cancelled)` → an `interruption` injection �
   `parentToolCallId`, `parentAgentId`, `runInBackground: false`, `model`,
   `thinkingEffort`, `taskId`) → `subagent.started` → `subagent.completed`
   between the parent's `tool.call` and `tool.result`. The child journal
-  `agents/agent-0/wire.jsonl` and the `state.json` `agents` map (now with
-  `parentAgentId` and labels) remain. Source routes background and swarm runs
-  through the same mirror; background runs also keep `task.*(kind: agent)`.
+  (`agents/agent-0/wire.jsonl` natively, `agents/agent-0.jsonl` in the
+  capture) and the `state.json` `agents` map remain. That map already carried
+  `parentAgentId` and `labels.parentAgentId` in 0.34.0; 2.4.1 adds only
+  `labels.profileName` (`coder`). The parent now reads `main` only because the
+  sanitizer keeps that structural id, which the 0.34.0 captures aliased.
+  Source routes background and swarm runs through the same mirror; background
+  runs also keep `task.*(kind: agent)`.
+- **The foreground child journal runs one turn.** In 0.34.0 it continued into
+  a second `system_trigger`/`subagent` turn (`turnId` 1) after the first
+  completed, and that was recorded as native behavior. In 2.4.1 it holds a
+  single `turn.prompt` → `turn.ended(completed)` followed by
+  `prompt.completed`, and its context gains a `context.append_message`
+  injection with variant `subagent_background_task`, next to the engine
+  `agent.turn.*` records. The census provider script may contribute to the
+  turn-count difference; the cause is unconfirmed.
 - **Engine-journal interleaving.** The loop engine appends `agent.turn.started`,
   `agent.message.appended`, and `agent.turn.ended` (with a `kind: "event"`
   discriminator and no `agentId`) into the same `wire.jsonl`
@@ -164,6 +182,31 @@ manifest: `agent.message.appended`, `agent.turn.started|ended`,
 `runtime.set_binding` and `changeNotifier.snapshot`, and its first turn emits
 `plugin.session_start`.
 
+### Additive fields
+
+Notable, not exhaustive:
+
+- `turn.ended` gains optional `stopReason` and `traceId` (source only; no
+  capture carries either).
+- `turn.steer` gains `messageId`, `promptIds`, and `turnId` (source only).
+- `llm.request.projection` adds `strict-media-degraded` and
+  `strict-media-stripped` to `strict | media-degraded | media-stripped`.
+- The `PermissionRequest` and `PermissionResult` hooks gain `id` (source only).
+- Observed loop-event fields: `tool.call` `display`, `tool.result`
+  `result.durationMs`, `step.end` `llmClientBlockedMs`, and the think part's
+  `reasoningKey`.
+- `llm.request.maxTokens` is still declared optional in source, but no 2.4.1
+  capture persists it, where every 0.34.0 `llm.request` did.
+
+### CLI commands
+
+Against the 0.34.0 root help, 2.4.1 adds `fork [options] [sessionId]`,
+`session`, `rc|remote [options]`, `install-desktop`, `app [path]`, and
+`import-sessions`, and `login`, `migrate`, and `upgrade|update` now take
+`[options]`. The adapter's invocation grammar had already classified all of
+these from its 2.0.2 help fixture except `app` and `import-sessions`, which are
+the only commands new relative to that fixture.
+
 ### Hooks
 
 The observed hook set per scenario matches 0.34.0 except that `Interrupt` now
@@ -180,12 +223,15 @@ The adapter changes trace to captures or pinned source:
 - `normalization/delegation.ts` maps the parent-journal `subagent.*` mirror to
   `delegation:subagent-started` (with `agentType` from `subagentName`) and
   `delegation:subagent-stopped`. It keys both this mirror and the existing
-  `task.*(kind: agent)` path by subagent id, so a background child settles once.
-  0.34.0 emitted no delegation events for a foreground subagent.
+  `task.*(kind: agent)` path by subagent id and tracks whether that child's
+  current run is open, so a background run settles once while a resumed child
+  that reuses its id opens a new start/stop pair. 0.34.0 emitted no delegation
+  events for a foreground subagent.
 - `normalization/monitor.ts` projects the same records onto the delegation
   family. spawned/started/completed are exact; source-only failed/cancelled are
   provisional. A child stopped by its parent's record cannot be reopened by
-  child-journal records tailed later.
+  child-journal records tailed later; only a parent-journal
+  `subagent.spawned`/`started` (a resume) reopens it.
 - `normalization/adapter.ts` classifies the engine-journal projections
   (`agent.message.appended`, `agent.turn.started|ended`) and the
   configuration snapshots (`runtime.set_binding`, `changeNotifier.snapshot`,
@@ -195,10 +241,17 @@ The adapter changes trace to captures or pinned source:
 - Cancellation needs no new mapping. The durable `turn.ended(cancelled)`
   already closes the turn as `turn:completed(stopReason: cancelled)`, and a
   retried step stays inside one turn.
+- `turn:completed.stopReason` is still taken from `turn.ended.reason`. The
+  new native `turn.ended.stopReason` is source-only and never observed, so the
+  adapter does not read it; preferring it when present is a follow-up once a
+  capture shows its values.
 - `launch/invocation-grammar.ts` is now census-checked against the 2.4.1 help.
-  It classifies the new `app [path]` command (hands the directory to the
+  Relative to its previous 2.0.2 help fixture, only `app` and
+  `import-sessions` are new (the other commands added since 0.34.0 were
+  already classified). It classifies `app [path]` (hands the directory to the
   desktop app through `kimi-code://`) as `elsewhere`, and `import-sessions` (a
-  standalone interactive import screen) as `utility`.
+  standalone interactive import screen) as `utility`. The nested `fork` and
+  `session` help fixtures are still the 2.0.2 captures.
 - Prompt confirmation still waits for a durable `turn.prompt` echo. A
   hook-blocked prompt therefore still resolves `uncertain` on timeout, although
   2.4.1 now records `prompt.completed(blocked)`. Turning that into an early,
@@ -211,14 +264,18 @@ The Imposter persona now stamps `agentId` on every agent-scoped record. It emits
 `isCustomTitle`, and passes the 2.4.1-required permission-hook fields through.
 
 Locally, the opt-in adapter-through-real-native-TUI lane (`KIMI_LIVE=1`)
-passed against this exact linux-x64 artifact with the loopback provider. It
-covered TUI startup, first-prompt session discovery, durable `turn.prompt`
-confirmation, normalized assistant output, and native `--session` resume with
-replayed history. That run is not a workflow-bound platform report.
+was reported passing against this exact linux-x64 artifact with the loopback
+provider. It covered TUI startup, first-prompt session discovery, durable
+`turn.prompt` confirmation, normalized assistant output, and native
+`--session` resume with replayed history. That run is unattested: it left no
+committed receipt and is not a workflow-bound platform report, so the support
+ledger counts it only as a local observation. Folder-trust behavior changes,
+Esc-cancel, permission accept/deny, questions, steer, and resume tail offsets
+under engine-journal interleaving were not exercised through the adapter.
 
 ## Privacy transformations
 
-Native carriers are type-preserving redactions. Two Kimi rules are new in
+Native carriers are type-preserving redactions. These Kimi rules are new in
 2.4.1:
 
 - The structural identifiers `main`, `agent-<n>`, and `local` are kept under
@@ -228,14 +285,21 @@ Native carriers are type-preserving redactions. Two Kimi rules are new in
   matching what the redactor already did, and the repository capture gate
   applies only that allowance for Kimi. Task ids are still aliased, as in
   0.34.0.
-- `wd_<slug>_<hash12>` workspace ids keep their shape with an aliased hash. ISO
-  wall-clock strings (`finishedAt`, `abortedAt`, engine `meta.createdAt`) are
-  pinned to the shared redacted epoch, with a paired detector pattern. The new
+- `wd_<slug>_<hash12>` workspace ids keep their shape with an aliased hash,
+  and the slug is pinned to the harness `workspace`, so a real cwd basename
+  cannot pass; both the Kimi detector and the repository gate admit only
+  `wd_workspace_a11a5ed0<hex4>`. ISO wall-clock strings (`finishedAt`,
+  `abortedAt`, engine `meta.createdAt`) are pinned to the shared redacted
+  epoch, with a paired detector pattern. The new
   date-disclosure `localDate`/`timeZone` values are redacted, as in 0.34.0.
+- The new free-text fields `subagent.completed.resultSummary` and the
+  `errorMessage` of `turn.step.retrying`/`agent.turn.ended` are redacted, as
+  their hook copies already were; `errorName` and `statusCode` stay
+  structural.
 
 ## Unverified boundaries
 
-- Interactive TUI paths beyond the basic local lane: resize, clean/abrupt
+- Interactive TUI paths beyond the unattested basic local lane: resize, clean/abrupt
   exit, explicit folder trust behavior changes, guarded paste under manual
   input, permission accept/deny, question answer/dismiss, queueing, steer
   (`turn.steer`, `prompt.steered`), and Esc-cancel.
