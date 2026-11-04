@@ -114,6 +114,16 @@
       "path": "packages/surface/vendors/pi/references/pi@1.5.0",
       "digestAlgorithm": "sha256-path-content-v1",
       "sha256": "94b46688d1cbd2b3c70b575c8d9333d66bea48abc7b2299fe9927c56e2780a93"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/pi/model/pi@1.5.0",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "9c7f8b2bd3c8277225efabfb15ab843055e6f13d6e7eed78c796b29e38f3aad1"
     }
   ],
   "claims": [

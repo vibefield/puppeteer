@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isClaimAddressableAsmVersion, loadModel } from '@vibefield/puppeteer-surface';
+import { modelTreeDigest } from './verify-agent-surface.mjs';
 import { auditEvidence } from '../packages/surface/scripts/check-evidence.mjs';
 import { renderSupportBlock, updateReadme, validateSupportLedger } from './render-agent-support.mjs';
 
@@ -68,7 +69,7 @@ export function validateVerificationAttestation({ verification, evidence, curren
   ) {
     issues.push('promotion must run in the attested GitHub Actions workflow and attempt');
   }
-  const modelDigest = evidence?.records?.find((record) => record.kind === 'model-tree')?.sha256;
+  const modelDigest = modelTreeDigest(evidence);
   if (!/^[0-9a-f]{64}$/.test(attestation?.evidenceDigest ?? '') || attestation.evidenceDigest !== modelDigest) {
     issues.push('attestation evidenceDigest does not match the candidate model tree');
   }

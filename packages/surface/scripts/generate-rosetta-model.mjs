@@ -568,6 +568,14 @@ export function generateRosettaSurfaceModel(vendor) {
         digestAlgorithm: 'sha256-path-content-v1',
         sha256: digestTree(referencesRoot),
       },
+      {
+        id: 'agent-surface-model',
+        kind: 'model-tree',
+        path: relative(repositoryRoot, modelRoot).replaceAll('\\', '/'),
+        exclude: ['evidence.json'],
+        digestAlgorithm: 'sha256-path-content-v1',
+        sha256: digestTree(modelRoot, ['evidence.json']),
+      },
     ],
     claims: [
       {

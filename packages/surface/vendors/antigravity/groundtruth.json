@@ -295,6 +295,16 @@
         "path": "packages/surface/vendors/antigravity/references/antigravity@1.1.20",
         "digestAlgorithm": "sha256-path-content-v1",
         "sha256": "83a6f10c717087b5b12a27598d8ccbc1cb6014279428f8dcc1b09af3fdfa6d46"
+      },
+      {
+        "id": "agent-surface-model",
+        "kind": "model-tree",
+        "path": "packages/surface/vendors/antigravity/model/antigravity@1.1.20",
+        "exclude": [
+          "evidence.json"
+        ],
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "2ef96d30abf608ac431ee432f1a1f029b5b2cf11da5de11297cf3ba4a0617a07"
       }
     ],
     "claims": [

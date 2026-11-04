@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { hostPlatform, platformVerification } from './write-platform-verification.mjs';
-import { validatePlatformReports } from './verify-agent-surface.mjs';
+import { readFileSync } from 'node:fs';
+import { modelTreeDigest, validatePlatformReports } from './verify-agent-surface.mjs';
 
 test('platform verification binds the tested job to the acquired artifact digest', () => {
   const digest = `sha256:${'a'.repeat(64)}`;
@@ -142,4 +143,27 @@ test('a lane attests only the platform it runs on, whatever its matrix label say
   assert.equal(hostPlatform({ platform: 'linux', arch: 'x64', translated: false }), 'linux-x64');
   assert.equal(hostPlatform({ platform: 'linux', arch: 'ia32', translated: false }), undefined);
   assert.equal(hostPlatform({ platform: 'freebsd', arch: 'x64', translated: false }), undefined);
+});
+
+test('verification and promotion reject missing, malformed or ambiguous model-tree identity', () => {
+  const record = { kind: 'model-tree', sha256: 'a'.repeat(64) };
+  assert.equal(modelTreeDigest({ records: [record] }), record.sha256);
+  for (const records of [
+    [],
+    [{ kind: 'capture-set', sha256: record.sha256 }],
+    [record, record],
+    [{ ...record, sha256: null }],
+    [{ ...record, sha256: 'bad' }],
+  ]) {
+    assert.equal(modelTreeDigest({ records }), undefined);
+  }
+});
+
+test('every Rosetta-derived candidate carries the model identity required by protected promotion', () => {
+  for (const vendor of ['antigravity', 'copilot', 'pi']) {
+    const document = JSON.parse(
+      readFileSync(new URL(`../packages/surface/vendors/${vendor}/groundtruth.json`, import.meta.url), 'utf8'),
+    );
+    assert.match(modelTreeDigest(document.evidenceIndex) ?? '', /^[0-9a-f]{64}$/, vendor);
+  }
 });

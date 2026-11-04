@@ -97,6 +97,12 @@ function runGate(command, args, repoRoot) {
   };
 }
 
+/** One unambiguous model-tree digest is required by both verification and promotion. */
+export function modelTreeDigest(evidence) {
+  const records = evidence?.records?.filter((record) => record.kind === 'model-tree') ?? [];
+  return records.length === 1 && /^[0-9a-f]{64}$/.test(records[0].sha256 ?? '') ? records[0].sha256 : undefined;
+}
+
 export function verifyAgentSurface({
   repoRoot = root,
   vendor,
@@ -153,12 +159,14 @@ export function verifyAgentSurface({
         docs: runGate('pnpm', ['support:check'], repoRoot),
       }
     : {};
+  const modelDigest = modelTreeDigest(evidence);
   const passed = (entry) => entry?.status === 'passed';
   const gates = {
     identity:
       isClaimAddressableAsmVersion(model.manifest.asmVersion) &&
       evidence.evidenceVersion === 2 &&
-      evidenceIssues.length === 0
+      evidenceIssues.length === 0 &&
+      modelDigest !== undefined
         ? 'passed'
         : 'failed',
     privacy: !runCommands || passed(commandGates.surface) ? 'passed' : 'failed',
@@ -172,8 +180,8 @@ export function verifyAgentSurface({
     packaging: !runCommands || (passed(commandGates.packages) && passed(commandGates.pack)) ? 'passed' : 'failed',
     documentation: !runCommands || passed(commandGates.docs) ? 'passed' : 'failed',
   };
-  const modelDigest = evidence.records?.find((record) => record.kind === 'model-tree')?.sha256;
   const issues = [
+    ...(modelDigest ? [] : ['evidence: candidate requires one valid model-tree SHA-256 for promotion attestation']),
     ...evidenceIssues.map((issue) => `evidence: ${issue}`),
     ...platformIssues,
     ...replay.issues.map((issue) => `replay: ${issue.location} ${issue.message}`),

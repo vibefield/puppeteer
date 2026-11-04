@@ -329,6 +329,16 @@
         "path": "packages/surface/vendors/copilot/references/copilot@1.0.105",
         "digestAlgorithm": "sha256-path-content-v1",
         "sha256": "263df611b64f41d778eec72550c366358b62472b196c1d699fe31fa2975b13ed"
+      },
+      {
+        "id": "agent-surface-model",
+        "kind": "model-tree",
+        "path": "packages/surface/vendors/copilot/model/copilot@1.0.105",
+        "exclude": [
+          "evidence.json"
+        ],
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "a9f0583c05592ca38fe5823a3718689d432a4cef1de738f43bec28587d90e0a0"
       }
     ],
     "claims": [
