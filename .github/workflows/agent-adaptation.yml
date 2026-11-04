@@ -26,6 +26,11 @@ on:
         required: true
         default: true
         type: boolean
+      claude_census:
+        description: Capture Claude Linux lanes in the network-deny sandbox and upload sanitized evidence for review
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -148,6 +153,52 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
+  claude-census:
+    if: ${{ inputs.claude_census && inputs.vendor == 'claude' }}
+    needs: acquire
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.22.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter './packages/**'
+      - uses: actions/download-artifact@v5
+        with:
+          name: agent-artifact-linux-x64
+          path: .agent-adaptation/census-artifact
+      - name: Capture every Claude lane inside the proven network-deny sandbox
+        run: |
+          artifact="$PWD/.agent-adaptation/census-artifact/linux-x64/agent"
+          chmod +x "$artifact"
+          sudo --preserve-env=PATH node packages/surface/vendors/claude/census/harness.mjs \
+            --artifact "$artifact" --version "$AGENT_VERSION" \
+            --output "$PWD/.agent-adaptation/census-raw" \
+            --aux "$PWD/.agent-adaptation/census-aux" \
+            --lanes init,headless,api-error,interactive --sandbox netns
+          sudo chown -R "$(id -u):$(id -g)" .agent-adaptation/census-raw
+      - name: Sanitize and audit before uploading any evidence
+        run: |
+          node packages/surface/vendors/claude/sanitize-captures.mjs \
+            .agent-adaptation/census-raw .agent-adaptation/census-reviewed/captures
+          node packages/surface/vendors/claude/sanitize-captures.mjs \
+            --check .agent-adaptation/census-reviewed/captures
+          sha256sum .agent-adaptation/census-artifact/linux-x64/agent \
+            > .agent-adaptation/census-reviewed/artifact.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: claude-census-linux-x64
+          path: .agent-adaptation/census-reviewed
+          include-hidden-files: true
+          retention-days: 14
+
   assemble:
     needs: acquire
     runs-on: ubuntu-24.04
@@ -235,12 +286,11 @@ jobs:
 
       - name: Confine automated changes
         run: |
-          git fetch --no-tags origin main
           node scripts/validate-agent-candidate-changes.mjs \
             --vendor "$AGENT_VENDOR" \
             --version "$AGENT_VERSION" \
             --ground-truth "$AGENT_GROUND_TRUTH" \
-            --base origin/main
+            --base "$GITHUB_SHA"
 
       - name: Build publisher-safe patch
         run: |
@@ -273,13 +323,12 @@ jobs:
 
       - name: Apply and revalidate the data-only candidate patch
         run: |
-          git fetch --no-tags origin main
           git apply --index .agent-adaptation/candidate.patch
           node scripts/validate-agent-candidate-changes.mjs \
             --vendor "$AGENT_VENDOR" \
             --version "$AGENT_VERSION" \
             --ground-truth "$AGENT_GROUND_TRUTH" \
-            --base origin/main
+            --base "$GITHUB_SHA"
 
       - name: Commit candidate branch
         run: |

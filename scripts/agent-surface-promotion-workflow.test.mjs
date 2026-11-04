@@ -61,6 +61,28 @@ function runScripts(source) {
 const JOBS = ['guard', 'acquire', 'assemble', 'pinned-real', 'verify', 'transaction', 'promote'];
 const jobs = Object.fromEntries(JOBS.map((name, index) => [name, job(name, JOBS[index + 1])]));
 
+test('candidate confinement checks only changes produced from the dispatched commit', () => {
+  for (const name of ['Confine automated changes', 'Apply and revalidate the data-only candidate patch']) {
+    const source = step(adaptation, name);
+    assert.match(source, /--base "\$GITHUB_SHA"/);
+    assert.doesNotMatch(source, /origin\/main/);
+  }
+});
+
+test('optional Claude census retains network denial and uploads only audited evidence', () => {
+  const source = adaptation.slice(adaptation.indexOf('\n  claude-census:'), adaptation.indexOf('\n  assemble:'));
+  assert.match(source, /inputs\.claude_census && inputs\.vendor == 'claude'/);
+  assert.match(source, /needs: acquire/);
+  assert.match(source, /name: agent-artifact-linux-x64/);
+  assert.match(source, /census-artifact\/linux-x64\/agent/);
+  assert.match(source, /--lanes init,headless,api-error,interactive --sandbox netns/);
+  const audit = source.indexOf('--check .agent-adaptation/census-reviewed/captures');
+  assert.ok(audit > 0 && audit < source.indexOf('uses: actions/upload-artifact'));
+  assert.match(source, /path: \.agent-adaptation\/census-reviewed\n/);
+  assert.doesNotMatch(source, /path: .*census-(?:raw|aux)/);
+  assert.doesNotMatch(source, /secrets\.|contents: write|persist-credentials: true/);
+});
+
 test('promotion binds one complete acquisition through test, verification, and the transaction', () => {
   const { 'pinned-real': pinnedReal, verify, transaction } = jobs;
   assert.equal(workflow.match(/pnpm surface:evidence:artifacts/g)?.length, 3);

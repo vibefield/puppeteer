@@ -9,6 +9,7 @@ import {
   resolveArtifactDownload,
   resolveSourceArchiveRoot,
   safeArchiveEntry,
+  safeSourceArchiveEntry,
 } from './download-agent-artifact.mjs';
 
 const config = {
@@ -83,6 +84,16 @@ test('artifact URLs expand only the reviewed version field and host', () => {
   assert.deepEqual(resolved.urls, ['https://downloads.example.test/1.2.3/fake']);
 });
 
+test('source members are literal while executable selectors cannot contain glob syntax', () => {
+  const literal = 'hermes-agent-2026.9.24/contributors/emails/[email protected]';
+  assert.equal(safeSourceArchiveEntry(literal), true);
+  assert.equal(safeArchiveEntry(literal), false);
+  for (const unsafe of ['/root/file', '../file', 'root/../file', '-C/file', '@file', 'root\\file', 'root/fi\rle']) {
+    assert.equal(safeSourceArchiveEntry(unsafe), false, unsafe);
+    assert.equal(safeArchiveEntry(unsafe), false, unsafe);
+  }
+});
+
 test('downloader writes bounded bytes but never runs them', async () => {
   const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-download-'));
   const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
@@ -130,7 +141,8 @@ test('source downloads require an exact tag and retain the reviewed archive byte
   };
   mkdirSync(upstream, { recursive: true });
   writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(sourceConfig));
-  const archive = storedZip('fake-v1.2.3/pyproject.toml', '[project]');
+  // Brackets are literal source member names, as in Hermes's contributors archive.
+  const archive = storedZip('fake-v1.2.3[release]/pyproject.toml', '[project]');
 
   await assert.rejects(
     downloadAgentArtifact({
@@ -163,7 +175,7 @@ test('source downloads require an exact tag and retain the reviewed archive byte
   assert.deepEqual(readFileSync(join(repoRoot, 'artifacts', 'source.zip')), archive);
   assert.equal(metadata.artifactKind, 'source-archive');
   assert.equal(metadata.sourceReference, 'v1.2.3');
-  assert.equal(metadata.archiveRoot, 'fake-v1.2.3');
+  assert.equal(metadata.archiveRoot, 'fake-v1.2.3[release]');
 });
 
 test('source downloads reject archives without the reviewed project-root files', async () => {

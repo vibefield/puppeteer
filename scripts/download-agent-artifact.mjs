@@ -123,7 +123,7 @@ export function archiveListingEntries(listing) {
   return listing.split(/\r?\n/).filter(Boolean);
 }
 
-export function safeArchiveEntry(entry) {
+export function safeSourceArchiveEntry(entry) {
   return (
     Boolean(entry) &&
     !entry.startsWith('/') &&
@@ -131,8 +131,14 @@ export function safeArchiveEntry(entry) {
     !entry.startsWith('@') &&
     !entry.includes('\\') &&
     !entry.split('/').includes('..') &&
-    !/[\u0000-\u001f\u007f*?[\]]/.test(entry)
+    !/[\u0000-\u001f\u007f]/.test(entry)
   );
+}
+
+export function safeArchiveEntry(entry) {
+  // Executable extraction passes a selected member to tar/unzip, which may interpret
+  // glob syntax. Source archives are instead extracted by Python using literal members.
+  return safeSourceArchiveEntry(entry) && !/[*?[\]]/.test(entry);
 }
 
 function listArchive(archive, format) {
@@ -214,7 +220,7 @@ function inspectSourceArchive(archiveBytes, spec, output) {
   try {
     const listing = listArchive(archive, spec.format);
     const entries = archiveListingEntries(listing.entries);
-    if (entries.some((entry) => !safeArchiveEntry(entry))) throw new Error('archive contains an unsafe path');
+    if (entries.some((entry) => !safeSourceArchiveEntry(entry))) throw new Error('archive contains an unsafe path');
     return resolveSourceArchiveRoot(entries, spec.rootFiles);
   } finally {
     rmSync(archive, { force: true });
