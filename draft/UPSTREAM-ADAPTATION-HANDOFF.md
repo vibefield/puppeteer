@@ -1,12 +1,12 @@
 # Upstream adaptation handoff — 2026-11-04
 
-**Status:** Review work done; landing and promotion remain. Every vendor has a staged candidate or a recorded blocker.
+**Status:** Review fixes and the Rosetta dependency landed on their intended branches; capture gaps and promotion remain.
+Every vendor has a staged candidate or a recorded blocker.
 Every confirmed review finding is fixed. Nothing is promoted. This file is the resume point for the draft PR
 [vibefield/puppeteer#59](https://github.com/vibefield/puppeteer/pull/59). Delete it when the PR is ready for review.
 
-The PR's original head is `claude/nice-darwin-0vugls` (`b32f857`). The review-completion work continues on
-`claude/compassionate-newton-azrskr`, which is `b32f857` plus the commits listed in §2. Fast-forward the PR branch to
-it, or retarget the PR, before review.
+PR #59's branch, `claude/nice-darwin-0vugls`, now includes the review-completion work through `a4965f2`
+and the JSONC parsing fix `a1a59c85`. The continuation branch no longer needs to be moved into the PR.
 
 Goal: bring every agent in `support/agents.json` up to its latest upstream stable release, following
 [`docs/guides/adapting-an-agent.md`](../docs/guides/adapting-an-agent.md) and
@@ -38,12 +38,14 @@ The tree passes `support:check`, `groundtruth:mapping:check`, `upstream:check`, 
 `surface:audit`, `surface:workflow:check`, `packages:check`, `format:check` and `COLORTERM=truecolor pnpm test`. The
 PR description has the details.
 
-## Must-do before this PR is ready
+## Completed dependency work and remaining readiness checks
 
-### 1. Merge the Rosetta dependency (Copilot, Pi), then re-import
+### 1. Rosetta dependency merged; re-import verified
 
 The Copilot and Pi imports read the `vibefield/rosetta` branch `groundtruth/upstream-rosetta-trio`, based on `main` at
-`972d090`, in draft PR [vibefield/rosetta#39](https://github.com/vibefield/rosetta/pull/39):
+`972d090`, in [vibefield/rosetta#39](https://github.com/vibefield/rosetta/pull/39).
+That PR is now merged into Rosetta `main` as `4282c44276d070958fbc442ca7a5b7021354aa5e`.
+The original evidence commits were:
 
 - `8ebdd48d2cd52586ee7c524b6a36261295ce4ead` — capture Copilot CLI 1.0.105, with farm fixes for single-executable
   packages, FTS5 store reduction and empty lock files.
@@ -53,7 +55,8 @@ The Copilot and Pi imports read the `vibefield/rosetta` branch `groundtruth/upst
 - `a6fbaadfbc3b3d9f7daa3ba64779383542aa5083` — the Gemini mock fills whatever shell-tool schema is declared, which
   Antigravity 1.4.12 needs.
 
-**Re-import verified on 2026-11-04.** With that branch checked out as the sibling `../rosetta`, `surface:census:copilot`,
+**Re-import verified on 2026-11-04.** With merged Rosetta `main` at `4282c44276d070958fbc442ca7a5b7021354aa5e`
+checked out as the sibling `../rosetta`, `surface:census:copilot`,
 `surface:model:copilot`, `surface:census:pi`, `surface:model:pi` and `surface:groundtruth:write` reproduce this
 branch's committed output byte for byte. That includes the Copilot and Pi sanitizer fixes from §2, which change the
 import but not Rosetta.
@@ -68,7 +71,11 @@ import but not Rosetta.
   only environment values (cwd, install path) are already `<PROJECT>`/`<WORK>`. No user-authored text is present. A
   non-hermetic capture could carry context files, so Puppeteer now redacts these fields (§2, Pi).
 
-Remaining steps: merge rosetta#39, re-run the re-import above from Rosetta `main`, and confirm `git diff --exit-code`.
+The re-import ended with `git diff --exit-code` passing. Before merge, Rosetta's two failing capture-tolerance
+tests were fixed to discover their physical fixture paths and exercise every recorded basic-chat version.
+The original skipped-source, ledger and streaming-state assertions remain intact. All required checks,
+including the complete Rust workspace tests on Linux and macOS, passed in
+[Rosetta CI run 41776404902](https://github.com/vibefield/rosetta/actions/runs/41776404902).
 
 ### 2. Review findings: all confirmed findings fixed
 
@@ -81,8 +88,12 @@ The fixes were made on per-vendor branches and merged.
   - The loopback fetch re-sends only GET/HEAD/OPTIONS. Every other method goes out once on its own connection; the
     census harness follows the same rule and traces each retry.
   - `/provider` and `/experimental/console/orgs` now go through it.
-  - Auto-update is classified for every config state on both release lines. It reads `config.json`, `opencode.json`
-    and `opencode.jsonc` in upstream merge order.
+  - Auto-update is classified from the version, config, environment and install-method evidence. It reads
+    `config.json`, `opencode.json` and `opencode.jsonc` in upstream merge order.
+  - All three files accept comments and trailing commas using upstream's JSONC parser. Parse errors never contribute
+    a recovered partial document; malformed configs and unresolved `{env:}`/`{file:}` substitutions remain
+    `unknown` on 1.18.x. Distribution and extension inventory share this parser. The OpenCode suite has 167
+    passing non-live tests.
   - The 1.19.0 boundary is cited from upstream source digests (findings §0.7), and the migration plan's "1.19.5" is
     corrected.
 - **Codex** (`a2bb042`). CX-1..5.

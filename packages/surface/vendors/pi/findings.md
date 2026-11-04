@@ -23,7 +23,7 @@ artifact before it can enter the evidence workflow.
 
 The 1.5.0 corpus was farmed by Rosetta (commit
 `768de81d529d187523cbdf2f0995c6f63a6be8fc`, on branch `groundtruth/upstream-rosetta-trio`,
-vibefield/rosetta#39, not yet merged) from the
+vibefield/rosetta#39, merged as `4282c44276d070958fbc442ca7a5b7021354aa5e`) from the
 npm `@earendil-works/pi-coding-agent` package on linux-x64, offline, against
 Rosetta's loopback mock model; the 0.84.3 corpus was farmed on darwin-arm64.
 Official acquisition still uses the GitHub release binaries, so the captured
