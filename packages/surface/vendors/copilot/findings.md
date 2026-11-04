@@ -142,4 +142,6 @@ The workflow's replay step exposed a separate envelope bug. Copilot's payload li
 while the replay runner was checking the outer carrier against the payload schema. Replay now
 uses the declared Rosetta payload path and independently validates the complete envelope.
 All 70 committed records pass; negative tests still reject both malformed nested payloads and
-malformed envelopes. Protected native-TUI/resume promotion remains unimplemented.
+malformed envelopes. The corrected workflow completed successfully in
+[run 41787728386](https://github.com/vibefield/puppeteer/actions/runs/41787728386).
+Protected native-TUI/resume promotion remains unimplemented.

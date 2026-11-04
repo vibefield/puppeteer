@@ -20,7 +20,7 @@ was scoped to this repository, so `pnpm upstream:detect` could not read GitHub r
 | Agent       | Ledger before    | Latest upstream stable                                  | Staged in this branch   | Adaptation commits              | Review fixes (merge) |
 | ----------- | ---------------- | ------------------------------------------------------- | ----------------------- | ------------------------------- | -------------------- |
 | Claude Code | verified 2.1.308 | 2.1.311 (`stable` channel; `latest` is 2.1.317)         | candidate 2.1.311       | `d817eed`                       | `2b75e0f`, `6e4bdb7` |
-| Codex       | verified 0.164.0 | 0.166.0 (`rust-v0.166.0`)                               | verified 0.166.0       | `e9fab8a`, `c76adca`            | `a2bb042`            |
+| Codex       | verified 0.164.0 | 0.166.0 (`rust-v0.166.0`)                               | verified 0.166.0        | `e9fab8a`, `c76adca`            | `a2bb042`            |
 | Grok Build  | verified 1.0.70  | 1.0.70                                                  | — (already current)     | —                               | —                    |
 | Hermes      | pending 0.20.0   | 0.21.5 (`v2026.9.24`)                                   | candidate 0.21.5        | `919aded`                       | `3673427`            |
 | Kimi Code   | pending 0.34.0   | 2.4.1 (`@moonshot-ai/kimi-code@2.4.1`)                  | candidate 2.4.1         | `4ac97ba`                       | `eb2e28c`            |
@@ -34,10 +34,10 @@ Verified entries keep `currentVersion` and `verification`, with `candidateVersio
 digest, receipt or `currentVersion` was written by hand. Codex, Claude, OpenCode, Hermes, Kimi, Copilot and Pi now have acquired artifact identities on all four platforms.
 Acquisition alone does not promote support or relabel earlier runtime captures.
 
-The earlier review tree passed `support:check`, `groundtruth:mapping:check`, `upstream:check`, `surface:groundtruth:check`,
-`surface:audit`, `surface:workflow:check`, `packages:check`, `format:check` and `COLORTERM=truecolor pnpm test`. The
-PR description has the earlier results. The full suite passed on `a3001aa7`: 188 script tests and every package/app suite. Subsequent Pi capture changes have focused checks
-and fresh CI. Five OpenCode assertions with old capture IDs now use the new observed IDs.
+The complete `COLORTERM=truecolor pnpm test` run passed on `41da191d`: 191 script tests and every package/app
+suite. Surface audits for all nine vendors, generated models, evidence, workflow checks, adapter mappings,
+support ledger and formatting also pass. All seven CI checks passed on that commit. The subsequent Hermes fix passed all 205 adapter tests with live mode enabled; its saved-frame regression tests also pass without an installed agent. Five OpenCode assertions with old capture
+IDs now use the fresh observed IDs; Kimi's identity assertion selects its exact Linux artifact by ID.
 
 ## Completed dependency work and remaining readiness checks
 
@@ -155,8 +155,7 @@ Residual items the fixers recorded but could not close in a container:
   Four-platform acquisition passed. Protected native-TUI/resume promotion remains.
 - **Hermes 0.21.5:** source archive and all four installed consoles were acquired with the pinned toolchain in
   [run 41781642980](https://github.com/vibefield/puppeteer/actions/runs/41781642980). Earlier survey claims
-  still reference their original source identity. Approval, clarify and `request.cancel` against a real attached
-  TUI remain unexercised.
+  still reference their original source identity. Approval denial, clarify answer and `request.cancel` now pass against a real attached TUI on macOS arm64, with retained adapter regression fixtures. That run found and fixed unanswered adapter question state after a native TUI answer. The local Python runtime identity is recorded separately; four-platform protected verification remains.
 - **Kimi 2.4.1:** all four artifacts were acquired and attested in
   [run 41785477841](https://github.com/vibefield/puppeteer/actions/runs/41785477841). The interactive-TUI paths (Esc-cancel, permissions, questions, steer, undo) and ACP shapes are not
   captured. Account and profile services rest on 2.0.2 evidence.
@@ -175,6 +174,8 @@ Residual items the fixers recorded but could not close in a container:
   [run 41786233830](https://github.com/vibefield/puppeteer/actions/runs/41786233830). That run exposed a replay
   bug: it validated the outer journal envelope as the nested `data` payload. Replay now uses the declared payload
   path and still checks the complete envelope. All nine vendors' committed captures now have replay tests.
+  The corrected acquisition and analysis completed successfully in
+  [run 41787728386](https://github.com/vibefield/puppeteer/actions/runs/41787728386).
 - **Copilot, Pi and Antigravity** have no protected promotion lane: `agent-surface-promotion.yml` offers only claude,
   codex, grok, hermes, kimi and opencode. This blocker predates this work.
 
@@ -184,8 +185,11 @@ Codex 0.166.0 promotion completed in
 [run 41784518623](https://github.com/vibefield/puppeteer/actions/runs/41784518623) after the repository owner's
 protected-environment approval. Its generated commit `1ec8cc98` was merged into PR #59 as `be603cff`.
 The first attempt was correctly refused because its snapshot preceded the OpenCode fixture-ID corrections.
-Claude 2.1.311 rehearsal is running on `claude/claude-2.1.311-promotion` in
-[run 41786029913](https://github.com/vibefield/puppeteer/actions/runs/41786029913).
+Claude 2.1.311 rehearsal passed on `claude/claude-2.1.311-promotion` in
+[run 41787723616](https://github.com/vibefield/puppeteer/actions/runs/41787723616). Its promote run
+[41788894962](https://github.com/vibefield/puppeteer/actions/runs/41788894962) passed acquisition, all native lanes, verification and the full transaction, and is waiting for the repository owner's protected-environment approval.
+Its earlier attempt passed all native lanes but the final transaction caught Kimi's artifact-order test assumption;
+the successful rehearsal and pending promotion include that correction.
 
 For each staged vendor:
 
