@@ -34,10 +34,14 @@ export function piToolRequests(
     const id = piString(part.id);
     const tool = piString(part.name);
     if (!id || !tool) continue;
+    // Since 1.5.0 a finished call whose arguments text was not a JSON object persists `arguments: {}` beside
+    // `argumentsError`. That `{}` is not what the model requested, so no input is reported; the error embeds the raw
+    // model text and is not copied either. Pi fails the call, which the tool result reports.
+    const input = typeof part.argumentsError === 'string' ? undefined : part.arguments;
     const fact = {
       id,
       tool,
-      ...(part.arguments !== undefined ? { input: part.arguments } : {}),
+      ...(input !== undefined ? { input } : {}),
       ...(turnId ? { turnId } : {}),
     };
     facts.push(fact);
@@ -45,8 +49,8 @@ export function piToolRequests(
       type: 'tool:requested',
       toolCallId: id,
       tool,
-      ...(part.arguments !== undefined ? { input: part.arguments } : {}),
-      presentation: presentation(tool, part.arguments),
+      ...(input !== undefined ? { input } : {}),
+      presentation: presentation(tool, input),
     });
   }
   return { events, facts };

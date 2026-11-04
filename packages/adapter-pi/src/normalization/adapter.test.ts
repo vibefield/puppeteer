@@ -54,6 +54,53 @@ describe('Pi session normalization', () => {
     expect(done.events.map((event) => event.type)).toEqual(['conversation:assistant-message', 'turn:completed']);
   });
 
+  it('does not present the `{}` of a 1.5.0 malformed tool call as its input', () => {
+    const normalizer = new PiSessionNormalizer();
+    normalizer.normalize({
+      type: 'message',
+      id: 'u',
+      message: { role: 'user', content: [{ type: 'text', text: 'write it' }] },
+    });
+    const request = normalizer.normalize({
+      type: 'message',
+      id: 'a1',
+      message: {
+        role: 'assistant',
+        content: [
+          {
+            type: 'toolCall',
+            id: 'call-bad',
+            name: 'write',
+            arguments: {},
+            argumentsError: 'Expected a JSON object: {"path":"secret.ts","content":"raw model text',
+          },
+        ],
+        stopReason: 'toolUse',
+      },
+    });
+    expect(request.events).toEqual([
+      {
+        type: 'tool:requested',
+        toolCallId: 'call-bad',
+        tool: 'write',
+        presentation: { kind: 'file-edit', title: 'Using write' },
+      },
+    ]);
+    expect(JSON.stringify(request.events)).not.toContain('raw model text');
+    const result = normalizer.normalize({
+      type: 'message',
+      id: 'r',
+      message: {
+        role: 'toolResult',
+        toolCallId: 'call-bad',
+        toolName: 'write',
+        content: [{ type: 'text', text: 'Invalid arguments for tool "write"' }],
+        isError: true,
+      },
+    });
+    expect(result.events.map((event) => event.type)).toEqual(['tool:failed']);
+  });
+
   it('maps compaction as a completed durable boundary', () => {
     const events = new PiSessionNormalizer().normalize({
       type: 'compaction',

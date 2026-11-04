@@ -43,7 +43,15 @@ mock `message_start.responseId`) are not credited to 1.5.0.
   turn.
 - Assistant messages gain `durationMs`, `thinkingLevel` and
   `providerThinkingLevel`; tool results gain `durationMs` and `nestedCalls`;
-  `usage.cost.totalFromProvider` is new. None changes a consumed field.
+  `usage.cost.totalFromProvider` is new. None of these changes a consumed
+  field.
+- `ToolCall` gains `argumentsError`, which changes the meaning of the consumed
+  `toolCall.arguments`: when a finished call's arguments text is not a JSON
+  object, 1.5.0 persists `arguments: {}` beside `argumentsError` (the parse
+  error plus the raw text the model sent) and Pi fails the call, where 0.84.3
+  kept the partially parsed prefix. The adapter reports no tool input and no
+  proposed file operation for such a call and never copies `argumentsError`;
+  the privacy rules redact it.
 - Journal creation moves earlier: 0.84.3 deferred the whole file until the
   first assistant message; 1.5.0 writes it at the first user or assistant
   message entry (`SessionManager._hasConversation`). An aborted first turn now
