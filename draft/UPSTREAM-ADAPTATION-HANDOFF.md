@@ -2,7 +2,7 @@
 
 **Status:** Review fixes and the Rosetta dependency landed on their intended branches; capture gaps and promotion remain.
 Every vendor has a staged candidate or a recorded blocker.
-Every confirmed review finding is fixed. Codex 0.166.0, Claude 2.1.311, OpenCode 1.19.5, Kimi 2.4.1 and Copilot 1.0.105 are promoted through the protected workflow. This file is the resume point for the draft PR
+Every confirmed review finding is fixed. Codex 0.166.0, Claude 2.1.311, OpenCode 1.19.5, Kimi 2.4.1, Copilot 1.0.105 and Pi 1.5.0 are promoted through the protected workflow. This file is the resume point for the draft PR
 [vibefield/puppeteer#59](https://github.com/vibefield/puppeteer/pull/59). Delete it when the PR is ready for review.
 
 PR #59's branch, `claude/nice-darwin-0vugls`, now includes the review-completion work through `a4965f2`
@@ -26,7 +26,7 @@ was scoped to this repository, so `pnpm upstream:detect` could not read GitHub r
 | Kimi Code   | pending 0.34.0   | 2.4.1 (`@moonshot-ai/kimi-code@2.4.1`)                  | verified 2.4.1          | `4ac97ba`                       | `eb2e28c`            |
 | OpenCode    | pending 1.18.16  | 1.19.5 on the default 1.x line; 2.2.5 (`@opencode/cli`) | verified 1.19.5         | `1cff3a8`, `e78b8b3`, `b08a638` | `611a05d`            |
 | Copilot CLI | pending 1.0.80   | 1.0.105                                                 | verified 1.0.105        | `da3d9df`, `eed27fb`            | `845ce4d`, `cab3aa5` |
-| Pi          | pending 0.84.3   | 1.5.0                                                   | candidate 1.5.0         | `9cd192e`                       | `bedd9d5`, `5e4d98f` |
+| Pi          | pending 0.84.3   | 1.5.0                                                   | verified 1.5.0          | `9cd192e`                       | `bedd9d5`, `5e4d98f` |
 | Antigravity | pending 1.1.20   | 1.4.12 (reviewed migration target)                      | candidate 1.1.20; native rehearsal running | `45ca9f8`                       | —                    |
 
 Verified entries keep `currentVersion` and `verification`, with `candidateVersion` staged beside them by
@@ -163,7 +163,7 @@ Residual items the fixers recorded but could not close in a container:
   [run 41784334179](https://github.com/vibefield/puppeteer/actions/runs/41784334179). All seven scenarios were
   recaptured on the exact Linux release under Docker `--network none`: 62 records, eight journal files.
   Runtime claims now bind to the acquired release; Rosetta schema references retain their original provenance.
-  The protected native-TUI/resume lane is now implemented. Its local official-release proof and all 103 Pi tests pass. It checks native output, normalized completion, durable journal observation and same-session replay with exactly one loopback provider request. The workflow verifies the complete release bundle before and after this test; four-platform rehearsal passed; protected promotion remains pending.
+  The protected native-TUI/resume lane is now implemented. Its local official-release proof and all 103 Pi tests pass. It checks native output, normalized completion, durable journal observation and same-session replay with exactly one loopback provider request. The workflow verifies the complete release bundle before and after this test; four-platform rehearsal and owner-approved protected promotion passed; receipt `b404d178` is integrated by `c2f4a6e3`.
 - **Antigravity 1.4.12:** see its findings section and ledger blocker. It needs a writer document from the binary's
   protobuf descriptors, Rosetta raw types and goldens, and adapter tool-result matching that no longer relies on
   `RUN_COMMAND`/`exit_code`, because results are now `GENERIC` steps.
@@ -263,3 +263,6 @@ Antigravity rehearsal 41809966644 passed Linux, Windows and darwin-arm64. Intel 
 
 
 Integrated validation at `0f603ad1`: all 206 script tests and all 25 recursive package/app test invocations passed with `COLORTERM=truecolor`, with no failing suites. Repository package/path/view checks, 22 evidence indexes, 10 canonical models, 9 adapter maps, support ledger and formatting pass. Antigravity's corrected four-platform rehearsal is 41811193022; Hermes's is 41810981505. Pi remains at the protected approval gate in 41806331805.
+
+
+Pi promotion 41806331805 is approved and its protected job pushed generated receipt `b404d178b39e855f92de284e9d0389caf13f3a9b` at 2026-11-04T17:44:51Z. GitHub's run/job metadata and pending-deployment endpoint still report waiting and cannot-approve, but the approval history, completed job log and actual branch agree that promotion happened. No repeat approval is needed. The receipt is merged into PR #59 by `c2f4a6e3`; the ledger now verifies Pi 1.5.0 and evidence/map/support checks pass. Hermes rehearsal 41810981505 and Antigravity rehearsal 41811193022 both completed successfully, including every native platform lane, verification and transaction. Hermes protected promotion is next; Antigravity remains queued behind it.
