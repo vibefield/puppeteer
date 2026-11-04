@@ -33,12 +33,12 @@
   },
   "evidence": {
     "existence": [
-      "copilot-rosetta-observed"
+      "copilot-rosetta-contract"
     ],
     "shape": [
-      "copilot-rosetta-observed"
+      "copilot-rosetta-contract"
     ]
   },
-  "confidence": "verified-headless",
-  "notes": "session-store.db*; 1 retained observation(s); source evidence: fixture."
+  "confidence": "unverified",
+  "notes": "session-store.db*; 0 retained observation(s) in the 1.0.105 sources; source evidence: fixture."
 }

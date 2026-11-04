@@ -33,9 +33,6 @@
               "mock-model"
             ]
           },
-          "rte": {
-            "type": "boolean"
-          },
           "shellToolInfo": {
             "type": "object",
             "properties": {
@@ -74,6 +71,7 @@
           "shellToolInfo",
           "toolCallId",
           "toolName",
+          "toolTitle",
           "turnId"
         ],
         "additionalProperties": true
@@ -120,9 +118,6 @@
               "mock-model"
             ]
           },
-          "rte": {
-            "type": "boolean"
-          },
           "shellToolInfo": {
             "type": "object",
             "properties": {
@@ -161,6 +156,7 @@
           "shellToolInfo",
           "toolCallId",
           "toolName",
+          "toolTitle",
           "turnId"
         ],
         "additionalProperties": true
@@ -209,5 +205,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "<farm>/stdout*.jsonl; 5 retained observation(s); source evidence: fixture."
+  "notes": "<farm>/stdout*.jsonl; 3 retained observation(s) in the 1.0.105 sources; source evidence: fixture."
 }

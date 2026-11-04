@@ -40,5 +40,5 @@
     ]
   },
   "confidence": "unverified",
-  "notes": "session-state/*/session.db*; 0 retained observation(s); source evidence: fixture."
+  "notes": "session-state/*/session.db*; no 1.0.105 writer or fixture source carries this record; its shape is the cumulative Rosetta inventory's (other releases) and is a contract lead only."
 }

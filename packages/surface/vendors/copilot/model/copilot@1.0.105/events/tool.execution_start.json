@@ -396,5 +396,5 @@
   },
   "confidence": "verified-headless",
   "fixture": "captures/copilot@1.0.105/tool-denied/events.jsonl",
-  "notes": "session-state/*/events.jsonl; 5 retained observation(s); source evidence: writer."
+  "notes": "session-state/*/events.jsonl; 3 retained observation(s) in the 1.0.105 sources; source evidence: writer."
 }

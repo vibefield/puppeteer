@@ -11,8 +11,8 @@
     { "channel": "native-log", "event": "assistant.message", "with": { "messageId": "$uuid:assistant-message", "originatingMessageId": "$uuid:user-message", "model": "$modelId", "content": "$op.text", "toolRequests": [], "interactionId": "$uuid:interaction", "turnId": "$string:$turnIndex", "rte": false } }
   ],
   "tool.start": [
-    { "channel": "native-log", "event": "assistant.message", "with": { "messageId": "$uuid:tool-message", "originatingMessageId": "$uuid:user-message", "model": "$modelId", "content": "", "toolRequests": [{ "toolCallId": "$op.toolId", "name": "$op.tool", "arguments": "$op.input", "type": "function" }], "interactionId": "$uuid:interaction", "turnId": "$string:$turnIndex", "rte": false } },
-    { "channel": "native-log", "event": "tool.execution_start", "with": { "toolCallId": "$op.toolId", "toolName": "$op.tool", "arguments": "$op.input", "turnId": "$string:$turnIndex", "model": "$modelId", "rte": false } }
+    { "channel": "native-log", "event": "assistant.message", "with": { "messageId": "$uuid:tool-message", "originatingMessageId": "$uuid:user-message", "model": "$modelId", "content": "", "toolRequests": [{ "toolCallId": "$op.toolId", "name": "$op.tool", "arguments": "$op.input", "type": "function", "toolTitle": "Running command" }], "interactionId": "$uuid:interaction", "turnId": "$string:$turnIndex", "rte": false } },
+    { "channel": "native-log", "event": "tool.execution_start", "with": { "toolCallId": "$op.toolId", "toolName": "$op.tool", "arguments": "$op.input", "turnId": "$string:$turnIndex", "model": "$modelId", "toolTitle": "Running command" } }
   ],
   "tool.end": [
     { "channel": "native-log", "event": "tool.execution_complete", "with": { "toolCallId": "$op.toolId", "model": "$modelId", "interactionId": "$uuid:interaction", "turnId": "$string:$turnIndex", "rte": false, "success": true, "result": "$op.output" } },

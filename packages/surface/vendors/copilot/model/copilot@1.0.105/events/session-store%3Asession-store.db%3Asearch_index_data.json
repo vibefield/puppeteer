@@ -37,5 +37,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "session-store.db*; 13 retained observation(s); source evidence: fixture."
+  "notes": "session-store.db*; 10 retained observation(s) in the 1.0.105 sources; source evidence: fixture."
 }
