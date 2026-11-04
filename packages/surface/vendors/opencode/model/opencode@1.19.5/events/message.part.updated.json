@@ -2277,10 +2277,10 @@
       },
       "evidence": {
         "existence": [
-          "opencode-runtime-abort-tool"
+          "opencode-runtime-agent-part"
         ],
         "shape": [
-          "opencode-runtime-abort-tool"
+          "opencode-runtime-agent-part"
         ]
       },
       "confidence": "verified-headless"
@@ -2291,10 +2291,10 @@
       },
       "evidence": {
         "existence": [
-          "opencode-runtime-permission-reject"
+          "opencode-runtime-abort-tool"
         ],
         "shape": [
-          "opencode-runtime-permission-reject"
+          "opencode-runtime-abort-tool"
         ]
       },
       "confidence": "verified-headless"

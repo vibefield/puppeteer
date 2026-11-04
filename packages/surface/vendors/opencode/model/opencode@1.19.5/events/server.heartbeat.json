@@ -43,18 +43,18 @@
   },
   "evidence": {
     "existence": [
-      "opencode-runtime-attach-exact-resume"
+      "opencode-runtime-file-edit"
     ],
     "shape": [
-      "opencode-runtime-attach-exact-resume"
+      "opencode-runtime-file-edit"
     ],
     "carrier": [
-      "opencode-runtime-attach-exact-resume"
+      "opencode-runtime-file-edit"
     ]
   },
-  "confidence": "verified-interactive",
+  "confidence": "verified-headless",
   "firstSeen": "1.19.5",
   "lastVerified": "1.19.5",
-  "fixture": "captures/opencode@1.19.5/attach-exact-resume/events.jsonl",
+  "fixture": "captures/opencode@1.19.5/file-edit/events.jsonl",
   "notes": "Runtime-only event absent from the pinned /doc Event union."
 }

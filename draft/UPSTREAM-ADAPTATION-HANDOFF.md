@@ -140,7 +140,9 @@ Residual items the fixers recorded but could not close in a container:
   - The nominal single-stop `/compact` path on 2.1.311 is read from code, not captured.
   - All claims share one `capturedAt`.
 - **OpenCode:**
-  - The census-harness retry change is reviewed statically only; the harness was not re-run against the binary.
+  - The corrected census was re-run on 2026-11-04 against the exact linux-x64 1.19.5 artifact: all 27 scenarios passed,
+    including both native-attach paths. Sanitized fixtures and per-scenario timestamps were regenerated. No transport
+    retry occurred in this run. Native resume needed a 30-second TUI startup allowance under Docker emulation.
   - Installs from 1.18.17 to 1.18.34 and from 1.19.1 to 1.19.4 are classified by source reading.
 
 ### 3. Remaining per-vendor blockers (survey work)

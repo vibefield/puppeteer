@@ -124,11 +124,11 @@ of the ones on a Puppeteer rail found:
 
 The census ran all 27 scenarios against the linux-x64 artifact: 25 headless
 and the two native-attach scenarios. A scripted PTY operator pressed
-*Allow always* → *Confirm* in the real `opencode attach` TUI. It sent Right,
+_Allow always_ → _Confirm_ in the real `opencode attach` TUI. It sent Right,
 Enter, Enter, timed off the harness's own operator prompt, per the 1.19.5
 `packages/tui/src/routes/session/permission.tsx` bindings. In both attach
 captures the HTTP trace contains no permission reply request. A
-signature comparison against the 1.18.16 captures (semantic event sequence
+signature comparison of the original 2026-11-03 run against the 1.18.16 captures (semantic event sequence
 with ambient catalog/plugin/heartbeat records ignored, provider-request count,
 durable message count) gives:
 
@@ -140,9 +140,22 @@ durable message count) gives:
   tool update with metadata arrives before the abort rather than after, and
   `session.error` still precedes the completed carrier. In
   `reconnect-rehydrate` more deltas arrive before the observer disconnects.
-- No 1.19.5 headless scenario lasted a full heartbeat interval, so
-  `server.heartbeat` is now runtime-verified only by the attach captures
-  (`verified-interactive`). It was `verified-headless` on 1.18.16.
+- In that original run, no headless scenario lasted a full heartbeat interval;
+  only the attach captures observed `server.heartbeat`.
+
+All 27 scenarios were recaptured on 2026-11-04 with the corrected non-retrying
+mutation client, using the same digest-pinned linux-x64 executable in a
+network-disabled Docker container on Apple Silicon. The committed fixtures
+and per-scenario capture times now come from that run. No transport retry was
+needed in this run. Its longer headless `file-edit` scenario also observed
+`server.heartbeat`, so that event now has headless evidence. The aborted Bash
+tool settled with `status: error` and `metadata.interrupted: true` (§8).
+
+The native resume TUI needed `--attach-ready-delay-ms 30000` under emulation;
+the default five seconds let the backend ask permission before the TUI had
+subscribed. The successful capture retains the native permission reply and
+resumed turn. The `/doc` schemas match the pinned reference after omitting
+documentation-only `x-codeSamples` from the reference.
 
 Classification: **consumed config-semantics drift** in one place, the
 `autoupdate` key (§0.7), which the distribution service now maps by installed
@@ -192,11 +205,11 @@ answer changed with the release, not with the key's schema. The boundary is
 2026-11-04 from `raw.githubusercontent.com/anomalyco/opencode/<tag>/…`
 (`sst/opencode` serves the same bytes):
 
-| Tag        | `packages/opencode/src/cli/upgrade.ts` sha256 | Behaviour |
-| ---------- | --------------------------------------------- | --------- |
+| Tag        | `packages/opencode/src/cli/upgrade.ts` sha256                      | Behaviour                                                                                                                                                                                                                                                                                                             |
+| ---------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `v1.18.16` | `4819069725ef38dfd57846c92fd3ef4f29580e3ca1268794019c3c5c30c0925d` | Returns for `autoupdate === false` or `Flag.OPENCODE_DISABLE_AUTOUPDATE`; emits `UpdateAvailable` for `"notify"` or a non-patch release; returns when `Installation.method()` is `"unknown"`; otherwise calls `Installation.upgrade(method, latest)`. An absent key is `undefined` and takes the same path as `true`. |
-| `v1.18.35` | same digest as `v1.18.16`                      | Same. |
-| `v1.19.0`  | `d3a1d64897d05cc4a9d2933cbd59d01a4015a9dc81f9edddbe06af119b4e1839` | "Checking never installs anything. Updates only happen when the user runs `/update` or `opencode upgrade`." `upgrade()` returns `{type:"available"}` or `{type:"major"}`; `Installation.upgrade` is gone. |
+| `v1.18.35` | same digest as `v1.18.16`                                          | Same.                                                                                                                                                                                                                                                                                                                 |
+| `v1.19.0`  | `d3a1d64897d05cc4a9d2933cbd59d01a4015a9dc81f9edddbe06af119b4e1839` | "Checking never installs anything. Updates only happen when the user runs `/update` or `opencode upgrade`." `upgrade()` returns `{type:"available"}` or `{type:"major"}`; `Installation.upgrade` is gone.                                                                                                             |
 
 `Flag.OPENCODE_DISABLE_AUTOUPDATE` is `truthy("OPENCODE_DISABLE_AUTOUPDATE")`
 in `packages/core/src/flag/flag.ts` at `v1.18.16`: only `"true"` or `"1"`,
@@ -235,7 +248,6 @@ the literal document contains an off switch.
 
 Installs from 1.18.17 to 1.18.34 and 1.19.1 to 1.19.4 are classified by this
 source reading, not by a probe of those binaries.
-
 
 ## 1. Candidate identity
 
@@ -335,27 +347,27 @@ gap-free resume.
 
 Endpoints exercised by the census:
 
-| Purpose              | Endpoint                           | Confirmed result                      |
-| -------------------- | ---------------------------------- | ------------------------------------- |
-| Create session       | `POST /session`                    | session object with native `ses_…` ID |
-| Verify exact session | `GET /session/:id`                 | same persisted session object         |
-| Submit prompt        | `POST /session/:id/prompt_async`   | `204`                                 |
-| Durable history      | `GET /session/:id/message`         | user/assistant messages plus parts    |
-| Child sessions       | `GET /session/:id/children`        | children joined by `parentID`         |
-| Fork session         | `POST /session/:id/fork`           | independent root with cloned/remapped history |
-| Update/archive       | `PATCH /session/:id`               | session plus `session.updated`        |
-| Delete session       | `DELETE /session/:id`              | `200 true` plus `session.deleted`     |
-| Project session list | `GET /session`                     | active and archived sessions          |
-| Global session list  | `GET /experimental/session`        | archived excluded unless requested    |
-| Session state        | `GET /session/status`              | status map                            |
-| Permission response  | `POST /permission/:id/reply`       | correlated reply                      |
-| Question response    | `POST /question/:id/reply`         | correlated reply                      |
-| Question dismissal   | `POST /question/:id/reject`        | correlated rejection                  |
-| Abort active session | `POST /session/:id/abort`          | `200 true`                            |
-| Session turn diff    | `GET /session/:id/diff`            | exact `messageID` returns its change; unscoped is empty |
-| Tracked workspace diff | `GET /vcs/diff?mode=git`         | added/modified file patch             |
-| Pending blockers     | `GET /permission`, `GET /question` | arrays                                |
-| Generated schema     | `GET /doc`                         | OpenAPI document                      |
+| Purpose                | Endpoint                           | Confirmed result                                        |
+| ---------------------- | ---------------------------------- | ------------------------------------------------------- |
+| Create session         | `POST /session`                    | session object with native `ses_…` ID                   |
+| Verify exact session   | `GET /session/:id`                 | same persisted session object                           |
+| Submit prompt          | `POST /session/:id/prompt_async`   | `204`                                                   |
+| Durable history        | `GET /session/:id/message`         | user/assistant messages plus parts                      |
+| Child sessions         | `GET /session/:id/children`        | children joined by `parentID`                           |
+| Fork session           | `POST /session/:id/fork`           | independent root with cloned/remapped history           |
+| Update/archive         | `PATCH /session/:id`               | session plus `session.updated`                          |
+| Delete session         | `DELETE /session/:id`              | `200 true` plus `session.deleted`                       |
+| Project session list   | `GET /session`                     | active and archived sessions                            |
+| Global session list    | `GET /experimental/session`        | archived excluded unless requested                      |
+| Session state          | `GET /session/status`              | status map                                              |
+| Permission response    | `POST /permission/:id/reply`       | correlated reply                                        |
+| Question response      | `POST /question/:id/reply`         | correlated reply                                        |
+| Question dismissal     | `POST /question/:id/reject`        | correlated rejection                                    |
+| Abort active session   | `POST /session/:id/abort`          | `200 true`                                              |
+| Session turn diff      | `GET /session/:id/diff`            | exact `messageID` returns its change; unscoped is empty |
+| Tracked workspace diff | `GET /vcs/diff?mode=git`           | added/modified file patch                               |
+| Pending blockers       | `GET /permission`, `GET /question` | arrays                                                  |
+| Generated schema       | `GET /doc`                         | OpenAPI document                                        |
 
 The prompt request accepts a caller-supplied `messageID` beginning with `msg`.
 The same ID is emitted on the user `message.updated` event and persisted in
@@ -587,18 +599,19 @@ text delta → abort response → session.error {MessageAbortedError}
 → duplicate idle
 ```
 
-Aborting a running Bash tool produced a more surprising carrier sequence:
+The refreshed running-Bash abort capture produced:
 
 ```text
 tool pending → tool running → abort response
 → session.error {MessageAbortedError} → session idle
-→ tool running update → tool completed with a native user-aborted marker
+→ tool running update → tool error with metadata.interrupted=true
 → duplicate idle
 ```
 
-The completed Bash carrier does not make the turn successful: the correlated
-`session.error` is authoritative for the turn outcome. A normalizer must keep
-that failed terminal state when late part/status updates arrive.
+The earlier capture instead settled the Bash carrier as completed with a
+user-aborted marker. In both cases the correlated `session.error` is
+authoritative for the turn outcome. A normalizer must keep that failed
+terminal state when late part/status updates arrive.
 
 ## 9. Provider retry and terminal-error behavior
 
@@ -855,36 +868,36 @@ effects below from these captures; question, file, and snapshot
 events remain native. Overflow recovery now delays `turn.failed` until idle
 and cancels it when `compaction {auto:true}` continues the same turn.
 
-| Native OpenCode observation                          | Proposed normalized effect                                                  |
-| ---------------------------------------------------- | --------------------------------------------------------------------------- |
-| `session.created` / verified resumed session         | `session.started`                                                           |
-| fork `session.created` without `parentID`             | a new independent `session.started`, not `subagent.started`                  |
-| archived `session.updated`                            | retain native visibility metadata; do not stop the session                   |
-| `session.deleted`                                     | terminal removal of that native session identity                             |
-| exact user `message.updated`                         | `turn.started`; native message ID is turn/prompt correlation                |
-| text part delta/full update                          | accumulated `assistant.message`, final only on completed part/message       |
-| reasoning part lifecycle                             | `reasoning.started` / `reasoning.summary` / `reasoning.completed`           |
-| tool `pending`                                       | `tool.requested`                                                            |
-| tool `running`                                       | `tool.started`                                                              |
-| tool `completed` / `error`                           | `tool.completed` / `tool.failed`                                            |
-| child `session.created {parentID}`                    | `subagent.started`; use the child session ID as `subagentId`                 |
-| child terminal/idle joined through task metadata      | `subagent.stopped`; do not stop the parent turn                              |
-| completed task carrier with `background:true`         | async handle returned; keep the joined subagent active                       |
-| synthetic result after background child idle          | new correlated parent turn, not a late mutation of the prior idle turn       |
-| prompt `file` part plus synthetic text expansions      | retain one native attachment and durable expansion siblings on the same turn |
-| `file.edited` / `file.watcher.updated`               | retain native workspace events; correlate by redacted/native file identity  |
-| snapshot-bearing step parts plus `patch`              | retain pre/post snapshot identity and changed-file membership                |
-| `GET /session/:id/diff?messageID=…`                  | durable snapshot-derived diff for that exact submitted message               |
-| `GET /vcs/diff?mode=git`                             | current tracked workspace diff; do not conflate with per-message history     |
-| `permission.asked`                                   | `permission.requested` with request and call IDs                            |
-| `permission.replied` once/always/reject              | `permission.resolved` allowed/denied                                        |
-| `session.status` retry                               | retain native retry state; keep the correlated turn active                  |
-| `session.status` idle with an active correlated turn | `turn.completed`                                                            |
-| `session.error` with an active turn                  | `turn.failed`; later part/idle updates cannot reverse it                    |
-| context-overflow `session.error` followed by auto compaction | keep the turn recoverable until compaction/resume reaches a terminal outcome |
-| completed step tokens plus resolved model limit      | `context-window.updated`; use native total (or input/output/cache sum), capacity = context |
-| `session.compacted`                                  | `context-window.invalidated` (`compacted`)                                  |
-| `question.*`                                         | retain as OpenCode native event; use question tool lifecycle for generic UI |
+| Native OpenCode observation                                  | Proposed normalized effect                                                                 |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `session.created` / verified resumed session                 | `session.started`                                                                          |
+| fork `session.created` without `parentID`                    | a new independent `session.started`, not `subagent.started`                                |
+| archived `session.updated`                                   | retain native visibility metadata; do not stop the session                                 |
+| `session.deleted`                                            | terminal removal of that native session identity                                           |
+| exact user `message.updated`                                 | `turn.started`; native message ID is turn/prompt correlation                               |
+| text part delta/full update                                  | accumulated `assistant.message`, final only on completed part/message                      |
+| reasoning part lifecycle                                     | `reasoning.started` / `reasoning.summary` / `reasoning.completed`                          |
+| tool `pending`                                               | `tool.requested`                                                                           |
+| tool `running`                                               | `tool.started`                                                                             |
+| tool `completed` / `error`                                   | `tool.completed` / `tool.failed`                                                           |
+| child `session.created {parentID}`                           | `subagent.started`; use the child session ID as `subagentId`                               |
+| child terminal/idle joined through task metadata             | `subagent.stopped`; do not stop the parent turn                                            |
+| completed task carrier with `background:true`                | async handle returned; keep the joined subagent active                                     |
+| synthetic result after background child idle                 | new correlated parent turn, not a late mutation of the prior idle turn                     |
+| prompt `file` part plus synthetic text expansions            | retain one native attachment and durable expansion siblings on the same turn               |
+| `file.edited` / `file.watcher.updated`                       | retain native workspace events; correlate by redacted/native file identity                 |
+| snapshot-bearing step parts plus `patch`                     | retain pre/post snapshot identity and changed-file membership                              |
+| `GET /session/:id/diff?messageID=…`                          | durable snapshot-derived diff for that exact submitted message                             |
+| `GET /vcs/diff?mode=git`                                     | current tracked workspace diff; do not conflate with per-message history                   |
+| `permission.asked`                                           | `permission.requested` with request and call IDs                                           |
+| `permission.replied` once/always/reject                      | `permission.resolved` allowed/denied                                                       |
+| `session.status` retry                                       | retain native retry state; keep the correlated turn active                                 |
+| `session.status` idle with an active correlated turn         | `turn.completed`                                                                           |
+| `session.error` with an active turn                          | `turn.failed`; later part/idle updates cannot reverse it                                   |
+| context-overflow `session.error` followed by auto compaction | keep the turn recoverable until compaction/resume reaches a terminal outcome               |
+| completed step tokens plus resolved model limit              | `context-window.updated`; use native total (or input/output/cache sum), capacity = context |
+| `session.compacted`                                          | `context-window.invalidated` (`compacted`)                                                 |
+| `question.*`                                                 | retain as OpenCode native event; use question tool lifecycle for generic UI                |
 
 Only emit `context-window.updated` when the adapter can resolve the active
 model's native context limit. Exact-release source uses `tokens.total` when it

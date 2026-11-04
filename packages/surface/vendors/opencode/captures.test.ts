@@ -255,12 +255,8 @@ describe(`OpenCode ${VERSION} census fixtures`, () => {
       // the step-finish snapshot is the post-mutation state.
       const parts = events(scenario, 'message.part.updated').map((event) => event.properties?.part);
       const patch = parts.find((part) => part?.type === 'patch');
-      const start = parts.find(
-        (part) => part?.type === 'step-start' && part?.messageID === patch?.messageID,
-      );
-      const finish = parts.find(
-        (part) => part?.type === 'step-finish' && part?.messageID === patch?.messageID,
-      );
+      const start = parts.find((part) => part?.type === 'step-start' && part?.messageID === patch?.messageID);
+      const finish = parts.find((part) => part?.type === 'step-finish' && part?.messageID === patch?.messageID);
       expect(patch).toMatchObject({ files: ['/workspace/redacted-path'] });
       expect(patch?.hash).toBe(start?.snapshot);
       expect(finish?.snapshot).not.toBe(start?.snapshot);
@@ -361,8 +357,7 @@ describe(`OpenCode ${VERSION} census fixtures`, () => {
       expect(
         roundTrips.find(
           (record) =>
-            record.request?.route === '/session/:sessionID/message' &&
-            record.request?.params?.sessionID === childID,
+            record.request?.route === '/session/:sessionID/message' && record.request?.params?.sessionID === childID,
         ),
       ).toBeDefined();
       expect(records(scenario, 'provider-requests.jsonl')).toHaveLength(providerRequests);
@@ -417,9 +412,7 @@ describe(`OpenCode ${VERSION} census fixtures`, () => {
     const parentID = created.find((event) => event.properties?.info?.parentID === undefined)?.properties?.sessionID;
     const child = created.find((event) => event.properties?.info?.parentID !== undefined)?.properties?.info;
     expect(child).toMatchObject({ parentID });
-    expect(records('agent-part', 'children.jsonl')).toEqual([
-      expect.objectContaining({ id: child?.id, parentID }),
-    ]);
+    expect(records('agent-part', 'children.jsonl')).toEqual([expect.objectContaining({ id: child?.id, parentID })]);
     expect(records('agent-part', 'child-messages.jsonl').map((message) => message.info?.role)).toEqual([
       'user',
       'assistant',
@@ -494,7 +487,11 @@ describe(`OpenCode ${VERSION} census fixtures`, () => {
       ]);
       expect(durable[1]?.parts).toEqual([
         expect.objectContaining({ type: 'step-start' }),
-        expect.objectContaining({ type: 'tool', tool: 'task', state: expect.objectContaining({ status: 'completed' }) }),
+        expect.objectContaining({
+          type: 'tool',
+          tool: 'task',
+          state: expect.objectContaining({ status: 'completed' }),
+        }),
         expect.objectContaining({ type: 'step-finish' }),
       ]);
       expect(durable[3]?.parts).toEqual([expect.objectContaining({ type: 'text', synthetic: true })]);
@@ -594,17 +591,17 @@ describe(`OpenCode ${VERSION} census fixtures`, () => {
 
     const toolEvents = events('abort-tool');
     const toolError = toolEvents.findIndex((event) => event.type === 'session.error');
-    const completedTool = toolEvents.findIndex(
+    const interruptedTool = toolEvents.findIndex(
       (event) =>
         event.type === 'message.part.updated' &&
         event.properties?.part?.type === 'tool' &&
-        event.properties?.part?.state?.status === 'completed',
+        event.properties?.part?.state?.status === 'error' &&
+        event.properties?.part?.state?.metadata?.interrupted === true,
     );
-    expect(partStatuses('abort-tool', 'bash')).toEqual(expect.arrayContaining(['pending', 'running', 'completed']));
-    // Native behavior is deliberately counterintuitive: abort fails the turn,
-    // then the Bash carrier settles as completed with an abort marker.
+    expect(partStatuses('abort-tool', 'bash')).toEqual(['pending', 'running', 'running', 'error']);
+    // The refreshed capture settles the tool as interrupted after the turn error.
     expect(toolError).toBeGreaterThan(-1);
-    expect(toolError).toBeLessThan(completedTool);
+    expect(toolError).toBeLessThan(interruptedTool);
   });
 
   it('captures retryable recovery separately from a terminal provider error', () => {
@@ -756,12 +753,12 @@ describe(`OpenCode ${VERSION} census fixtures`, () => {
     expect(durable[3]?.info).toMatchObject({ mode: 'compaction', summary: true, finish: 'stop' });
 
     const roundTrips = records('manual-compaction', 'http-roundtrip.jsonl');
-    expect(roundTrips.find((record) => record.request?.route === '/session/:sessionID/summarize')?.request?.body).toEqual(
-      { providerID: 'test', modelID: 'test-model', auto: false },
-    );
-    expect(roundTrips.find((record) => record.response?.route === '/session/:sessionID/summarize')?.response).toMatchObject(
-      { status: 200, body: true },
-    );
+    expect(
+      roundTrips.find((record) => record.request?.route === '/session/:sessionID/summarize')?.request?.body,
+    ).toEqual({ providerID: 'test', modelID: 'test-model', auto: false });
+    expect(
+      roundTrips.find((record) => record.response?.route === '/session/:sessionID/summarize')?.response,
+    ).toMatchObject({ status: 200, body: true });
     expect(records('manual-compaction', 'provider-requests.jsonl')).toHaveLength(2);
   });
 
@@ -858,9 +855,9 @@ describe(`OpenCode ${VERSION} census fixtures`, () => {
     expect(compactedIndex).toBeGreaterThan(continuationIndex);
     expect(resumedBuildIndex).toBeGreaterThan(compactedIndex);
     expect(idleIndex).toBeGreaterThan(resumedBuildIndex);
-    expect(events('overflow-compaction', 'session.status').some((event) => event.properties?.status?.type === 'retry')).toBe(
-      false,
-    );
+    expect(
+      events('overflow-compaction', 'session.status').some((event) => event.properties?.status?.type === 'retry'),
+    ).toBe(false);
 
     const durable = records('overflow-compaction', 'messages.jsonl');
     expect(durable.map((message) => message.info?.role)).toEqual([
@@ -899,9 +896,7 @@ describe(`OpenCode ${VERSION} census fixtures`, () => {
     expect(highUsageIndex).toBeGreaterThan(-1);
     expect(idleIndex).toBeGreaterThan(highUsageIndex);
     expect(
-      captured.some(
-        (event) => event.type === 'message.part.updated' && event.properties?.part?.type === 'compaction',
-      ),
+      captured.some((event) => event.type === 'message.part.updated' && event.properties?.part?.type === 'compaction'),
     ).toBe(false);
     expect(events('unknown-context', 'session.compacted')).toEqual([]);
     expect(events('unknown-context', 'session.error')).toEqual([]);

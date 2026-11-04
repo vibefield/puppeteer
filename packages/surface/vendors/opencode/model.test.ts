@@ -61,19 +61,18 @@ describe(`the OpenCode ${VERSION} ASM`, () => {
       new Set(['client-to-agent', 'agent-to-client']),
     );
 
-    // The linux-x64 1.19.5 headless scenarios all settle inside one heartbeat interval; only the longer native-attach
-    // captures observed `server.heartbeat`, so its runtime evidence is interactive rather than headless.
+    // The refreshed emulated Linux run also observed heartbeat in headless file-edit.
     const heartbeat = model.events.find((event) => event.event === 'server.heartbeat');
-    expect(heartbeat).toMatchObject({ confidence: 'verified-interactive', transport: 'sse-event' });
+    expect(heartbeat).toMatchObject({ confidence: 'verified-headless', transport: 'sse-event' });
     expect(heartbeat?.notes).toContain('absent from the pinned /doc Event union');
   });
 
   it('raises confidence only for the 21 HTTP and 24 SSE runtime observations', () => {
-    expect(model.events.filter((event) => event.confidence === 'verified-headless')).toHaveLength(44);
+    expect(model.events.filter((event) => event.confidence === 'verified-headless')).toHaveLength(45);
     expect(model.events.filter((event) => event.confidence === 'unverified')).toHaveLength(233);
     expect(
       model.events.filter((event) => event.confidence === 'verified-interactive').map((event) => event.event),
-    ).toEqual(['server.heartbeat']);
+    ).toEqual([]);
 
     expect(model.events.find((event) => event.event === 'http/session.prompt_async')?.confidence).toBe(
       'verified-headless',
@@ -230,7 +229,7 @@ describe(`the OpenCode ${VERSION} ASM`, () => {
         checked += 1;
       }
     }
-    expect(checked).toBe(2775);
+    expect(checked).toBe(2785);
     expect(failures).toEqual([]);
   });
 
@@ -426,63 +425,63 @@ describe(`the OpenCode ${VERSION} ASM`, () => {
     expect(claims.get('opencode-runtime-attach-permission-always')?.confidence).toBe('verified-interactive');
     expect(claims.get('opencode-runtime-file-write')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:17:57.093Z',
+      capturedAt: '2026-11-04T05:40:21.574Z',
     });
     expect(claims.get('opencode-runtime-file-edit')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:18:06.153Z',
+      capturedAt: '2026-11-04T05:40:53.993Z',
     });
     expect(claims.get('opencode-runtime-file-delete')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:18:15.537Z',
+      capturedAt: '2026-11-04T05:41:19.468Z',
     });
     expect(claims.get('opencode-runtime-file-part')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:17:47.837Z',
+      capturedAt: '2026-11-04T05:40:01.742Z',
     });
     expect(claims.get('opencode-runtime-session-lifecycle')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:17:38.658Z',
+      capturedAt: '2026-11-04T05:39:47.420Z',
     });
     expect(claims.get('opencode-runtime-attach-exact-resume')).toMatchObject({
       confidence: 'verified-interactive',
-      capturedAt: '2026-11-03T19:27:52.397Z',
+      capturedAt: '2026-11-04T05:55:08.286Z',
     });
     expect(claims.get('opencode-runtime-manual-compaction')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:20:33.516Z',
+      capturedAt: '2026-11-04T05:45:10.908Z',
     });
     expect(claims.get('opencode-runtime-auto-compaction')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:20:41.944Z',
+      capturedAt: '2026-11-04T05:45:30.212Z',
     });
     expect(claims.get('opencode-runtime-overflow-compaction')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:20:50.189Z',
+      capturedAt: '2026-11-04T05:45:51.883Z',
     });
     expect(claims.get('opencode-runtime-task-child')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:18:24.243Z',
+      capturedAt: '2026-11-04T05:41:37.019Z',
     });
     expect(claims.get('opencode-runtime-subtask-part')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:18:32.518Z',
+      capturedAt: '2026-11-04T05:41:50.296Z',
     });
     expect(claims.get('opencode-runtime-background-task')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:18:49.823Z',
+      capturedAt: '2026-11-04T05:42:13.688Z',
     });
     expect(claims.get('opencode-runtime-detach-task')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:18:59.621Z',
+      capturedAt: '2026-11-04T05:42:25.740Z',
     });
     expect(claims.get('opencode-runtime-agent-part')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:18:41.198Z',
+      capturedAt: '2026-11-04T05:42:01.998Z',
     });
     expect(claims.get('opencode-runtime-unknown-context')).toMatchObject({
       confidence: 'verified-headless',
-      capturedAt: '2026-11-03T19:20:58.345Z',
+      capturedAt: '2026-11-04T05:46:25.001Z',
     });
     expect(claims.get('opencode-generated-openapi')?.confidence).toBe('unverified');
     expect(model.evidenceIndex?.records).toHaveLength(31);

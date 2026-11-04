@@ -296,11 +296,7 @@ export const SCENARIOS = {
     responses: [
       () =>
         toolResponse(1, 'apply_patch', {
-          patchText: [
-            '*** Begin Patch',
-            '*** Delete File: surface-census-delete.txt',
-            '*** End Patch',
-          ].join('\n'),
+          patchText: ['*** Begin Patch', '*** Delete File: surface-census-delete.txt', '*** End Patch'].join('\n'),
         }),
       () => textResponse(2, 'controlled file deleted'),
     ],
@@ -861,7 +857,7 @@ async function startOpenCode(artifact, cwd, environment) {
   };
 }
 
-async function startAttach(artifact, baseURL, cwd, environment, sessionID) {
+async function startAttach(artifact, baseURL, cwd, environment, sessionID, readyDelayMs = 5_000) {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error('the attach census requires an interactive TTY');
   }
@@ -879,7 +875,7 @@ async function startAttach(artifact, baseURL, cwd, environment, sessionID) {
   });
   // `attach` has no machine-readable ready signal. Give the alternate-screen UI
   // time to finish connecting before the harness submits the prompt it must show.
-  await delay(5_000);
+  await delay(readyDelayMs);
   if (spawnError) throw spawnError;
   if (child.exitCode !== null || child.signalCode !== null) {
     const result = await exited;
@@ -1258,7 +1254,14 @@ async function runScenario(name, options) {
     const sessionID = session?.id;
     if (typeof sessionID !== 'string') throw new Error('session.create returned no native session id');
     if (scenario.attach) {
-      attach = await startAttach(options.artifact, opencode.baseURL, workspace, environment, sessionID);
+      attach = await startAttach(
+        options.artifact,
+        opencode.baseURL,
+        workspace,
+        environment,
+        sessionID,
+        options.attachReadyDelayMs,
+      );
     }
     const startIndex = stream.events.length;
     const submittedMessageID = await submitPrompt(
@@ -1456,7 +1459,14 @@ async function runScenario(name, options) {
         `/session/${encodeURIComponent(sessionID)}/message`,
       );
       if (scenario.attachAfterRestart) {
-        attach = await startAttach(options.artifact, opencode.baseURL, workspace, environment, sessionID);
+        attach = await startAttach(
+          options.artifact,
+          opencode.baseURL,
+          workspace,
+          environment,
+          sessionID,
+          options.attachReadyDelayMs,
+        );
       }
 
       const resumeStartIndex = stream.events.length;
@@ -1478,9 +1488,7 @@ async function runScenario(name, options) {
       );
       if (scenario.attachAfterRestart) {
         const asked = await stream.waitFor(
-          (event) =>
-            event?.type === scenario.attachAfterRestart.blocker &&
-            sessionEvent(event, sessionID),
+          (event) => event?.type === scenario.attachAfterRestart.blocker && sessionEvent(event, sessionID),
           {
             after: resumeStartIndex,
             timeoutMs: 90_000,
@@ -1536,10 +1544,11 @@ async function runScenario(name, options) {
       if (compactedResult !== true) {
         throw new Error(`session summarize returned ${JSON.stringify(compactedResult)} instead of true`);
       }
-      await stream.waitFor(
-        (event) => event?.type === 'session.compacted' && sessionEvent(event, sessionID),
-        { after: compactAfter, timeoutMs: 90_000, label: 'session.compacted' },
-      );
+      await stream.waitFor((event) => event?.type === 'session.compacted' && sessionEvent(event, sessionID), {
+        after: compactAfter,
+        timeoutMs: 90_000,
+        label: 'session.compacted',
+      });
       terminal = await stream.waitFor((event) => terminalSessionEvent(event, scenario, sessionID), {
         after: compactAfter,
         timeoutMs: 90_000,
@@ -1595,7 +1604,9 @@ async function runScenario(name, options) {
         partialMessages[0]?.info?.sessionID !== partialFork.id ||
         partialMessages[0]?.info?.id === originalMessages[0]?.info?.id
       ) {
-        throw new Error(`message-scoped fork did not clone exactly the history before its target: ${JSON.stringify(partialMessages)}`);
+        throw new Error(
+          `message-scoped fork did not clone exactly the history before its target: ${JSON.stringify(partialMessages)}`,
+        );
       }
 
       const fullForkAfter = stream.events.length;
@@ -1676,7 +1687,9 @@ async function runScenario(name, options) {
         !activeSessions.some((entry) => entry?.id === sessionID) ||
         !activeSessions.some((entry) => entry?.id === fullFork.id)
       ) {
-        throw new Error(`default experimental session list did not exclude only the archived fork: ${JSON.stringify(activeSessions)}`);
+        throw new Error(
+          `default experimental session list did not exclude only the archived fork: ${JSON.stringify(activeSessions)}`,
+        );
       }
       const includingArchived = await apiRequest(
         httpTrace,
@@ -1687,7 +1700,9 @@ async function runScenario(name, options) {
         '/experimental/session?archived=true',
       );
       if (!Array.isArray(includingArchived) || !includingArchived.some((entry) => entry?.id === partialFork.id)) {
-        throw new Error(`archived session list did not include the archived fork: ${JSON.stringify(includingArchived)}`);
+        throw new Error(
+          `archived session list did not include the archived fork: ${JSON.stringify(includingArchived)}`,
+        );
       }
 
       const deleteAfter = stream.events.length;
@@ -1863,12 +1878,17 @@ if (invokedDirectly) {
   const artifact = binaryPath(flag('--artifact', process.env.PUPPETEER_OPENCODE_BIN ?? 'opencode'));
   const expectedVersion = flag('--version');
   const only = flag('--scenario');
+  // Emulated binaries can take longer to subscribe their TUI than native hosts.
+  const attachReadyDelayMs = Number(flag('--attach-ready-delay-ms', '5000'));
+  if (!Number.isInteger(attachReadyDelayMs) || attachReadyDelayMs < 5_000 || attachReadyDelayMs > 60_000) {
+    throw new Error('--attach-ready-delay-ms must be an integer between 5000 and 60000');
+  }
   const names = only ? [only] : Object.keys(SCENARIOS);
   for (const name of names) {
     const versionLabel = expectedVersion ?? 'unversioned';
     const base = resolve(flag('--output', join(vendorRoot, 'captures-raw', `opencode@${versionLabel}`)));
     const output = names.length === 1 && flag('--output') ? base : join(base, name);
-    const result = await runScenario(name, { artifact, version: expectedVersion, output });
+    const result = await runScenario(name, { artifact, version: expectedVersion, output, attachReadyDelayMs });
     console.log(
       `${name.padEnd(20)} events=${String(result.events).padStart(3)} ` +
         `providerRequests=${result.providerRequests} terminal=${result.terminalEvent}`,
