@@ -1,10 +1,9 @@
 # GitHub Copilot CLI 1.0.105 surface findings
 
 Status: canonical ground truth, adapter, Imposter persona, built-in provider,
-and local conformance are implemented. The baseline remains
-`baseline-pending` until a guarded, matching-platform native-TUI/resume lane is
-implemented and records artifact-bound durable-observation receipts on all
-four platforms.
+and local conformance are implemented. Protected promotion
+[run 41804202048](https://github.com/vibefield/puppeteer/actions/runs/41804202048) passed the native-TUI/resume lane on all
+four platforms, so 1.0.105 is verified.
 
 ## Ground truth and identity
 
@@ -144,4 +143,4 @@ uses the declared Rosetta payload path and independently validates the complete 
 All 70 committed records pass; negative tests still reject both malformed nested payloads and
 malformed envelopes. The corrected workflow completed successfully in
 [run 41787728386](https://github.com/vibefield/puppeteer/actions/runs/41787728386).
-Protected native-TUI/resume promotion remains unimplemented.
+Protected native-TUI/resume promotion later passed in run 41804202048.
