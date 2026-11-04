@@ -45,6 +45,92 @@ function sanitizeJsonl(source, target, rules) {
   return records.length;
 }
 
+/**
+ * Sanitize one Rosetta fixture version's primary journals into `captures/<vendor>@<version>`, gated on the privacy
+ * detector. A leaky import leaves nothing behind to commit.
+ */
+function importCaptureSet(vendor, config, sourceRoot, vendorRoot, version, limitations) {
+  const captureRoot = join(vendorRoot, 'captures', `${vendor}@${version}`);
+  rmSync(captureRoot, { recursive: true, force: true });
+  mkdirSync(captureRoot, { recursive: true });
+  const fixtureRoot = join(sourceRoot, 'fixtures', version);
+  if (!existsSync(fixtureRoot)) throw new Error(`Rosetta has no ${vendor} fixtures for ${version}: ${fixtureRoot}`);
+  const rules = rosettaPrivacyRules(vendor);
+  const scenarios = [];
+  let recordCount = 0;
+  for (const scenarioEntry of readdirSync(fixtureRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .sort((a, b) => a.name.localeCompare(b.name))) {
+    const scenarioRoot = join(fixtureRoot, scenarioEntry.name);
+    const sources = filesUnder(scenarioRoot).filter((path) =>
+      config.primaryRecord(`/${relative(scenarioRoot, path).replaceAll('\\', '/')}`),
+    );
+    if (sources.length === 0) continue;
+    scenarios.push(scenarioEntry.name);
+    for (const [index, source] of sources.entries()) {
+      const name = sources.length === 1 ? 'events.jsonl' : `events-${String(index + 1).padStart(2, '0')}.jsonl`;
+      recordCount += sanitizeJsonl(source, join(captureRoot, scenarioEntry.name, name), rules);
+    }
+  }
+  if (recordCount === 0) {
+    rmSync(captureRoot, { recursive: true, force: true });
+    throw new Error(`Rosetta fixture set has no ${config.primaryStream} records`);
+  }
+  // Gate the import on the detector, not only the redactor: a raw UUID left in an id-keyed map's KEY once shipped
+  // while every value was aliased. A leaky import leaves nothing behind to commit.
+  const leaks = checkCaptureDirectory(captureRoot, rules);
+  if (leaks.length > 0) {
+    rmSync(captureRoot, { recursive: true, force: true });
+    throw new Error(
+      `${leaks.length} privacy issue(s) in the imported ${vendor}@${version} captures:\n${leaks.slice(0, 20).join('\n')}`,
+    );
+  }
+
+  writeJson(join(captureRoot, 'capture.json'), {
+    schemaVersion: 2,
+    representation: 'type-preserving-redaction',
+    vendor,
+    vendorVersion: version,
+    mode: 'imported-rosetta-controlled-native-journals',
+    scenarios,
+    records: recordCount,
+  });
+  writeCaptureFidelity(captureRoot, {
+    vendor,
+    vendorVersion: version,
+    defaultRepresentation: 'type-preserving-redaction',
+    nativeArtifacts: ['**/*.jsonl'],
+    limitations: [
+      ...limitations,
+      'All native object keys, containers, primitive types, and record ordering are retained; sensitive scalar values are redacted in place.',
+    ],
+  });
+  return { scenarios: scenarios.length, records: recordCount };
+}
+
+/**
+ * Import only the sanitized primary journals of a Rosetta fixture version that is not (yet) the canonical one. The
+ * committed `references/<vendor>@<version>` evidence, the active canonical, its model and its import record are left
+ * untouched, so a newer writer's journals can back adapter compatibility while another version stays active.
+ */
+export function importRosettaCaptures(vendor, version, options = {}) {
+  const config = rosettaAgentConfig(vendor);
+  if (version === config.version) {
+    throw new Error(`${vendor}@${version} is the configured canonical version; run the full import instead`);
+  }
+  const rosettaRoot = resolve(options.rosettaRoot ?? join(repositoryRoot, '..', 'rosetta'));
+  const sourceRoot = join(rosettaRoot, 'groundtruth', config.rosettaDirectory);
+  const canonicalPath = join(sourceRoot, 'groundtruth.json');
+  if (!existsSync(canonicalPath)) throw new Error(`Rosetta ground truth is missing: ${canonicalPath}`);
+  const canonical = JSON.parse(readFileSync(canonicalPath, 'utf8'));
+  if (canonical.agent !== vendor) throw new Error(`Rosetta identity is ${canonical.agent}, expected ${vendor}`);
+  const vendorRoot = join(packageRoot, 'vendors', vendor);
+  const result = importCaptureSet(vendor, config, sourceRoot, vendorRoot, version, [
+    `Captures-only import: only the ${config.primaryStream} append-only journal is copied from each Rosetta ${version} scenario. The active canonical stays ${vendor}@${config.version}; this set backs adapter compatibility and is not folded into the model.`,
+  ]);
+  return { vendor, version, ...result };
+}
+
 export function importRosettaSurface(vendor, options = {}) {
   const config = rosettaAgentConfig(vendor);
   const rosettaRoot = resolve(options.rosettaRoot ?? join(repositoryRoot, '..', 'rosetta'));
@@ -74,57 +160,9 @@ export function importRosettaSurface(vendor, options = {}) {
     importedReferences.push({ path: targetName, sha256: sha256(target) });
   }
 
-  const captureRoot = join(vendorRoot, 'captures', `${vendor}@${config.version}`);
-  rmSync(captureRoot, { recursive: true, force: true });
-  mkdirSync(captureRoot, { recursive: true });
-  const fixtureRoot = join(sourceRoot, 'fixtures', config.version);
-  const rules = rosettaPrivacyRules(vendor);
-  const scenarios = [];
-  let recordCount = 0;
-  for (const scenarioEntry of readdirSync(fixtureRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .sort((a, b) => a.name.localeCompare(b.name))) {
-    const scenarioRoot = join(fixtureRoot, scenarioEntry.name);
-    const sources = filesUnder(scenarioRoot).filter((path) =>
-      config.primaryRecord(`/${relative(scenarioRoot, path).replaceAll('\\', '/')}`),
-    );
-    if (sources.length === 0) continue;
-    scenarios.push(scenarioEntry.name);
-    for (const [index, source] of sources.entries()) {
-      const name = sources.length === 1 ? 'events.jsonl' : `events-${String(index + 1).padStart(2, '0')}.jsonl`;
-      recordCount += sanitizeJsonl(source, join(captureRoot, scenarioEntry.name, name), rules);
-    }
-  }
-  if (recordCount === 0) throw new Error(`Rosetta fixture set has no ${config.primaryStream} records`);
-  // Gate the import on the detector, not only the redactor: a raw UUID left in an id-keyed map's KEY once shipped
-  // while every value was aliased. A leaky import leaves nothing behind to commit.
-  const leaks = checkCaptureDirectory(captureRoot, rules);
-  if (leaks.length > 0) {
-    rmSync(captureRoot, { recursive: true, force: true });
-    throw new Error(
-      `${leaks.length} privacy issue(s) in the imported ${vendor}@${config.version} captures:\n${leaks.slice(0, 20).join('\n')}`,
-    );
-  }
-
-  writeJson(join(captureRoot, 'capture.json'), {
-    schemaVersion: 2,
-    representation: 'type-preserving-redaction',
-    vendor,
-    vendorVersion: config.version,
-    mode: 'imported-rosetta-controlled-native-journals',
-    scenarios,
-    records: recordCount,
-  });
-  writeCaptureFidelity(captureRoot, {
-    vendor,
-    vendorVersion: config.version,
-    defaultRepresentation: 'type-preserving-redaction',
-    nativeArtifacts: ['**/*.jsonl'],
-    limitations: [
-      `Only the ${config.primaryStream} append-only journal is copied from each Rosetta scenario; the committed Rosetta reference preserves the complete ${canonical.streams.length}-stream inventory.`,
-      'All native object keys, containers, primitive types, and record ordering are retained; sensitive scalar values are redacted in place.',
-    ],
-  });
+  const captured = importCaptureSet(vendor, config, sourceRoot, vendorRoot, config.version, [
+    `Only the ${config.primaryStream} append-only journal is copied from each Rosetta scenario; the committed Rosetta reference preserves the complete ${canonical.streams.length}-stream inventory.`,
+  ]);
 
   const fixtureSource = canonical.sources.find(
     (source) => source.agent_version === config.version && source.evidence === 'fixture',
@@ -144,17 +182,20 @@ export function importRosettaSurface(vendor, options = {}) {
       sha256: fixtureSource?.sha256 ?? sha256(canonicalPath),
     },
   });
-  return { vendor, version: config.version, scenarios: scenarios.length, records: recordCount };
+  return { vendor, version: config.version, ...captured };
 }
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
   const vendor = process.argv[2];
   const rootIndex = process.argv.indexOf('--rosetta');
-  const result = importRosettaSurface(vendor, {
-    ...(rootIndex >= 0 ? { rosettaRoot: process.argv[rootIndex + 1] } : {}),
-  });
+  const capturesOnlyIndex = process.argv.indexOf('--captures-only');
+  const options = rootIndex >= 0 ? { rosettaRoot: process.argv[rootIndex + 1] } : {};
+  const result =
+    capturesOnlyIndex >= 0
+      ? importRosettaCaptures(vendor, process.argv[capturesOnlyIndex + 1], options)
+      : importRosettaSurface(vendor, options);
   console.log(
-    `imported ${result.vendor}@${result.version}: ${result.records} records across ${result.scenarios} scenarios`,
+    `imported ${result.vendor}@${result.version}${capturesOnlyIndex >= 0 ? ' (captures only)' : ''}: ${result.records} records across ${result.scenarios} scenarios`,
   );
 }
