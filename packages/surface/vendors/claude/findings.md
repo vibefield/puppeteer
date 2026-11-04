@@ -62,7 +62,7 @@ To separate release drift from platform/host drift, the same lanes, probes and s
 also run on the promoted 2.1.308 linux-x64 bytes (digest equal to the promoted evidence), raw only.
 
 The lanes observed the same **24 of 33 events** as 2.1.308, in 98 records (2.1.308: 103; six fewer
-from the omitted headless lane, one more compaction SubagentStop).
+from the omitted headless lane, one more compaction SubagentStop from the summary retry below).
 
 ### Drift classification
 
@@ -78,7 +78,7 @@ release). Replay passes (98 frames, digest `6ea41e30…0f0b`).
 | Bundled hook input/output schemas | identical modulo minified identifiers (normalized diff of the schema region) | none |
 | Runtime hook input builders | all 36 builders identical modulo identifiers, the common base input included | none |
 | Captured payloads | per event, every key path and JSON type, and every tracked enum discriminator, equal to the 2.1.308 linux run | none |
-| `/compact` | **two** internal compaction-agent `SubagentStop`s (empty `agent_type`, no `SubagentStart`, distinct `agent_id`) before SessionStart(compact), where 2.1.308 sent one | count-only; consumed (see below) |
+| `/compact` | **up to two** internal compaction-agent `SubagentStop`s (empty `agent_type`, no `SubagentStart`, distinct `agent_id`) before SessionStart(compact). 2.1.311's reactive compactor, which manual `/compact` runs, asks for the summary once more when the reply has no `<summary>` block (gate `tengu_dapper_fountain`, on by default; at most one retry); each attempt is its own internal fork with its own stop. The census's loopback summary reply has no `<summary>` block, so the capture holds the retry path (two stops) every time; 2.1.308 sent one. The nominal single-stop path on 2.1.311 is read from the code, not captured | conditional retry, count-only; consumed (see below) |
 | Transcript | new side row **`tools-used`** `{type, tools: string[], sessionId}`, no `uuid` or timestamp (6 in the TUI lane); subagent `*.meta.json` adds `isBuiltIn` | additive; consumed (see below) |
 | Status lines | statusLine key paths unchanged; subagent status timing 16 samples / 5000 ms unchanged | none |
 | `--help` / invocation grammar | only the purge description changed; all 76 parse and 8 runtime probes read as on 2.1.308 linux | none |
@@ -103,16 +103,18 @@ adapter's are. The invocation-probe R02 (`-- attach <id>`) waited for its bound 
 No semantic adapter change is needed; every drift is handled by existing structural rules, now
 pinned by tests:
 
-- **Two internal compaction stops**: the normalizer keys the internal-agent rule on an empty
-  `agent_type` with no prior SubagentStart, per `agent_id`, so both stay `adapter:native-event` and
-  never a delegation (`normalization/adapter.test.ts` replays both captured stops).
+- **Summary retry (up to two internal compaction stops)**: the normalizer keys the internal-agent
+  rule on an empty `agent_type` with no prior SubagentStart, per `agent_id`, so one stop or both stay
+  `adapter:native-event` and never a delegation (`normalization/adapter.test.ts` replays both
+  captured retry-path stops).
 - **`tools-used`**: the transcript reader keeps only `type` user/assistant rows and rows with a
   `uuid`, so the new row is dropped before the bounded window and an append of one re-announces
   nothing (`jsonl-reader.test.ts`).
 - Generated projections (`CLAUDE_SURFACE_VERSION` 2.1.311) and the re-locked ground-truth map;
   `CLAUDE_INVOCATION_GRAMMAR_VERSION` 2.1.311 with no row change.
-- **Imposter**: `compact-lifecycle` emits the two internal stops in the TUI lane's order; the
-  persona's version follows the candidate ground truth. The persona's transcripts do not write
+- **Imposter**: `compact-lifecycle` stays the nominal single-stop path; `compact-summary-retry`
+  emits the two internal stops of the retry path in the TUI lane's order. The persona's version
+  follows the candidate ground truth. The persona's transcripts do not write
   `tools-used` rows (nothing reads them).
 
 ### Known gaps / follow-ups
@@ -124,6 +126,10 @@ pinned by tests:
 - Unreached events and branches are unchanged from 2.1.308 (UserPromptExpansion, PermissionDenied,
   TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate/WorktreeRemove, Elicitation/ElicitationResult,
   PostModelSwitch `auto`/`resume`, `mcp_server`, `scratchpad_dir`, `bashEditDiff`).
+- **Nominal `/compact` on 2.1.311**: the census loopback answers every tool-less request with a
+  summary-less reply, so only the retry path is captured. Capturing the single-stop path needs a
+  loopback that answers the compaction request with a `<summary>` block and a re-run of the
+  interactive lane (on 2.1.311 and 2.1.308 linux, to compare the stop counts).
 - The 2.1.308 adapter follow-ups below still apply unchanged.
 
 ---

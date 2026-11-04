@@ -1004,8 +1004,11 @@ describe('Claude 2.1.308 hook additions', () => {
     // Runtime refuses empty candidate actor metadata, so the empty type is not stamped.
     expect(result.agentId).toBe(internal!.agent_id);
     expect(result.agentType).toBeUndefined();
-    // 2.1.311's /compact runs two internal agents: two such stops, distinct ids, each one native.
+    // /compact runs up to two internal agents (retry): one per summary attempt. 2.1.311 asks once more when the
+    // reply has no <summary> block, as the census's loopback reply had none, so its capture holds two such stops,
+    // distinct ids, each one native.
     const internals = loadHookFixtures('SubagentStop').filter((record) => record.agent_type === '');
+    expect(internals).toHaveLength(2);
     expect(new Set(internals.map((record) => record.agent_id)).size).toBe(internals.length);
     for (const record of internals.slice(1)) {
       expect(normalizer.normalize(record as ClaudeHookPayload).events).toEqual([

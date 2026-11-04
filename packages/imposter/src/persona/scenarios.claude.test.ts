@@ -112,8 +112,22 @@ describe('claude persona scenarios', () => {
       'statusLine',
       'UserPromptSubmit',
     ]);
-    // 2.1.311's /compact stops two internal agents before the compact SessionStart (2.1.308: one).
+    // /compact stops up to two internal agents before the compact SessionStart: one on the nominal path
+    // (2.1.308 captured), two (retry) when 2.1.311's summary reply has no <summary> block, as the
+    // census's loopback reply had none.
+    const internalStops = (name: string) =>
+      actionsFor(JSON.parse(readFileSync(join(scenarioDir, `${name}.json`), 'utf8')) as unknown).filter(
+        (action) => action.emit?.event === 'SubagentStop',
+      );
     expect(events('compact-lifecycle')).toEqual([
+      'PreCompact',
+      'SubagentStop',
+      'SessionStart',
+      'PostCompact',
+      'statusLine',
+    ]);
+    expect(internalStops('compact-lifecycle').map((action) => action.emit?.with?.agent_type)).toEqual(['']);
+    expect(events('compact-summary-retry')).toEqual([
       'PreCompact',
       'SubagentStop',
       'SubagentStop',
@@ -121,11 +135,9 @@ describe('claude persona scenarios', () => {
       'PostCompact',
       'statusLine',
     ]);
-    const internal = actionsFor(
-      JSON.parse(readFileSync(join(scenarioDir, 'compact-lifecycle.json'), 'utf8')) as unknown,
-    ).filter((action) => action.emit?.event === 'SubagentStop');
-    expect(internal.map((action) => action.emit?.with?.agent_type)).toEqual(['', '']);
-    expect(new Set(internal.map((action) => action.emit?.with?.agent_id)).size).toBe(2);
+    const retry = internalStops('compact-summary-retry');
+    expect(retry.map((action) => action.emit?.with?.agent_type)).toEqual(['', '']);
+    expect(new Set(retry.map((action) => action.emit?.with?.agent_id)).size).toBe(2);
   });
 
   it('writes the 2.1.308 transcript shapes and the API-error boundary the census recorded', () => {
