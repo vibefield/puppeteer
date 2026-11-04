@@ -48,6 +48,50 @@ describe('ClaudeHookNormalizer against captured fixtures', () => {
     });
   });
 
+  it('fails the turn on every captured StopFailure and closes what that turn left open', () => {
+    // Real payloads: the credential-less headless lane's authentication failure and every loopback API-error lane.
+    const failures = loadHookFixtures('StopFailure');
+    expect(failures.length).toBeGreaterThan(1);
+    expect(failures.map((failure) => failure.error)).toContain('authentication_failed');
+    for (const failure of failures) {
+      // Only the credential-less lane names a model alias that takes effort, so only its payload reports it.
+      const effort = (failure.effort as { level?: string } | undefined)?.level;
+      expect(normalizeOne(failure as ClaudeHookPayload).events).toEqual([
+        { type: 'turn:failed', turnId: failure.prompt_id, error: failure.error },
+        ...(effort ? [{ type: 'effort:updated', effort, intent: 'observed' }] : []),
+      ]);
+    }
+
+    const failure = failures.find((candidate) => candidate.effort === undefined)!;
+    const promptId = failure.prompt_id as string;
+    const normalizer = new ClaudeHookNormalizer();
+    const bash = { prompt_id: promptId, tool_name: 'Bash', tool_input: { command: 'pwd' }, tool_use_id: 'tool-bash' };
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', bash) as ClaudeHookPayload);
+    const requested = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', bash) as ClaudeHookPayload);
+    const requestId = (requested.events[0] as { requestId: string }).requestId;
+    normalizer.normalize(
+      fakeClaudeHookPayload('PreToolUse', {
+        prompt_id: promptId,
+        tool_name: 'AskUserQuestion',
+        tool_use_id: 'tool-question',
+        tool_input: { questions: [{ question: 'Which approach?', options: [{ label: 'Safe' }] }] },
+      }) as ClaudeHookPayload,
+    );
+    const started = normalizer.normalize(
+      fakeClaudeHookPayload('PreCompact', { prompt_id: promptId, trigger: 'auto', custom_instructions: '' }),
+    );
+    const compactionId = (started.events[0] as { compactionId: string }).compactionId;
+
+    expect(normalizer.normalize(failure as ClaudeHookPayload).events).toEqual([
+      { type: 'interaction:permission-resolved', requestId, outcome: 'unknown' },
+      { type: 'interaction:question-resolved', requestId: 'question:tool-question', outcome: 'failed' },
+      expect.objectContaining({ type: 'compaction:completed', compactionId, outcome: 'failed' }),
+      { type: 'turn:failed', turnId: promptId, error: failure.error },
+    ]);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+    expect(normalizer.pendingQuestionRequests()).toHaveLength(0);
+  });
+
   it('maps tool events with their native ids', () => {
     const pre = fakeClaudeHookPayload('PreToolUse', {
       prompt_id: 'prompt-tool',
@@ -964,8 +1008,11 @@ describe('Claude 2.1.308 hook additions', () => {
     // Runtime refuses empty candidate actor metadata, so the empty type is not stamped.
     expect(result.agentId).toBe(internal!.agent_id);
     expect(result.agentType).toBeUndefined();
-    // 2.1.311's /compact runs two internal agents: two such stops, distinct ids, each one native.
+    // /compact runs up to two internal agents (retry): one per summary attempt. 2.1.311 asks once more when the
+    // reply has no <summary> block, as the census's loopback reply had none, so its capture holds two such stops,
+    // distinct ids, each one native.
     const internals = loadHookFixtures('SubagentStop').filter((record) => record.agent_type === '');
+    expect(internals).toHaveLength(2);
     expect(new Set(internals.map((record) => record.agent_id)).size).toBe(internals.length);
     for (const record of internals.slice(1)) {
       expect(normalizer.normalize(record as ClaudeHookPayload).events).toEqual([

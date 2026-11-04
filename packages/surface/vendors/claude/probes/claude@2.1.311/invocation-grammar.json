@@ -1008,7 +1008,7 @@
   ]
  },
  "runtime": {
-  "method": "Credential-less argv shapes whose dispatch changed in 2.1.308, each in a disposable HOME/CLAUDE_CONFIG_DIR/TMPDIR with no TTY, a 15 s bound and the fail-closed model endpoint, on 2.1.311 and on the 2.1.308 linux-x64 artifact (sha256 356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58, the promoted bytes). Only inert shapes run: a job id no job matches, purge in an empty project, the helper without its stdin request, the gh entry used directly. --desktop, --bg, Remote Control and cloud paths stay parse-only.",
+  "method": "Argv shapes whose dispatch changed in 2.1.308, each in a disposable HOME/CLAUDE_CONFIG_DIR/TMPDIR that holds no credential, with no TTY, a 15 s bound and the fail-closed model endpoint, on 2.1.311 and on the 2.1.308 linux-x64 artifact (sha256 356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58, the promoted bytes). Only inert shapes run: a job id no job matches, purge in an empty project, the helper without its stdin request, the gh entry used directly. --desktop, --bg, Remote Control and cloud paths stay parse-only. On this host the artifact found a credential outside the disposable environment (R02; findings.md, 2.1.311): only the fail-closed model endpoint kept it from reaching a model, and egress to the hard-coded account and OAuth endpoints was neither recorded nor blocked.",
   "harness": "packages/surface/vendors/claude/census/invocation-probes.mjs",
   "probes": [
    {
@@ -1101,7 +1101,7 @@
   ]
  },
  "live": {
-  "method": "The repository's own isolated rig (packages/adapter-claude/src/test-support/live-model.ts): a throwaway HOME and CLAUDE_CONFIG_DIR per probe (trust and the bypass consent pre-seeded), a loopback Messages API that answers \"ok\", ANTHROPIC_AUTH_TOKEN a placeholder, nonessential traffic off, command hooks appending to a throwaway log, the session in a node-pty the harness owns. Nothing of the owner's configuration or account is read or written. <managed hooks> is a settings file whose SessionStart, UserPromptSubmit, Stop and SessionEnd command hooks log each event.",
+  "method": "The repository's own isolated rig (packages/adapter-claude/src/test-support/live-model.ts): a throwaway HOME and CLAUDE_CONFIG_DIR per probe (trust and the bypass consent pre-seeded), a loopback Messages API that answers \"ok\", ANTHROPIC_AUTH_TOKEN a placeholder, nonessential traffic off, command hooks appending to a throwaway log, the session in a node-pty the harness owns. As recorded for the 2.1.283 run, nothing of the owner's configuration or account was read or written; that run is not repeated here (reRun: false) and the claim was not re-checked on the 2.1.311 host. <managed hooks> is a settings file whose SessionStart, UserPromptSubmit, Stop and SessionEnd command hooks log each event.",
   "reRun": false,
   "note": "The 16 live sessions L01-L16 of the 2.1.283 record were not repeated on 2.1.308 or 2.1.311. Each rests on a static fact above whose anchor was relocated and re-read unchanged, and on parse probes that read identically; their findings carry forward on that evidence only.",
   "inherited": [

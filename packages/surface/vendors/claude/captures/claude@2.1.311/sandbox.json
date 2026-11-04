@@ -1,0 +1,55 @@
+{
+  "projection": "census network-deny sandbox observed from inside, per capture mode; interface names, route counts, probe destinations and error codes only",
+  "entries": [
+    {
+      "modes": [
+        "headless"
+      ],
+      "sandbox": "netns",
+      "runner": "unshare --user --map-root-user --net --mount --propagation private",
+      "interfaces": [
+        "lo"
+      ],
+      "ipv4Routes": 0,
+      "ipv6NonLoopbackRoutes": 0,
+      "loopback": "connected",
+      "publicDestinations": [
+        {
+          "destination": "api.anthropic.com:443",
+          "outcome": "refused",
+          "code": "EAI_AGAIN"
+        },
+        {
+          "destination": "platform.claude.com:443",
+          "outcome": "refused",
+          "code": "EAI_AGAIN"
+        },
+        {
+          "destination": "1.1.1.1:443",
+          "outcome": "refused",
+          "code": "ENETUNREACH"
+        },
+        {
+          "destination": "[2606:4700:4700::1111]:443",
+          "outcome": "refused",
+          "code": "EAFNOSUPPORT"
+        }
+      ],
+      "callerProxies": [
+        {
+          "proxy": 1,
+          "outcome": "refused",
+          "code": "ECONNREFUSED"
+        }
+      ],
+      "artifactCredentialDirectories": [
+        {
+          "role": "artifact-remote-credentials",
+          "entries": 0
+        }
+      ],
+      "hiddenDirectories": 2,
+      "nonLoopbackEgressAttempts": 0
+    }
+  ]
+}

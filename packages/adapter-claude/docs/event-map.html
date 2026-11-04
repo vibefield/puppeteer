@@ -985,7 +985,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
       <a class="hook-anchor" href="#hook-PreModelSwitch"><code>PreModelSwitch</code></a>
       <span class="tag t-registry">Explicit only · native</span>
     </div>
-    <p class="hook-when">Before a requested model switch (Claude Code 2.1.251+; 2.1.308 candidate evidence)</p>
+    <p class="hook-when">Before a requested model switch (Claude Code 2.1.251+; 2.1.308 verified evidence)</p>
   </header>
   <div class="hook-card-body">
     <p>Runs before <code>/model</code>, a picker, <code>/config</code>, fast mode, or an SDK <code>set_model</code> changes the model, and can cancel the switch. Input adds <code>from_model</code>, <code>to_model</code>, <code>requested_model</code> (string or null), <code>source</code> (<code>command</code> · <code>picker</code> · <code>sdk</code>), <code>context_tokens</code>, <code>prompt_cache_warm</code>, <code>cache_ttl</code>, <code>estimated_cache_write_usd</code> and <code>pricing</code>. A hook still running at its timeout (native default 30 s) blocks the switch.</p>
@@ -998,7 +998,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
       <a class="hook-anchor" href="#hook-PostModelSwitch"><code>PostModelSwitch</code></a>
       <span class="tag t-used">Wired + normalized</span>
     </div>
-    <p class="hook-when">After the session's model changed (Claude Code 2.1.251+; 2.1.308 candidate evidence)</p>
+    <p class="hook-when">After the session's model changed (Claude Code 2.1.251+; 2.1.308 verified evidence)</p>
   </header>
   <div class="hook-card-body">
     <p>Asynchronous. Same input as PreModelSwitch, with <code>source</code> adding <code>auto</code> (an automatic fallback; <code>requested_model</code> null) and <code>resume</code> (the model a resume restored). The 2.1.308 TUI census observed <code>/model</code> → PreModelSwitch → PostModelSwitch → a status line on the new model; <code>to_model</code> is the model that serves, which can differ from the requested id.</p>
@@ -1461,9 +1461,9 @@ flowchart LR
       </p>
 
       <footer>
-        Generated against Claude Code 2.1.207 census data, with the 2.1.308 candidate's additions
-        (PreModelSwitch, PostModelSwitch, transcript bookkeeping rows) and the 2.1.311 candidate's (a second internal
-        compaction stop, the <code>tools-used</code> transcript row); last verified stays at the promoted 2.1.207. Verify with
+        Generated against Claude Code 2.1.207 census data, with 2.1.308's additions (PreModelSwitch, PostModelSwitch,
+        transcript bookkeeping rows) and the 2.1.311 candidate's (a second internal compaction stop when the summary
+        reply is retried, the <code>tools-used</code> transcript row); last verified is the promoted 2.1.308. Verify with
         <code>src/generated/registry.ts</code> · <code>src/normalization/index.ts</code> · <code>src/launch/settings.ts</code>.
       </footer>
     </main>

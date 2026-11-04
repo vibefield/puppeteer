@@ -21,6 +21,7 @@ import { eventDocumentPath } from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 import { CLAUDE_CAPTURE_MODES, CLAUDE_HOOK_EVENTS, probeClaude } from './harness.mjs';
+import { enterProvenCensusSandbox } from './sandbox.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const vendorRoot = dirname(dirname(scriptPath));
@@ -145,7 +146,7 @@ const CONTRADICTIONS = [
     subject: 'effort',
     reference: 'Present on tool-context events when the model supports the effort parameter.',
     artifact:
-      'Absent from every 2.1.311 census payload (the loopback model id; the credential-less headless lane did not run); present on the 2.1.308 credential-less headless StopFailure (model alias haiku).',
+      'Present only on the credential-less headless StopFailure (model alias haiku) on 2.1.311 and 2.1.308; absent from every payload of the lanes that name the loopback model id.',
     model: 'optional common object',
   },
   {
@@ -887,8 +888,11 @@ function evidenceFor(...claims) {
   return { existence: claims, shape: claims };
 }
 
-/** The print-lane description for the modes this capture set holds. */
-function headlessLanes(modes) {
+/**
+ * The print-lane description for the modes this capture set holds. A set with
+ * no print lane has no headless claim to describe, so that is a caller error.
+ */
+export function headlessLanes(modes) {
   const lanes = [
     ['init', '--init-only'],
     ['headless', 'credential-less print'],
@@ -896,10 +900,42 @@ function headlessLanes(modes) {
   ].filter(([mode]) =>
     mode === 'api-error-<status>' ? modes.some((m) => m.startsWith('api-error-')) : modes.includes(mode),
   );
+  if (lanes.length === 0) {
+    throw new Error(`capture set holds no init, headless or api-error lane for ${RUNTIME_CLAIM}`);
+  }
   const names = lanes.map(([, name]) => name);
   const list =
     names.length > 1 ? `${names.slice(0, -1).join(', ')}${names.length > 2 ? ',' : ''} and ${names.at(-1)}` : names[0];
-  return `${list} lanes (${lanes.map(([mode]) => mode).join(', ')})`;
+  return `${list} ${names.length > 1 ? 'lanes' : 'lane'} (${lanes.map(([mode]) => mode).join(', ')})`;
+}
+
+/**
+ * Capture modes the set's `sandbox.json` (census/sandbox.mjs) shows ran in the
+ * network-deny sandbox, with every check holding and no non-loopback attempt.
+ * A set without the projection has none.
+ */
+export function sandboxedModes(captureRoot) {
+  const path = join(captureRoot, 'sandbox.json');
+  if (!existsSync(path)) return [];
+  const { entries } = JSON.parse(readFileSync(path, 'utf8'));
+  return entries
+    .filter(
+      (entry) =>
+        entry.sandbox === 'netns' &&
+        entry.interfaces?.length === 1 &&
+        entry.interfaces[0] === 'lo' &&
+        entry.ipv4Routes === 0 &&
+        entry.ipv6NonLoopbackRoutes === 0 &&
+        entry.loopback === 'connected' &&
+        [...(entry.publicDestinations ?? []), ...(entry.callerProxies ?? [])].every(
+          (probe) => probe.outcome === 'refused',
+        ) &&
+        (entry.publicDestinations ?? []).length > 0 &&
+        entry.artifactCredentialDirectories?.every((directory) => directory.entries === 0) &&
+        entry.nonLoopbackEgressAttempts === 0,
+    )
+    .flatMap((entry) => entry.modes)
+    .sort();
 }
 
 /** Capture modes present in the sanitized set, each mapped to the claim its lane supports. */
@@ -1168,7 +1204,25 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
 
   const artifactId = `installed-claude-${version}-${artifactPlatform}`;
   const evidencePath = join(modelRoot, 'evidence.json');
+  // Each runtime claim exists only when one of its lanes was captured; event claims come from the same modes.
+  const headlessCaptured = modes.some((mode) => MODE_CLAIMS.get(mode) === RUNTIME_CLAIM);
   const interactiveCaptured = modes.some((mode) => MODE_CLAIMS.get(mode) === INTERACTIVE_CLAIM);
+  const sandboxed = sandboxedModes(captureRoot).filter((mode) => modes.includes(mode));
+  const unsandboxed = modes.filter((mode) => !sandboxed.includes(mode));
+  // Only claims whose modes the sandbox covered carry its note.
+  const sandboxNote = (claim) => {
+    const covered = sandboxed.filter((mode) => MODE_CLAIMS.get(mode) === claim);
+    return covered.length === 0
+      ? {}
+      : {
+          notes:
+            `${covered.join(', ')} ran in the census network-deny sandbox (packages/surface/vendors/claude/census/sandbox.mjs; captures sandbox.json): a fresh user, network and mount namespace whose only interface was loopback, every public and caller-proxy destination refused and the artifact's well-known credential directory empty before the artifact ran, and no non-loopback attempt recorded. ${
+              covered.length < modes.filter((mode) => MODE_CLAIMS.get(mode) === claim).length
+                ? `A sandboxed run writes sandbox.json for every mode it captures, so ${covered.join(', ')} came from a separate census run from the claim's other modes; capturedAt dates one run only, and the capture set's SANITIZATION.md dates each.`
+                : ''
+            }`.trim(),
+        };
+  };
   writeJson(evidencePath, {
     evidenceVersion: 2,
     vendor: 'claude',
@@ -1191,16 +1245,21 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       },
     ],
     claims: [
-      {
-        id: RUNTIME_CLAIM,
-        kind: 'runtime-capture',
-        confidence: 'verified-headless',
-        record: 'sanitized-captures',
-        artifact: artifactId,
-        platform: artifactPlatform,
-        harness: `Isolated ${headlessLanes(modes)} recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs`,
-        capturedAt,
-      },
+      ...(headlessCaptured
+        ? [
+            {
+              id: RUNTIME_CLAIM,
+              kind: 'runtime-capture',
+              confidence: 'verified-headless',
+              record: 'sanitized-captures',
+              artifact: artifactId,
+              platform: artifactPlatform,
+              harness: `Isolated ${headlessLanes(modes)} recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs`,
+              capturedAt,
+              ...sandboxNote(RUNTIME_CLAIM),
+            },
+          ]
+        : []),
       ...(interactiveCaptured
         ? [
             {
@@ -1213,6 +1272,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
               harness:
                 'Native TUI in a harness-owned PTY against a scripted loopback Messages API, then --resume by id (interactive, resume), in packages/surface/vendors/claude/census/interactive-lane.mjs',
               capturedAt,
+              ...sandboxNote(INTERACTIVE_CLAIM),
             },
           ]
         : []),
@@ -1269,14 +1329,19 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
     ],
     limitations: [
       `Artifact integrity and controlled runtime captures currently cover only ${artifactPlatform}; protected promotion still requires every configured platform.`,
-      'No lane uses an account or credential. Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.',
+      'No committed lane sends a model anything but the placeholder ANTHROPIC_AUTH_TOKEN: the API-error and interactive lanes talk to a census loopback model, and the init and credential-less print lanes set no token (a credential-less print lane is committed only where it made no model request). Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.',
       'Not reached by any lane: Setup outside --init-only, UserPromptExpansion, PermissionDenied (auto mode), TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate, WorktreeRemove, Elicitation, ElicitationResult, PostModelSwitch outside a /model switch, mcp_server on MCP tool events, scratchpad_dir, and PostToolUse(Bash) tool_response.bashEditDiff.',
       'The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim.',
       ...(modes.includes('headless')
         ? []
         : [
-            'No credential-less headless lane: on the census host the artifact presented a credential the disposable environment does not hold, so that lane could not run without one (findings.md).',
+            "No credential-less headless lane: on the census host the artifact presented a credential the disposable environment does not hold, so that lane could not run without one (findings.md). The committed lanes redirected only the model endpoint: egress to the artifact's hard-coded account and OAuth endpoints (api.anthropic.com, platform.claude.com) was neither recorded nor blocked in that run.",
           ]),
+      ...(sandboxed.length > 0 && unsandboxed.length > 0
+        ? [
+            `Only ${sandboxed.join(', ')} ran in the network-deny sandbox. ${unsandboxed.join(', ')} ran without it: their model traffic named a census loopback endpoint, but non-loopback egress was not structurally denied for them, and no egress claim covers them (findings.md records what was observed).`,
+          ]
+        : []),
     ],
   });
   writeGroundTruthArtifacts(modelRoot);
@@ -1290,6 +1355,10 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
+  // Only a run that executes the exact artifact needs the network-deny sandbox; one from retained probes runs nothing.
+  if (flag('--artifact') ?? process.env.PUPPETEER_CLAUDE_BIN) {
+    await enterProvenCensusSandbox({ passEnvironment: ['PUPPETEER_CLAUDE_BIN'] });
+  }
   const retainedGroundTruth = existsSync(join(vendorRoot, 'groundtruth.json'))
     ? JSON.parse(readFileSync(join(vendorRoot, 'groundtruth.json'), 'utf8'))
     : undefined;

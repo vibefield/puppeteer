@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CLAUDE_HOOK_EVENTS } from './harness.mjs';
-import { inspectHookEventInventory, parseSubagentStatusTiming } from './generate-model.mjs';
+import { headlessLanes, inspectHookEventInventory, parseSubagentStatusTiming } from './generate-model.mjs';
 
 // Synthetic fragments with the minified shape of the 2.1.226-2.1.308 status
 // scheduler: a one-shot kick first, then the self-rescheduling snapshot timer.
@@ -48,5 +48,21 @@ describe('hook-event inventory probe', () => {
       /missing PostModelSwitch/,
     );
     expect(() => inspectHookEventInventory(Buffer.from('no inventory here'))).toThrow(/no recognizable/);
+  });
+});
+
+describe('headless claim harness text', () => {
+  it('names exactly the print lanes the capture set holds', () => {
+    expect(headlessLanes(['api-error-400', 'api-error-500', 'init', 'interactive', 'resume'])).toBe(
+      '--init-only and loopback API-error print lanes (init, api-error-<status>)',
+    );
+    expect(headlessLanes(['api-error-400', 'headless', 'init'])).toBe(
+      '--init-only, credential-less print, and loopback API-error print lanes (init, headless, api-error-<status>)',
+    );
+    expect(headlessLanes(['init'])).toBe('--init-only lane (init)');
+  });
+
+  it('refuses a capture set with no print lane instead of describing nothing', () => {
+    expect(() => headlessLanes(['interactive', 'resume'])).toThrow(/no init, headless or api-error lane/);
   });
 });

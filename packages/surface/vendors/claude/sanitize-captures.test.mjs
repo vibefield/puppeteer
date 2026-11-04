@@ -4,7 +4,12 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { checkRecord, defaultRules, sanitizeRecord } from '@vibefield/puppeteer-surface/sanitize';
 import { CLAUDE_STOP_FAILURE_ERRORS, claudeCaptureRules, claudeRepositoryGateRules } from './privacy.mjs';
-import { checkCaptureDirectory, copyCaptureProjections, sanitizeCaptureDirectory } from './sanitize-captures.mjs';
+import {
+  checkCaptureDirectory,
+  copyCaptureProjections,
+  mergeCaptureDirectory,
+  sanitizeCaptureDirectory,
+} from './sanitize-captures.mjs';
 
 const temporaryDirectories = [];
 
@@ -288,6 +293,50 @@ describe('Claude-specific capture rules', () => {
     expect(copyCaptureProjections(input, output)).toEqual(['ordering.json']);
     writeFileSync(join(input, 'transcript-shape.json'), `${JSON.stringify({ cwd: '/Users/alice/project' })}\n`);
     expect(() => copyCaptureProjections(input, output)).toThrow(/refusing to copy transcript-shape.json/);
+  });
+
+  it('merges a later run into an existing set in census lane order, refusing what it cannot merge', () => {
+    const ordering = (...entries) => `${JSON.stringify({ projection: 'order', entries })}\n`;
+    const existing = temporaryDirectory();
+    for (const mode of ['init', 'api-error-401']) {
+      mkdirSync(join(existing, mode));
+      writeFileSync(join(existing, mode, 'SessionEnd.jsonl'), `${JSON.stringify({ hook_event_name: 'SessionEnd' })}\n`);
+    }
+    writeFileSync(
+      join(existing, 'ordering.json'),
+      ordering({ mode: 'init', seq: 1, hook: 'Setup' }, { mode: 'api-error-401', seq: 1, hook: 'StopFailure' }),
+    );
+    writeFileSync(join(existing, 'transcript-shape.json'), `${JSON.stringify({ rows: 1 })}\n`);
+
+    const later = temporaryDirectory();
+    mkdirSync(join(later, 'headless'));
+    writeFileSync(
+      join(later, 'headless', 'StopFailure.jsonl'),
+      `${JSON.stringify({ hook_event_name: 'StopFailure', session_id: 'later-session', error: 'authentication_failed' })}\n`,
+    );
+    writeFileSync(join(later, 'ordering.json'), ordering({ mode: 'headless', seq: 1, hook: 'StopFailure' }));
+    writeFileSync(
+      join(later, 'sandbox.json'),
+      `${JSON.stringify({ projection: 'sandbox', entries: [{ modes: ['headless'], interfaces: ['lo'] }] })}\n`,
+    );
+
+    expect(mergeCaptureDirectory(later, existing)).toMatchObject({
+      files: 1,
+      modes: ['headless'],
+      projections: ['ordering.json', 'sandbox.json'],
+    });
+    const merged = JSON.parse(readFileSync(join(existing, 'ordering.json'), 'utf8'));
+    expect(merged.entries.map((entry) => entry.mode)).toEqual(['init', 'headless', 'api-error-401']);
+    expect(JSON.parse(readFileSync(join(existing, 'sandbox.json'), 'utf8')).entries).toHaveLength(1);
+    expect(readFileSync(join(existing, 'headless', 'StopFailure.jsonl'), 'utf8')).toMatch(/"session_id":"anon-/);
+    expect(checkCaptureDirectory(existing)).toEqual([]);
+
+    expect(() => mergeCaptureDirectory(later, existing)).toThrow(/already holds headless/);
+    const conflicting = temporaryDirectory();
+    mkdirSync(join(conflicting, 'resume'));
+    writeFileSync(join(conflicting, 'transcript-shape.json'), `${JSON.stringify({ rows: 2 })}\n`);
+    expect(() => mergeCaptureDirectory(conflicting, existing)).toThrow(/not a per-mode projection/);
+    expect(readFileSync(join(existing, 'transcript-shape.json'), 'utf8')).toContain('"rows":1');
   });
 
   it('gives the repository gate only the closed-enum allowance on top of the shared defaults', () => {
