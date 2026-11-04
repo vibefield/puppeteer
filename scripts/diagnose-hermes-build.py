@@ -14,3 +14,6 @@ for entry in dist.files:
     if source.suffix == ".so" or "sboms" in name.parts:
         target = output / name; target.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(source, target)
 (output / "files.json").write_text(json.dumps(entries, indent=2) + "\n")
+
+original = Path(sys.prefix).parent / 'sbom-original.json'
+if original.exists(): shutil.copyfile(original, output / 'sbom-original.json')

@@ -297,6 +297,7 @@ export function materializeInstalledConsole({
   if (!existsSync(installedPython) || !existsSync(installedConsole)) {
     throw new Error('locked uv sync did not materialize the declared console');
   }
+  run(installedPython, [join(root, 'scripts/normalize-diagnostic-sbom.py')], { env, timeout: 20_000, maxBuffer: 4096, label: 'diagnostic SBOM path normalization' });
   const generatedSource = attestSourceChanges(projectRoot, sourceSnapshot, policy.generatedSourcePaths);
   const inventoryArguments = [
     pythonTool,
