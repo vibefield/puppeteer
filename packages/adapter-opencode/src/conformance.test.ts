@@ -1,5 +1,5 @@
 import { rmSync } from 'node:fs';
-import { afterEach, expect } from 'vitest';
+import { afterEach, expect, vi } from 'vitest';
 import type { AdapterEventCandidate, AgentHost } from '@vibefield/puppeteer-core';
 import {
   runAgentMonitorConformance,
@@ -8,6 +8,11 @@ import {
 } from '@vibefield/puppeteer-testing/conformance';
 import { createOpenCodeTuiSession, type OpenCodeTuiSession } from './driver.js';
 import { createOpenCodeImposterFixture, type OpenCodeImposterFixture } from './test-support/imposter.js';
+
+// Every case boots real Imposter processes (the release-line `--version` read, then `serve`, and a resume boots them
+// again), whose start alone can pass vitest's 5 s default on a loaded machine. The shared runner sets no timeout, so
+// this file does; 20 s matches the Imposter suite's own testTimeout.
+vi.setConfig({ testTimeout: 20_000 });
 
 const REPLY = 'imposter: ok';
 const roots = new Set<string>();

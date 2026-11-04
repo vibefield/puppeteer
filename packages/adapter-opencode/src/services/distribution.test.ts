@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import {
   InstalledAgentSchema,
   InstallRecipeSchema,
+  UpdateRecipeSchema,
   type InstallCandidate,
   type InstalledAgent,
 } from '@vibefield/puppeteer-core';
@@ -12,6 +13,7 @@ import {
   classifyOpenCodeCandidate,
   createOpenCodeDistributionService,
   OPENCODE_DISTRIBUTION_PROVIDER,
+  OPENCODE_UPGRADE_ARGUMENTS,
   openCodeAutoUpdateState,
   readOpenCodeAutoUpdateConfig,
 } from './distribution.js';
@@ -382,6 +384,15 @@ describe('OpenCode update recipes', () => {
     ).toEqual({ kind: 'native-self-update', argv: ['/opt/homebrew/bin/opencode', 'upgrade'] });
   });
 
+  it('never asks the upgrade command for --major, which would move a 1.x install to 2.x', () => {
+    expect(OPENCODE_UPGRADE_ARGUMENTS).toEqual(['upgrade']);
+    for (const method of ['standalone-binary', 'brew', 'unknown'] as const) {
+      const recipe = service().recipeFor(installed({ method }));
+      expect(recipe.kind).toBe('native-self-update');
+      expect(recipe.kind === 'native-self-update' ? recipe.argv : []).not.toContain('--major');
+    }
+  });
+
   it('hands npm installs back to the package manager', () => {
     expect(service().recipeFor(installed({ method: 'npm-global', packageName: 'opencode-ai' }))).toEqual({
       kind: 'npm-global',
@@ -396,6 +407,44 @@ describe('OpenCode first install', () => {
     expect(InstallRecipeSchema.parse(createOpenCodeDistributionService().installRecipe?.())).toEqual({
       kind: 'installer-script',
       url: 'https://opencode.ai/install',
+    });
+  });
+});
+
+describe('OpenCode 2.x installs', () => {
+  it('names the 2.x release line in a warning and claims no version for it', async () => {
+    const install = await service({ exec: async () => ({ stdout: 'opencode v2.2.5\n', stderr: '' }) }).inspect(
+      candidate({ realPath: '/home/tester/.opencode/bin/opencode' }),
+    );
+    expect(InstalledAgentSchema.parse(install)).toBeTruthy();
+    expect(install?.version).toBeUndefined();
+    expect(install?.warnings).toEqual([
+      expect.stringContaining('OpenCode 2.2.5 is the 2.x release line, which this adapter does not support'),
+    ]);
+  });
+
+  it('claims no auto-update state from the 1.x rules, whatever the config or environment says', async () => {
+    const disabled = await service({
+      exec: async () => ({ stdout: 'opencode v2.2.5\n', stderr: '' }),
+      readConfigFile: async () => '{ "autoupdate": false }',
+      env: { OPENCODE_DISABLE_AUTOUPDATE: '1' },
+    }).inspect(candidate({ realPath: '/home/tester/.opencode/bin/opencode' }));
+    expect(disabled?.autoUpdate).toBe('unknown');
+  });
+
+  it('offers no upgrade command for a 2.x install, only a manual recipe', async () => {
+    const twoLine = service({ exec: async () => ({ stdout: 'opencode v2.2.5\n', stderr: '' }) });
+    const install = await twoLine.inspect(candidate({ realPath: '/home/tester/.opencode/bin/opencode' }));
+    expect(install).toBeDefined();
+    // The runtime keeps the install as a record, so the recipe comes from the record alone.
+    const recipe = service().recipeFor(JSON.parse(JSON.stringify(install)) as InstalledAgent);
+    expect(UpdateRecipeSchema.parse(recipe)).toMatchObject({ kind: 'manual' });
+    expect(
+      service().recipeFor(installed({ method: 'npm-global', packageName: 'opencode-ai', warnings: install!.warnings })),
+    ).toMatchObject({ kind: 'manual' });
+    // A 1.x install whose version could not be read keeps its upgrade.
+    expect(service().recipeFor(installed({ warnings: ['opencode --version failed: timeout'] }))).toMatchObject({
+      kind: 'native-self-update',
     });
   });
 });

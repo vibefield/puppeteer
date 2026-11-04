@@ -1,14 +1,31 @@
 export {
+  inspectOpenCodeVersion,
   OPENCODE_DEFAULT_EXECUTABLE,
   OPENCODE_EXECUTABLE_ENV,
   OPENCODE_LAUNCH_FLAGS,
+  OPENCODE_UNSUPPORTED_LINE_VERSION_PATTERN,
   OPENCODE_VERSION_FLAG,
   OPENCODE_VERSION_PATTERN,
   parseOpenCodeVersion,
   probeOpenCodeVersion,
+  readOpenCodeVersion,
   resolveOpenCodeExecutable,
+  unsupportedOpenCodeLineMessage,
+  type InspectOpenCodeVersionOptions,
+  type OpenCodeVersionInspection,
+  type OpenCodeVersionReading,
 } from './detection.js';
-export { startOpenCodeBackend, type OpenCodeBackend, type StartOpenCodeBackendOptions } from './launch/backend.js';
+export {
+  OPENCODE_1_BACKEND_LAUNCH,
+  openCodeBackendArguments,
+  openCodeReadinessOrigin,
+  OpenCodeUnsupportedReleaseLineError,
+  startOpenCodeBackend,
+  type OpenCodeBackend,
+  type OpenCodeBackendLaunchSpec,
+  type StartOpenCodeBackendOptions,
+} from './launch/backend.js';
+export { OPENCODE_SERVER_PASSWORD_VARIABLES, withoutOpenCodeServerPasswords } from './launch/credentials.js';
 export * from './launch/native-invocation.js';
 export {
   OpenCodeClient,
@@ -24,10 +41,15 @@ export {
   type OpenCodeSessionModel,
 } from './transport/client.js';
 export {
+  OPENCODE_1_SSE_ENVELOPE,
   OpenCodeEventStream,
   OpenCodeSseDecoder,
+  parseOpenCodeSseRecord,
   type OpenCodeEventStreamOptions,
+  type OpenCodeSseDurable,
+  type OpenCodeSseEnvelope,
   type OpenCodeSseRecord,
+  type OpenCodeSseSequenceGap,
 } from './transport/event-stream.js';
 export {
   projectOpenCodeChild,

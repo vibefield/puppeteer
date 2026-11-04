@@ -1,6 +1,13 @@
-/** CLI forks for a REST + SSE persona: native server mode and attached viewer. */
+/**
+ * CLI forks for a REST + SSE persona: native server mode and attached viewer.
+ *
+ * Every native spelling — readiness line, password variables, attach
+ * invocation, route paths, prompt body, SSE envelope — comes from the
+ * persona's `http-serve.json`, so one engine serves each release line.
+ */
 
-import type { Persona } from '../persona/types.ts';
+import type { HttpServeAttach, HttpServeDocument, HttpServeRoute, Persona } from '../persona/types.ts';
+import { createSseEnvelope, type SseEvent } from '../session/channels/http-sse.ts';
 import { createHttpPersonaServer } from '../session/http-session-server.ts';
 import type { BehaviorDocument } from '../session/session.ts';
 import { createPresentation } from '../tui/mount.ts';
@@ -16,43 +23,151 @@ interface HttpPersonaRunOptions {
   log: (message: string) => void;
 }
 
-function authHeader(persona: Persona, env: Record<string, string | undefined>): Record<string, string> {
-  const auth = persona.httpServe!.$server.auth;
-  const password = env[auth.passwordEnv];
+type AuthSpec = HttpServeDocument['$server']['auth'];
+
+/** The first declared password variable that is set wins, as the vendor's own env reader does. */
+export function passwordFrom(auth: AuthSpec, env: Record<string, string | undefined>): string | undefined {
+  for (const name of auth.passwordEnv) {
+    if (env[name] !== undefined) return env[name];
+  }
+  return undefined;
+}
+
+function usernameFrom(auth: AuthSpec, env: Record<string, string | undefined>): string {
+  return (auth.usernameEnv === undefined ? undefined : env[auth.usernameEnv]) ?? auth.defaultUsername;
+}
+
+function authHeader(auth: AuthSpec, env: Record<string, string | undefined>): Record<string, string> {
+  const password = passwordFrom(auth, env);
   if (!password) return {};
-  const username = env[auth.usernameEnv] ?? auth.defaultUsername;
+  const username = usernameFrom(auth, env);
   return { Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}` };
 }
 
-function scopedUrl(origin: string, path: string, directory?: string): URL {
+function scopedUrl(origin: string, path: string, query: string, directory?: string): URL {
   const url = new URL(path, origin.endsWith('/') ? origin : `${origin}/`);
-  if (directory) url.searchParams.set('directory', directory);
+  if (directory) url.searchParams.set(query, directory);
   return url;
+}
+
+function routeFor(document: HttpServeDocument, action: HttpServeRoute['action']): HttpServeRoute {
+  const route = document.routes.find((candidate) => candidate.action === action);
+  // The loader refuses an attach-capable document without these routes.
+  if (!route) throw new Error(`http-serve.json has no ${action} route`);
+  return route;
+}
+
+function routePath(route: HttpServeRoute, params: Record<string, string>): string {
+  return route.path
+    .split('/')
+    .map((component) =>
+      component.startsWith(':') ? encodeURIComponent(params[component.slice(1)] ?? component) : component,
+    )
+    .join('/');
+}
+
+/** Whole-string `$text` / `$messageId` substitution over the declared prompt body. */
+function promptBody(template: unknown, bindings: Record<string, string>): unknown {
+  if (typeof template === 'string') return Object.hasOwn(bindings, template) ? bindings[template] : template;
+  if (Array.isArray(template)) return template.map((entry) => promptBody(entry, bindings));
+  if (template !== null && typeof template === 'object') {
+    return Object.fromEntries(Object.entries(template).map(([key, value]) => [key, promptBody(value, bindings)]));
+  }
+  return template;
+}
+
+/** Arguments that are neither flags nor the value of a flag the attach spec knows takes one. */
+function positionals(argv: readonly string[], attach: HttpServeAttach): string[] {
+  const valued = new Set([
+    ...(attach.serverFlag === undefined ? [] : [attach.serverFlag]),
+    ...attach.sessionFlag,
+    ...(attach.directoryFlag === undefined ? [] : [attach.directoryFlag]),
+    ...attach.valueFlags,
+  ]);
+  const found: string[] = [];
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index]!;
+    if (valued.has(argument)) index += 1;
+    else if (!argument.startsWith('-')) found.push(argument);
+  }
+  return found;
+}
+
+/**
+ * Whether argv is the vendor's viewer invocation: `<command> <url> …`, or a
+ * root `--server <url>` with no subcommand in front of it.
+ */
+export function matchesHttpAttach(attach: HttpServeAttach, argv: readonly string[]): boolean {
+  if (attach.command !== undefined) return argv[0] === attach.command;
+  return argv[0]?.startsWith('-') === true && argv.includes(attach.serverFlag!);
+}
+
+export interface HttpAttachTarget {
+  origin?: string | undefined;
+  sessionID?: string | undefined;
+  directory?: string | undefined;
+}
+
+/** Resolve the viewer's server, session, and directory from vendor argv. */
+export function parseHttpAttach(attach: HttpServeAttach, argv: readonly string[]): HttpAttachTarget {
+  return {
+    origin: attach.command !== undefined ? argv[1] : flagValue(argv, [attach.serverFlag!]),
+    sessionID: flagValue(argv, attach.sessionFlag),
+    // Without a directory flag the directory is the first positional after the
+    // subcommand and its URL (`opencode --server <url> -s <id> <dir>`).
+    directory:
+      attach.directoryFlag !== undefined
+        ? flagValue(argv, [attach.directoryFlag])
+        : positionals(argv, attach).slice(attach.command === undefined ? 0 : 2)[0],
+  };
+}
+
+export interface HttpServeStart {
+  hostname: string;
+  port: number;
+  username: string;
+  password?: string;
+}
+
+/** Resolve the serve invocation's listen address and credentials from vendor argv and env. */
+export function resolveHttpServe(
+  spec: HttpServeDocument['$server'],
+  argv: readonly string[],
+  env: Record<string, string | undefined>,
+): HttpServeStart | { error: string } {
+  const hostname = flagValue(argv, [spec.hostnameFlag]) ?? spec.defaultHostname;
+  const rawPort = flagValue(argv, [spec.portFlag]);
+  const port = rawPort === undefined ? spec.defaultPort : Number(rawPort);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    return { error: `${spec.portFlag} must be an integer from 0 to 65535` };
+  }
+  const password = passwordFrom(spec.auth, env);
+  return { hostname, port, username: usernameFrom(spec.auth, env), ...(password === undefined ? {} : { password }) };
+}
+
+/** The vendor's machine-readable readiness line for a listening origin. */
+export function readinessLine(spec: HttpServeDocument['$server'], origin: string): string {
+  return spec.readiness.replaceAll('$origin', origin);
 }
 
 export async function runHttpPersonaServer(options: HttpPersonaRunOptions): Promise<number> {
   const spec = options.persona.httpServe!.$server;
-  const hostname = flagValue(options.argv, [spec.hostnameFlag]) ?? spec.defaultHostname;
-  const rawPort = flagValue(options.argv, [spec.portFlag]);
-  const port = rawPort === undefined ? spec.defaultPort : Number(rawPort);
-  if (!Number.isInteger(port) || port < 0 || port > 65535) {
-    process.stderr.write(`${spec.portFlag} must be an integer from 0 to 65535\n`);
+  const start = resolveHttpServe(spec, options.argv, options.env);
+  if ('error' in start) {
+    process.stderr.write(`${start.error}\n`);
     return 2;
   }
   const server = await createHttpPersonaServer({
     persona: options.persona,
     behavior: options.behavior,
-    hostname,
-    port,
+    ...start,
     env: options.env,
     cwd: options.cwd,
-    username: options.env[spec.auth.usernameEnv] ?? spec.auth.defaultUsername,
-    ...(options.env[spec.auth.passwordEnv] === undefined ? {} : { password: options.env[spec.auth.passwordEnv] }),
     log: options.log,
   });
   // This is the real vendor's machine-readable readiness line. Adapters wait
   // for it before opening SSE; nothing else is written to stdout in serve mode.
-  process.stdout.write(`${options.persona.vendor} server listening on ${server.origin}\n`);
+  process.stdout.write(`${readinessLine(spec, server.origin)}\n`);
   let closing = false;
   const shutdown = async (code = 0): Promise<never> => {
     if (closing) await new Promise(() => {});
@@ -66,15 +181,39 @@ export async function runHttpPersonaServer(options: HttpPersonaRunOptions): Prom
   return 0;
 }
 
-interface SseWireRecord {
-  id: string;
-  type: string;
-  properties: Record<string, unknown>;
+/**
+ * The viewer's frames for a messages-route answer, yielded lazily so a
+ * malformed message throws after the ones before it have drawn. A bare
+ * `{info, parts}[]` draws as native update frames and any other shape throws,
+ * which reports a disconnect and retries; a declared `messageListKey` page
+ * draws each message whole.
+ */
+export function* hydrationFrames(
+  attach: HttpServeAttach,
+  sessionID: string,
+  body: unknown,
+): Generator<{ op: string; with: Record<string, unknown> }> {
+  const listKey = attach.messageListKey;
+  if (listKey !== undefined) {
+    const listed = body !== null && typeof body === 'object' ? (body as Record<string, unknown>)[listKey] : undefined;
+    if (!Array.isArray(listed)) throw new Error(`message hydration has no ${listKey} list`);
+    for (const message of listed as unknown[]) yield { op: 'message.hydrated', with: { sessionID, message } };
+    return;
+  }
+  const messages = body as Array<{
+    info: Record<string, unknown>;
+    parts: Record<string, unknown>[];
+  }>;
+  for (const message of messages) {
+    yield { op: 'message.updated', with: { sessionID, info: message.info } };
+    for (const part of message.parts) yield { op: 'message.part.updated', with: { sessionID, part } };
+  }
 }
 
 async function consumeSse(
   response: Response,
-  onRecord: (record: SseWireRecord) => void,
+  read: (value: unknown) => SseEvent | undefined,
+  onEvent: (event: SseEvent) => void,
   signal: AbortSignal,
 ): Promise<void> {
   if (!response.ok) throw new Error(`SSE endpoint returned HTTP ${response.status}`);
@@ -96,43 +235,63 @@ async function consumeSse(
         .map((line) => line.slice(5).trimStart())
         .join('\n');
       if (data) {
-        const parsed = JSON.parse(data) as unknown;
-        if (
-          parsed !== null &&
-          typeof parsed === 'object' &&
-          typeof (parsed as SseWireRecord).id === 'string' &&
-          typeof (parsed as SseWireRecord).type === 'string' &&
-          (parsed as SseWireRecord).properties !== null &&
-          typeof (parsed as SseWireRecord).properties === 'object'
-        ) {
-          onRecord(parsed as SseWireRecord);
-        }
+        const event = read(JSON.parse(data) as unknown);
+        if (event) onEvent(event);
       }
       boundary = buffer.indexOf('\n\n');
     }
   }
 }
 
-export async function runHttpPersonaAttached(options: HttpPersonaRunOptions): Promise<number> {
-  const spec = options.persona.httpServe!.$server;
-  const origin = options.argv[1];
-  if (!origin) {
-    process.stderr.write(`${spec.attach.command} requires a server URL\n`);
-    return 2;
-  }
+/** Every request the attached viewer makes, resolved from the document, argv, and env. */
+export interface HttpAttachPlan {
+  sessionID: string;
+  directory?: string | undefined;
+  headers: Record<string, string>;
+  url(action: HttpServeRoute['action']): URL;
+  prompt(text: string, messageId: string): { method: string; url: URL; body: unknown };
+}
+
+export function planHttpAttach(
+  document: HttpServeDocument,
+  argv: readonly string[],
+  env: Record<string, string | undefined>,
+): HttpAttachPlan | { error: string } {
+  const spec = document.$server;
+  const attach = spec.attach;
+  const via = attach.command ?? attach.serverFlag!;
+  const { origin, sessionID, directory } = parseHttpAttach(attach, argv);
+  if (!origin) return { error: `${via} requires a server URL` };
   try {
     new URL(origin);
   } catch {
-    process.stderr.write(`${spec.attach.command} requires a valid server URL\n`);
+    return { error: `${via} requires a valid server URL` };
+  }
+  if (!sessionID) return { error: `${attach.sessionFlag[0]} requires a session id` };
+  const url = (action: HttpServeRoute['action']): URL =>
+    scopedUrl(origin, routePath(routeFor(document, action), { sessionID }), spec.directoryQuery, directory);
+  return {
+    sessionID,
+    directory,
+    headers: { Accept: 'application/json', ...authHeader(spec.auth, env) },
+    url,
+    prompt: (text, messageId) => ({
+      method: routeFor(document, 'session.prompt').method,
+      url: url('session.prompt'),
+      body: promptBody(attach.promptBody, { $text: text, $messageId: messageId }),
+    }),
+  };
+}
+
+export async function runHttpPersonaAttached(options: HttpPersonaRunOptions): Promise<number> {
+  const spec = options.persona.httpServe!.$server;
+  const plan = planHttpAttach(options.persona.httpServe!, options.argv, options.env);
+  if ('error' in plan) {
+    process.stderr.write(`${plan.error}\n`);
     return 2;
   }
-  const sessionID = flagValue(options.argv, [spec.attach.sessionFlag]);
-  if (!sessionID) {
-    process.stderr.write(`${spec.attach.sessionFlag} requires a session id\n`);
-    return 2;
-  }
-  const directory = flagValue(options.argv, [spec.attach.directoryFlag]);
-  const headers = { Accept: 'application/json', ...authHeader(options.persona, options.env) };
+  const { sessionID, headers, url } = plan;
+  const envelope = createSseEnvelope(spec.envelope);
   const screen = await createPresentation({
     vendor: options.persona.vendor,
     version: options.persona.version,
@@ -151,55 +310,43 @@ export async function runHttpPersonaAttached(options: HttpPersonaRunOptions): Pr
   process.once('SIGTERM', () => void shutdown());
   process.once('SIGINT', () => void shutdown());
 
-  const relevant = (record: SseWireRecord): boolean => {
-    const direct = record.properties.sessionID;
+  const relevant = ({ type, payload }: SseEvent): boolean => {
+    const direct = payload.sessionID;
     if (typeof direct === 'string') return direct === sessionID;
-    const info = record.properties.info;
+    const info = payload.info;
     return (
-      record.type.startsWith('server.') ||
+      type.startsWith('server.') ||
       (info !== null && typeof info === 'object' && (info as { id?: unknown }).id === sessionID)
     );
   };
-  const draw = (record: SseWireRecord): void => {
-    if (relevant(record)) screen.frame({ at: new Date().toISOString(), op: record.type, with: record.properties });
+  const draw = (event: SseEvent): void => {
+    if (relevant(event)) screen.frame({ at: new Date().toISOString(), op: event.type, with: event.payload });
   };
 
   const hydrate = async (): Promise<void> => {
     const [sessionResponse, messagesResponse] = await Promise.all([
-      fetch(scopedUrl(origin, `/session/${encodeURIComponent(sessionID)}`, directory), {
-        headers,
-        signal: abort.signal,
-      }),
-      fetch(scopedUrl(origin, `/session/${encodeURIComponent(sessionID)}/message`, directory), {
-        headers,
-        signal: abort.signal,
-      }),
+      fetch(url('session.get'), { headers, signal: abort.signal }),
+      fetch(url('session.messages'), { headers, signal: abort.signal }),
     ]);
     if (!sessionResponse.ok) throw new Error(`session hydration returned HTTP ${sessionResponse.status}`);
     if (!messagesResponse.ok) throw new Error(`message hydration returned HTTP ${messagesResponse.status}`);
     const session = (await sessionResponse.json()) as Record<string, unknown>;
-    const messages = (await messagesResponse.json()) as Array<{
-      info: Record<string, unknown>;
-      parts: Record<string, unknown>[];
-    }>;
+    const body = (await messagesResponse.json()) as unknown;
     screen.frame({ at: new Date().toISOString(), op: 'session.hydrated', with: session });
-    for (const message of messages) {
-      screen.frame({ at: new Date().toISOString(), op: 'message.updated', with: { sessionID, info: message.info } });
-      for (const part of message.parts) {
-        screen.frame({ at: new Date().toISOString(), op: 'message.part.updated', with: { sessionID, part } });
-      }
+    for (const frame of hydrationFrames(spec.attach, sessionID, body)) {
+      screen.frame({ at: new Date().toISOString(), ...frame });
     }
   };
 
   const stream = async (): Promise<void> => {
     while (!closing) {
       try {
-        const response = await fetch(scopedUrl(origin, '/event', directory), {
+        const response = await fetch(url('event.subscribe'), {
           headers: { ...headers, Accept: 'text/event-stream' },
           signal: abort.signal,
         });
         await hydrate();
-        await consumeSse(response, draw, abort.signal);
+        await consumeSse(response, envelope.read, draw, abort.signal);
       } catch (error) {
         if (closing || abort.signal.aborted) return;
         screen.notice(`event stream disconnected: ${error instanceof Error ? error.message : String(error)}`);
@@ -213,14 +360,11 @@ export async function runHttpPersonaAttached(options: HttpPersonaRunOptions): Pr
     interactive: screen.interactive,
     staged: (text) => screen.staged(text),
     submit: (text) => {
-      const url = scopedUrl(origin, `/session/${encodeURIComponent(sessionID)}/prompt_async`, directory);
-      void fetch(url, {
-        method: 'POST',
+      const prompt = plan.prompt(text, `msg_${crypto.randomUUID().replaceAll('-', '')}`);
+      void fetch(prompt.url, {
+        method: prompt.method,
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messageID: `msg_${crypto.randomUUID().replaceAll('-', '')}`,
-          parts: [{ type: 'text', text }],
-        }),
+        body: JSON.stringify(prompt.body),
         signal: abort.signal,
       })
         .then((response) => {

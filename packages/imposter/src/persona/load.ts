@@ -24,6 +24,7 @@ import {
   type OpBinding,
   type OpChannel,
   type HttpServeDocument,
+  type HttpServeEnvelope,
   type HttpServeRoute,
   type OpsDocument,
   type Persona,
@@ -603,6 +604,19 @@ const HTTP_ACTIONS = new Set<HttpServeRoute['action']>([
   'vcs.diff',
 ]);
 
+/** A field that names one alias or an ordered alias list; normalized to the list. */
+function aliasList(path: string, record: Record<string, unknown>, field: string): string[] {
+  const value = record[field];
+  return typeof value === 'string' ? [requireString(path, record, field)] : stringList(path, value, field, 8);
+}
+
+function optionalString(path: string, record: Record<string, unknown>, field: string): string | undefined {
+  return record[field] === undefined ? undefined : requireString(path, record, field);
+}
+
+/** Actions the attached viewer addresses by action rather than by native path. */
+const ATTACH_ACTIONS = ['event.subscribe', 'session.get', 'session.messages', 'session.prompt'] as const;
+
 function parseHttpServeDocument(path: string, value: unknown): HttpServeDocument {
   const document = requireRecord(path, value, 'HTTP serve document');
   rejectUnknownFields(path, document, ['$server', 'routes']);
@@ -615,13 +629,84 @@ function parseHttpServeDocument(path: string, value: unknown): HttpServeDocument
     'defaultPort',
     'directoryQuery',
     'directoryHeader',
+    'readiness',
     'auth',
+    'envelope',
     'attach',
   ]);
   const auth = requireRecord(path, server.auth, '$server.auth');
-  rejectUnknownFields(path, auth, ['usernameEnv', 'passwordEnv', 'defaultUsername']);
+  rejectUnknownFields(path, auth, ['usernameEnv', 'passwordEnv', 'defaultUsername', 'realm', 'unauthorizedBody']);
+  if (auth.unauthorizedBody === undefined) {
+    throw new Error(`imposter: ${path} $server.auth.unauthorizedBody is required`);
+  }
+  const realm = requireString(path, auth, 'realm');
+  if (/["\\\r\n]/.test(realm))
+    throw new Error(`imposter: ${path} $server.auth.realm must not contain quotes or newlines`);
+  const envelope = requireRecord(path, server.envelope, '$server.envelope');
+  rejectUnknownFields(path, envelope, [
+    'payloadKey',
+    'encodedPayload',
+    'clockKey',
+    'connectedType',
+    'location',
+    'durable',
+  ]);
+  const payloadKey = requireString(path, envelope, 'payloadKey');
+  if (envelope.encodedPayload !== undefined && typeof envelope.encodedPayload !== 'boolean') {
+    throw new Error(`imposter: ${path} $server.envelope.encodedPayload must be a boolean`);
+  }
+  const clockKey = optionalString(path, envelope, 'clockKey');
+  let location: HttpServeEnvelope['location'];
+  if (envelope.location !== undefined) {
+    const raw = requireRecord(path, envelope.location, '$server.envelope.location');
+    rejectUnknownFields(path, raw, ['key', 'omitTypes']);
+    location = {
+      key: requireString(path, raw, 'key'),
+      omitTypes: raw.omitTypes === undefined ? [] : stringList(path, raw.omitTypes, 'omitTypes', 128),
+    };
+  }
+  let durable: HttpServeEnvelope['durable'];
+  if (envelope.durable !== undefined) {
+    const raw = requireRecord(path, envelope.durable, '$server.envelope.durable');
+    rejectUnknownFields(path, raw, ['key', 'version', 'types']);
+    if (!Number.isInteger(raw.version) || (raw.version as number) < 0) {
+      throw new Error(`imposter: ${path} $server.envelope.durable.version must be a non-negative integer`);
+    }
+    const types = stringList(path, raw.types, 'types', 128);
+    if (types.length === 0) throw new Error(`imposter: ${path} $server.envelope.durable.types must not be empty`);
+    durable = { key: requireString(path, raw, 'key'), version: raw.version as number, types };
+  }
+  const envelopeKeys = [
+    'id',
+    'type',
+    payloadKey,
+    ...(clockKey === undefined ? [] : [clockKey]),
+    ...(location === undefined ? [] : [location.key]),
+    ...(durable === undefined ? [] : [durable.key]),
+  ];
+  if (new Set(envelopeKeys).size !== envelopeKeys.length) {
+    throw new Error(`imposter: ${path} $server.envelope keys must be distinct from each other and from id/type`);
+  }
   const attach = requireRecord(path, server.attach, '$server.attach');
-  rejectUnknownFields(path, attach, ['command', 'sessionFlag', 'directoryFlag']);
+  rejectUnknownFields(path, attach, [
+    'command',
+    'serverFlag',
+    'sessionFlag',
+    'directoryFlag',
+    'valueFlags',
+    'promptBody',
+    'messageListKey',
+  ]);
+  const attachCommand = optionalString(path, attach, 'command');
+  const serverFlag = optionalString(path, attach, 'serverFlag');
+  if ((attachCommand === undefined) === (serverFlag === undefined)) {
+    throw new Error(`imposter: ${path} $server.attach must declare exactly one of "command" or "serverFlag"`);
+  }
+  const directoryFlag = optionalString(path, attach, 'directoryFlag');
+  const messageListKey = optionalString(path, attach, 'messageListKey');
+  const promptBody = requireRecord(path, attach.promptBody, '$server.attach.promptBody');
+  const readiness = requireString(path, server, 'readiness');
+  if (!readiness.includes('$origin')) throw new Error(`imposter: ${path} $server.readiness must contain $origin`);
   if (
     !Number.isInteger(server.defaultPort) ||
     (server.defaultPort as number) < 0 ||
@@ -647,6 +732,12 @@ function parseHttpServeDocument(path: string, value: unknown): HttpServeDocument
     signatures.add(signature);
     return { event: requireString(path, route, 'event'), method, path: routePath, action };
   });
+  for (const action of ATTACH_ACTIONS) {
+    if (!routes.some((route) => route.action === action)) {
+      throw new Error(`imposter: ${path} $server.attach needs a route with action "${action}"`);
+    }
+  }
+  const usernameEnv = optionalString(path, auth, 'usernameEnv');
   return {
     $server: {
       command: requireString(path, server, 'command'),
@@ -656,15 +747,30 @@ function parseHttpServeDocument(path: string, value: unknown): HttpServeDocument
       defaultPort: server.defaultPort as number,
       directoryQuery: requireString(path, server, 'directoryQuery'),
       directoryHeader: requireString(path, server, 'directoryHeader').toLowerCase(),
+      readiness,
       auth: {
-        usernameEnv: requireString(path, auth, 'usernameEnv'),
-        passwordEnv: requireString(path, auth, 'passwordEnv'),
+        ...(usernameEnv === undefined ? {} : { usernameEnv }),
+        passwordEnv: aliasList(path, auth, 'passwordEnv'),
         defaultUsername: requireString(path, auth, 'defaultUsername'),
+        realm,
+        unauthorizedBody: auth.unauthorizedBody,
+      },
+      envelope: {
+        payloadKey,
+        ...(envelope.encodedPayload === true ? { encodedPayload: true } : {}),
+        ...(clockKey === undefined ? {} : { clockKey }),
+        connectedType: requireString(path, envelope, 'connectedType'),
+        ...(location === undefined ? {} : { location }),
+        ...(durable === undefined ? {} : { durable }),
       },
       attach: {
-        command: requireString(path, attach, 'command'),
-        sessionFlag: requireString(path, attach, 'sessionFlag'),
-        directoryFlag: requireString(path, attach, 'directoryFlag'),
+        ...(attachCommand === undefined ? {} : { command: attachCommand }),
+        ...(serverFlag === undefined ? {} : { serverFlag }),
+        sessionFlag: aliasList(path, attach, 'sessionFlag'),
+        ...(directoryFlag === undefined ? {} : { directoryFlag }),
+        valueFlags: attach.valueFlags === undefined ? [] : stringList(path, attach.valueFlags, 'valueFlags'),
+        promptBody,
+        ...(messageListKey === undefined ? {} : { messageListKey }),
       },
     },
     routes,

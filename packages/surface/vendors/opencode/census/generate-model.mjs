@@ -15,15 +15,18 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { eventDocumentPath } from '@vibefield/puppeteer-surface';
-import { projectJsonSchema } from '@vibefield/puppeteer-surface';
+import {
+  eventDocumentPath,
+  OPENAPI_JSON_MEDIA_TYPES,
+  openApiHttpOperations,
+  projectJsonSchema,
+} from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 
 const VERSION = '1.19.5';
 const PLATFORM = 'linux-x64';
 const ARTIFACT_ID = `opencode-${VERSION}-${PLATFORM}`;
-const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete']);
 const INTERACTIVE_SCENARIOS = new Set(['attach-exact-resume', 'attach-permission-always']);
 const CAPTURED_AT = {
   'abort-stream': '2026-11-04T05:43:34.684Z',
@@ -93,104 +96,6 @@ function dereference(node, root) {
 /** Retain the complete OpenAPI schema vocabulary and close over local refs. */
 function schemaNode(node, root) {
   return projectJsonSchema(node, root);
-}
-
-function requestBodySchema(operation, root) {
-  const requestBody = dereference(operation.requestBody, root);
-  const content = requestBody?.content ?? {};
-  const media = content['application/json'] ?? content['application/*+json'];
-  return media?.schema;
-}
-
-function operationRequestSchema(pathItem, operation, root, method, route) {
-  const properties = { method: { type: 'string' }, route: { type: 'string' } };
-  const required = ['method', 'route'];
-  const parameters = [...(pathItem.parameters ?? []), ...(operation.parameters ?? [])].map((parameter) =>
-    dereference(parameter, root),
-  );
-  for (const [location, property] of [
-    ['path', 'params'],
-    ['query', 'query'],
-  ]) {
-    const selected = parameters.filter((parameter) => parameter?.in === location);
-    if (selected.length === 0) continue;
-    const parameterProperties = {};
-    const parameterRequired = [];
-    for (const parameter of selected.sort((left, right) => left.name.localeCompare(right.name))) {
-      parameterProperties[parameter.name] = parameter.schema ?? {};
-      if (parameter.required) parameterRequired.push(parameter.name);
-    }
-    properties[property] = {
-      type: 'object',
-      properties: parameterProperties,
-      ...(parameterRequired.length > 0 ? { required: parameterRequired } : {}),
-    };
-    if (parameterRequired.length > 0) required.push(property);
-  }
-  const body = requestBodySchema(operation, root);
-  if (body) {
-    properties.body = body;
-    const requestBody = dereference(operation.requestBody, root);
-    if (requestBody?.required) required.push('body');
-  }
-  return { type: 'object', properties, required };
-}
-
-function successfulResponse(operation, root) {
-  const entries = Object.entries(operation.responses ?? {})
-    .filter(([status]) => /^2\d\d$/.test(status))
-    .sort(([left], [right]) => left.localeCompare(right));
-  if (entries.length === 0) return undefined;
-  const [status, raw] = entries[0];
-  const response = dereference(raw, root);
-  const content = response?.content ?? {};
-  const media = content['application/json'] ?? content['application/*+json'];
-  return { status: Number(status), body: media?.schema };
-}
-
-function operationResultSchema(operation, root, requestSchema, method, route) {
-  const success = successfulResponse(operation, root);
-  const properties = {
-    method: { type: 'string', enum: [method] },
-    route: { type: 'string', enum: [route] },
-    status: { type: 'integer', minimum: 200, maximum: 299 },
-  };
-  const required = ['method', 'route', 'status'];
-  for (const property of ['params', 'query']) {
-    if (!requestSchema.properties?.[property]) continue;
-    properties[property] = structuredClone(requestSchema.properties[property]);
-    if (requestSchema.required?.includes(property)) required.push(property);
-  }
-  if (success?.body) {
-    properties.body = success.body;
-    required.push('body');
-  }
-  return projectJsonSchema({ type: 'object', properties, required }, root);
-}
-
-function exactRequestSchema(schema, method, route) {
-  const exact = structuredClone(schema);
-  exact.properties.method.enum = [method];
-  exact.properties.route.enum = [route];
-  return exact;
-}
-
-function requestRecordSchema(requestSchema, method, route, root) {
-  return projectJsonSchema(
-    {
-      type: 'object',
-      properties: {
-        direction: { type: 'string', enum: ['client-to-agent'] },
-        request: exactRequestSchema(requestSchema, method, route),
-      },
-      required: ['direction', 'request'],
-    },
-    root,
-  );
-}
-
-function traceRoute(path) {
-  return path.replaceAll(/\{([^}]+)\}/g, ':$1');
 }
 
 function eventPath(out, event) {
@@ -407,12 +312,6 @@ function workspaceToolRefinements(observation, sourceContract) {
   return refinements;
 }
 
-function description(operation) {
-  return [operation.summary, operation.description]
-    .filter((value, index, values) => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index)
-    .join(' — ');
-}
-
 const expectedVersion = flag('--version') ?? VERSION;
 if (expectedVersion !== VERSION) throw new Error(`generator is pinned to OpenCode ${VERSION}, got ${expectedVersion}`);
 const capturesDir = resolve(flag('--captures') ?? join(vendorRoot, 'captures', `opencode@${VERSION}`));
@@ -500,61 +399,53 @@ writeJson(join(out, 'channels.json'), {
   },
 });
 
+// 1.19.5 was generated from the JSON media types only: its SSE, diff and binary
+// responses carry no `body` schema. Keep that projection for this pin.
 let httpCount = 0;
-for (const path of Object.keys(openapi.paths ?? {}).sort()) {
-  const pathItem = openapi.paths[path];
-  for (const method of Object.keys(pathItem)
-    .filter((name) => HTTP_METHODS.has(name))
-    .sort()) {
-    const operation = pathItem[method];
-    if (typeof operation.operationId !== 'string') continue;
-    const route = traceRoute(path);
-    const key = `${method.toUpperCase()} ${route}`;
-    const requestObservation = observed.requests.get(key);
-    const responseObservation = observed.responses.get(key);
-    const requestEvidence = evidenceFor(requestObservation);
-    const resultEvidence = evidenceFor(responseObservation);
-    const requestContract = operationRequestSchema(pathItem, operation, openapi, method.toUpperCase(), route);
-    const requestSchema = projectJsonSchema(requestContract, openapi);
-    const event = `http/${operation.operationId}`;
-    const evidence = {
-      existence: [...new Set(['opencode-generated-openapi', requestEvidence.id])],
-      shape: [...new Set(['opencode-generated-openapi', requestEvidence.id])],
-      result: [...new Set(['opencode-generated-openapi', resultEvidence.id])],
-      carrier: [...new Set(['opencode-generated-openapi', requestEvidence.id])],
-    };
-    const confidence =
-      requestEvidence.confidence === 'verified-headless' && resultEvidence.confidence === 'verified-headless'
-        ? 'verified-headless'
-        : requestEvidence.confidence === 'unverified' || resultEvidence.confidence === 'unverified'
-          ? 'unverified'
-          : 'verified-interactive';
-    writeJson(eventPath(out, event), {
-      surface: 'opencode',
-      surfaceVersion: VERSION,
-      event,
-      channel: 'http',
-      channels: ['http'],
-      transport: 'http',
-      direction: 'client-to-agent',
-      ...(description(operation) ? { trigger: description(operation) } : {}),
-      payloadSchema: requestSchema,
-      resultSchema: operationResultSchema(operation, openapi, requestContract, method.toUpperCase(), route),
-      recordSchema: requestRecordSchema(requestContract, method.toUpperCase(), route, openapi),
-      schemaFidelity: { payload: 'semantic', result: 'semantic', carrier: 'semantic' },
-      evidence,
-      confidence,
-      ...(requestEvidence.scenario
-        ? {
-            firstSeen: VERSION,
-            lastVerified: VERSION,
-            fixture: `captures/opencode@${VERSION}/${requestEvidence.scenario}/http-roundtrip.jsonl`,
-          }
-        : {}),
-      notes: `OpenAPI operationId ${operation.operationId}; ${method.toUpperCase()} ${path}.`,
-    });
-    httpCount += 1;
-  }
+for (const operation of openApiHttpOperations(openapi, { bodyMediaTypes: OPENAPI_JSON_MEDIA_TYPES })) {
+  const key = `${operation.method} ${operation.route}`;
+  const requestObservation = observed.requests.get(key);
+  const responseObservation = observed.responses.get(key);
+  const requestEvidence = evidenceFor(requestObservation);
+  const resultEvidence = evidenceFor(responseObservation);
+  const event = `http/${operation.operationId}`;
+  const evidence = {
+    existence: [...new Set(['opencode-generated-openapi', requestEvidence.id])],
+    shape: [...new Set(['opencode-generated-openapi', requestEvidence.id])],
+    result: [...new Set(['opencode-generated-openapi', resultEvidence.id])],
+    carrier: [...new Set(['opencode-generated-openapi', requestEvidence.id])],
+  };
+  const confidence =
+    requestEvidence.confidence === 'verified-headless' && resultEvidence.confidence === 'verified-headless'
+      ? 'verified-headless'
+      : requestEvidence.confidence === 'unverified' || resultEvidence.confidence === 'unverified'
+        ? 'unverified'
+        : 'verified-interactive';
+  writeJson(eventPath(out, event), {
+    surface: 'opencode',
+    surfaceVersion: VERSION,
+    event,
+    channel: 'http',
+    channels: ['http'],
+    transport: 'http',
+    direction: 'client-to-agent',
+    ...(operation.trigger ? { trigger: operation.trigger } : {}),
+    payloadSchema: operation.payloadSchema,
+    resultSchema: operation.resultSchema,
+    recordSchema: operation.recordSchema,
+    schemaFidelity: { payload: 'semantic', result: 'semantic', carrier: 'semantic' },
+    evidence,
+    confidence,
+    ...(requestEvidence.scenario
+      ? {
+          firstSeen: VERSION,
+          lastVerified: VERSION,
+          fixture: `captures/opencode@${VERSION}/${requestEvidence.scenario}/http-roundtrip.jsonl`,
+        }
+      : {}),
+    notes: `OpenAPI operationId ${operation.operationId}; ${operation.method} ${operation.path}.`,
+  });
+  httpCount += 1;
 }
 
 let sseCount = 0;

@@ -22,7 +22,8 @@ import type {
   InstallRecipe,
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
-import { OPENCODE_VERSION_FLAG, parseOpenCodeVersion } from '../detection.js';
+import { OPENCODE_UNSUPPORTED_LINE_MARK, OPENCODE_VERSION_FLAG, readOpenCodeVersion } from '../detection.js';
+import { withoutOpenCodeServerPasswords } from '../launch/credentials.js';
 import { parseOpenCodeJsonc } from './config-jsonc.js';
 
 const OPENCODE_NPM_PACKAGE = 'opencode-ai';
@@ -41,6 +42,12 @@ const OPENCODE_NPM_PATTERN = /^(.*[/\\]node_modules[/\\]opencode-ai)(?:[/\\]|$)/
 /** Homebrew keeps formula installs under `<prefix>/Cellar/<name>/<version>`. */
 const OPENCODE_CELLAR_PATTERN = /^(.*[/\\]Cellar[/\\]opencode[/\\][^/\\]+)(?:[/\\]|$)/u;
 const OPENCODE_COMMANDS = ['opencode'];
+/**
+ * `opencode upgrade` with no target keeps a 1.x install on 1.x: the 1.x upgrade refuses major 2 unless it is given
+ * `--major` (the plan's draft/OPENCODE-2-MIGRATION-PLAN.md §1). `--major` replaces the install with the 2.x line,
+ * which this adapter refuses, so a recipe never carries it.
+ */
+export const OPENCODE_UPGRADE_ARGUMENTS: readonly string[] = Object.freeze(['upgrade']);
 
 /** Injected process execution so unit tests never run a real binary. */
 export type OpenCodeDistributionExec = (
@@ -90,7 +97,8 @@ function defaultExec(file: string, args: readonly string[]): Promise<{ stdout: s
     execFile(
       file,
       [...args],
-      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8' },
+      // A probe owns no server, so no server password goes with it.
+      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', env: withoutOpenCodeServerPasswords(process.env) },
       (error, stdout, stderr) => {
         if (error) reject(error);
         else resolvePromise({ stdout, stderr });
@@ -242,6 +250,14 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** inspect() found the 2.x line: no version, and the refusal it recorded among the warnings. */
+export function openCodeInstallIsUnsupportedLine(install: Pick<InstalledAgent, 'version' | 'warnings'>): boolean {
+  return (
+    install.version === undefined &&
+    install.warnings.some((warning) => warning.includes(OPENCODE_UNSUPPORTED_LINE_MARK))
+  );
+}
+
 export function createOpenCodeDistributionService(
   options: OpenCodeDistributionServiceOptions = {},
 ): DistributionService {
@@ -260,10 +276,17 @@ export function createOpenCodeDistributionService(
       if (!classification) return undefined;
       const warnings: string[] = [];
       let version: string | undefined;
+      let unsupportedLine = false;
       try {
         const { stdout } = await exec(candidate.executable, [OPENCODE_VERSION_FLAG]);
-        version = parseOpenCodeVersion(stdout);
-        if (!version) {
+        const reading = readOpenCodeVersion(stdout);
+        if (reading.status === 'supported') {
+          version = reading.version;
+        } else if (reading.status === 'unsupported-release-line') {
+          // The version stays unset: nothing else this service reads (autoupdate, upgrade) is established for 2.x.
+          unsupportedLine = true;
+          warnings.push(`${candidate.executable}: ${reading.message}`);
+        } else {
           warnings.push(`${candidate.executable} ${OPENCODE_VERSION_FLAG} returned an unrecognized version string`);
         }
       } catch (error) {
@@ -280,7 +303,11 @@ export function createOpenCodeDistributionService(
         }
       }
       const config = mergeOpenCodeAutoUpdateConfig(files);
-      const autoUpdate = openCodeAutoUpdateState({ config, version, method: classification.method, env });
+      // 2.x's update rules are unprobed (the plan's draft/OPENCODE-2-MIGRATION-PLAN.md §4 A5 vi), so the 1.x reading
+      // of `autoupdate` and OPENCODE_DISABLE_AUTOUPDATE says nothing about a 2.x install.
+      const autoUpdate = unsupportedLine
+        ? 'unknown'
+        : openCodeAutoUpdateState({ config, version, method: classification.method, env });
 
       return {
         provider: 'opencode',
@@ -301,11 +328,21 @@ export function createOpenCodeDistributionService(
     },
 
     recipeFor(install: InstalledAgent): UpdateRecipe {
+      // A 2.x install is not this adapter's to update: its upgrade rules are unprobed, and `upgrade` there moves it
+      // along the line this adapter refuses. Only the warning inspect() wrote survives the runtime's install record.
+      if (openCodeInstallIsUnsupportedLine(install)) {
+        return {
+          kind: 'manual',
+          instructions:
+            'This install is OpenCode 2.x, which Puppeteer does not support yet, so Puppeteer does not update it.' +
+            ' Install OpenCode 1.x to use it here.',
+        };
+      }
       if (install.method === 'npm-global') {
         return { kind: 'npm-global', package: install.packageName ?? OPENCODE_NPM_PACKAGE };
       }
       // `opencode upgrade` detects curl, npm, pnpm, bun, and brew installs itself.
-      return { kind: 'native-self-update', argv: [install.executable, 'upgrade'] };
+      return { kind: 'native-self-update', argv: [install.executable, ...OPENCODE_UPGRADE_ARGUMENTS] };
     },
   };
 }

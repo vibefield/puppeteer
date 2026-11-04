@@ -1,0 +1,1671 @@
+{
+  "upstream": {
+    "repository": "anomalyco/opencode",
+    "tag": "v2.2.5",
+    "commit": "9bbb8ce18c80f099e0e448775f59d965ead40a21"
+  },
+  "binary": {
+    "package": "@opencode/cli-darwin-arm64@2.2.5",
+    "sha256": "abe4d88594bffb12b364375b8a6732d2d1f7a977195ed1a35c5c76f8e89c9e0e",
+    "teamIdentifier": "5NZ4Q7NXJ4"
+  },
+  "status": "Draft. Probe results and upstream source read as text, recorded 2026-11-04 for draft/OPENCODE-2-MIGRATION-PLAN.md §4 A6. Not Surface evidence: the 2.x census must capture every row again.",
+  "sources": {
+    "helpTree": "48 `--help` pages from the 2.2.5 binary (darwin-arm64, isolated home), 2026-11-04",
+    "spec": "packages/cli/src/commands/commands.ts (hidden flags, repeatable flags)",
+    "parser": "effect 4.0.6 (the v2.2.5 catalog pin) src/cli/internal/lexer.ts and parser.ts, read as text"
+  },
+  "parser": {
+    "library": "effect/cli 4.0.6",
+    "longEquals": "--name=value and -n=value attach inline",
+    "shortClusters": "-abc lexes as -a -b -c",
+    "booleans": "a boolean flag takes an inline value, or consumes a following literal true/false/yes/no/y/n/on/off/1/0; --no-<name> negates it",
+    "values": "a value flag consumes only the next non-option token; an option-like next token is a missing value",
+    "endOfOptions": "`--` ends option parsing; the rest are operands",
+    "builtIns": "--help/-h, --version/-v and --completions are extracted before command parsing, so they win anywhere in argv, even after an unknown flag or where a value was expected",
+    "subcommands": "only the first positional value can open a subcommand; inherited flags may come before or after the subcommand name",
+    "unknownFlag": "exit 1, help on stdout and `Unrecognized flag: --x in command …` on stderr",
+    "notYargs": "1.x used yargs; 2.x uses effect/cli, so the 1.x grammar flags (booleanEquals, deferUtilityOptions) were re-derived here, not copied"
+  },
+  "probe": [
+    {
+      "argv": ["opencode", "debug", "paths", "data"],
+      "observed": "killed by SIGKILL after 20 s (first launch on a fresh home)"
+    },
+    {
+      "argv": ["opencode", "debug", "paths", "--print-logs=false", "data"],
+      "observed": "exit 0: <path printed>"
+    },
+    {
+      "argv": ["opencode", "debug", "paths", "--print-logs", "false", "data"],
+      "observed": "exit 0: <path printed>"
+    },
+    {
+      "argv": ["opencode", "debug", "paths", "--no-print-logs", "data"],
+      "observed": "exit 0: <path printed>"
+    },
+    {
+      "argv": ["opencode", "debug", "paths", "--log-level=error", "data"],
+      "observed": "exit 0: <path printed>"
+    },
+    {
+      "argv": ["opencode", "debug", "paths", "--log-level", "error", "data"],
+      "observed": "exit 0: <path printed>"
+    },
+    {
+      "argv": ["opencode", "--log-level", "error", "debug", "paths", "data"],
+      "observed": "exit 0: <path printed>"
+    },
+    {
+      "argv": ["opencode", "debug", "--log-level", "error", "paths", "data"],
+      "observed": "exit 0: <path printed>"
+    },
+    {
+      "argv": ["opencode", "debug", "paths", "--bogus", "data"],
+      "observed": "exit 1: DESCRIPTION"
+    },
+    {
+      "argv": ["opencode", "debug", "paths", "--", "data"],
+      "observed": "exit 0: <path printed>"
+    },
+    {
+      "argv": ["opencode", "--version"],
+      "observed": "exit 0: opencode v2.2.5"
+    },
+    {
+      "argv": ["opencode", "-v"],
+      "observed": "exit 0: opencode v2.2.5"
+    },
+    {
+      "argv": ["opencode", "--bogus", "--version"],
+      "observed": "exit 0: opencode v2.2.5"
+    },
+    {
+      "argv": ["opencode", "--yolo", "--version"],
+      "observed": "exit 0: opencode v2.2.5"
+    },
+    {
+      "argv": ["opencode", "--dangerously-skip-permissions", "--version"],
+      "observed": "exit 0: opencode v2.2.5"
+    },
+    {
+      "argv": ["opencode", "--session", "--version"],
+      "observed": "exit 0: opencode v2.2.5"
+    },
+    {
+      "argv": ["opencode", "--session=--version", "--help"],
+      "observed": "exit 0: DESCRIPTION"
+    },
+    {
+      "argv": ["opencode", "-cs", "ses_x", "--version"],
+      "observed": "exit 0: opencode v2.2.5"
+    },
+    {
+      "argv": ["opencode", "debug", "paths", "-h"],
+      "observed": "exit 0: DESCRIPTION"
+    },
+    {
+      "argv": ["opencode", "upgrade", "--help"],
+      "observed": "exit 0: DESCRIPTION"
+    },
+    {
+      "argv": ["opencode", "service", "status", "--help"],
+      "observed": "exit 0: DESCRIPTION"
+    },
+    {
+      "argv": ["opencode", "session", "list", "--help"],
+      "observed": "exit 0: DESCRIPTION"
+    },
+    {
+      "argv": ["opencode", "--help"],
+      "observed": "exit 0: DESCRIPTION"
+    }
+  ],
+  "builtins": [
+    {
+      "names": ["--help", "-h"],
+      "kind": "boolean",
+      "description": "Show help information"
+    },
+    {
+      "names": ["--version", "-v"],
+      "kind": "boolean",
+      "description": "Show version information"
+    },
+    {
+      "names": ["--wizard"],
+      "kind": "boolean",
+      "description": "Start wizard mode for a command"
+    },
+    {
+      "names": ["--completions"],
+      "kind": "choice",
+      "choices": ["bash", "zsh", "fish", "powershell", "sh", "pwsh"],
+      "description": "Print shell completion script"
+    },
+    {
+      "names": ["--log-level"],
+      "kind": "choice",
+      "choices": ["all", "trace", "debug", "info", "warn", "warning", "error", "fatal", "none"],
+      "description": "Sets the minimum log level"
+    },
+    {
+      "names": ["--print-logs"],
+      "kind": "boolean",
+      "description": "Print logs to stderr (server logs require --standalone)"
+    }
+  ],
+  "root": {
+    "positional": "directory (optional): the directory to start OpenCode in",
+    "note": "Puppeteer launch shape (proposal): `opencode --server <origin> --session <id> <cwd>`. `-s` creates a missing session, so check it exists first (§4 B12)."
+  },
+  "commands": [
+    {
+      "path": [],
+      "exit": 0,
+      "description": "OpenCode command line interface",
+      "usage": "opencode <subcommand> [flags] [<directory>]",
+      "arguments": [
+        {
+          "name": "directory",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Directory to start OpenCode in"
+        }
+      ],
+      "flags": [
+        {
+          "names": ["--standalone"],
+          "kind": "boolean",
+          "description": "Run with a private server instead of the background service"
+        },
+        {
+          "names": ["--server"],
+          "kind": "string",
+          "description": "Connect to a server URL instead of the background service"
+        },
+        {
+          "names": ["--auto"],
+          "kind": "boolean",
+          "description": "Auto-approve permissions that are not explicitly denied"
+        },
+        {
+          "names": ["--continue", "-c"],
+          "kind": "boolean",
+          "description": "Continue the last session"
+        },
+        {
+          "names": ["--session", "-s"],
+          "kind": "string",
+          "description": "Session ID to continue, or to create if it does not exist"
+        },
+        {
+          "names": ["--prompt"],
+          "kind": "string",
+          "description": "Prompt to use"
+        }
+      ],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": [
+        {
+          "names": ["upgrade", "update"],
+          "description": "Upgrade OpenCode to the latest or a specific version"
+        },
+        {
+          "names": ["uninstall"],
+          "description": "Uninstall OpenCode, keeping session data, configuration, and state"
+        },
+        {
+          "names": ["acp"],
+          "description": "Start an Agent Client Protocol server"
+        },
+        {
+          "names": ["api"],
+          "description": "Make a request to the running server"
+        },
+        {
+          "names": ["debug"],
+          "description": "Debugging and troubleshooting tools"
+        },
+        {
+          "names": ["auth"],
+          "description": "manage integrations and credentials"
+        },
+        {
+          "names": ["mcp"],
+          "description": "Manage MCP (Model Context Protocol) servers"
+        },
+        {
+          "names": ["plugin"],
+          "description": "Manage plugins"
+        },
+        {
+          "names": ["models"],
+          "description": "List all available models"
+        },
+        {
+          "names": ["stats"],
+          "description": "Show shareable usage statistics"
+        },
+        {
+          "names": ["mini"],
+          "description": "Start the minimal interactive interface"
+        },
+        {
+          "names": ["run"],
+          "description": "Run OpenCode with a message"
+        },
+        {
+          "names": ["session"],
+          "description": "Manage sessions"
+        },
+        {
+          "names": ["service"],
+          "description": "Manage the background server"
+        },
+        {
+          "names": ["reload"],
+          "description": "Reload configuration"
+        },
+        {
+          "names": ["pair"],
+          "description": "Print one-time links to connect a browser or app"
+        },
+        {
+          "names": ["serve"],
+          "description": "Start the v2 API and web server"
+        }
+      ]
+    },
+    {
+      "path": ["upgrade"],
+      "exit": 0,
+      "description": "Upgrade OpenCode to the latest or a specific version",
+      "usage": "opencode upgrade [flags] [<target>]",
+      "arguments": [
+        {
+          "name": "target",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Version to upgrade to (with or without a leading v)"
+        }
+      ],
+      "flags": [
+        {
+          "names": ["--method", "-m"],
+          "kind": "choice",
+          "choices": ["curl", "npm", "pnpm", "bun", "yarn", "vp", "brew", "winget"],
+          "description": "Installation method to use"
+        }
+      ],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["uninstall"],
+      "exit": 0,
+      "description": "Uninstall OpenCode, keeping session data, configuration, and state",
+      "usage": "opencode uninstall [flags]",
+      "arguments": [],
+      "flags": [
+        {
+          "names": ["--dry-run"],
+          "kind": "boolean",
+          "description": "Show what would be removed without removing"
+        },
+        {
+          "names": ["--force", "-f"],
+          "kind": "boolean",
+          "description": "Skip confirmation prompts"
+        }
+      ],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["acp"],
+      "exit": 0,
+      "description": "Start an Agent Client Protocol server",
+      "usage": "opencode acp [flags]",
+      "arguments": [],
+      "flags": [
+        {
+          "names": ["--login"],
+          "kind": "boolean",
+          "description": "Run auth login instead of starting the server"
+        }
+      ],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["api"],
+      "exit": 0,
+      "description": "Make a request to the running server",
+      "usage": "opencode api [flags] <operation | method path...>",
+      "arguments": [
+        {
+          "raw": "operation | method path... string OpenAPI operation ID, or an HTTP method followed by a path"
+        }
+      ],
+      "flags": [
+        {
+          "names": ["--data", "-d"],
+          "kind": "string",
+          "description": "Request body"
+        },
+        {
+          "names": ["--header", "-H"],
+          "kind": "string",
+          "description": "Request header in name:value form"
+        },
+        {
+          "names": ["--param"],
+          "kind": "key-value",
+          "description": "OpenAPI path or query parameter"
+        }
+      ],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["debug"],
+      "exit": 0,
+      "description": "Debugging and troubleshooting tools",
+      "usage": "opencode debug <subcommand> [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": [
+        {
+          "names": ["agents"],
+          "description": "List all agents"
+        },
+        {
+          "names": ["config"],
+          "description": "List configuration sources"
+        },
+        {
+          "names": ["heap-dump"],
+          "description": "Write a heap snapshot of the running server and print its path"
+        },
+        {
+          "names": ["paths"],
+          "description": "Show global paths (data, config, cache, state)"
+        }
+      ]
+    },
+    {
+      "path": ["debug", "agents"],
+      "exit": 0,
+      "description": "List all agents",
+      "usage": "opencode debug agents [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["debug", "config"],
+      "exit": 0,
+      "description": "List configuration sources",
+      "usage": "opencode debug config [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["debug", "heap-dump"],
+      "exit": 0,
+      "description": "Write a heap snapshot of the running server and print its path",
+      "usage": "opencode debug heap-dump [flags]",
+      "arguments": [],
+      "flags": [
+        {
+          "names": ["--directory"],
+          "kind": "string",
+          "description": "Directory to write the snapshot into instead of the server's log directory"
+        }
+      ],
+      "serverFlags": ["--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["debug", "paths"],
+      "exit": 0,
+      "description": "Show global paths (data, config, cache, state)",
+      "usage": "opencode debug paths [flags] [<name>]",
+      "arguments": [
+        {
+          "name": "name",
+          "variadic": false,
+          "kind": "choice",
+          "optional": true,
+          "choices": ["db", "home", "data", "config", "cache", "state", "tmp", "bin", "log", "repos"],
+          "description": "Print only one path: db, home, data, config, cache, state, tmp, bin, log, repos"
+        }
+      ],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["auth"],
+      "exit": 0,
+      "description": "manage integrations and credentials",
+      "usage": "opencode auth <subcommand> [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": [
+        {
+          "names": ["list"],
+          "description": "list integrations and credentials"
+        },
+        {
+          "names": ["login"],
+          "description": "connect an integration"
+        },
+        {
+          "names": ["logout"],
+          "description": "log out of a saved account"
+        },
+        {
+          "names": ["export"],
+          "description": "print stored credentials, including secrets, as JSON"
+        },
+        {
+          "names": ["import"],
+          "description": "import credentials exported by auth export"
+        },
+        {
+          "names": ["switch"],
+          "description": "switch the active account for an integration"
+        }
+      ]
+    },
+    {
+      "path": ["auth", "list"],
+      "exit": 0,
+      "description": "list integrations and credentials",
+      "usage": "opencode auth list [flags]",
+      "arguments": [],
+      "flags": [
+        {
+          "names": ["--format"],
+          "kind": "choice",
+          "choices": ["default", "json"],
+          "description": "Output format"
+        }
+      ],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["auth", "login"],
+      "exit": 0,
+      "description": "connect an integration",
+      "usage": "opencode auth login [flags] [<target>]",
+      "arguments": [
+        {
+          "name": "target",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Integration ID, name, or well-known provider URL"
+        }
+      ],
+      "flags": [
+        {
+          "names": ["--method"],
+          "kind": "string",
+          "description": "Authentication method ID"
+        },
+        {
+          "names": ["--answer"],
+          "kind": "string",
+          "description": "Provider form answer (key=value; repeat for multiple fields)"
+        }
+      ],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["auth", "logout"],
+      "exit": 0,
+      "description": "log out of a saved account",
+      "usage": "opencode auth logout [flags] [<target>] [<credential>]",
+      "arguments": [
+        {
+          "name": "target",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Integration ID or name"
+        },
+        {
+          "name": "credential",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Credential ID or label (opens an account picker when omitted)"
+        }
+      ],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["auth", "export"],
+      "exit": 0,
+      "description": "print stored credentials, including secrets, as JSON",
+      "usage": "opencode auth export [flags] [<target>]",
+      "arguments": [
+        {
+          "name": "target",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Integration ID or name (exports every integration when omitted)"
+        }
+      ],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["auth", "import"],
+      "exit": 0,
+      "description": "import credentials exported by auth export",
+      "usage": "opencode auth import [flags] [<file>]",
+      "arguments": [
+        {
+          "name": "file",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "JSON file to import (reads stdin when omitted)"
+        }
+      ],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["auth", "switch"],
+      "exit": 0,
+      "description": "switch the active account for an integration",
+      "usage": "opencode auth switch [flags] [<target>] [<credential>]",
+      "arguments": [
+        {
+          "name": "target",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Integration ID or name"
+        },
+        {
+          "name": "credential",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Credential ID or label (opens an account picker when omitted)"
+        }
+      ],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["mcp"],
+      "exit": 0,
+      "description": "Manage MCP (Model Context Protocol) servers",
+      "usage": "opencode mcp <subcommand> [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": [
+        {
+          "names": ["list"],
+          "description": "List configured MCP servers and their status"
+        },
+        {
+          "names": ["add"],
+          "description": "Add an MCP server to your configuration"
+        },
+        {
+          "names": ["auth"],
+          "description": "Authenticate with an OAuth-capable remote MCP server"
+        },
+        {
+          "names": ["logout"],
+          "description": "Remove stored OAuth credentials for an MCP server"
+        }
+      ]
+    },
+    {
+      "path": ["mcp", "list"],
+      "exit": 0,
+      "description": "List configured MCP servers and their status",
+      "usage": "opencode mcp list [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["mcp", "add"],
+      "exit": 0,
+      "description": "Add an MCP server to your configuration",
+      "usage": "opencode mcp add [flags] <name> [<command...>]",
+      "arguments": [
+        {
+          "name": "name",
+          "variadic": false,
+          "kind": "string",
+          "optional": false,
+          "description": "Name of the MCP server"
+        },
+        {
+          "name": "command",
+          "variadic": true,
+          "kind": "string",
+          "optional": true,
+          "description": "Command and arguments for a local server, passed after --"
+        }
+      ],
+      "flags": [
+        {
+          "names": ["--url"],
+          "kind": "string",
+          "description": "URL for a remote MCP server"
+        },
+        {
+          "names": ["--header"],
+          "kind": "key-value",
+          "description": "HTTP header for a remote server, as name=value"
+        },
+        {
+          "names": ["--env"],
+          "kind": "key-value",
+          "description": "Environment variable for a local server, as name=value"
+        },
+        {
+          "names": ["--global"],
+          "kind": "boolean",
+          "description": "Write to the global config instead of the project config"
+        }
+      ],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["mcp", "auth"],
+      "exit": 0,
+      "description": "Authenticate with an OAuth-capable remote MCP server",
+      "usage": "opencode mcp auth [flags] [<name>]",
+      "arguments": [
+        {
+          "name": "name",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Name of the MCP server"
+        }
+      ],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["mcp", "logout"],
+      "exit": 0,
+      "description": "Remove stored OAuth credentials for an MCP server",
+      "usage": "opencode mcp logout [flags] <name>",
+      "arguments": [
+        {
+          "name": "name",
+          "variadic": false,
+          "kind": "string",
+          "optional": false,
+          "description": "Name of the MCP server"
+        }
+      ],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["plugin"],
+      "exit": 0,
+      "description": "Manage plugins",
+      "usage": "opencode plugin <subcommand> [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": [
+        {
+          "names": ["list"],
+          "description": "List plugins"
+        },
+        {
+          "names": ["add"],
+          "description": "Install a plugin and add it to the global configuration"
+        },
+        {
+          "names": ["check"],
+          "description": "Check package plugins for updates"
+        },
+        {
+          "names": ["update"],
+          "description": "Update package plugins"
+        },
+        {
+          "names": ["remove"],
+          "description": "Remove a plugin from global configuration"
+        }
+      ]
+    },
+    {
+      "path": ["plugin", "list"],
+      "exit": 0,
+      "description": "List plugins",
+      "usage": "opencode plugin list [flags]",
+      "arguments": [],
+      "flags": [
+        {
+          "names": ["--builtin"],
+          "kind": "boolean",
+          "description": "Include built-in server plugins"
+        }
+      ],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["plugin", "add"],
+      "exit": 0,
+      "description": "Install a plugin and add it to the global configuration",
+      "usage": "opencode plugin add [flags] <package>",
+      "arguments": [
+        {
+          "name": "package",
+          "variadic": false,
+          "kind": "string",
+          "optional": false,
+          "description": "npm registry or Git package specifier"
+        }
+      ],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["plugin", "check"],
+      "exit": 0,
+      "description": "Check package plugins for updates",
+      "usage": "opencode plugin check [flags] [<target>]",
+      "arguments": [
+        {
+          "name": "target",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Configured package target"
+        }
+      ],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["plugin", "update"],
+      "exit": 0,
+      "description": "Update package plugins",
+      "usage": "opencode plugin update [flags] [<target>]",
+      "arguments": [
+        {
+          "name": "target",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Configured package target; omit to update all outdated plugins"
+        }
+      ],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["plugin", "remove"],
+      "exit": 0,
+      "description": "Remove a plugin from global configuration",
+      "usage": "opencode plugin remove [flags] <package>",
+      "arguments": [
+        {
+          "name": "package",
+          "variadic": false,
+          "kind": "string",
+          "optional": false,
+          "description": "configured package specifier"
+        }
+      ],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["models"],
+      "exit": 0,
+      "description": "List all available models",
+      "usage": "opencode models [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["stats"],
+      "exit": 0,
+      "description": "Show shareable usage statistics",
+      "usage": "opencode stats [flags]",
+      "arguments": [],
+      "flags": [
+        {
+          "names": ["--days"],
+          "kind": "integer",
+          "description": "Show the last N days; 0 means today"
+        },
+        {
+          "names": ["--year"],
+          "kind": "integer",
+          "description": "Show a calendar year"
+        },
+        {
+          "names": ["--all"],
+          "kind": "boolean",
+          "description": "Show lifetime statistics"
+        },
+        {
+          "names": ["--project"],
+          "kind": "string",
+          "description": "Filter by project ID, or use \".\" for the current project"
+        },
+        {
+          "names": ["--models"],
+          "kind": "boolean",
+          "description": "Show model usage"
+        },
+        {
+          "names": ["--tools"],
+          "kind": "boolean",
+          "description": "Show tool reliability"
+        },
+        {
+          "names": ["--cost"],
+          "kind": "boolean",
+          "description": "Show cost and token details"
+        },
+        {
+          "names": ["--full"],
+          "kind": "boolean",
+          "description": "Show every detailed section"
+        },
+        {
+          "names": ["--limit"],
+          "kind": "integer",
+          "description": "Number of rows in detailed sections"
+        },
+        {
+          "names": ["--json"],
+          "kind": "boolean",
+          "description": "Output statistics as JSON"
+        }
+      ],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["mini"],
+      "exit": 0,
+      "description": "Start the minimal interactive interface",
+      "usage": "opencode mini [flags]",
+      "arguments": [],
+      "flags": [
+        {
+          "names": ["--continue", "-c"],
+          "kind": "boolean",
+          "description": "Continue the last session"
+        },
+        {
+          "names": ["--session", "-s"],
+          "kind": "string",
+          "description": "Session ID to continue, or to create if it does not exist"
+        },
+        {
+          "names": ["--fork"],
+          "kind": "boolean",
+          "description": "Fork the session when continuing"
+        },
+        {
+          "names": ["--replay"],
+          "kind": "boolean",
+          "description": "Restore session history on resume and resize (disable with --no-replay)"
+        },
+        {
+          "names": ["--replay-limit"],
+          "kind": "integer",
+          "description": "Limit replay to the newest N messages (default: 200)"
+        },
+        {
+          "names": ["--model", "-m"],
+          "kind": "string",
+          "description": "Model to use in the format provider/model"
+        },
+        {
+          "names": ["--agent"],
+          "kind": "string",
+          "description": "Agent to use"
+        },
+        {
+          "names": ["--prompt"],
+          "kind": "string",
+          "description": "Prompt to use"
+        }
+      ],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["run"],
+      "exit": 0,
+      "description": "Run OpenCode with a message",
+      "usage": "opencode run [flags] [<message...>]",
+      "arguments": [
+        {
+          "name": "message",
+          "variadic": true,
+          "kind": "string",
+          "optional": true,
+          "description": "Message to send"
+        }
+      ],
+      "flags": [
+        {
+          "names": ["--continue", "-c"],
+          "kind": "boolean",
+          "description": "Continue the last session"
+        },
+        {
+          "names": ["--session", "-s"],
+          "kind": "string",
+          "description": "Session ID to continue, or to create if it does not exist"
+        },
+        {
+          "names": ["--fork"],
+          "kind": "boolean",
+          "description": "Fork the session before continuing"
+        },
+        {
+          "names": ["--model", "-m"],
+          "kind": "string",
+          "description": "Model to use in the format provider/model#variant"
+        },
+        {
+          "names": ["--agent"],
+          "kind": "string",
+          "description": "Agent to use"
+        },
+        {
+          "names": ["--format"],
+          "kind": "choice",
+          "choices": ["default", "json"],
+          "description": "Output format"
+        },
+        {
+          "names": ["--file", "-f"],
+          "kind": "string",
+          "description": "File to attach to the message"
+        },
+        {
+          "names": ["--title"],
+          "kind": "string",
+          "description": "Session title"
+        },
+        {
+          "names": ["--thinking"],
+          "kind": "boolean",
+          "description": "Show thinking blocks"
+        },
+        {
+          "names": ["--auto"],
+          "kind": "boolean",
+          "description": "Auto-approve permissions that are not explicitly denied"
+        }
+      ],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["session"],
+      "exit": 0,
+      "description": "Manage sessions",
+      "usage": "opencode session <subcommand> [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": [
+        {
+          "names": ["list"],
+          "description": "List top-level sessions in the current project, newest first"
+        },
+        {
+          "names": ["delete"],
+          "description": "Delete a session and its child sessions"
+        },
+        {
+          "names": ["export"],
+          "description": "Export session data as JSON"
+        },
+        {
+          "names": ["import"],
+          "description": "Import session data from a JSON file or URL"
+        }
+      ]
+    },
+    {
+      "path": ["session", "list"],
+      "exit": 0,
+      "description": "List top-level sessions in the current project, newest first",
+      "usage": "opencode session list [flags]",
+      "arguments": [],
+      "flags": [
+        {
+          "names": ["--max-count", "-n"],
+          "kind": "integer",
+          "description": "Limit to N most recent sessions (default: 100)"
+        },
+        {
+          "names": ["--format"],
+          "kind": "choice",
+          "choices": ["table", "json"],
+          "description": "Output format"
+        }
+      ],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["session", "delete"],
+      "exit": 0,
+      "description": "Delete a session and its child sessions",
+      "usage": "opencode session delete [flags] <sessionID>",
+      "arguments": [
+        {
+          "name": "sessionID",
+          "variadic": false,
+          "kind": "string",
+          "optional": false,
+          "description": "Session ID to delete"
+        }
+      ],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["session", "export"],
+      "exit": 0,
+      "description": "Export session data as JSON",
+      "usage": "opencode session export [flags] [<session>]",
+      "arguments": [
+        {
+          "name": "session",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Session ID to export"
+        }
+      ],
+      "flags": [
+        {
+          "names": ["--sanitize"],
+          "kind": "boolean",
+          "description": "Redact sensitive transcript and file data"
+        }
+      ],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["session", "import"],
+      "exit": 0,
+      "description": "Import session data from a JSON file or URL",
+      "usage": "opencode session import [flags] <file>",
+      "arguments": [
+        {
+          "name": "file",
+          "variadic": false,
+          "kind": "string",
+          "optional": false,
+          "description": "JSON file or URL to import"
+        }
+      ],
+      "flags": [
+        {
+          "names": ["--directory"],
+          "kind": "string",
+          "description": "Directory in which to import the session"
+        }
+      ],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["service"],
+      "exit": 0,
+      "description": "Manage the background server",
+      "usage": "opencode service <subcommand> [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": [
+        {
+          "names": ["start"],
+          "description": "Start the background server"
+        },
+        {
+          "names": ["restart"],
+          "description": "Restart the background server"
+        },
+        {
+          "names": ["status"],
+          "description": "Show background server status"
+        },
+        {
+          "names": ["stop"],
+          "description": "Stop the background server"
+        },
+        {
+          "names": ["get"],
+          "description": "Get service configuration"
+        },
+        {
+          "names": ["set"],
+          "description": "Set service configuration"
+        },
+        {
+          "names": ["unset"],
+          "description": "Unset service configuration"
+        }
+      ]
+    },
+    {
+      "path": ["service", "start"],
+      "exit": 0,
+      "description": "Start the background server",
+      "usage": "opencode service start [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["service", "restart"],
+      "exit": 0,
+      "description": "Restart the background server",
+      "usage": "opencode service restart [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["service", "status"],
+      "exit": 0,
+      "description": "Show background server status",
+      "usage": "opencode service status [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["service", "stop"],
+      "exit": 0,
+      "description": "Stop the background server",
+      "usage": "opencode service stop [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["service", "get"],
+      "exit": 0,
+      "description": "Get service configuration",
+      "usage": "opencode service get [flags] [<key>] [<name>]",
+      "arguments": [
+        {
+          "name": "key",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Service setting or env"
+        },
+        {
+          "name": "name",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Environment variable name"
+        }
+      ],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["service", "set"],
+      "exit": 0,
+      "description": "Set service configuration",
+      "usage": "opencode service set [flags] <key> <value> [<env-value>]",
+      "arguments": [
+        {
+          "name": "key",
+          "variadic": false,
+          "kind": "string",
+          "optional": false,
+          "description": "Service setting or env"
+        },
+        {
+          "name": "value",
+          "variadic": false,
+          "kind": "string",
+          "optional": false,
+          "description": "Setting value or environment variable name"
+        },
+        {
+          "name": "env-value",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Environment variable value"
+        }
+      ],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["service", "unset"],
+      "exit": 0,
+      "description": "Unset service configuration",
+      "usage": "opencode service unset [flags] <key> [<name>]",
+      "arguments": [
+        {
+          "name": "key",
+          "variadic": false,
+          "kind": "string",
+          "optional": false,
+          "description": "Service setting or env"
+        },
+        {
+          "name": "name",
+          "variadic": false,
+          "kind": "string",
+          "optional": true,
+          "description": "Environment variable name"
+        }
+      ],
+      "flags": [],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["reload"],
+      "exit": 0,
+      "description": "Reload configuration",
+      "usage": "opencode reload [flags]",
+      "arguments": [],
+      "flags": [],
+      "serverFlags": ["--standalone", "--server"],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["pair"],
+      "exit": 0,
+      "description": "Print one-time links to connect a browser or app",
+      "usage": "opencode pair [flags]",
+      "arguments": [],
+      "flags": [
+        {
+          "names": ["--url"],
+          "kind": "string",
+          "description": "Use an external HTTP(S) server URL in pairing links"
+        },
+        {
+          "names": ["--remote"],
+          "kind": "boolean",
+          "description": "Pair through the OpenTunnel remote address, enabling remote access if needed (exposes the server to the internet)"
+        },
+        {
+          "names": ["--yes", "-y"],
+          "kind": "boolean",
+          "description": "Accept exposing the server to the internet when --remote enables remote access for the first time (required without an interactive terminal)"
+        }
+      ],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    },
+    {
+      "path": ["serve"],
+      "exit": 0,
+      "description": "Start the v2 API and web server",
+      "usage": "opencode serve [flags]",
+      "arguments": [],
+      "flags": [
+        {
+          "names": ["--hostname"],
+          "kind": "string",
+          "description": ""
+        },
+        {
+          "names": ["--port"],
+          "kind": "integer",
+          "description": ""
+        },
+        {
+          "names": ["--cors"],
+          "kind": "string",
+          "description": "Additional allowed CORS origin (repeat for multiple origins)"
+        },
+        {
+          "names": ["--service"],
+          "kind": "boolean",
+          "description": ""
+        },
+        {
+          "names": ["--stdio"],
+          "kind": "boolean",
+          "description": ""
+        }
+      ],
+      "serverFlags": [],
+      "otherGlobalFlags": [],
+      "subcommands": []
+    }
+  ],
+  "draftGrammar": {
+    "$comment": "Shape follows NativeInvocationGrammar in packages/core/src/services/invocation-arguments.ts so the 2.x adapter can adopt it after review. Classifications are proposals. Core reads this grammar more narrowly than effect/cli parses argv: see coreDivergences before adopting it.",
+    "booleanEquals": true,
+    "booleanValues": true,
+    "shortClusters": false,
+    "optionLikeValues": false,
+    "equals": true,
+    "deferUtilityOptions": false,
+    "options": [
+      {
+        "names": ["--help", "-h"],
+        "arity": "none",
+        "passthrough": "utility"
+      },
+      {
+        "names": ["--version", "-v"],
+        "arity": "none",
+        "passthrough": "utility"
+      },
+      {
+        "names": ["--completions"],
+        "arity": "one",
+        "passthrough": "utility"
+      },
+      {
+        "names": ["--session", "-s"],
+        "arity": "one",
+        "mapped": "--session"
+      },
+      {
+        "names": ["--server"],
+        "arity": "one",
+        "reason": "Puppeteer supplies --server for its own private backend; a user-supplied server cannot be preserved"
+      },
+      {
+        "names": ["--standalone"],
+        "arity": "none",
+        "reason": "the managed launch cannot preserve this option"
+      },
+      {
+        "names": ["--continue", "-c"],
+        "arity": "none",
+        "reason": "the managed launch cannot preserve this option"
+      },
+      {
+        "names": ["--auto"],
+        "arity": "none",
+        "reason": "the managed launch cannot preserve this option"
+      },
+      {
+        "names": ["--prompt"],
+        "arity": "one",
+        "reason": "the managed launch cannot preserve this option"
+      },
+      {
+        "names": ["--wizard"],
+        "arity": "none",
+        "reason": "the managed launch cannot preserve this option"
+      },
+      {
+        "names": ["--log-level"],
+        "arity": "one",
+        "reason": "the managed launch cannot preserve this option"
+      },
+      {
+        "names": ["--print-logs"],
+        "arity": "none",
+        "reason": "the managed launch cannot preserve this option"
+      },
+      {
+        "names": ["--yolo"],
+        "arity": "none",
+        "reason": "the managed launch cannot preserve this option",
+        "hidden": "packages/cli/src/commands/commands.ts at v2.2.5 (Flag.withHidden)"
+      },
+      {
+        "names": ["--dangerously-skip-permissions"],
+        "arity": "none",
+        "reason": "the managed launch cannot preserve this option",
+        "hidden": "packages/cli/src/commands/commands.ts at v2.2.5 (Flag.withHidden)"
+      }
+    ],
+    "commands": [
+      {
+        "names": ["upgrade", "update"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["uninstall"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["api"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["debug"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["auth"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["mcp"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["plugin"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["models"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["stats"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["session"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["service"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["reload"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["pair"],
+        "passthrough": "utility"
+      },
+      {
+        "names": ["acp"],
+        "passthrough": "elsewhere"
+      },
+      {
+        "names": ["serve"],
+        "passthrough": "elsewhere"
+      },
+      {
+        "names": ["run"],
+        "passthrough": "one-shot"
+      },
+      {
+        "names": ["mini"],
+        "reason": "this native command starts an interactive session the managed launch cannot preserve"
+      }
+    ]
+  },
+  "coreDivergences": {
+    "$comment": "With draftGrammar as written every divergence fails closed: Core rejects some argv the native CLI would run, and accepts none that the native CLI reads differently (shortClusters is false for that reason). A 2.x adapter adopting draftGrammar either accepts these rejections or extends Core first.",
+    "rows": [
+      {
+        "trait": "boolean literals",
+        "native": "a boolean flag takes true/false/yes/no/y/n/on/off/1/0 inline or as the next token (effect 4.0.6 Schema.TrueLiterals/FalseLiterals; `--print-logs false` exit 0, a5:c-parser)",
+        "core": "booleanEquals and booleanValues take only true/false; any other inline value is \"does not take a value\", and a following yes/no/y/n/on/off/1/0 is left as a positional",
+        "examples": [
+          {
+            "argv": ["opencode", "--continue=on"],
+            "core": "rejected at --continue=on: this native flag does not take a value"
+          },
+          {
+            "argv": ["opencode", "--continue", "yes"],
+            "core": "rejected at --continue: the managed launch cannot preserve this option"
+          },
+          {
+            "argv": ["opencode", "--print-logs", "off"],
+            "core": "rejected at --print-logs: the managed launch cannot preserve this option"
+          }
+        ]
+      },
+      {
+        "trait": "--no-<flag> negation",
+        "native": "--no-<name> sets a boolean false (effect/cli source; `debug paths --no-print-logs data` exit 0, a5:c-parser)",
+        "core": "Core has no negation form; --no-<name> is an unknown option",
+        "examples": [
+          {
+            "argv": ["opencode", "--no-continue"],
+            "core": "rejected at --no-continue: the adapter does not know this option or its arity"
+          }
+        ]
+      },
+      {
+        "trait": "built-ins anywhere",
+        "native": "--help/-h, --version/-v and --completions are extracted before parsing and win anywhere (`--bogus --version` and `--session --version` exit 0 printing the version, a5:c-parser)",
+        "core": "Core reads left to right and stops at the first unknown option or missing value, so a later utility flag is never reached",
+        "examples": [
+          {
+            "argv": ["opencode", "--bogus", "--version"],
+            "core": "rejected at --bogus: the adapter does not know this option or its arity"
+          },
+          {
+            "argv": ["opencode", "--session", "--version"],
+            "core": "rejected at --session: this native option requires a value"
+          }
+        ]
+      },
+      {
+        "trait": "short clusters and attached short values",
+        "native": "every character after a single dash is its own flag (effect 4.0.6 cli/internal/lexer.ts): `-cs x` is -c -s x, and `-sfoo` is -s -f -o -o, a missing value for -s; only `-s=foo` attaches a value. Source only, not probed",
+        "core": "with shortClusters, Core reads `-sfoo` as -s foo, getopt style, and would accept an argv the native CLI rejects. draftGrammar therefore sets shortClusters false: clusters and attached short values are rejected, and `-s=foo` still reads through equals",
+        "examples": [
+          {
+            "argv": ["opencode", "-sfoo"],
+            "core": "rejected at -sfoo: the adapter does not know this option or its arity"
+          },
+          {
+            "argv": ["opencode", "-cs", "ses_x"],
+            "core": "rejected at -cs: the adapter does not know this option or its arity"
+          },
+          {
+            "argv": ["opencode", "-s=ses_x"],
+            "core": "accepted [\"--session\",\"ses_x\"]"
+          }
+        ]
+      }
+    ]
+  }
+}

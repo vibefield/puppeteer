@@ -1,0 +1,2860 @@
+{
+  "upstream": {
+    "repository": "anomalyco/opencode",
+    "tag": "v2.2.5",
+    "commit": "9bbb8ce18c80f099e0e448775f59d965ead40a21"
+  },
+  "binary": {
+    "package": "@opencode/cli-darwin-arm64@2.2.5",
+    "sha256": "abe4d88594bffb12b364375b8a6732d2d1f7a977195ed1a35c5c76f8e89c9e0e",
+    "teamIdentifier": "5NZ4Q7NXJ4"
+  },
+  "status": "Draft. Probe results and upstream source read as text, recorded 2026-11-04 for draft/OPENCODE-2-MIGRATION-PLAN.md §4 A6. Not Surface evidence: the 2.x census must capture every row again.",
+  "sources": {
+    "definitions": "packages/schema/src/**/*.ts at v2.2.5: every Event.durable/Event.ephemeral call, read as text. Same-file spreads are resolved, both plain field objects and `Name.fields` of a `Schema.Struct`; a spread from another file is kept as `spread` (only `session.moved`: `SessionInbox.MovePayload.fields`, session-inbox.ts)",
+    "publicTypes": "`types` enum of GET /api/event in the 2.2.5 /openapi.json (sha256 f5c4571b…, byte-identical on linux-x64 and darwin-arm64)",
+    "observed": "288 frames from the 2026-11-03/04 probes: probe:22 and probe:31 (model-free lifecycle, permission/form, reconnect), a5:a-* (three fake-provider turns in each of three config shapes), and the MCP and credential frames a5:b-ext, a5:b-ext-compat and a5:b-auth kept (those probes did not keep their whole stream). `seenIn` names the captures per type; an unobserved type is `null`"
+  },
+  "transport": {
+    "route": "GET /api/event",
+    "auth": "HTTP Basic, user `opencode`, password from OPENCODE_PASSWORD (falls back to OPENCODE_SERVER_PASSWORD); 401 `{_tag:\"UnauthorizedError\"}`",
+    "headers": {
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache, no-transform",
+      "x-accel-buffering": "no"
+    },
+    "framing": "every record is one `data: <json>` block; never `id:`, `event:` or `retry:`",
+    "heartbeat": "`: heartbeat` comment on connect and every 15 s",
+    "firstFrame": "{id:\"evt_…\", type:\"server.connected\", data:{}} with no created/location",
+    "filter": {
+      "parameter": "types, repeated",
+      "values": "any public type, or a string matching \"^rpc\\\\.[\\\\s\\\\S]*?$\"",
+      "unknown": "400 InvalidRequestError listing every public type",
+      "alwaysSent": ["server.connected"]
+    },
+    "replay": "none: Last-Event-ID, ?after, ?cursor, ?seq ignored; events during a disconnection are lost (probe:30)",
+    "overflow": "one bounded queue per subscriber (4096); on overflow the subscriber is removed and its stream fails (EventFeed.SubscriberOverflow)",
+    "sessionLog": "GET /api/experimental/session/{id}/log?after=<seq>&follow= returns only one `log.synced` frame under `opencode serve`, which never persists events (probe:20, probe:30)"
+  },
+  "envelope": {
+    "fields": {
+      "id": "evt_ + ascending id",
+      "created": "epoch ms (absent on server.connected)",
+      "type": "event type",
+      "location": "optional Location.Ref ({directory}); present on some session.* and catalog events",
+      "metadata": "optional record (not observed)",
+      "data": "event payload: a JSON object on the wire, although the OpenAPI declares V2EventEncoded as a JSON-encoded string; decoders must accept both",
+      "durable": "durable events only: {aggregateID, seq (from 0 per aggregate), version (the definition version)}"
+    },
+    "durableAggregates": ["sessionID", "projectID"],
+    "seqGapRule": "a per-aggregate seq gap is the signal to rehydrate over REST (§2.3)"
+  },
+  "counts": {
+    "currentDefinitions": 107,
+    "currentTypes": 107,
+    "durableTypes": 48,
+    "publicTypes": 96,
+    "observedTypes": 45,
+    "legacyV1Definitions": 14
+  },
+  "events": [
+    {
+      "type": "agent.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["agent.ts"],
+      "data": [],
+      "observed": {
+        "frames": 8,
+        "dataKeys": [],
+        "withLocation": 8,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "artifact.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["artifact.ts"],
+      "data": [],
+      "observed": null
+    },
+    {
+      "type": "command.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["command.ts"],
+      "data": [],
+      "observed": {
+        "frames": 8,
+        "dataKeys": [],
+        "withLocation": 8,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "config.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["config.ts"],
+      "data": [],
+      "observed": null
+    },
+    {
+      "type": "credential.switched",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["credential.ts"],
+      "data": [
+        {
+          "name": "integrationID",
+          "optional": false,
+          "schema": "IntegrationID"
+        },
+        {
+          "name": "credentialID",
+          "optional": false,
+          "schema": "Schema.NullOr(ID)"
+        }
+      ],
+      "observed": {
+        "frames": 2,
+        "dataKeys": ["credentialID", "integrationID"],
+        "withLocation": 0,
+        "withDurable": 0,
+        "seenIn": ["a5:b-auth"]
+      }
+    },
+    {
+      "type": "credential.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["credential.ts"],
+      "data": [],
+      "observed": {
+        "frames": 2,
+        "dataKeys": [],
+        "withLocation": 0,
+        "withDurable": 0,
+        "seenIn": ["a5:b-auth"]
+      }
+    },
+    {
+      "type": "filesystem.changed",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["filesystem.ts"],
+      "data": [
+        {
+          "name": "file",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "event",
+          "optional": false,
+          "schema": "Schema.Literals([\"add\", \"change\", \"unlink\"])"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "form.cancelled",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["form.ts"],
+      "data": [
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "ID"
+        },
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": {
+        "frames": 1,
+        "dataKeys": ["id", "sessionID"],
+        "withLocation": 1,
+        "withDurable": 0,
+        "seenIn": ["probe:22"]
+      }
+    },
+    {
+      "type": "form.created",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["form.ts"],
+      "data": [
+        {
+          "name": "form",
+          "optional": false,
+          "schema": "Info"
+        }
+      ],
+      "observed": {
+        "frames": 2,
+        "dataKeys": ["form"],
+        "withLocation": 2,
+        "withDurable": 0,
+        "seenIn": ["probe:22"]
+      }
+    },
+    {
+      "type": "form.replied",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["form.ts"],
+      "data": [
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "ID"
+        },
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "answer",
+          "optional": false,
+          "schema": "Answer"
+        }
+      ],
+      "observed": {
+        "frames": 1,
+        "dataKeys": ["answer", "id", "sessionID"],
+        "withLocation": 1,
+        "withDurable": 0,
+        "seenIn": ["probe:22"]
+      }
+    },
+    {
+      "type": "global.disposed",
+      "durability": "ephemeral",
+      "publicStream": false,
+      "source": ["server-event.ts"],
+      "data": [],
+      "observed": null
+    },
+    {
+      "type": "installation.update-available",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["installation-event.ts"],
+      "data": [
+        {
+          "name": "version",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "installation.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["installation-event.ts"],
+      "data": [
+        {
+          "name": "version",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "integration.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["integration.ts"],
+      "data": [],
+      "observed": {
+        "frames": 9,
+        "dataKeys": [],
+        "withLocation": 9,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "a5:b-auth", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "location.shutdown",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["location-event.ts"],
+      "data": [],
+      "observed": null
+    },
+    {
+      "type": "lsp.updated",
+      "durability": "ephemeral",
+      "publicStream": false,
+      "source": ["lsp-event.ts"],
+      "data": [],
+      "observed": null
+    },
+    {
+      "type": "mcp.resources.changed",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["mcp-event.ts"],
+      "data": [
+        {
+          "name": "server",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": {
+        "frames": 6,
+        "dataKeys": ["server"],
+        "withLocation": 6,
+        "withDurable": 0,
+        "seenIn": ["a5:b-ext", "a5:b-ext-compat"]
+      }
+    },
+    {
+      "type": "mcp.status.changed",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["mcp-event.ts"],
+      "data": [
+        {
+          "name": "server",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": {
+        "frames": 10,
+        "dataKeys": ["server"],
+        "withLocation": 10,
+        "withDurable": 0,
+        "seenIn": ["a5:b-ext", "a5:b-ext-compat"]
+      }
+    },
+    {
+      "type": "mcp.tools.changed",
+      "durability": "ephemeral",
+      "publicStream": false,
+      "source": ["mcp-event.ts"],
+      "data": [
+        {
+          "name": "server",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "model.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["model.ts"],
+      "data": [],
+      "observed": {
+        "frames": 8,
+        "dataKeys": [],
+        "withLocation": 8,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "models-dev.refreshed",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["models-dev.ts"],
+      "data": [],
+      "observed": null
+    },
+    {
+      "type": "permission.asked",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["permission.ts"],
+      "data": [
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "ID"
+        },
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "action",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "resources",
+          "optional": false,
+          "schema": "Schema.Array(Schema.String)"
+        },
+        {
+          "name": "save",
+          "optional": true,
+          "schema": "Schema.Array(Schema.String).pipe(optional)"
+        },
+        {
+          "name": "metadata",
+          "optional": true,
+          "schema": "Schema.Record(Schema.String, Schema.Unknown).pipe(optional)"
+        },
+        {
+          "name": "source",
+          "optional": true,
+          "schema": "Source.pipe(optional)"
+        },
+        {
+          "name": "message",
+          "optional": true,
+          "schema": "Schema.String.pipe(optional)"
+        }
+      ],
+      "observed": {
+        "frames": 3,
+        "dataKeys": ["action", "id", "resources", "save", "sessionID"],
+        "withLocation": 3,
+        "withDurable": 0,
+        "seenIn": ["probe:31"]
+      }
+    },
+    {
+      "type": "permission.replied",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["permission.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "requestID",
+          "optional": false,
+          "schema": "ID"
+        },
+        {
+          "name": "reply",
+          "optional": false,
+          "schema": "Reply"
+        }
+      ],
+      "observed": {
+        "frames": 3,
+        "dataKeys": ["reply", "requestID", "sessionID"],
+        "withLocation": 3,
+        "withDurable": 0,
+        "seenIn": ["probe:31"]
+      }
+    },
+    {
+      "type": "persistent-pty.added",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["persistent-pty.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "Session.ID"
+        },
+        {
+          "name": "terminal",
+          "optional": false,
+          "schema": "Info"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "persistent-pty.removed",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["persistent-pty.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "Session.ID"
+        },
+        {
+          "name": "ptyID",
+          "optional": false,
+          "schema": "Pty.ID"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "persistent-pty.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["persistent-pty.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "Session.ID"
+        },
+        {
+          "name": "terminal",
+          "optional": false,
+          "schema": "Info"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "plugin.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["plugin.ts"],
+      "data": [],
+      "observed": {
+        "frames": 8,
+        "dataKeys": [],
+        "withLocation": 8,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "project.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["project.ts"],
+      "data": [
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "ID"
+        },
+        {
+          "name": "canonical",
+          "optional": false,
+          "schema": "AbsolutePath"
+        },
+        {
+          "name": "vcs",
+          "optional": true,
+          "schema": "optional(Vcs)"
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "schema": "optional(Schema.String)"
+        },
+        {
+          "name": "icon",
+          "optional": true,
+          "schema": "optional(Icon)"
+        },
+        {
+          "name": "commands",
+          "optional": true,
+          "schema": "optional(Commands)"
+        },
+        {
+          "name": "time",
+          "optional": false,
+          "schema": "Time"
+        },
+        {
+          "name": "sandboxes",
+          "optional": false,
+          "schema": "Schema.Array(Schema.String)"
+        }
+      ],
+      "observed": {
+        "frames": 11,
+        "dataKeys": ["canonical", "id", "sandboxes", "time"],
+        "withLocation": 11,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "provider.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["provider.ts"],
+      "data": [],
+      "observed": {
+        "frames": 8,
+        "dataKeys": [],
+        "withLocation": 8,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "pty.created",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["pty.ts"],
+      "data": [
+        {
+          "name": "info",
+          "optional": false,
+          "schema": "Info"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "pty.deleted",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["pty.ts"],
+      "data": [
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "ID"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "pty.exited",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["pty.ts"],
+      "data": [
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "ID"
+        },
+        {
+          "name": "exitCode",
+          "optional": false,
+          "schema": "NonNegativeInt"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "pty.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["pty.ts"],
+      "data": [
+        {
+          "name": "info",
+          "optional": false,
+          "schema": "Info"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "reference.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["reference.ts"],
+      "data": [],
+      "observed": {
+        "frames": 8,
+        "dataKeys": [],
+        "withLocation": 8,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "server.connected",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "note": "not in the `types` enum; always sent first",
+      "source": ["server-event.ts"],
+      "data": [],
+      "observed": {
+        "frames": 5,
+        "dataKeys": [],
+        "withLocation": 0,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "session.agent.selected",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "agent",
+          "optional": false,
+          "schema": "Agent.ID"
+        },
+        {
+          "name": "previous",
+          "optional": true,
+          "schema": "Agent.ID.pipe(optional)"
+        }
+      ],
+      "observed": {
+        "frames": 2,
+        "dataKeys": ["agent", "previous", "sessionID"],
+        "withLocation": 0,
+        "withDurable": 2,
+        "durableVersions": [1],
+        "seenIn": ["probe:31"]
+      }
+    },
+    {
+      "type": "session.archived",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        }
+      ],
+      "observed": {
+        "frames": 1,
+        "dataKeys": ["sessionID"],
+        "withLocation": 0,
+        "withDurable": 1,
+        "durableVersions": [1],
+        "seenIn": ["probe:31"]
+      }
+    },
+    {
+      "type": "session.compaction.delta",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "text",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.compaction.ended",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "reason",
+          "optional": false,
+          "schema": "Started.data.fields.reason"
+        },
+        {
+          "name": "model",
+          "optional": false,
+          "schema": "SessionMessage.CompactionCompleted.fields.model"
+        },
+        {
+          "name": "native",
+          "optional": false,
+          "schema": "SessionMessage.CompactionCompleted.fields.native"
+        },
+        {
+          "name": "text",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "cost",
+          "optional": false,
+          "schema": "SessionMessage.CompactionCompleted.fields.cost"
+        },
+        {
+          "name": "tokens",
+          "optional": false,
+          "schema": "SessionMessage.CompactionCompleted.fields.tokens"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.compaction.failed",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "reason",
+          "optional": false,
+          "schema": "Started.data.fields.reason"
+        },
+        {
+          "name": "error",
+          "optional": false,
+          "schema": "SessionError.Error"
+        },
+        {
+          "name": "inputID",
+          "optional": true,
+          "schema": "SessionMessage.ID.pipe(optional)"
+        },
+        {
+          "name": "cost",
+          "optional": false,
+          "schema": "SessionMessage.CompactionFailed.fields.cost"
+        },
+        {
+          "name": "tokens",
+          "optional": false,
+          "schema": "SessionMessage.CompactionFailed.fields.tokens"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.compaction.started",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "reason",
+          "optional": false,
+          "schema": "Schema.Literals([\"auto\", \"manual\"])"
+        },
+        {
+          "name": "inputID",
+          "optional": true,
+          "schema": "SessionMessage.ID.pipe(optional)"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.created",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "projectID",
+          "optional": false,
+          "schema": "Project.ID"
+        },
+        {
+          "name": "location",
+          "optional": false,
+          "schema": "Location.Ref"
+        },
+        {
+          "name": "subpath",
+          "optional": true,
+          "schema": "RelativePath.pipe(optional)"
+        },
+        {
+          "name": "parentID",
+          "optional": true,
+          "schema": "SessionID.pipe(optional)"
+        },
+        {
+          "name": "slug",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "title",
+          "optional": true,
+          "schema": "Schema.String.pipe(optional)"
+        },
+        {
+          "name": "agent",
+          "optional": true,
+          "schema": "Agent.ID.pipe(optional)"
+        },
+        {
+          "name": "model",
+          "optional": true,
+          "schema": "Model.Ref.pipe(optional)"
+        },
+        {
+          "name": "metadata",
+          "optional": true,
+          "schema": "SessionMetadata.pipe(optional)"
+        },
+        {
+          "name": "permissions",
+          "optional": true,
+          "schema": "Permission.Ruleset.pipe(optional)"
+        },
+        {
+          "name": "version",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": {
+        "frames": 8,
+        "dataKeys": [
+          "location",
+          "model",
+          "permissions",
+          "projectID",
+          "sessionID",
+          "slug",
+          "subpath",
+          "title",
+          "version"
+        ],
+        "withLocation": 8,
+        "withDurable": 8,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "session.deleted",
+      "durability": "durable",
+      "durable": {
+        "version": 2,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.execution.failed",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "error",
+          "optional": false,
+          "schema": "SessionError.Error"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.execution.interrupted",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "reason",
+          "optional": false,
+          "schema": "Schema.Literals([\"user\", \"shutdown\", \"superseded\", \"inactivity\"])"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.execution.started",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        }
+      ],
+      "observed": {
+        "frames": 9,
+        "dataKeys": ["sessionID"],
+        "withLocation": 0,
+        "withDurable": 9,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.execution.succeeded",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        }
+      ],
+      "observed": {
+        "frames": 9,
+        "dataKeys": ["sessionID"],
+        "withLocation": 0,
+        "withDurable": 9,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.forked",
+      "durability": "durable",
+      "durable": {
+        "version": 2,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "parentID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "boundary",
+          "optional": false,
+          "schema": "SessionFork.Boundary"
+        },
+        {
+          "name": "instructions",
+          "optional": true,
+          "schema": "Instruction.Values.pipe(optional)"
+        },
+        {
+          "name": "instructionEntries",
+          "optional": true,
+          "schema": "InstructionEntry.Snapshot.pipe(optional)"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.idle",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["session-status-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.inbox.cancelled",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "inboxID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.inbox.delivered",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "inboxID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        }
+      ],
+      "observed": {
+        "frames": 9,
+        "dataKeys": ["inboxID", "sessionID"],
+        "withLocation": 9,
+        "withDurable": 9,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.inbox.delivery.changed",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "inboxID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "delivery",
+          "optional": false,
+          "schema": "SessionInbox.Delivery"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.inbox.enqueued",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "inboxID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "item",
+          "optional": false,
+          "schema": "SessionInbox.Item"
+        }
+      ],
+      "observed": {
+        "frames": 11,
+        "dataKeys": ["inboxID", "item", "sessionID"],
+        "withLocation": 11,
+        "withDurable": 11,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:31"]
+      }
+    },
+    {
+      "type": "session.instructions.updated",
+      "durability": "durable",
+      "durable": {
+        "version": 2,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "delta",
+          "optional": false,
+          "schema": "Instruction.Delta"
+        },
+        {
+          "name": "text",
+          "optional": true,
+          "schema": "Schema.String.pipe(optional)"
+        }
+      ],
+      "observed": {
+        "frames": 3,
+        "dataKeys": ["delta", "sessionID"],
+        "withLocation": 3,
+        "withDurable": 3,
+        "durableVersions": [2],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.message.content.updated",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": false,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "messageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "content",
+          "optional": false,
+          "schema": "Schema.Array(SessionMessage.AssistantContentEncoded)"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.metadata.updated",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "metadata",
+          "optional": false,
+          "schema": "SessionMetadata"
+        }
+      ],
+      "observed": {
+        "frames": 1,
+        "dataKeys": ["metadata", "sessionID"],
+        "withLocation": 0,
+        "withDurable": 1,
+        "durableVersions": [1],
+        "seenIn": ["probe:31"]
+      }
+    },
+    {
+      "type": "session.model.selected",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "model",
+          "optional": false,
+          "schema": "Model.Ref"
+        },
+        {
+          "name": "previous",
+          "optional": true,
+          "schema": "Model.Ref.pipe(optional)"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.moved",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "spread": "SessionInbox.MovePayload.fields"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.permissions",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "permissions",
+          "optional": false,
+          "schema": "Permission.Ruleset"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.reasoning.delta",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "ordinal",
+          "optional": false,
+          "schema": "NonNegativeInt"
+        },
+        {
+          "name": "delta",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": {
+        "frames": 9,
+        "dataKeys": ["assistantMessageID", "delta", "ordinal", "sessionID"],
+        "withLocation": 9,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.reasoning.ended",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "ordinal",
+          "optional": false,
+          "schema": "NonNegativeInt"
+        },
+        {
+          "name": "text",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "native",
+          "optional": true,
+          "schema": "SessionMessage.Native.pipe(optional)"
+        }
+      ],
+      "observed": {
+        "frames": 9,
+        "dataKeys": ["assistantMessageID", "native", "ordinal", "sessionID", "text"],
+        "withLocation": 9,
+        "withDurable": 9,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.reasoning.started",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "ordinal",
+          "optional": false,
+          "schema": "NonNegativeInt"
+        },
+        {
+          "name": "native",
+          "optional": true,
+          "schema": "SessionMessage.Native.pipe(optional)"
+        }
+      ],
+      "observed": {
+        "frames": 9,
+        "dataKeys": ["assistantMessageID", "native", "ordinal", "sessionID"],
+        "withLocation": 9,
+        "withDurable": 9,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.renamed",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "title",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": {
+        "frames": 1,
+        "dataKeys": ["sessionID", "title"],
+        "withLocation": 0,
+        "withDurable": 1,
+        "durableVersions": [1],
+        "seenIn": ["probe:31"]
+      }
+    },
+    {
+      "type": "session.retry.scheduled",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "attempt",
+          "optional": false,
+          "schema": "PositiveInt"
+        },
+        {
+          "name": "at",
+          "optional": false,
+          "schema": "NonNegativeInt"
+        },
+        {
+          "name": "error",
+          "optional": false,
+          "schema": "SessionError.Error"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.revert.cleared",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.revert.committed",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "to",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.revert.staged",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "revert",
+          "optional": false,
+          "schema": "Revert"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.shell.ended",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "shell",
+          "optional": false,
+          "schema": "ShellSchema.Info"
+        },
+        {
+          "name": "output",
+          "optional": false,
+          "schema": "ShellSchema.Output"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.shell.started",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "shell",
+          "optional": false,
+          "schema": "ShellSchema.Info"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.skill.activated",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "SkillSchema.ID"
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "schema": "SkillSchema.Name"
+        },
+        {
+          "name": "text",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.status",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["session-status-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "status",
+          "optional": false,
+          "schema": "Info"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.step.ended",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "finish",
+          "optional": false,
+          "schema": "FinishReason"
+        },
+        {
+          "name": "rawFinish",
+          "optional": true,
+          "schema": "Schema.String.pipe(optional)"
+        },
+        {
+          "name": "native",
+          "optional": true,
+          "schema": "SessionMessage.Native.pipe(optional)"
+        },
+        {
+          "name": "cost",
+          "optional": false,
+          "schema": "Money.USD"
+        },
+        {
+          "name": "tokens",
+          "optional": false,
+          "schema": "TokenUsage.Info"
+        },
+        {
+          "name": "snapshot",
+          "optional": true,
+          "schema": "Snapshot.ID.pipe(optional)"
+        },
+        {
+          "name": "files",
+          "optional": true,
+          "schema": "Schema.Array(RelativePath).pipe(optional)"
+        }
+      ],
+      "observed": {
+        "frames": 12,
+        "dataKeys": ["assistantMessageID", "cost", "finish", "rawFinish", "sessionID", "tokens"],
+        "withLocation": 12,
+        "withDurable": 12,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.step.failed",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "error",
+          "optional": false,
+          "schema": "SessionError.Error"
+        },
+        {
+          "name": "finish",
+          "optional": true,
+          "schema": "Schema.Literals([\"content-filter\"]).pipe(optional)"
+        },
+        {
+          "name": "rawFinish",
+          "optional": true,
+          "schema": "Schema.String.pipe(optional)"
+        },
+        {
+          "name": "native",
+          "optional": true,
+          "schema": "SessionMessage.Native.pipe(optional)"
+        },
+        {
+          "name": "cost",
+          "optional": true,
+          "schema": "Money.USD.pipe(optional)"
+        },
+        {
+          "name": "tokens",
+          "optional": true,
+          "schema": "TokenUsage.Info.pipe(optional)"
+        },
+        {
+          "name": "snapshot",
+          "optional": true,
+          "schema": "Snapshot.ID.pipe(optional)"
+        },
+        {
+          "name": "files",
+          "optional": true,
+          "schema": "Schema.Array(RelativePath).pipe(optional)"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.step.started",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "agent",
+          "optional": false,
+          "schema": "Agent.ID"
+        },
+        {
+          "name": "model",
+          "optional": false,
+          "schema": "Model.Ref"
+        },
+        {
+          "name": "snapshot",
+          "optional": true,
+          "schema": "Snapshot.ID.pipe(optional)"
+        },
+        {
+          "name": "started",
+          "optional": false,
+          "schema": "NonNegativeInt"
+        }
+      ],
+      "observed": {
+        "frames": 12,
+        "dataKeys": ["agent", "assistantMessageID", "model", "sessionID", "started"],
+        "withLocation": 12,
+        "withDurable": 12,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.step.streamed",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        }
+      ],
+      "observed": {
+        "frames": 12,
+        "dataKeys": ["assistantMessageID", "sessionID"],
+        "withLocation": 12,
+        "withDurable": 12,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.synthetic",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "text",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "description",
+          "optional": true,
+          "schema": "Schema.String.pipe(optional)"
+        },
+        {
+          "name": "metadata",
+          "optional": true,
+          "schema": "Schema.Record(Schema.String, Schema.Unknown).pipe(optional)"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.text.delta",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "ordinal",
+          "optional": false,
+          "schema": "NonNegativeInt"
+        },
+        {
+          "name": "delta",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": {
+        "frames": 9,
+        "dataKeys": ["assistantMessageID", "delta", "ordinal", "sessionID"],
+        "withLocation": 9,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.text.ended",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "ordinal",
+          "optional": false,
+          "schema": "NonNegativeInt"
+        },
+        {
+          "name": "text",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "native",
+          "optional": true,
+          "schema": "SessionMessage.Native.pipe(optional)"
+        }
+      ],
+      "observed": {
+        "frames": 9,
+        "dataKeys": ["assistantMessageID", "ordinal", "sessionID", "text"],
+        "withLocation": 9,
+        "withDurable": 9,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.text.started",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "ordinal",
+          "optional": false,
+          "schema": "NonNegativeInt"
+        }
+      ],
+      "observed": {
+        "frames": 9,
+        "dataKeys": ["assistantMessageID", "ordinal", "sessionID"],
+        "withLocation": 9,
+        "withDurable": 9,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.tool.called",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "input",
+          "optional": false,
+          "schema": "Schema.Record(Schema.String, Schema.Unknown)"
+        },
+        {
+          "name": "executed",
+          "optional": false,
+          "schema": "Schema.Boolean"
+        },
+        {
+          "name": "native",
+          "optional": true,
+          "schema": "SessionMessage.Native.pipe(optional)"
+        }
+      ],
+      "observed": {
+        "frames": 3,
+        "dataKeys": ["assistantMessageID", "executed", "id", "input", "sessionID"],
+        "withLocation": 3,
+        "withDurable": 3,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.tool.failed",
+      "durability": "durable",
+      "durable": {
+        "version": 2,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "error",
+          "optional": false,
+          "schema": "SessionError.Error"
+        },
+        {
+          "name": "content",
+          "optional": true,
+          "schema": "Schema.NonEmptyArray(Content).pipe(optional)"
+        },
+        {
+          "name": "metadata",
+          "optional": true,
+          "schema": "Schema.Record(Schema.String, Schema.Json).pipe(optional)"
+        },
+        {
+          "name": "executed",
+          "optional": false,
+          "schema": "Schema.Boolean"
+        },
+        {
+          "name": "native",
+          "optional": true,
+          "schema": "SessionMessage.Native.pipe(optional)"
+        }
+      ],
+      "observed": {
+        "frames": 3,
+        "dataKeys": ["assistantMessageID", "error", "executed", "id", "sessionID"],
+        "withLocation": 3,
+        "withDurable": 3,
+        "durableVersions": [2],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.tool.input.delta",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "delta",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.tool.input.ended",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "text",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": {
+        "frames": 3,
+        "dataKeys": ["assistantMessageID", "id", "sessionID", "text"],
+        "withLocation": 3,
+        "withDurable": 3,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.tool.input.started",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": {
+        "frames": 3,
+        "dataKeys": ["assistantMessageID", "id", "name", "sessionID"],
+        "withLocation": 3,
+        "withDurable": 3,
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.tool.progress",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "metadata",
+          "optional": false,
+          "schema": "Schema.Record(Schema.String, Schema.Json)"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.tool.success",
+      "durability": "durable",
+      "durable": {
+        "version": 2,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "assistantMessageID",
+          "optional": false,
+          "schema": "SessionMessage.ID"
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "content",
+          "optional": false,
+          "schema": "Schema.NonEmptyArray(Content)"
+        },
+        {
+          "name": "metadata",
+          "optional": true,
+          "schema": "Schema.Record(Schema.String, Schema.Json).pipe(optional)"
+        },
+        {
+          "name": "executed",
+          "optional": false,
+          "schema": "Schema.Boolean"
+        },
+        {
+          "name": "native",
+          "optional": true,
+          "schema": "SessionMessage.Native.pipe(optional)"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.unarchived",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        }
+      ],
+      "observed": {
+        "frames": 1,
+        "dataKeys": ["sessionID"],
+        "withLocation": 0,
+        "withDurable": 1,
+        "durableVersions": [1],
+        "seenIn": ["probe:31"]
+      }
+    },
+    {
+      "type": "session.usage.recorded",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": false,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "source",
+          "optional": false,
+          "schema": "Schema.Literals([\"title\", \"compaction\"])"
+        },
+        {
+          "name": "cost",
+          "optional": false,
+          "schema": "Money.USD"
+        },
+        {
+          "name": "tokens",
+          "optional": false,
+          "schema": "TokenUsage.Info"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "session.usage.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "cost",
+          "optional": false,
+          "schema": "Money.USD"
+        },
+        {
+          "name": "tokens",
+          "optional": false,
+          "schema": "TokenUsage.Info"
+        }
+      ],
+      "observed": {
+        "frames": 12,
+        "dataKeys": ["cost", "sessionID", "tokens"],
+        "withLocation": 0,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
+      }
+    },
+    {
+      "type": "session.viewed",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "sessionID"
+      },
+      "publicStream": true,
+      "source": ["session-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "idle",
+          "optional": false,
+          "schema": "Schema.Finite"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "shell.created",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["shell.ts"],
+      "data": [
+        {
+          "name": "info",
+          "optional": false,
+          "schema": "Info"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "shell.deleted",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["shell.ts"],
+      "data": [
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "ID"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "shell.exited",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["shell.ts"],
+      "data": [
+        {
+          "name": "id",
+          "optional": false,
+          "schema": "ID"
+        },
+        {
+          "name": "exit",
+          "optional": true,
+          "schema": "optional(Schema.Finite)"
+        },
+        {
+          "name": "status",
+          "optional": false,
+          "schema": "Status"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "skill.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["skill.ts"],
+      "data": [],
+      "observed": {
+        "frames": 8,
+        "dataKeys": [],
+        "withLocation": 8,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "tui.command.execute",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["tui-event.ts"],
+      "data": [
+        {
+          "name": "command",
+          "optional": false,
+          "schema": "Schema.Union([ Schema.Literals([ \"session.list\", \"session.new\", \"session.interrupt\", \"session.background\", \"session.compact\", \"session.page.up\", \"session.page.down\", \"session.line.up\", \"session.line.down\", \"session.half.page.up\", \"session.h…"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "tui.prompt.append",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["tui-event.ts"],
+      "data": [
+        {
+          "name": "text",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "tui.session.select",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["tui-event.ts"],
+      "data": [
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID.annotate({ description: \"Session ID to navigate to\" })"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "tui.toast.show",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["tui-event.ts"],
+      "data": [
+        {
+          "name": "title",
+          "optional": true,
+          "schema": "optional(Schema.String)"
+        },
+        {
+          "name": "message",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "variant",
+          "optional": false,
+          "schema": "Schema.Literals([\"info\", \"success\", \"warning\", \"error\"])"
+        },
+        {
+          "name": "duration",
+          "optional": false,
+          "schema": "PositiveInt.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_TOAST_DURATION))).annotate({ description: \"Duration in milliseconds\", })"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "vcs.branch.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["vcs-event.ts"],
+      "data": [
+        {
+          "name": "branch",
+          "optional": true,
+          "schema": "optional(Schema.String)"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "websearch.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["websearch.ts"],
+      "data": [],
+      "observed": {
+        "frames": 8,
+        "dataKeys": [],
+        "withLocation": 8,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
+      }
+    },
+    {
+      "type": "workspace.failed",
+      "durability": "ephemeral",
+      "publicStream": false,
+      "source": ["workspace-event.ts"],
+      "data": [
+        {
+          "name": "message",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "workspace.ready",
+      "durability": "ephemeral",
+      "publicStream": false,
+      "source": ["workspace-event.ts"],
+      "data": [
+        {
+          "name": "name",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "workspace.status",
+      "durability": "ephemeral",
+      "publicStream": false,
+      "source": ["workspace-event.ts"],
+      "data": [
+        {
+          "name": "workspaceID",
+          "optional": false,
+          "schema": "WorkspaceID"
+        },
+        {
+          "name": "status",
+          "optional": false,
+          "schema": "Schema.Literals([\"connected\", \"connecting\", \"disconnected\", \"error\"])"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "worktree.failed",
+      "durability": "ephemeral",
+      "publicStream": false,
+      "source": ["worktree-event.ts"],
+      "data": [
+        {
+          "name": "message",
+          "optional": false,
+          "schema": "Schema.String"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "worktree.ready",
+      "durability": "ephemeral",
+      "publicStream": false,
+      "source": ["worktree-event.ts"],
+      "data": [
+        {
+          "name": "name",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "branch",
+          "optional": true,
+          "schema": "optional(Schema.String)"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "worktree.resolved",
+      "durability": "durable",
+      "durable": {
+        "version": 1,
+        "aggregate": "projectID"
+      },
+      "publicStream": true,
+      "source": ["worktree.ts"],
+      "data": [
+        {
+          "name": "projectID",
+          "optional": false,
+          "schema": "Project.ID"
+        },
+        {
+          "name": "directory",
+          "optional": false,
+          "schema": "AbsolutePath"
+        },
+        {
+          "name": "previous",
+          "optional": false,
+          "schema": "Project.ID"
+        },
+        {
+          "name": "adopted",
+          "optional": true,
+          "schema": "optional(Schema.Array(Project.ID))"
+        }
+      ],
+      "observed": null
+    },
+    {
+      "type": "worktree.updated",
+      "durability": "ephemeral",
+      "publicStream": true,
+      "source": ["worktree.ts"],
+      "data": [
+        {
+          "name": "projectID",
+          "optional": false,
+          "schema": "Project.ID"
+        }
+      ],
+      "observed": null
+    }
+  ],
+  "legacyV1": {
+    "$comment": "packages/schema/src/v1/** keeps 1.x-named definitions in the full manifest for the in-place V1 migration. None of the 1.x-only names is on the public stream.",
+    "types": [
+      "command.executed",
+      "file.edited",
+      "message.part.delta",
+      "message.part.removed",
+      "message.part.updated",
+      "message.removed",
+      "message.updated",
+      "permission.asked",
+      "permission.replied",
+      "session.created",
+      "session.deleted",
+      "session.diff",
+      "session.error",
+      "session.updated"
+    ]
+  }
+}

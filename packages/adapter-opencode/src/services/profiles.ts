@@ -39,6 +39,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type {
+  AgentEventConfidence,
   AgentProfile,
   ProfileFailure,
   ProfileIdentity,
@@ -391,13 +392,141 @@ const readConsoleOrgsFromServe: OpenCodeConsoleOrgsReader = async ({ executable,
   }
 };
 
+/**
+ * What in a store shows OpenCode 2.x opened it. 2.x shares the 1.x data file and migrates it in place (the plan's
+ * draft/OPENCODE-2-MIGRATION-PLAN.md §2.2, probed on 2.2.5 over a 1.19.5 store): its schema migrations add
+ * `session_v2`, and its one-time session copy records `kv` `migration.v1-v2` (upstream v2.2.5
+ * `packages/core/src/database/v1-migration.bun.ts`).
+ */
+export type OpenCodeStoreEvidence = 'kv:migration.v1-v2' | 'table:session_v2';
+
+/** Which release line has opened one root's `opencode.db`, read without writing it. */
+export type OpenCodeStoreReading =
+  | { status: 'absent' }
+  | { status: 'release-line-1' }
+  | {
+      status: 'opened-by-release-line-2';
+      evidence: OpenCodeStoreEvidence[];
+      /** The one-time copy's recorded phase: `sessions` is a copy still under way. */
+      migration?: 'completed' | 'sessions' | 'unrecognized';
+    }
+  | { status: 'unreadable'; message: string };
+
+const OPENCODE_2_MIGRATION_KEY = 'migration.v1-v2';
+
+function migrationPhase(value: unknown): 'completed' | 'sessions' | 'unrecognized' {
+  let decoded = value;
+  if (typeof decoded === 'string') {
+    try {
+      decoded = JSON.parse(decoded) as unknown;
+    } catch {
+      return 'unrecognized';
+    }
+  }
+  const phase = rec(decoded)?.phase;
+  return phase === 'completed' || phase === 'sessions' ? phase : 'unrecognized';
+}
+
+/** Read the release-line marks of one `opencode.db`. Only the migration key's value is selected from `kv`. */
+export async function readOpenCodeStoreLine(path: string): Promise<OpenCodeStoreReading> {
+  try {
+    await stat(path);
+  } catch (error) {
+    return absent(error)
+      ? { status: 'absent' }
+      : { status: 'unreadable', message: `${OPENCODE_DATABASE} could not be read` };
+  }
+  let database: DatabaseSync | undefined;
+  try {
+    const { DatabaseSync } = await import('node:sqlite');
+    database = new DatabaseSync(path, { readOnly: true, timeout: 250 });
+    const tables = new Set(
+      database
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('kv', 'session_v2')")
+        .all()
+        .map((row) => row.name),
+    );
+    const evidence: OpenCodeStoreEvidence[] = [];
+    let migration: 'completed' | 'sessions' | 'unrecognized' | undefined;
+    if (tables.has('kv')) {
+      const row = database.prepare('SELECT value FROM kv WHERE key = ?').get(OPENCODE_2_MIGRATION_KEY);
+      if (row) {
+        evidence.push('kv:migration.v1-v2');
+        migration = migrationPhase(row.value);
+      }
+    }
+    if (tables.has('session_v2')) evidence.push('table:session_v2');
+    if (evidence.length === 0) return { status: 'release-line-1' };
+    return { status: 'opened-by-release-line-2', evidence, ...(migration ? { migration } : {}) };
+  } catch {
+    return { status: 'unreadable', message: `the release-line marks in ${OPENCODE_DATABASE} could not be read` };
+  } finally {
+    database?.close();
+  }
+}
+
+/**
+ * A qualified warning about a profile root. `confidence` says how far the evidence reaches: `derived` when the
+ * store's own migration record shows the copy ran, `inferred` when only the 2.x schema is present.
+ */
+export interface OpenCodeProfileWarning {
+  code: 'store-opened-by-release-line-2';
+  confidence: Extract<AgentEventConfidence, 'derived' | 'inferred'>;
+  evidence: OpenCodeStoreEvidence[];
+  /** The copy's recorded phase, when the store records one. */
+  migration?: 'completed' | 'sessions' | 'unrecognized';
+  message: string;
+}
+
+/** The warnings one store reading carries; none for a store only 1.x has opened, or one that cannot be read. */
+export function openCodeStoreWarnings(reading: OpenCodeStoreReading): OpenCodeProfileWarning[] {
+  if (reading.status !== 'opened-by-release-line-2') return [];
+  const recorded = reading.evidence.includes('kv:migration.v1-v2');
+  // Only a completed copy was observed leaving later 1.x sessions behind (2.2.5). Upstream writes `sessions` with a
+  // cursor while the copy is under way and resumes it on the next start, so what it then takes is not observed.
+  const message = !recorded
+    ? 'This profile holds OpenCode 2 tables, so OpenCode 2 has probably opened it. If it has copied the OpenCode 1' +
+      ' sessions, sessions OpenCode 1 creates here from now on stay invisible to OpenCode 2, which copies them only' +
+      ' once (observed on OpenCode 2.2.5).'
+    : reading.migration === 'completed'
+      ? 'OpenCode 2 has opened this profile and completed its one-time copy of OpenCode 1 sessions. Sessions' +
+        ' OpenCode 1 creates here from now on stay invisible to OpenCode 2, which copies them only once (observed on' +
+        ' OpenCode 2.2.5).'
+      : reading.migration === 'sessions'
+        ? 'OpenCode 2 has opened this profile and started its one-time copy of OpenCode 1 sessions, which has not' +
+          ' finished. It resumes the copy the next time it starts; once the copy completes, sessions OpenCode 1' +
+          ' creates here stay invisible to OpenCode 2 (observed on OpenCode 2.2.5).'
+        : 'OpenCode 2 has opened this profile and recorded a one-time copy of OpenCode 1 sessions in a state this' +
+          ' adapter does not recognize. Sessions OpenCode 1 creates here may stay invisible to OpenCode 2.';
+  return [
+    {
+      code: 'store-opened-by-release-line-2',
+      confidence: recorded ? 'derived' : 'inferred',
+      evidence: [...reading.evidence],
+      ...(reading.migration ? { migration: reading.migration } : {}),
+      message,
+    },
+  ];
+}
+
+/**
+ * OpenCode's profile capability plus the root warnings Core has no field for yet. Nothing outside this adapter
+ * calls `storeWarnings` today: `verify()` cannot carry them, because Core's `ProfileIdentitySchema` is strict and has
+ * no warnings field, so a user sees them only once Core, the runtime's `verifyProfile` and a view gain one (plan §4 A1
+ * is open until then).
+ */
+export interface OpenCodeProfileService extends ProfileService {
+  /** Qualified warnings about the root's store; reading them never writes the store. */
+  storeWarnings(profile: AgentProfile): Promise<OpenCodeProfileWarning[]>;
+}
+
 /** The XDG data root a managed profile binds: one `data` level inside the profile root. */
 export function openCodeDataHome(profile: AgentProfile): string {
   return join(profile.dataRoot, 'data');
 }
 
 /** OpenCode profile capability: root binding, two native logins, and the sign-ins the root holds. */
-export function createOpenCodeProfileService(options: OpenCodeProfileServiceOptions = {}): ProfileService {
+export function createOpenCodeProfileService(options: OpenCodeProfileServiceOptions = {}): OpenCodeProfileService {
   const home = options.home ?? homedir();
   const executable = resolveOpenCodeExecutable(options.executable);
   const now = options.now ?? (() => new Date());
@@ -453,6 +582,10 @@ export function createOpenCodeProfileService(options: OpenCodeProfileServiceOpti
       // Both are the native interactive flows and must own a real terminal: the
       // host never observes the device code or the credential exchange.
       return { command: executable, args: [...args], cwd: loginOptions.cwd, env: bindingEnvironment(profile) };
+    },
+
+    async storeWarnings(profile: AgentProfile): Promise<OpenCodeProfileWarning[]> {
+      return openCodeStoreWarnings(await readOpenCodeStoreLine(join(dataDirectory(profile), OPENCODE_DATABASE)));
     },
 
     async verify(profile: AgentProfile): Promise<ProfileIdentity | ProfileFailure> {

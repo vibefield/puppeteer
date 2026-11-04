@@ -39,13 +39,18 @@ export {
   type StatusLineInvokerOptions,
 } from './session/channels/statusline.ts';
 export {
+  createSseEnvelope,
   createSseHub,
   listenHttpSse,
   HttpSseError,
   type HttpSseHub,
   type HttpSseRequest,
   type HttpSseServer,
+  type SseDurable,
+  type SseEnvelopeCodec,
+  type SseEvent,
   type SseRecord,
+  type SseScope,
 } from './session/channels/http-sse.ts';
 export { createHttpPersonaServer, type HttpPersonaServer } from './session/http-session-server.ts';
 export {
