@@ -358,6 +358,20 @@ jobs:
           --expected ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
           --actual ".agent-adaptation/live-artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
 
+      # Keep only identity manifests and version output, including when exact reconstruction fails.
+      # Runtime environments, homes, logs and credentials are deliberately outside this artifact.
+      - name: Retain installed-console reconstruction evidence
+        if: ${{ always() && steps.policy.outputs.artifactKind == 'installed-console' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: promotion-reconstruction-${{ matrix.platform }}
+          path: |
+            .agent-adaptation/artifacts/${{ matrix.platform }}/installed-console.json
+            .agent-adaptation/live-artifacts/${{ matrix.platform }}/installed-console.json
+            .agent-adaptation/live-artifacts/${{ matrix.platform }}/version.txt
+          include-hidden-files: true
+          retention-days: 7
+
       - name: Bind the complete acquisition to candidate evidence
         run: >-
           pnpm surface:evidence:artifacts
