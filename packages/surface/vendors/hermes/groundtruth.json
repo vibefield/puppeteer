@@ -98,6 +98,134 @@
         },
         "notes": "Integrity is pyproject.toml of the tagged checkout, not a source-archive or installed-console digest; the census ran in an unattested survey environment.",
         "uvLockSha256": "5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590"
+      },
+      {
+        "id": "hermes-0.21.5-darwin-arm64",
+        "platform": "darwin-arm64",
+        "channel": "stable",
+        "artifactKind": "installed-console",
+        "acquiredAt": "2026-11-04T05:56:47.848Z",
+        "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)",
+        "sourceUrl": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.9.24.tar.gz",
+        "acquisitionKey": "hermes@0.21.5@darwin-arm64@sha256:b8974fc6de9c980eec2f3197f6ed2fcdc92436baedbb0e83d5ea985ec5a33c59",
+        "identity": {
+          "sourceArchiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
+          "sourceTreeSha256": "sha256:867171ae4d917f85fe5f95a2cb224ec6e6e10a8ab98483e7cd21ec9ab4ce89df",
+          "generatedSourceSha256": "sha256:d2b67a252bdbdc4625de83d8eeb353e9818aeb55e4699e0c0ab4f726633a4bdd",
+          "sourceReference": "v2026.9.24",
+          "projectFileSha256": "sha256:6f969b9fdff95e7269ec808361e3ae8be5357036e6257e53a3306878cf8c41dd",
+          "lockFileSha256": "sha256:5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590",
+          "pythonVersion": "3.11.9",
+          "pythonExecutableSha256": "sha256:4e28e811a89aeac6eed668ae641c7f85f5831e42e8dc6cd9a85a3bcc032ec46a",
+          "pythonStandardLibrarySha256": "sha256:34e8157ee551e7fe31a2b5607f6cce9134a70eca2c60cfd8d176d957e34c7d67",
+          "environmentSha256": "sha256:870ae4437c188a9060c6a05b7eaefcb7ff204b272d3bfa97be4d70d8f44804e5",
+          "consoleEntryPoint": "hermes_cli.main:main",
+          "consoleBindingSha256": "sha256:30337f8ab4e4cc9e74e2099d53d1d0563993a74bf052e798493c4af6d8fa1672",
+          "runtimeNodeVersion": "22.22.0",
+          "runtimeNodeExecutableSha256": "sha256:913b144fdb40638b1acef7974ab3c33fbd527cc0974cb5da467ab1e6ac51b4d4",
+          "runtimeBundleSha256": "sha256:0fbd2209f1ab5befab9ed4057c1ce13dace08cf8674aee6e5b1189b856fa4891",
+          "runtimeEntrySha256": "sha256:2f88a6810f33a1e8d2f961e0d0b89c374a5bc186b4e6d05b94fb1a54765d9540"
+        },
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:b8974fc6de9c980eec2f3197f6ed2fcdc92436baedbb0e83d5ea985ec5a33c59"
+        }
+      },
+      {
+        "id": "hermes-0.21.5-darwin-x64",
+        "platform": "darwin-x64",
+        "channel": "stable",
+        "artifactKind": "installed-console",
+        "acquiredAt": "2026-11-04T05:56:47.888Z",
+        "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)",
+        "sourceUrl": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.9.24.tar.gz",
+        "acquisitionKey": "hermes@0.21.5@darwin-x64@sha256:86aff42eea88afea9ff7d7717e575aadeff0cf434cdeceffa82decc06ec173f6",
+        "identity": {
+          "sourceArchiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
+          "sourceTreeSha256": "sha256:867171ae4d917f85fe5f95a2cb224ec6e6e10a8ab98483e7cd21ec9ab4ce89df",
+          "generatedSourceSha256": "sha256:d2b67a252bdbdc4625de83d8eeb353e9818aeb55e4699e0c0ab4f726633a4bdd",
+          "sourceReference": "v2026.9.24",
+          "projectFileSha256": "sha256:6f969b9fdff95e7269ec808361e3ae8be5357036e6257e53a3306878cf8c41dd",
+          "lockFileSha256": "sha256:5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590",
+          "pythonVersion": "3.11.9",
+          "pythonExecutableSha256": "sha256:4e28e811a89aeac6eed668ae641c7f85f5831e42e8dc6cd9a85a3bcc032ec46a",
+          "pythonStandardLibrarySha256": "sha256:34e8157ee551e7fe31a2b5607f6cce9134a70eca2c60cfd8d176d957e34c7d67",
+          "environmentSha256": "sha256:01e90b9e32169fca67c8179ae8a062b5efdf1cb4e853df447a72e62f6afe4f6c",
+          "consoleEntryPoint": "hermes_cli.main:main",
+          "consoleBindingSha256": "sha256:30337f8ab4e4cc9e74e2099d53d1d0563993a74bf052e798493c4af6d8fa1672",
+          "runtimeNodeVersion": "22.22.0",
+          "runtimeNodeExecutableSha256": "sha256:bf0e0ff20d4e5a16436d1ec372e47161e52be8e487db8070ae3f06b01efbba0c",
+          "runtimeBundleSha256": "sha256:0fbd2209f1ab5befab9ed4057c1ce13dace08cf8674aee6e5b1189b856fa4891",
+          "runtimeEntrySha256": "sha256:2f88a6810f33a1e8d2f961e0d0b89c374a5bc186b4e6d05b94fb1a54765d9540"
+        },
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:86aff42eea88afea9ff7d7717e575aadeff0cf434cdeceffa82decc06ec173f6"
+        }
+      },
+      {
+        "id": "hermes-0.21.5-linux-x64",
+        "platform": "linux-x64",
+        "channel": "stable",
+        "artifactKind": "installed-console",
+        "acquiredAt": "2026-11-04T05:56:47.895Z",
+        "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)",
+        "sourceUrl": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.9.24.tar.gz",
+        "acquisitionKey": "hermes@0.21.5@linux-x64@sha256:27e615e31b3b8387ddf66df2e0a1eb846f49b4e3061e655caf80c3767ec724dc",
+        "identity": {
+          "sourceArchiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
+          "sourceTreeSha256": "sha256:867171ae4d917f85fe5f95a2cb224ec6e6e10a8ab98483e7cd21ec9ab4ce89df",
+          "generatedSourceSha256": "sha256:d2b67a252bdbdc4625de83d8eeb353e9818aeb55e4699e0c0ab4f726633a4bdd",
+          "sourceReference": "v2026.9.24",
+          "projectFileSha256": "sha256:6f969b9fdff95e7269ec808361e3ae8be5357036e6257e53a3306878cf8c41dd",
+          "lockFileSha256": "sha256:5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590",
+          "pythonVersion": "3.11.9",
+          "pythonExecutableSha256": "sha256:b62c75b971b3e8c0a9b22032dd1a3d59f0d3d384de7d8c43d83e601dc7c9ac5f",
+          "pythonStandardLibrarySha256": "sha256:080f2a6ce54e1b7872c0749faadf63cf4e4d3448af95e56a5b2cac758f7a275d",
+          "environmentSha256": "sha256:b2ce8a54aa3fc5da79bedda20522f323f3aa44e3d8f0720720b4fad2ac3d71f1",
+          "consoleEntryPoint": "hermes_cli.main:main",
+          "consoleBindingSha256": "sha256:30337f8ab4e4cc9e74e2099d53d1d0563993a74bf052e798493c4af6d8fa1672",
+          "runtimeNodeVersion": "22.22.0",
+          "runtimeNodeExecutableSha256": "sha256:1bec56ef7cfa9a76f3e0b7c0a87f220eb73f23102b9c0b4c7529a3f7c3ce7c31",
+          "runtimeBundleSha256": "sha256:0fbd2209f1ab5befab9ed4057c1ce13dace08cf8674aee6e5b1189b856fa4891",
+          "runtimeEntrySha256": "sha256:2f88a6810f33a1e8d2f961e0d0b89c374a5bc186b4e6d05b94fb1a54765d9540"
+        },
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:27e615e31b3b8387ddf66df2e0a1eb846f49b4e3061e655caf80c3767ec724dc"
+        }
+      },
+      {
+        "id": "hermes-0.21.5-windows-x64",
+        "platform": "windows-x64",
+        "channel": "stable",
+        "artifactKind": "installed-console",
+        "acquiredAt": "2026-11-04T05:56:47.903Z",
+        "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)",
+        "sourceUrl": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.9.24.tar.gz",
+        "acquisitionKey": "hermes@0.21.5@windows-x64@sha256:b944e768e7ba1bf4335104b6539d5bfc2604ae3717365694f713f58562f90eb5",
+        "identity": {
+          "sourceArchiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
+          "sourceTreeSha256": "sha256:867171ae4d917f85fe5f95a2cb224ec6e6e10a8ab98483e7cd21ec9ab4ce89df",
+          "generatedSourceSha256": "sha256:4516b4fc656064d227efa506b60b485c393eed1928c22476f7c4e1f30aa2cfd5",
+          "sourceReference": "v2026.9.24",
+          "projectFileSha256": "sha256:6f969b9fdff95e7269ec808361e3ae8be5357036e6257e53a3306878cf8c41dd",
+          "lockFileSha256": "sha256:5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590",
+          "pythonVersion": "3.11.9",
+          "pythonExecutableSha256": "sha256:21bb438c0d4a6f1f164b9a646f6ee000340185e5871180aec06db8d3f07c0082",
+          "pythonStandardLibrarySha256": "sha256:3292232ee435e7c4ed883d8c6dcbb26544a6ab227a17afc5ccec54e8a67490f6",
+          "environmentSha256": "sha256:7e973e940b2dec1aa593fb74f20654707c5c48a4e30c9582f97eef11b8446433",
+          "consoleEntryPoint": "hermes_cli.main:main",
+          "consoleBindingSha256": "sha256:1f3d700744a9f5e0cae6bbb497231a0d505ae99e020acd27b9b749570b987e7f",
+          "runtimeNodeVersion": "22.22.0",
+          "runtimeNodeExecutableSha256": "sha256:bae898add4643fcf890a83ad8ae56e20dce7e781cab161a53991ceba70c99ffb",
+          "runtimeBundleSha256": "sha256:0fbd2209f1ab5befab9ed4057c1ce13dace08cf8674aee6e5b1189b856fa4891",
+          "runtimeEntrySha256": "sha256:2f88a6810f33a1e8d2f961e0d0b89c374a5bc186b4e6d05b94fb1a54765d9540"
+        },
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:b944e768e7ba1bf4335104b6539d5bfc2604ae3717365694f713f58562f90eb5"
+        }
       }
     ],
     "sourceReferences": [

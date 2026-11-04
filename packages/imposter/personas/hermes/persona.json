@@ -4,12 +4,21 @@
     "package": "@vibefield/puppeteer-surface",
     "path": "vendors/hermes"
   },
-  "shimNames": ["hermes"],
+  "shimNames": [
+    "hermes"
+  ],
   "jsonrpcEventMethod": "event",
   "envelope": {},
   "bindings": {
     "$liveSessionId": "$uuid:live",
     "$storedSessionId": "$uuid:stored"
   },
-  "boot": [{ "op": "session.start" }, { "op": "session.ready" }]
+  "boot": [
+    {
+      "op": "session.start"
+    },
+    {
+      "op": "session.ready"
+    }
+  ]
 }
