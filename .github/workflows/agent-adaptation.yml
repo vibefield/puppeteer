@@ -53,14 +53,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: darwin-arm64
-            runner: macos-14
           - platform: darwin-x64
             runner: macos-15-intel
-          - platform: linux-x64
-            runner: ubuntu-24.04
-          - platform: windows-x64
-            runner: windows-2025
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
@@ -145,6 +139,23 @@ jobs:
           --uv uv
           --node node
           --npm npm
+
+      - name: Diagnose exact-source cryptography rebuild
+        shell: bash
+        run: |
+          set -e
+          first=.agent-adaptation/work/darwin-x64/python-environment/bin/python
+          "$first" scripts/diagnose-hermes-build.py .agent-adaptation/hermes-build-diagnostics/first
+          node scripts/materialize-installed-console.mjs --vendor hermes --version 0.21.5 --platform darwin-x64 --source-archive .agent-adaptation/source/darwin-x64/source.tar.gz --source-metadata .agent-adaptation/source/darwin-x64/download.json --work .agent-adaptation/work-second/darwin-x64 --output .agent-adaptation/second-artifacts/darwin-x64/installed-console.json --metadata .agent-adaptation/second-artifacts/darwin-x64/download.json --version-output .agent-adaptation/second-artifacts/darwin-x64/version.txt --python python --uv uv --node node --npm npm
+          .agent-adaptation/work-second/darwin-x64/python-environment/bin/python scripts/diagnose-hermes-build.py .agent-adaptation/hermes-build-diagnostics/second
+          cp .agent-adaptation/artifacts/darwin-x64/installed-console.json .agent-adaptation/hermes-build-diagnostics/first-manifest.json
+          cp .agent-adaptation/second-artifacts/darwin-x64/installed-console.json .agent-adaptation/hermes-build-diagnostics/second-manifest.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hermes-build-diagnostics
+          path: .agent-adaptation/hermes-build-diagnostics
+          retention-days: 3
 
       - uses: actions/upload-artifact@v4
         with:
