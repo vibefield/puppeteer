@@ -293,6 +293,8 @@ const methodNotes = {
     'A WebSocket client that never advertises server_requests gets every server→client request failed fast for its sessions.',
 };
 
+// A name that is both a method and a notification keys the notification bare and the method as
+// `gateway-method:<name>`. 0.20.0 did the reverse (`gateway-event:<name>`); findings.md declares the remap.
 for (const method of contract.methods) {
   const identity = notificationNames.has(method.name) ? `gateway-method:${method.name}` : method.name;
   const fixture = observed.get(`method:${method.name}`);
@@ -325,7 +327,7 @@ for (const method of contract.methods) {
 
 const requestNotes = {
   approval:
-    'Replaces the 0.20.0 approval.request event and approval.respond reply. The id is srq-<12 hex>; every attached client receives the frame, and the first response settles it. Puppeteer never answers: the native TUI does.',
+    'Replaces the 0.20.0 approval.request event; the client answers with a JSON-RPC response frame, and the legacy approval.respond method remains beside it. The id is srq-<12 hex>. Per the release source (not captured), every attached client receives the frame and the first response settles it. Puppeteer never answers: the native TUI does.',
   clarify: 'Replaces the 0.20.0 clarify.request event; a cancelled or timed-out request emits request.cancel.',
 };
 for (const request of contract['x-server-requests']) {

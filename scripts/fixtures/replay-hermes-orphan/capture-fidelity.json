@@ -1,0 +1,8 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "hermes",
+  "vendorVersion": "0.21.5",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": ["*/rpc.jsonl"],
+  "limitations": ["This deliberately incomplete inline-marked fixture exists only to test orphan-result rejection."]
+}

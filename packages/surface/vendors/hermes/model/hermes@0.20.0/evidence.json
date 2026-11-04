@@ -33,7 +33,7 @@
       "kind": "capture-set",
       "path": "packages/surface/vendors/hermes/captures/hermes@0.20.0",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "b4f62e3a776409a4095d37bb8d91599ca7915e0800445496318c270e76fc4124"
+      "sha256": "48617403fd2e39a01f54d089890f4336e1d2e115677e7b871f4af41c50875ce3"
     },
     {
       "id": "identity-probes",

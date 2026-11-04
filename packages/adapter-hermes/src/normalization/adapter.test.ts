@@ -1,6 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import {
+  agentEventType,
+  createInitialSessionState,
+  reduceSessionState,
+  type AgentEvent,
+  type AgentEventEnvelope,
+} from '@vibefield/puppeteer-core';
 import { HermesGatewayNormalizer } from './pipeline.js';
 
 /** The sanitized 0.21.5 census stream (Surface evidence), one native JSON-RPC frame per line. */
@@ -21,6 +28,25 @@ function serverRequest(id: string, method: string, params: Record<string, unknow
 
 function event(type: string, payload: Record<string, unknown> = {}, sessionId = 'abcd1234') {
   return { jsonrpc: '2.0', method: 'event', params: { type, session_id: sessionId, payload } };
+}
+
+/** Core's session reducer over these events, as the runtime would stamp them. */
+function coreState(events: readonly AgentEvent[]) {
+  let state = createInitialSessionState();
+  events.forEach((item, index) => {
+    state = reduceSessionState(state, {
+      type: agentEventType(item),
+      category: agentEventType(item).split(':')[0],
+      sequence: index + 1,
+      sessionId: 'runtime-session',
+      timestamp: '2026-11-03T00:00:00.000Z',
+      monotonicTime: index,
+      source: 'native-protocol',
+      confidence: 'authoritative',
+      event: item,
+    } as AgentEventEnvelope);
+  });
+  return state;
 }
 
 describe('HermesGatewayNormalizer', () => {
@@ -67,7 +93,7 @@ describe('HermesGatewayNormalizer', () => {
     expect(events.some((item) => item.type.startsWith('reasoning:'))).toBe(false);
   });
 
-  it('maps tools and native-TUI approvals without inventing a resolution', () => {
+  it('maps tools and settles native-TUI approvals without inventing their answer', () => {
     const normalizer = new HermesGatewayNormalizer();
     const success = [
       event('tool.start', { name: 'terminal', tool_id: 'call_1' }),
@@ -91,16 +117,35 @@ describe('HermesGatewayNormalizer', () => {
         presentation: 'native-tui',
       }),
     ]);
+    // The native TUI's answer never reaches the observer, but the gated tool finishing proves it was settled.
     expect(
       denied.normalize(
         event('tool.complete', { name: 'terminal', tool_id: 'call_rm', result: { status: 'blocked', exit_code: -1 } }),
       ).events,
-    ).toEqual([expect.objectContaining({ type: 'tool:failed', toolCallId: 'call_rm' })]);
+    ).toEqual([
+      expect.objectContaining({ type: 'tool:failed', toolCallId: 'call_rm' }),
+      { type: 'interaction:permission-resolved', requestId: 'call_rm', outcome: 'unknown' },
+    ]);
     expect(
       denied
         .normalize(event('tool.complete', { name: 'terminal', tool_id: 'call_rm', result: { status: 'blocked' } }))
         .events.some((item) => item.type === 'interaction:permission-resolved'),
     ).toBe(false);
+  });
+
+  it('settles a 0.20 approval still open when its turn completes', () => {
+    const normalizer = new HermesGatewayNormalizer();
+    normalizer.normalize(event('message.start'));
+    normalizer.normalize(event('approval.request', { name: 'terminal', tool_id: 'call_rm' }));
+    expect(
+      normalizer
+        .normalize(event('message.complete', { text: 'done', status: 'complete' }))
+        .events.map((item) => (item.type === 'interaction:permission-resolved' ? item : item.type)),
+    ).toEqual([
+      'conversation:assistant-message',
+      { type: 'interaction:permission-resolved', requestId: 'call_rm', outcome: 'unknown' },
+      'turn:completed',
+    ]);
   });
 
   it('acknowledges a created session without inventing a second start', () => {
@@ -194,27 +239,74 @@ describe('HermesGatewayNormalizer', () => {
     expect(normalizer.normalize(event('clarify.expire', { request_id: 'clarify-1' })).events).toEqual([]);
   });
 
-  it('opens a native-TUI permission from the 0.21.5 approval server request in the captured deny turn', () => {
+  it('opens and settles a native-TUI permission from the 0.21.5 approval server request in the captured deny turn', () => {
     const normalizer = new HermesGatewayNormalizer();
     const frames = census('permission-deny');
     const approval = frames.find((frame) => frame.method === 'approval') as { params: { request_id: string } };
+    const started = frames.find((frame) => (frame.params as { type?: string } | undefined)?.type === 'tool.start') as {
+      params: { payload: { tool_id: string } };
+    };
     const events = frames.flatMap((frame) => normalizer.normalize(frame).events);
 
     expect(events.filter((item) => item.type.startsWith('interaction:'))).toEqual([
       {
         type: 'interaction:permission-requested',
         requestId: approval.params.request_id,
+        toolCallId: started.params.payload.tool_id,
         tool: 'terminal',
         presentation: 'native-tui',
       },
+      { type: 'interaction:permission-resolved', requestId: approval.params.request_id, outcome: 'unknown' },
     ]);
     const types = events.map((item) => item.type);
     expect(types.indexOf('tool:requested')).toBeLessThan(types.indexOf('interaction:permission-requested'));
     expect(types.indexOf('interaction:permission-requested')).toBeLessThan(types.indexOf('tool:failed'));
-    expect(types).toContain('turn:completed');
+    expect(types.indexOf('tool:failed')).toBeLessThan(types.indexOf('interaction:permission-resolved'));
+    expect(types.indexOf('interaction:permission-resolved')).toBeLessThan(types.indexOf('turn:completed'));
+
+    // Core state agrees with the monitor: the approval is not left pending, and exit reports no orphan.
+    const settled = coreState(events);
+    expect([...settled.permissions.keys()]).toEqual([]);
+    const exited = coreState([...events, { type: 'session:exited', reason: 'exit' }]);
+    expect(exited.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain('permissions-orphaned-on-exit');
   });
 
-  it('closes a server-request permission only when Hermes withdraws it', () => {
+  it('settles a server-request permission on its tool, its turn, or a withdrawal, exactly once', () => {
+    const normalizer = new HermesGatewayNormalizer();
+    normalizer.normalize(event('message.start'));
+    normalizer.normalize(event('tool.start', { name: 'terminal', tool_id: 'call-x' }));
+    expect(
+      normalizer.normalize(serverRequest('srq-00000000000d', 'approval', { request_id: 'approval-x' })).events,
+    ).toEqual([
+      {
+        type: 'interaction:permission-requested',
+        requestId: 'approval-x',
+        toolCallId: 'call-x',
+        tool: 'terminal',
+        presentation: 'native-tui',
+      },
+    ]);
+    expect(
+      normalizer.normalize(event('tool.complete', { name: 'terminal', tool_id: 'call-x', result: { exit_code: 0 } }))
+        .events,
+    ).toEqual([
+      expect.objectContaining({ type: 'tool:completed', toolCallId: 'call-x' }),
+      { type: 'interaction:permission-resolved', requestId: 'approval-x', outcome: 'unknown' },
+    ]);
+    expect(
+      normalizer.normalize(event('request.cancel', { id: 'srq-00000000000d', method: 'approval', reason: 'timeout' })),
+    ).toMatchObject({ disposition: 'retained-native' });
+
+    // No tool in flight: the approval is uncorrelated and the turn's completion settles it.
+    normalizer.normalize(serverRequest('srq-00000000000e', 'approval', { request_id: 'approval-y' }));
+    expect(
+      normalizer
+        .normalize(event('message.complete', { text: 'done', status: 'complete' }))
+        .events.filter((item) => item.type === 'interaction:permission-resolved'),
+    ).toEqual([{ type: 'interaction:permission-resolved', requestId: 'approval-y', outcome: 'unknown' }]);
+  });
+
+  it('closes a server-request permission when Hermes withdraws it', () => {
     const normalizer = new HermesGatewayNormalizer();
     const request = serverRequest('srq-0123456789ab', 'approval', {
       request_id: 'approval-1',

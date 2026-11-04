@@ -72,6 +72,27 @@ function hermesReplayFiles(captureDirectory) {
   return files.sort();
 }
 
+/**
+ * Hermes's census writes flat native frames and marks only its own outbound
+ * frames (requests and the answer to a server request) with an inline
+ * `"direction": "client"`; every unmarked frame in such a file came from the
+ * agent. A file carrying that marker is therefore as directional as a
+ * `{direction, message}`-wrapped capture, and its results correlate the same way.
+ */
+function hasInlineClientMarker(source) {
+  if (!source.includes('"direction"')) return false;
+  try {
+    const frame = JSON.parse(source);
+    return frame?.direction === 'client' && !Object.hasOwn(frame, 'message');
+  } catch {
+    return false;
+  }
+}
+
+function inlineDirection(carrier) {
+  return carrier.direction === 'client' ? 'client-to-agent' : 'agent-to-client';
+}
+
 function opencodeReplayFiles(captureDirectory) {
   const files = [];
   const visit = (directory) => {
@@ -228,6 +249,7 @@ export function replayAgentSurface({
     const pendingHttp = new Map();
     const document = file.endsWith('.jsonl') ? undefined : readFileSync(file, 'utf8').trim();
     const lines = document === undefined ? readFileSync(file, 'utf8').split('\n') : [document];
+    const inlineDirectional = lines.some(hasInlineClientMarker);
     for (const [index, source] of lines.entries()) {
       if (!source.trim()) continue;
       const location = `${relative(captureAbsolute, file).split(sep).join('/')}:${index + 1}`;
@@ -339,12 +361,13 @@ export function replayAgentSurface({
         (outer?.direction === 'agent-to-client' || outer?.direction === 'client-to-agent') &&
         outer?.message !== null &&
         typeof outer?.message === 'object';
-      const direction = wrapped ? outer.direction : undefined;
       const carrier = wrapped ? outer.message : outer;
       if (carrier === null || typeof carrier !== 'object' || Array.isArray(carrier)) {
         issues.push({ kind: 'invalid-carrier', location, message: 'native frame is not an object' });
         continue;
       }
+      const direction = wrapped ? outer.direction : inlineDirectional ? inlineDirection(carrier) : undefined;
+      const directional = wrapped || inlineDirectional;
 
       if (typeof carrier.method !== 'string') {
         if (carrier.id !== undefined && (carrier.result !== undefined || carrier.error !== undefined)) {
@@ -361,7 +384,7 @@ export function replayAgentSurface({
             // cannot be correlated. They still participate in the exact-byte
             // digest. A directional protocol capture has no such ambiguity:
             // an orphan result means the capture is incomplete or reordered.
-            if (wrapped) {
+            if (directional) {
               issues.push({
                 kind: 'unattributed-result',
                 location,

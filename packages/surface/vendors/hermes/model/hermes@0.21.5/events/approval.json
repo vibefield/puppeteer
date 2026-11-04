@@ -287,5 +287,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "Replaces the 0.20.0 approval.request event and approval.respond reply. The id is srq-<12 hex>; every attached client receives the frame, and the first response settles it. Puppeteer never answers: the native TUI does."
+  "notes": "Replaces the 0.20.0 approval.request event; the client answers with a JSON-RPC response frame, and the legacy approval.respond method remains beside it. The id is srq-<12 hex>. Per the release source (not captured), every attached client receives the frame and the first response settles it. Puppeteer never answers: the native TUI does."
 }

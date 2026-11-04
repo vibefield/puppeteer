@@ -34,7 +34,7 @@
       "kind": "capture-set",
       "path": "packages/surface/vendors/hermes/captures/hermes@0.21.5",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "a8d46a00732fe5fc12a3044c4623b25f8152e48874431433e1b1e5e877acf469"
+      "sha256": "76405bb50555663c183c46f703b030182cefc12158968abb0fe907954ef54756"
     },
     {
       "id": "identity-probes",
@@ -56,7 +56,7 @@
       "path": "packages/surface/vendors/hermes/model/hermes@0.21.5",
       "exclude": ["evidence.json"],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "caf7f7e6b64c5c4d7da40b97425f708e1c7b55977e8cde126322b9c9020faaa8"
+      "sha256": "3b40919b6210b9f638dbb2cca00da47eba6594635afb540bb23d11353992e0fe"
     }
   ],
   "claims": [
