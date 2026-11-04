@@ -18,11 +18,18 @@
  *   loopback model (census/interactive-lane.mjs), followed by a resume.
  *
  * No lane borrows the owner's settings, plugins, hooks, transcripts, keychain,
- * or tokens. Two checks fail the run instead of trusting that: every lane's
- * HTTP(S) proxy is the census egress recorder (census/egress-guard.mjs), and a
- * lane that attempts any non-loopback destination fails; the headless lane's
- * model endpoint is a loopback recorder, and any request reaching it means the
- * artifact found a credential the disposable environment does not hold.
+ * or tokens. On Linux the CLI first re-executes itself in a network-deny
+ * sandbox (census/sandbox.mjs: a fresh user, network and mount namespace with
+ * only loopback, the artifact's well-known credential directory and the
+ * caller's home hidden, a scrubbed environment) and refuses to run unless the
+ * namespace proves that every non-loopback destination is refused; the proof
+ * is written to `sandbox.json`. `--sandbox none` opts out (other platforms
+ * default to it), leaving only the checks below. Those checks fail the run
+ * instead of trusting the environment: every lane's HTTP(S) proxy is the
+ * census egress recorder (census/egress-guard.mjs), and a lane that attempts
+ * any non-loopback destination fails; the headless lane's model endpoint is a
+ * loopback recorder, and any request reaching it means the artifact found a
+ * credential the disposable environment does not hold.
  */
 import { randomUUID } from 'node:crypto';
 import { spawnSync, spawn } from 'node:child_process';
@@ -33,6 +40,7 @@ import { HOOK_TOKEN_VAR, hookSettings, projectOrder, startHookSink, writeForward
 import { assertNoEgress, startEgressRecorder } from './egress-guard.mjs';
 import { createIsolatedRoot, egressEnvironment, isolatedEnvironment, removeIsolatedRoot } from './isolation.mjs';
 import { LOOPBACK_AUTH_TOKEN, LOOPBACK_MODEL, startLoopbackModel } from './loopback-model.mjs';
+import { CENSUS_SANDBOX_VAR, enterCensusSandbox, proveNetworkSandbox } from './sandbox.mjs';
 
 const vendorRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -331,10 +339,40 @@ async function runApiErrorLane({ artifact, sink, egress, outputRoot }) {
   return summary;
 }
 
+/**
+ * Value-free sandbox proof (interface names, route counts, probe destinations
+ * and error codes), copied into the capture set as a semantic projection.
+ */
+function writeSandboxProof(outputRoot, entry) {
+  writeFileSync(
+    join(outputRoot, 'sandbox.json'),
+    `${JSON.stringify(
+      {
+        projection:
+          'census network-deny sandbox observed from inside, per capture mode; interface names, route counts, probe destinations and error codes only',
+        entries: [entry],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
+
 export async function runClaudeCensus({ artifact, expectedVersion, outputRoot, auxRoot, lanes = CLAUDE_CENSUS_LANES }) {
   for (const lane of lanes) {
     if (!CLAUDE_CENSUS_LANES.includes(lane)) throw new Error(`unknown Claude census lane ${lane}`);
   }
+  // Inside the sandbox the artifact does not run, not even for --version, until the namespace itself
+  // shows that only loopback is reachable.
+  const sandboxed = process.env[CENSUS_SANDBOX_VAR] === 'netns';
+  const modes = lanes.flatMap((lane) => CLAUDE_CAPTURE_MODES[lane]);
+  const proven = sandboxed ? await proveNetworkSandbox() : undefined;
+  if (proven && !proven.denied) {
+    throw new Error(
+      `Claude census refused: the network sandbox does not deny non-loopback egress: ${JSON.stringify(proven.proof)}`,
+    );
+  }
+  if (proven) console.log(`census sandbox proven before any artifact execution: ${JSON.stringify(proven.proof)}`);
   const identity = claudeVersionOf(artifact);
   if (identity.version !== expectedVersion) {
     throw new Error(`expected Claude ${expectedVersion}, got ${identity.output}`);
@@ -343,6 +381,9 @@ export async function runClaudeCensus({ artifact, expectedVersion, outputRoot, a
     throw new Error(`refusing to append to existing raw census: ${outputRoot}`);
   }
   mkdirSync(outputRoot, { recursive: true, mode: 0o700 });
+
+  const sandbox = proven ? { modes, ...proven.proof } : undefined;
+  if (sandbox) writeSandboxProof(outputRoot, sandbox);
 
   const egress = await startEgressRecorder();
   let apiErrors = [];
@@ -361,6 +402,7 @@ export async function runClaudeCensus({ artifact, expectedVersion, outputRoot, a
       interactive = await runInteractiveLanes({ artifact, outputRoot, auxRoot, events: CLAUDE_HOOK_EVENTS, egress });
     }
     assertNoEgress(egress);
+    if (sandbox) writeSandboxProof(outputRoot, { ...sandbox, nonLoopbackEgressAttempts: egress.nonLoopback().length });
   } finally {
     await egress.close();
     // Destinations only (loopback included), kept even when a lane failed, so a review can restate the egress claim.
@@ -388,6 +430,7 @@ export async function runClaudeCensus({ artifact, expectedVersion, outputRoot, a
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
+  enterCensusSandbox({ passEnvironment: ['PUPPETEER_CLAUDE_BIN'] });
   // Always name the exact artifact: a bare `claude` is whatever release PATH happens to hold.
   const artifactFlag = flag('--artifact', process.env.PUPPETEER_CLAUDE_BIN);
   if (!artifactFlag || (!isAbsolute(artifactFlag) && !artifactFlag.includes('/'))) {

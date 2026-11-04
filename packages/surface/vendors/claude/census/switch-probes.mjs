@@ -25,6 +25,7 @@ import { delay, loadNodePty, scriptedPlan } from './interactive-lane.mjs';
 import { assertNoEgress, startEgressRecorder } from './egress-guard.mjs';
 import { createIsolatedRoot, egressEnvironment, isolatedEnvironment, removeIsolatedRoot } from './isolation.mjs';
 import { LOOPBACK_AUTH_TOKEN, LOOPBACK_MODEL, startLoopbackModel } from './loopback-model.mjs';
+import { enterProvenCensusSandbox } from './sandbox.mjs';
 
 const MANAGED_EVENTS = ['SessionStart', 'UserPromptSubmit', 'Stop', 'SessionEnd'];
 const TOOL_EVENTS = ['PreToolUse', 'PostToolUse'];
@@ -257,6 +258,7 @@ function flag(name) {
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
+  await enterProvenCensusSandbox();
   const artifact = flag('--artifact');
   const output = flag('--output');
   if (!artifact || !output)

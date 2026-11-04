@@ -22,11 +22,16 @@
  * projections in capture-fidelity.json.
  *
  * Usage: node surface/sanitize-captures.mjs [--check] <input-dir> [output-dir]
+ *        node surface/sanitize-captures.mjs --merge <input-dir> <output-dir>
  * Name the directories explicitly: the no-argument form resolves the support
  * ledger's active version, which is not necessarily the one being captured.
+ * `--merge` adds the lanes of a later census run (for example one lane re-run
+ * on another host) to an existing sanitized set: it refuses a mode the set
+ * already holds, and merges the per-mode projections (arrival order, sandbox
+ * proof) in census lane order instead of replacing them.
  * Requires node >= 22.18 (type stripping).
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -36,10 +41,20 @@ import {
 } from '@vibefield/puppeteer-surface/sanitize';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 import { writeCaptureFidelity } from '../../scripts/capture-fidelity.mjs';
+import { CLAUDE_CAPTURE_MODES } from './census/harness.mjs';
 import { claudeCaptureRules } from './privacy.mjs';
 
 /** Value-free census projections that may accompany the hook carriers. */
-export const CLAUDE_CAPTURE_PROJECTIONS = ['ordering.json', 'transcript-shape.json', 'statusline-shape.json'];
+export const CLAUDE_CAPTURE_PROJECTIONS = [
+  'ordering.json',
+  'transcript-shape.json',
+  'statusline-shape.json',
+  'sandbox.json',
+];
+
+/** Projections whose entries are per capture mode, so two disjoint runs merge by concatenation. */
+const MERGEABLE_PROJECTIONS = new Set(['ordering.json', 'sandbox.json']);
+const LANE_ORDER = Object.values(CLAUDE_CAPTURE_MODES).flat();
 
 export function sanitizeCaptureDirectory(input, output = input) {
   return sanitizeWithRules(input, output, claudeCaptureRules);
@@ -71,12 +86,67 @@ export function copyCaptureProjections(input, output) {
   return copied;
 }
 
+function laneIndex(mode) {
+  const index = LANE_ORDER.indexOf(mode);
+  return index < 0 ? LANE_ORDER.length : index;
+}
+
+/** One per-mode projection holding both runs' entries, in census lane order (stable within a mode). */
+export function mergeProjection(name, existing, added) {
+  if (existing.projection !== added.projection) throw new Error(`${name}: the two runs describe different projections`);
+  const entries = [...existing.entries, ...added.entries];
+  const key = (entry) => laneIndex(entry.mode ?? entry.modes?.[0]);
+  return {
+    ...existing,
+    entries: entries
+      .map((entry, position) => ({ entry, position }))
+      .sort((left, right) => key(left.entry) - key(right.entry) || left.position - right.position)
+      .map(({ entry }) => entry),
+  };
+}
+
+/**
+ * Add a later run's lanes to an existing sanitized set. Every refusal happens
+ * before anything is written, so a refused merge leaves the set unchanged.
+ */
+export function mergeCaptureDirectory(input, output) {
+  const added = captureModes(input);
+  const present = new Set(captureModes(output));
+  const overlap = added.filter((mode) => present.has(mode));
+  if (overlap.length > 0) throw new Error(`refusing to merge: ${output} already holds ${overlap.join(', ')}`);
+  const projections = [];
+  for (const name of CLAUDE_CAPTURE_PROJECTIONS) {
+    if (!existsSync(join(input, name))) continue;
+    const exists = existsSync(join(output, name));
+    if (exists && !MERGEABLE_PROJECTIONS.has(name)) {
+      throw new Error(`refusing to merge: both runs hold ${name}, which is not a per-mode projection`);
+    }
+    const issues = checkCaptureFile(join(input, name), name, claudeCaptureRules);
+    if (issues.length > 0) throw new Error(`refusing to merge ${name}:\n${issues.join('\n')}`);
+    projections.push({ name, exists });
+  }
+  const result = sanitizeCaptureDirectory(input, output);
+  for (const { name, exists } of projections) {
+    const addedProjection = JSON.parse(readFileSync(join(input, name), 'utf8'));
+    const merged = exists
+      ? mergeProjection(name, JSON.parse(readFileSync(join(output, name), 'utf8')), addedProjection)
+      : addedProjection;
+    writeFileSync(join(output, name), `${JSON.stringify(merged, null, 2)}\n`);
+  }
+  return { ...result, modes: added, projections: projections.map(({ name }) => name) };
+}
+
 export function claudeCaptureFidelity(output, version, projections) {
   const modes = captureModes(output);
   const limitations = [
     'Hook stdin JSON carriers are type-preserving: sensitive scalar values are replaced in place while JSON keys, containers, primitive types, and record ordering within each event file are retained.',
     'Raw transcripts, status-line payloads, and process diagnostics stay in the gitignored captures-raw tree; only value-free projections of them are committed.',
   ];
+  if (modes.includes('headless')) {
+    limitations.push(
+      'headless is a print turn with no credential at all; its model endpoint was a loopback tripwire that received no request, so the authentication failure is native and no model was involved.',
+    );
+  }
   if (modes.some((mode) => mode.startsWith('api-error-'))) {
     limitations.push(
       'api-error-<status> modes are print turns against a loopback Messages API that returned that HTTP status to a placeholder token; the native error mapping is real, the failures are synthetic.',
@@ -102,6 +172,11 @@ export function claudeCaptureFidelity(output, version, projections) {
               limitations: [
                 'Projections keep only event names, enum discriminators, record types, key names, and counts; they prove occurrence, ordering, and record shape, never a value.',
                 'Arrival order is the order the census sink received each rail: a command-forwarded hook (SessionStart, Setup) can arrive after an HTTP hook Claude emitted later.',
+                ...(projections.includes('sandbox.json')
+                  ? [
+                      'sandbox.json is the network-deny sandbox observed from inside its namespace before any artifact ran, for the modes each entry names; modes no entry names ran without that sandbox.',
+                    ]
+                  : []),
               ],
             },
           ],
@@ -113,6 +188,7 @@ export function claudeCaptureFidelity(output, version, projections) {
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
   const check = process.argv.includes('--check');
+  const merge = process.argv.includes('--merge');
   let directories = process.argv.slice(2).filter((argument) => !argument.startsWith('--'));
   if (directories.length === 0) {
     const selected = resolveAgentModel({ vendor: 'claude' });
@@ -127,7 +203,21 @@ if (invokedDirectly) {
     console.error('usage: node surface/sanitize-captures.mjs [--check] [input-directory] [output-directory]');
     process.exit(2);
   }
-  if (check) {
+  if (merge) {
+    if (check || directories.length !== 2) {
+      console.error('usage: node surface/sanitize-captures.mjs --merge <input-directory> <output-directory>');
+      process.exit(2);
+    }
+    const [input, output] = directories;
+    const version = /claude@([^/]+)\/?$/.exec(output)?.[1];
+    if (!version) throw new Error(`cannot infer Claude version from capture path: ${output}`);
+    const result = mergeCaptureDirectory(input, output);
+    const projections = CLAUDE_CAPTURE_PROJECTIONS.filter((name) => existsSync(join(output, name)));
+    writeCaptureFidelity(output, claudeCaptureFidelity(output, version, projections));
+    console.log(
+      `merged ${result.modes.join(', ')}: ${result.lines} capture lines in ${result.files} files; projections: ${result.projections.join(', ') || 'none'}`,
+    );
+  } else if (check) {
     const issues = checkCaptureDirectory(directories[0]);
     for (const issue of issues) console.error(issue);
     if (issues.length > 0) process.exit(1);

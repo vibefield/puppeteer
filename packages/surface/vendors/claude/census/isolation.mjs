@@ -18,7 +18,10 @@
  * and every HTTP(S) proxy variable default to a refusing loopback port, and
  * only loopback bypasses the proxy. Lanes that run a census-owned server
  * replace those defaults with their loopback model and the egress recorder
- * (census/egress-guard.mjs).
+ * (census/egress-guard.mjs). The environment cannot hide a credential the
+ * artifact reads from a fixed path (2.1.311 reads one under
+ * /home/claude/.claude/remote); the Linux network-deny sandbox
+ * (census/sandbox.mjs) hides that directory and takes the network away.
  */
 import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

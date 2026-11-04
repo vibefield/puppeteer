@@ -15,7 +15,8 @@
  * Synchronous probes (`spawnSync`) cannot serve a recorder in-process; they get
  * the refusing FAIL_CLOSED_PROXY_URL from census/isolation.mjs instead, which
  * blocks the same traffic without recording it. Neither mechanism covers a
- * client that ignores the proxy variables; that needs a network-deny sandbox.
+ * client that ignores the proxy variables; on Linux the census CLIs also run
+ * inside the network-deny sandbox of census/sandbox.mjs, which does.
  */
 import { createServer } from 'node:http';
 

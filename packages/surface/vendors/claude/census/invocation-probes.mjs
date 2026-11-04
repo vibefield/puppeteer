@@ -26,6 +26,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createIsolatedRoot, isolatedEnvironment, removeIsolatedRoot } from './isolation.mjs';
+import { enterProvenCensusSandbox } from './sandbox.mjs';
 
 /** Parse probes added for 2.1.308 on top of the previous record's list. */
 export const ADDED_PARSE_PROBES = [
@@ -123,6 +124,7 @@ function flag(name) {
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
+  await enterProvenCensusSandbox();
   const artifact = flag('--artifact');
   const previousPath = flag('--previous');
   const output = flag('--output');
