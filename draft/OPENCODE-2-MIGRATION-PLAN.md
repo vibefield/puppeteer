@@ -150,9 +150,14 @@ Nearly every semantic rail the adapter normalizes changes name, envelope, route,
 the loopback server, the data root, and the no-replay rule survive. Adapting to 2.x means a new Surface census, ASM,
 persona, and adapter normalization, not a version bump.
 
-## 3. Decision needed: who owns 2.x
+## 3. Decision: who owns 2.x
 
-The owner has not decided. Nothing in the repository may presuppose the answer: no `vendors/opencode-v2`, no
+**Ruled 2026-11-04 by the owner: option (a), a second release line of `opencode`.** The adapter, persona, canonical
+file, map and ledger move to 2.x together in one switch, and 1.x support ends at the 2.x promotion. The analysis below
+is kept as the record of what the ruling accepts. Its cost list, including the §2.2 shared-store migration and the
+refusal of 1.x installs after promotion, is now a set of explicit tasks in §4 B, not a reason to reopen the decision.
+
+Before the ruling the owner had not decided. Nothing in the repository may presuppose the answer: no `vendors/opencode-v2`, no
 `opencode@2.*` model folder, no ledger row or `candidateVersion`, no adapter package. Repo rules that shape the options:
 a manifest's vendor must equal its folder; model folders are `<vendor>@<version>`; Imposter's `loadModel` reads only
 the vendor's `groundtruth.json`; `upstream.json` resolves one authoritative stable detector
@@ -202,7 +207,7 @@ adapter.
   to 2.2.5 on 10-30). When upstream ends 1.x,
   the `opencode` row becomes `deprecated` (the schema supports it) and the placeholder name outlives its reason.
 
-### Recommendation: (b), with a planned exit to a single row
+### Pre-ruling recommendation (not adopted): (b), with a planned exit to a single row
 
 1. 1.x is verified today and is what `/install`, Homebrew `opencode` and GitHub Latest install. Option (a) would refuse
    most current installs at the moment of promotion; (b) costs 1.x users nothing.
