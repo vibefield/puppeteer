@@ -194,9 +194,9 @@ jobs:
       - name: Sanitize and audit before uploading any evidence
         run: |
           node packages/surface/vendors/claude/sanitize-captures.mjs \
-            .agent-adaptation/census-raw .agent-adaptation/census-reviewed/captures
+            .agent-adaptation/census-raw ".agent-adaptation/census-reviewed/captures/claude@${AGENT_VERSION}"
           node packages/surface/vendors/claude/sanitize-captures.mjs \
-            --check .agent-adaptation/census-reviewed/captures
+            --check ".agent-adaptation/census-reviewed/captures/claude@${AGENT_VERSION}"
           sha256sum .agent-adaptation/census-artifact/linux-x64/agent \
             > .agent-adaptation/census-reviewed/artifact.sha256
       - uses: actions/upload-artifact@v4
@@ -276,6 +276,9 @@ jobs:
 
       - name: Refresh and audit immutable evidence
         run: pnpm --filter @vibefield/puppeteer-surface surface:evidence:write
+
+      - name: Refresh the candidate adapter evidence lock
+        run: node scripts/check-adapter-groundtruth-maps.mjs --write --vendor "$AGENT_VENDOR"
 
       - run: pnpm --filter @vibefield/puppeteer-surface run "surface:audit:${AGENT_VENDOR}"
       - run: pnpm --filter "@vibefield/puppeteer-adapter-${AGENT_VENDOR}" test

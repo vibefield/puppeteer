@@ -107,8 +107,9 @@ export function auditAdapterGroundTruthMaps(root = repositoryRoot) {
   return issues;
 }
 
-function writeMaps(root = repositoryRoot) {
-  for (const provider of adapters) {
+export function writeMaps(root = repositoryRoot, providers = adapters) {
+  if (providers.some((provider) => !adapters.includes(provider))) throw new Error('unknown adapter provider');
+  for (const provider of providers) {
     const path = join(root, 'packages', `adapter-${provider}`, 'groundtruth-map.json');
     const map = buildAdapterGroundTruthMap(root, provider);
     writeFileSync(path, `${JSON.stringify(map, null, 2)}\n`);
@@ -120,7 +121,8 @@ const invokedDirectly =
   process.argv[1] && fileURLToPath(import.meta.url) === join(repositoryRoot, relative(repositoryRoot, process.argv[1]));
 if (invokedDirectly) {
   if (process.argv.includes('--write')) {
-    writeMaps();
+    const vendorIndex = process.argv.indexOf('--vendor');
+    writeMaps(repositoryRoot, vendorIndex < 0 ? adapters : [process.argv[vendorIndex + 1]]);
   } else {
     const issues = auditAdapterGroundTruthMaps();
     if (issues.length > 0) {

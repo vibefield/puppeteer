@@ -1,7 +1,30 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { auditAdapterGroundTruthMaps, buildAdapterGroundTruthMap } from './check-adapter-groundtruth-maps.mjs';
+import {
+  auditAdapterGroundTruthMaps,
+  buildAdapterGroundTruthMap,
+  writeMaps,
+} from './check-adapter-groundtruth-maps.mjs';
+
+test('candidate lock refresh touches only the selected adapter', () => {
+  const root = mkdtempSync(join(tmpdir(), 'puppeteer-map-scope-'));
+  for (const vendor of ['codex', 'hermes']) {
+    const adapter = join(root, 'packages', `adapter-${vendor}`);
+    const surface = join(root, 'packages', 'surface', 'vendors', vendor);
+    mkdirSync(join(adapter, 'src'), { recursive: true });
+    mkdirSync(surface, { recursive: true });
+    writeFileSync(join(adapter, 'groundtruth-map.json'), 'untouched');
+    writeFileSync(join(surface, 'groundtruth.json'), JSON.stringify({ format: 'puppeteer-groundtruth/1', events: [] }));
+  }
+  writeMaps(root, ['hermes']);
+  assert.equal(readFileSync(join(root, 'packages/adapter-codex/groundtruth-map.json'), 'utf8'), 'untouched');
+  assert.equal(JSON.parse(readFileSync(join(root, 'packages/adapter-hermes/groundtruth-map.json'))).provider, 'hermes');
+  assert.throws(() => writeMaps(root, ['../escape']), /unknown adapter provider/);
+});
 
 test('every provider adapter is digest-locked to one canonical ground-truth classification', () => {
   assert.deepEqual(auditAdapterGroundTruthMaps(), []);

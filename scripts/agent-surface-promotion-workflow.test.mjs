@@ -76,7 +76,7 @@ test('optional Claude census retains network denial and uploads only audited evi
   assert.match(source, /name: agent-artifact-linux-x64/);
   assert.match(source, /census-artifact\/linux-x64\/agent/);
   assert.match(source, /--lanes init,headless,api-error,interactive --sandbox netns/);
-  const audit = source.indexOf('--check .agent-adaptation/census-reviewed/captures');
+  const audit = source.indexOf('--check ".agent-adaptation/census-reviewed/captures/claude@${AGENT_VERSION}"');
   assert.ok(audit > 0 && audit < source.indexOf('uses: actions/upload-artifact'));
   assert.match(source, /path: \.agent-adaptation\/census-reviewed\n/);
   assert.doesNotMatch(source, /path: .*census-(?:raw|aux)/);
