@@ -29,7 +29,7 @@ specifications versus historical material.
 [![Codex: verified 0.166.0](https://img.shields.io/badge/Codex-verified_0.166.0-blue)](packages/surface/vendors/codex/groundtruth.json)
 [![GitHub Copilot CLI: verified 1.0.105](https://img.shields.io/badge/GitHub_Copilot_CLI-verified_1.0.105-blue)](packages/surface/vendors/copilot/groundtruth.json)
 [![Grok Build: verified 1.0.70](https://img.shields.io/badge/Grok_Build-verified_1.0.70-blue)](packages/surface/vendors/grok/groundtruth.json)
-[![Hermes Agent: baseline pending 0.21.5](https://img.shields.io/badge/Hermes_Agent-baseline_pending_0.21.5-lightgrey)](packages/surface/vendors/hermes/groundtruth.json)
+[![Hermes Agent: verified 0.21.5](https://img.shields.io/badge/Hermes_Agent-verified_0.21.5-blue)](packages/surface/vendors/hermes/groundtruth.json)
 [![Kimi Code: verified 2.4.1](https://img.shields.io/badge/Kimi_Code-verified_2.4.1-blue)](packages/surface/vendors/kimi/groundtruth.json)
 [![OpenCode: verified 1.19.5](https://img.shields.io/badge/OpenCode-verified_1.19.5-blue)](packages/surface/vendors/opencode/groundtruth.json)
 [![Pi: verified 1.5.0](https://img.shields.io/badge/Pi-verified_1.5.0-blue)](packages/surface/vendors/pi/groundtruth.json)
