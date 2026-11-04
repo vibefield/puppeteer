@@ -254,8 +254,9 @@ native evidence, Surface modeling, Imposter personas and runflows,
 normalization, conformance, runtime integration, and protected promotion.
 
 Live adapter proofs are opt-in with `CLAUDE_NATIVE_TUI_LIVE=1`,
-`CODEX_NATIVE_TUI_LIVE=1`, `GROK_LIVE=1`, `HERMES_LIVE=1`, `KIMI_LIVE=1`, or
-`OPENCODE_LIVE=1`.
+`CODEX_NATIVE_TUI_LIVE=1`, `GROK_LIVE=1`, `HERMES_LIVE=1`, `KIMI_LIVE=1`,
+`OPENCODE_LIVE=1`, `COPILOT_LIVE=1`, `PI_LIVE=1`, or `ANTIGRAVITY_LIVE=1`
+(Antigravity also needs `ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED=1`).
 
 ## Versioning
 

@@ -3,8 +3,8 @@
 Status: candidate adaptation of the latest stable release through the exact-source
 contract survey, an isolated-home identity probe, a type-preserving hermetic turn
 census, ASM v3, adapter and Imposter conformance, and one local adapter-through-real-
-native-TUI run. The support ledger entry remains `baseline-pending`; none of this is
-a promotion claim. The 0.20.0 candidate's authoring model, captures, probes, and
+native-TUI run. Protected promotion [run 41885545374](https://github.com/vibefield/puppeteer/actions/runs/41885545374) then
+verified 0.21.5 on all four platforms. The 0.20.0 candidate's authoring model, captures, probes, and
 reference stay beside this one as history.
 
 Candidate pin:

@@ -1,7 +1,8 @@
 # OpenCode Adaptation Plan
 
-Status: **Stages 1–5 and local Stage 6 reconciliation implemented; protected promotion remains gated**
-Candidate: **OpenCode 1.18.16** (`v1.18.16`, source revision
+Status: **Complete. OpenCode 1.19.5 is verified in `support/agents.json` (protected run 41794896986).**
+The 2.x line is planned in `draft/OPENCODE-2-MIGRATION-PLAN.md`.
+Original candidate: **OpenCode 1.18.16** (`v1.18.16`, source revision
 `a3647eb025c7615159d417dcc49fc39fdaeba65b`)
 Plan basis: `docs/guides/adapting-an-agent.md` and the captured findings in
 `packages/surface/vendors/opencode/findings.md`
