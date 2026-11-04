@@ -129,7 +129,7 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
     const requested = events.find((entry) => entry.event.type === 'interaction:question-requested');
     expect(requested?.event).toMatchObject({
       type: 'interaction:question-requested',
-      requestId: 'que_a11a5ed0b4beff9c9db11783b8',
+      requestId: 'que_a11a5ed0988985becda92a1f79',
       questions: [
         {
           header: '<redacted:header>',
@@ -145,7 +145,7 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
     });
     expect(events.map((entry) => entry.event)).toContainEqual({
       type: 'interaction:question-resolved',
-      requestId: 'que_a11a5ed0b4beff9c9db11783b8',
+      requestId: 'que_a11a5ed0988985becda92a1f79',
       outcome: 'answered',
     });
     expect(events.filter((entry) => entry.event.type === 'interaction:question-requested')).toHaveLength(1);
@@ -155,7 +155,7 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
     const events = normalizeFixture('question-reject');
     expect(events.map((entry) => entry.event)).toContainEqual({
       type: 'interaction:question-resolved',
-      requestId: 'que_a11a5ed0d43a9495e5667af5ad',
+      requestId: 'que_a11a5ed0fe2035a9807be078a8',
       outcome: 'cancelled',
     });
     expect(events.filter((entry) => entry.event.type === 'interaction:permission-requested')).toEqual([]);
@@ -276,10 +276,10 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
     const stopped = events.find((entry) => entry.event.type === 'delegation:subagent-stopped')!.event;
     expect(started).toMatchObject({
       type: 'delegation:subagent-started',
-      subagentId: 'ses_a11a5ed09ec0b16b19c8e43686',
+      subagentId: 'ses_a11a5ed096e559acb3197beb5f',
       agentType: '<redacted:agent>',
     });
-    expect(stopped).toEqual({ type: 'delegation:subagent-stopped', subagentId: 'ses_a11a5ed09ec0b16b19c8e43686' });
+    expect(stopped).toEqual({ type: 'delegation:subagent-stopped', subagentId: 'ses_a11a5ed096e559acb3197beb5f' });
     expect(types.indexOf('delegation:subagent-started')).toBeLessThan(types.indexOf('delegation:subagent-stopped'));
     expect(types.indexOf('delegation:subagent-stopped')).toBeLessThan(types.lastIndexOf('turn:completed'));
 
@@ -310,7 +310,7 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
     const mid = reduce(events.slice(0, firstParentIdle + 1));
     expect(mid.monitor.subagentCount).toBe(1);
     expect(mid.monitor.status).toBe('working');
-    expect(mid.monitor.subagents).toMatchObject([{ id: 'ses_a11a5ed06c36b5107ea26b093b', working: true }]);
+    expect(mid.monitor.subagents).toMatchObject([{ id: 'ses_a11a5ed00b4f41f4d51067049e', working: true }]);
     expect(reduce(events).monitor.subagents).toMatchObject([{ working: false }]);
   });
 

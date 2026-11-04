@@ -39,21 +39,18 @@ root files exist at the new tag. `ui-tui/scripts/build.mjs` is byte-identical to
 root `package.json` engines widened from `node >=22.22.0` to
 `^22.22.0 || ^24.11.0 || >=26.0.0`, which still admits the pinned Node `22.22.0`.
 
-Not produced here, and not invented:
+The four-platform acquisition completed on 2026-11-04 in
+[run 41781642980](https://github.com/vibefield/puppeteer/actions/runs/41781642980).
+It downloaded the reviewed source archive and built installed-console manifests with the
+pinned Python 3.11.9, uv 0.9.28 and Node 22.22.0, including the locked runtime bundle.
+All four exact-version probes passed. The manifests and archive identities are recorded in
+`model/hermes@0.21.5/evidence.json` and the canonical ground truth.
 
-- **Source-archive bytes.** `github.com` and `codeload.github.com` are unreachable
-  from this environment (HTTP 403), so the archive the policy names was not
-  downloaded and no archive digest is recorded. The survey used a `git clone` of the tag.
-- **Installed-console manifest.** `surface:materialize` requires the exact Python
-  `3.11.9` and uv `0.9.28`; this host has Python `3.11.18` and uv `0.11.32`, and
-  python-build-standalone downloads come from GitHub. No `installed-console.json`
-  or runtime-bundle digest is recorded.
-
-The evidence artifact is therefore a `source-revision-pin` (`kind`), integrity-bound to
-the tagged `pyproject.toml` only. Because it carries a `kind`, acquisition replaces it
-with the attested installed-console manifests instead of treating it as reviewed bytes
-that a later acquisition would contradict. `agent-adaptation.yml` remains the authority
-for archive, manifest, and four-platform identity.
+The original `hermes-0.21.5-source-revision` identity remains a separate
+`source-revision-pin`. Existing source and runtime survey claims retain that identity:
+they were not executed with the newly acquired toolchains. Acquisition appends distinct
+installed-console identities instead of relabeling those claims. Real attached-TUI approval,
+clarify and `request.cancel` captures remain outstanding.
 
 ## Identity probes (`linux-x64`, survey environment)
 

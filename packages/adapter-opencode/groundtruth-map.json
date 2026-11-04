@@ -3,7 +3,7 @@
   "provider": "opencode",
   "adapterPackage": "@vibefield/puppeteer-adapter-opencode",
   "groundTruth": "packages/surface/vendors/opencode/groundtruth.json",
-  "groundTruthSha256": "449403030986f253c510c589221fae71ba09ed9419605301f9959dd513cf2175",
+  "groundTruthSha256": "6b04529a37d65e22f47955a8dda6b3e542b40ce2abb263a2c670d65e45673b8d",
   "semanticEvents": [
     "catalog.updated",
     "file.edited",

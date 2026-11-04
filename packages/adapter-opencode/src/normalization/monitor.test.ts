@@ -159,8 +159,8 @@ describe('OpenCodeMonitorEvidence', () => {
       value: {
         actor: {
           rootSessionKey: root,
-          runKey: `${root}:actor:ses_a11a5ed09ec0b16b19c8e43686`,
-          nativeSessionId: 'ses_a11a5ed09ec0b16b19c8e43686',
+          runKey: `${root}:actor:ses_a11a5ed096e559acb3197beb5f`,
+          nativeSessionId: 'ses_a11a5ed096e559acb3197beb5f',
         },
         canonical: true,
       },
@@ -172,7 +172,7 @@ describe('OpenCodeMonitorEvidence', () => {
             update.family === 'delegation' &&
             update.operation === 'upsert' &&
             update.value.kind === 'actor' &&
-            update.value.actor.nativeAgentId === 'ses_a11a5ed09ec0b16b19c8e43686' &&
+            update.value.actor.nativeAgentId === 'ses_a11a5ed096e559acb3197beb5f' &&
             update.value.state === 'stopped',
         ),
       ),

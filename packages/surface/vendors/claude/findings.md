@@ -10,11 +10,26 @@ fetched with `surface:download`) reports `2.1.311 (Claude Code)` and has SHA-256
 `manifest.json` checksum for linux-x64 (build `e7d3b836…`, 2026-10-26). Its `--help`
 (`probes/claude@2.1.311/help.txt`, SHA-256 `fc9af56f…d64d`) is the adapter's
 `claude-help-2.1.311.txt`. The identity, probes, reviewed hook reference, sanitized captures and the
-generated ASM v3 tree are digest-bound in `model/claude@2.1.311/evidence.json`. **Only linux-x64 has
-artifact and runtime evidence**; darwin-arm64, darwin-x64 and windows-x64 are acquired and attested by
-the protected workflows, so this is a candidate, not promoted support.
+generated ASM v3 tree are digest-bound in `model/claude@2.1.311/evidence.json`. All four platform artifacts now have exact-version acquisition evidence from
+[run 41782999182](https://github.com/vibefield/puppeteer/actions/runs/41782999182).
+Runtime capture evidence remains linux-x64; protected promotion is still required.
 
-### Method, and a census incident
+### Full sandbox recapture (2026-11-04)
+
+The same run replaced the entire capture set with nine modes captured between
+2026-11-04T06:04:50Z and 2026-11-04T06:05:43Z: init, headless, all five API-error cases,
+interactive and resume. The committed `sandbox.json` covers all nine. It records only `lo`,
+zero non-loopback routes, refused public destinations, an empty hidden credential directory,
+and zero non-loopback egress attempts. The binary digest still matches the original probe.
+`CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL=1` prevents the otherwise automatic
+marketplace bootstrap from attempting external downloads in this offline census.
+
+All 24 previously observed hook event types remain captured. Runtime claims use the new
+census completion timestamp; unchanged binary and source probes retain their original dates.
+The earlier runs and incident below describe historical evidence, now replaced by this full
+sandbox capture set. Acquisition does not relabel old probes as newly executed.
+
+### Original method, and a census incident (historical)
 
 Same tools as 2.1.308, on linux-x64:
 
@@ -75,7 +90,7 @@ The lanes observed the same **24 of 33 events** as 2.1.308, in 104 records (2.1.
 compaction SubagentStop from the summary retry below). Of those, 98 come from the 2026-11-03 run and 6
 from the sandboxed headless run.
 
-### Headless lane in a network-deny sandbox (2026-11-04)
+### Initial headless-only sandbox run (historical)
 
 **Where the incident's credential came from.** This is a static reading of the artifact (a string
 search of the pinned bytes; nothing was executed outside the sandbox). When
@@ -124,8 +139,8 @@ came from npm `@anthropic-ai/claude-code-linux-x64@2.1.311` (`npm pack`, never i
 SHA-256 equals the release manifest's linux-x64 checksum (`86dc1fcc…8ada`), so this is the same
 artifact.
 
-**Scope.** Only the `headless` mode carries the sandbox claim. The evidence limitations name the
-modes that ran without it (init, api-error, interactive and resume, from the 2026-11-03 run).
+**Original scope.** Only the `headless` mode carried the sandbox claim in that intermediate set.
+The full recapture above supersedes this limitation for every committed runtime mode.
 
 ### Drift classification
 

@@ -163,7 +163,9 @@ for (const record of evidence.records ?? []) {
   if (digest !== record.sha256) problems.push(`evidence ${record.id}: digest mismatch`);
 }
 const artifact = JSON.parse(readFileSync(join(probesDir, 'artifact.json'), 'utf8'));
-const evidenceArtifact = evidence.artifacts?.[0];
+const evidenceArtifact = evidence.artifacts?.find(
+  (entry) => entry.id === `opencode-${artifact.version}-${artifact.platform}`,
+);
 if (evidenceArtifact?.integrity?.sha256 !== `sha256:${artifact.sha256}`) {
   problems.push('evidence artifact SHA-256 does not match the binary probe');
 }

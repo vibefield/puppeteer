@@ -3,7 +3,15 @@
   "entries": [
     {
       "modes": [
-        "headless"
+        "init",
+        "headless",
+        "api-error-400",
+        "api-error-401",
+        "api-error-429",
+        "api-error-500",
+        "api-error-529",
+        "interactive",
+        "resume"
       ],
       "sandbox": "netns",
       "runner": "unshare --user --map-root-user --net --mount --propagation private",
@@ -32,23 +40,17 @@
         {
           "destination": "[2606:4700:4700::1111]:443",
           "outcome": "refused",
-          "code": "EAFNOSUPPORT"
+          "code": "ENETUNREACH"
         }
       ],
-      "callerProxies": [
-        {
-          "proxy": 1,
-          "outcome": "refused",
-          "code": "ECONNREFUSED"
-        }
-      ],
+      "callerProxies": [],
       "artifactCredentialDirectories": [
         {
           "role": "artifact-remote-credentials",
           "entries": 0
         }
       ],
-      "hiddenDirectories": 2,
+      "hiddenDirectories": 1,
       "nonLoopbackEgressAttempts": 0
     }
   ]

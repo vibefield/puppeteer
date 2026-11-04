@@ -31,12 +31,13 @@ was scoped to this repository, so `pnpm upstream:detect` could not read GitHub r
 
 Verified entries keep `currentVersion` and `verification`, with `candidateVersion` staged beside them by
 `scripts/stage-agent-candidate.mjs`. Pending entries keep `baseline-pending` and carry updated `blockers`. No artifact
-digest, receipt or `currentVersion` was written by hand. Only **linux-x64** was acquired and run, so darwin-arm64,
-darwin-x64 and windows-x64 are unacquired everywhere.
+digest, receipt or `currentVersion` was written by hand. Codex, Claude, OpenCode and Hermes now have acquired artifact identities on all four platforms.
+Acquisition alone does not promote support or relabel earlier runtime captures.
 
-The tree passes `support:check`, `groundtruth:mapping:check`, `upstream:check`, `surface:groundtruth:check`,
+The earlier review tree passed `support:check`, `groundtruth:mapping:check`, `upstream:check`, `surface:groundtruth:check`,
 `surface:audit`, `surface:workflow:check`, `packages:check`, `format:check` and `COLORTERM=truecolor pnpm test`. The
-PR description has the details.
+PR description has the earlier results. The refreshed captures are undergoing a new complete run;
+five OpenCode assertions with old capture IDs were updated to the new observed IDs.
 
 ## Completed dependency work and remaining readiness checks
 
@@ -138,7 +139,7 @@ Residual items the fixers recorded but could not close in a container:
   - Only `headless` ran inside the network-deny sandbox. init, api-error, interactive and resume are still the
     2026-11-03 captures, taken without it.
   - The nominal single-stop `/compact` path on 2.1.311 is read from code, not captured.
-  - All claims share one `capturedAt`.
+  - Runtime recapture claims now have their own completion timestamp; original probe dates are retained.
 - **OpenCode:**
   - The corrected census was re-run on 2026-11-04 against the exact linux-x64 1.19.5 artifact: all 27 scenarios passed,
     including both native-attach paths. Sanitized fixtures and per-scenario timestamps were regenerated. No transport
@@ -147,13 +148,14 @@ Residual items the fixers recorded but could not close in a container:
 
 ### 3. Remaining per-vendor blockers (survey work)
 
-- **Claude Code 2.1.311:** the headless lane is now captured. `census/sandbox.mjs` runs every census CLI that executes
-  the binary inside a user+network+mount namespace that has only loopback. It hides the binary's hard-coded credential
-  directory `/home/claude/.claude/remote` and the caller's home, and refuses to run unless it proves no outside host is
-  reachable. The run recorded 0 egress attempts. Re-running the other modes inside the sandbox is a follow-up.
-- **Hermes 0.21.5:** there are no source-archive bytes (codeload.github.com was blocked) and no `installed-console.json`.
-  That manifest needs the pinned Python 3.11.9 / uv 0.9.28 and Node 22.22.0, but the survey used 3.11.18, 0.11.32 and
-  22.23.4. Approval, clarify and `request.cancel` were not exercised against a real attached TUI.
+- **Claude Code 2.1.311:** all nine census modes were recaptured inside the strict network-deny namespace in
+  [run 41782999182](https://github.com/vibefield/puppeteer/actions/runs/41782999182), with zero non-loopback
+  attempts. The whole sanitized set replaces the earlier mixed set; runtime and probe dates are separate.
+  Four-platform acquisition passed. Protected native-TUI/resume promotion remains.
+- **Hermes 0.21.5:** source archive and all four installed consoles were acquired with the pinned toolchain in
+  [run 41781642980](https://github.com/vibefield/puppeteer/actions/runs/41781642980). Earlier survey claims
+  still reference their original source identity. Approval, clarify and `request.cancel` against a real attached
+  TUI remain unexercised.
 - **Kimi 2.4.1:** the interactive-TUI paths (Esc-cancel, permissions, questions, steer, undo) and ACP shapes are not
   captured. Account and profile services rest on 2.0.2 evidence.
 - **OpenCode:** 2.x (`@opencode/cli`, an `/api/*` HttpApi with a new event envelope) is a separate integration family.
@@ -167,7 +169,12 @@ Residual items the fixers recorded but could not close in a container:
 - **Copilot, Pi and Antigravity** have no protected promotion lane: `agent-surface-promotion.yml` offers only claude,
   codex, grok, hermes, kimi and opencode. This blocker predates this work.
 
-### 4. Promotion (needs the repository owner)
+### 4. Promotion
+
+Codex rehearsal passed in [run 41781648679](https://github.com/vibefield/puppeteer/actions/runs/41781648679).
+Protected promotion runs separately on `claude/codex-0.166.0-promotion` in
+[run 41783073832](https://github.com/vibefield/puppeteer/actions/runs/41783073832); integrate its receipt only
+after success. Other work can continue on PR #59 without moving the verified promotion commit.
 
 For each staged vendor:
 

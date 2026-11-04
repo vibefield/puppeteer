@@ -950,7 +950,13 @@ function capturedModes(captureRoot) {
   return modes;
 }
 
-export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt = capturedAt }) {
+export function generateClaudeModel({
+  artifact,
+  version,
+  capturedAt,
+  runtimeCapturedAt = capturedAt,
+  retrievedAt = capturedAt,
+}) {
   if (!version || !capturedAt) throw new Error('--version and --captured-at are required');
   const captureRoot = join(vendorRoot, 'captures', `claude@${version}`);
   if (!existsSync(captureRoot)) throw new Error(`sanitized captures are missing: ${captureRoot}`);
@@ -1255,7 +1261,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
               artifact: artifactId,
               platform: artifactPlatform,
               harness: `Isolated ${headlessLanes(modes)} recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs`,
-              capturedAt,
+              capturedAt: runtimeCapturedAt,
               ...sandboxNote(RUNTIME_CLAIM),
             },
           ]
@@ -1271,7 +1277,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
               platform: artifactPlatform,
               harness:
                 'Native TUI in a harness-owned PTY against a scripted loopback Messages API, then --resume by id (interactive, resume), in packages/surface/vendors/claude/census/interactive-lane.mjs',
-              capturedAt,
+              capturedAt: runtimeCapturedAt,
               ...sandboxNote(INTERACTIVE_CLAIM),
             },
           ]
@@ -1376,6 +1382,11 @@ if (invokedDirectly) {
     artifact: flag('--artifact') ?? process.env.PUPPETEER_CLAUDE_BIN,
     version,
     capturedAt: flag('--captured-at') ?? retainedProbe?.capturedAt,
+    runtimeCapturedAt:
+      flag('--runtime-captured-at') ??
+      (retainedGroundTruth?.manifest?.vendorVersion === version
+        ? retainedGroundTruth?.evidenceIndex?.claims.find((claim) => claim.kind === 'runtime-capture')?.capturedAt
+        : undefined),
     retrievedAt: flag('--retrieved-at') ?? retainedReference?.retrievedAt,
   });
   console.log(`generated ${result.modelRoot}`);

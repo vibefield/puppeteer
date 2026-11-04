@@ -57,6 +57,34 @@
     "vendorVersion": "1.19.5",
     "artifacts": [
       {
+        "id": "opencode-1.19.5-darwin-arm64",
+        "platform": "darwin-arm64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-11-04T06:04:47.498Z",
+        "versionOutput": "1.19.5",
+        "sourceUrl": "https://registry.npmjs.org/opencode-darwin-arm64/-/opencode-darwin-arm64-1.19.5.tgz",
+        "acquisitionKey": "opencode@1.19.5@darwin-arm64@sha256:feaafead8cd563af0c2dcb386b0757e4355e327ebb6bd1aaad5440fe2f83596c",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:feaafead8cd563af0c2dcb386b0757e4355e327ebb6bd1aaad5440fe2f83596c"
+        }
+      },
+      {
+        "id": "opencode-1.19.5-darwin-x64",
+        "platform": "darwin-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-11-04T06:04:47.692Z",
+        "versionOutput": "1.19.5",
+        "sourceUrl": "https://registry.npmjs.org/opencode-darwin-x64/-/opencode-darwin-x64-1.19.5.tgz",
+        "acquisitionKey": "opencode@1.19.5@darwin-x64@sha256:4b15c8aab1844936e9e1d1327213355d94c820de8c7084fad88d3812a067d3d0",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:4b15c8aab1844936e9e1d1327213355d94c820de8c7084fad88d3812a067d3d0"
+        }
+      },
+      {
         "id": "opencode-1.19.5-linux-x64",
         "platform": "linux-x64",
         "channel": "stable",
@@ -68,6 +96,22 @@
         "integrity": {
           "status": "verified",
           "sha256": "sha256:7df4e4136301f16589b0f30bf91a61380fca5f8ef22dd36570f5ebe1d4ec802c"
+        },
+        "artifactKind": "standalone-executable",
+        "acquisitionKey": "opencode@1.19.5@linux-x64@sha256:7df4e4136301f16589b0f30bf91a61380fca5f8ef22dd36570f5ebe1d4ec802c"
+      },
+      {
+        "id": "opencode-1.19.5-windows-x64",
+        "platform": "windows-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-11-04T06:04:48.143Z",
+        "versionOutput": "1.19.5",
+        "sourceUrl": "https://registry.npmjs.org/opencode-windows-x64/-/opencode-windows-x64-1.19.5.tgz",
+        "acquisitionKey": "opencode@1.19.5@windows-x64@sha256:d7b473388cb62555970e400ce54cdfb6d6573608beea6f8fdf382cd1a698a3fa",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:d7b473388cb62555970e400ce54cdfb6d6573608beea6f8fdf382cd1a698a3fa"
         }
       }
     ],
