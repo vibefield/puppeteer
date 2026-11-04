@@ -163,7 +163,7 @@
       "candidateVersion": "0.21.5",
       "status": "baseline-pending",
       "blockers": [
-        "The four-platform rehearsal failed artifact assembly on darwin-x64: source-built cryptography 50.0.0 produced a different installed-file digest on rebuild. The identity gate refused it; other platforms matched. Two isolated builds produced identical complete manifests after Rust path remapping, a fixed epoch and scoped SBOM source-root canonicalization. The production recipe now attests those transformations explicitly. The original Intel manifest remains historical evidence. Production acquisition and analysis now pass on all four platforms; fresh reconstruction and protected native-TUI verification are still required before promotion."
+        "Reproducible Intel acquisition and native-TUI/resume reconstruction passed. Windows reconstruction exposed generated EXE launchers incorrectly included in installed-package hashing; the corrected inventory excludes only declared entry-point launchers. Its original identity remains historical evidence. Fresh acquisition, exact reconstruction and the protected promotion transaction must pass before support is promoted."
       ]
     },
     {

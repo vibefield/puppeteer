@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "vendor": "hermes",
+  "version": "0.21.5",
+  "platform": "windows-x64",
+  "priorManifestSha256": "sha256:b944e768e7ba1bf4335104b6539d5bfc2604ae3717365694f713f58562f90eb5",
+  "sourceArchiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
+  "reason": "Windows site.getsitepackages() includes the environment root. Generated entry-point EXE launchers were mistakenly hashed despite the manifest declaring excludedGeneratedLaunchers=true. Only launchers named by console_scripts/gui_scripts metadata are now excluded; package code, entry-point metadata and unrelated executable bytes remain hashed. The original identity is retained; no runtime claims are rebound.",
+  "diagnostic": {
+    "run": "https://github.com/vibefield/puppeteer/actions/runs/41802941950",
+    "independentBuilds": 2,
+    "unchangedInstalledFiles": 5220,
+    "changedFiles": [
+      {
+        "distribution": "Markdown",
+        "path": "Scripts/markdown_py.exe",
+        "firstSha256": "sha256:e7e2313d3bdb6c248dc23d9f64ea2600e4677ff9737e154cfabb2e8693627a3a",
+        "secondSha256": "sha256:cd3a996b090a72b568606012dbac036285d2c853e2f8edc7266ca0f3355d0b1b"
+      },
+      {
+        "distribution": "Pygments",
+        "path": "Scripts/pygmentize.exe",
+        "firstSha256": "sha256:b9d3e3b3c7d880b9aec859f4bea721b23884c660d84d0256bbabce887d6c39e4",
+        "secondSha256": "sha256:629373ac0ef0db1277e721432951c0e7e9d85f3cbd75956304bedab01521bfea"
+      },
+      {
+        "distribution": "charset-normalizer",
+        "path": "Scripts/normalizer.exe",
+        "firstSha256": "sha256:479c433221e6d00967dc49c6cead89ce913e979598557c88b79d9071bfcdd7ef",
+        "secondSha256": "sha256:5e5eac9187a4383404e32d22dcd05720a4227d12ecae0276d9e53f95a38f13bb"
+      },
+      {
+        "distribution": "distro",
+        "path": "Scripts/distro.exe",
+        "firstSha256": "sha256:95064a48c8553ddd09977473d67ec5c34848836f45cbb6a1ed2c51ed5bec3700",
+        "secondSha256": "sha256:aace55c5302d2b8c28e91bd37f1f0c791d302dbfedf149bd2d47a22eae4dc8c4"
+      },
+      {
+        "distribution": "fastapi",
+        "path": "Scripts/fastapi.exe",
+        "firstSha256": "sha256:862d13edc59f31df1ee0a662dc107075d7ea463ade5d6eeae8280f03ad53f6d1",
+        "secondSha256": "sha256:24e63f41e7fe8a6f697d7905614cc7c7be40b83ca3541dbecdaebbdaa1de7a73"
+      },
+      {
+        "distribution": "hermes-agent",
+        "path": "Scripts/hermes-acp.exe",
+        "firstSha256": "sha256:875b97331574fe1f3c5695c2968c81814ffc3dfb80212ac7d957427e9b3da231",
+        "secondSha256": "sha256:667e84e44861c629bbf1edb5ffa27cb640a2fd68e6d45a9ed60614d6cf86a912"
+      },
+      {
+        "distribution": "hermes-agent",
+        "path": "Scripts/hermes-agent.exe",
+        "firstSha256": "sha256:33e8588e58288ab443496a345755fcf25a68af449d943dfe985623dd5046fef3",
+        "secondSha256": "sha256:64ee849fe7d67277b4d021b717b0a5e31131dabda0f0444ef2fe3e85ad9106b6"
+      },
+      {
+        "distribution": "hermes-agent",
+        "path": "Scripts/hermes.exe",
+        "firstSha256": "sha256:9230a150e35cb7776a4212f61be1fd600af7d4e9a6a3e0f0afdfa9d05fe4d303",
+        "secondSha256": "sha256:eb0f20f22443a60243529b2d7fde1eafc138490461642e365bece74b1cd15340"
+      },
+      {
+        "distribution": "httpx",
+        "path": "Scripts/httpx.exe",
+        "firstSha256": "sha256:a74ac36ea64f5a51ac757efc1cbbbcb57d36e86e095871f66174f0386daa9c31",
+        "secondSha256": "sha256:a51c50e1bc11c5c7a19c5d0a19a361f73a5d05fb464483303376897970cbeaf1"
+      },
+      {
+        "distribution": "idna",
+        "path": "Scripts/idna.exe",
+        "firstSha256": "sha256:166eaa4a515312690da23967f84a2590b41f0dca798de146a421c77e38c960da",
+        "secondSha256": "sha256:609aa871880127edbbc46f2178cfb53210034fa8e8450d61cfc652759fa49cf2"
+      },
+      {
+        "distribution": "markdown-it-py",
+        "path": "Scripts/markdown-it.exe",
+        "firstSha256": "sha256:6078369a6aabc2fc30dc1b6f9fe89f38bc137f2ac3eeee9d9b658d950b98f414",
+        "secondSha256": "sha256:7664cc3ab1ff0b4afae89b81be2e1294cf8816ea47e96674413a09f95c6b4f12"
+      },
+      {
+        "distribution": "openai",
+        "path": "Scripts/openai.exe",
+        "firstSha256": "sha256:0d08876357b57a6e84c29ba37e828a4b436b05e695327c99ca18f85ee194679d",
+        "secondSha256": "sha256:14e9f22044d91b8b5f27f39afb6311fd318ace89b90d7d61f7490aebf27c5ade"
+      },
+      {
+        "distribution": "python-dotenv",
+        "path": "Scripts/dotenv.exe",
+        "firstSha256": "sha256:649548004feeec95c7142577212891e8564c5b0fc0f0b8912804edffa6e4df7e",
+        "secondSha256": "sha256:31faca66abaa7a614d90018d47672359e9e88e88a86a20c0b7f74e171d82343c"
+      },
+      {
+        "distribution": "pywin32",
+        "path": "Scripts/pywin32_postinstall.exe",
+        "firstSha256": "sha256:dba51f60eb4330a1c656b4bff62883a091c809baa35d674fbb647e0b0e0f488e",
+        "secondSha256": "sha256:13e1a26d8419af32f93e06df1b687fc265974ec411899fd0ab38e08a7803bc97"
+      },
+      {
+        "distribution": "pywin32",
+        "path": "Scripts/pywin32_testall.exe",
+        "firstSha256": "sha256:18818e154a22377ecbac8aaa5332362dbfd145d5e7ab71206031ce8a4bf3ccf1",
+        "secondSha256": "sha256:5d9e08e7e15dd08ba9f72f1683a4f64cbece087654bf203b5629e4a7e7a23e37"
+      },
+      {
+        "distribution": "tqdm",
+        "path": "Scripts/tqdm.exe",
+        "firstSha256": "sha256:1564f2af8b1513586248c4801f26708ef09c24b9dac658c19178ce22b951aadd",
+        "secondSha256": "sha256:296ac0b107dfcff8b5f30a9ccfb0dcefcfcbbd13e71dd0ede68e563e19af93af"
+      },
+      {
+        "distribution": "uvicorn",
+        "path": "Scripts/uvicorn.exe",
+        "firstSha256": "sha256:5b3b2fd904fd3b19549fc38ee7edfdf5c3d75d87c4e46dfeb267099ed25263df",
+        "secondSha256": "sha256:da38ad53d724542858737c695d01a788e27404c561d48f409f637314b4367fee"
+      },
+      {
+        "distribution": "watchfiles",
+        "path": "Scripts/watchfiles.exe",
+        "firstSha256": "sha256:71e59479a9ae27603faef74ed4619572e1e492457f24effe6f436c95ce35323c",
+        "secondSha256": "sha256:f2e1e37e35ac9a0ed6266dbed67bbb5ef28f950127db9a398be0a8818cd224f3"
+      },
+      {
+        "distribution": "websockets",
+        "path": "Scripts/websockets.exe",
+        "firstSha256": "sha256:3d614691571bee897e6edd98bd10fbd794ed6617ef138b2b3353decc9f14d872",
+        "secondSha256": "sha256:708166d482cb1f7d060f67045b47b832e1f976c4a2fd27fcd7cb07d2d817c45b"
+      }
+    ]
+  },
+  "validation": "Fresh production acquisition, exact reconstruction and protected native-TUI/resume verification are required before promotion.",
+  "correctedDiagnostic": {
+    "run": "https://github.com/vibefield/puppeteer/actions/runs/41803922116",
+    "independentBuilds": 2,
+    "identicalManifestSha256": "sha256:991e506fee052fa84639d4ec5f3e63687fba80933face54fd9fa80c3a33217e0",
+    "note": "Recipe diagnostic only; a separate full production acquisition and protected reconstruction remain required."
+  }
+}

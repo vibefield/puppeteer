@@ -259,7 +259,9 @@
         "integrity": {
           "status": "verified",
           "sha256": "sha256:b944e768e7ba1bf4335104b6539d5bfc2604ae3717365694f713f58562f90eb5"
-        }
+        },
+        "kind": "superseded-installed-console-build",
+        "notes": "Historical Windows inventory incorrectly included generated command launchers. Its exact original manifest remains retained; a corrected independently acquired identity is required. No runtime claim is transferred."
       }
     ],
     "sourceReferences": [
@@ -316,6 +318,13 @@
         "path": "packages/surface/vendors/hermes/builds/hermes@0.21.5-reproducible",
         "digestAlgorithm": "sha256-path-content-v1",
         "sha256": "98b403e1fefee75df918c0ab975c5f7b1976e505249c4495b234cde0e12a2bce"
+      },
+      {
+        "id": "windows-installed-console-inventory-history",
+        "kind": "build-provenance",
+        "path": "packages/surface/vendors/hermes/builds/hermes@0.21.5-windows-inventory",
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "5f940866d05feb5f9e375a2aa4ea7f023a4563487141cd0a13a2971957c8d240"
       }
     ],
     "claims": [
@@ -375,6 +384,15 @@
         "capturedAt": "2026-11-04T08:25:07.118Z",
         "harness": "agent-adaptation 41798422033 / materialize-installed-console / GitHub macos-15-intel",
         "notes": "The exact installed console printed the recorded 0.21.5 version and its complete manifest attests the reviewed reproducible dependency recipe. This is an acquisition/version probe, not interactive or resume evidence."
+      },
+      {
+        "id": "windows-generated-launcher-inventory-migration",
+        "kind": "inference",
+        "confidence": "unverified",
+        "record": "windows-installed-console-inventory-history",
+        "artifact": "hermes-0.21.5-windows-x64",
+        "platform": "windows-x64",
+        "notes": "Two independent Windows installs differ only in generated entry-point EXE launchers. The inventory correction needs fresh acquisition and protected four-platform verification; the historical identity and its bytes remain unchanged."
       }
     ],
     "limitations": [
