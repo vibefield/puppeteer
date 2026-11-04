@@ -134,6 +134,40 @@
         "notes": "Original acquired build retained byte-for-byte in the build-history record; superseded by the reviewed rust-cyclonedx-v1 recipe. This identity is not the new recipe identity."
       },
       {
+        "id": "hermes-0.21.5-windows-x64",
+        "platform": "windows-x64",
+        "channel": "stable",
+        "artifactKind": "installed-console",
+        "acquiredAt": "2026-11-04T05:56:47.903Z",
+        "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)",
+        "sourceUrl": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.9.24.tar.gz",
+        "acquisitionKey": "hermes@0.21.5@windows-x64@sha256:b944e768e7ba1bf4335104b6539d5bfc2604ae3717365694f713f58562f90eb5",
+        "identity": {
+          "sourceArchiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
+          "sourceTreeSha256": "sha256:867171ae4d917f85fe5f95a2cb224ec6e6e10a8ab98483e7cd21ec9ab4ce89df",
+          "generatedSourceSha256": "sha256:4516b4fc656064d227efa506b60b485c393eed1928c22476f7c4e1f30aa2cfd5",
+          "sourceReference": "v2026.9.24",
+          "projectFileSha256": "sha256:6f969b9fdff95e7269ec808361e3ae8be5357036e6257e53a3306878cf8c41dd",
+          "lockFileSha256": "sha256:5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590",
+          "pythonVersion": "3.11.9",
+          "pythonExecutableSha256": "sha256:21bb438c0d4a6f1f164b9a646f6ee000340185e5871180aec06db8d3f07c0082",
+          "pythonStandardLibrarySha256": "sha256:3292232ee435e7c4ed883d8c6dcbb26544a6ab227a17afc5ccec54e8a67490f6",
+          "environmentSha256": "sha256:7e973e940b2dec1aa593fb74f20654707c5c48a4e30c9582f97eef11b8446433",
+          "consoleEntryPoint": "hermes_cli.main:main",
+          "consoleBindingSha256": "sha256:1f3d700744a9f5e0cae6bbb497231a0d505ae99e020acd27b9b749570b987e7f",
+          "runtimeNodeVersion": "22.22.0",
+          "runtimeNodeExecutableSha256": "sha256:bae898add4643fcf890a83ad8ae56e20dce7e781cab161a53991ceba70c99ffb",
+          "runtimeBundleSha256": "sha256:0fbd2209f1ab5befab9ed4057c1ce13dace08cf8674aee6e5b1189b856fa4891",
+          "runtimeEntrySha256": "sha256:2f88a6810f33a1e8d2f961e0d0b89c374a5bc186b4e6d05b94fb1a54765d9540"
+        },
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:b944e768e7ba1bf4335104b6539d5bfc2604ae3717365694f713f58562f90eb5"
+        },
+        "kind": "superseded-installed-console-build",
+        "notes": "Historical Windows inventory incorrectly included generated command launchers. Its exact original manifest remains retained; a corrected independently acquired identity is required. No runtime claim is transferred."
+      },
+      {
         "id": "hermes-0.21.5-darwin-arm64",
         "platform": "darwin-arm64",
         "channel": "stable",
@@ -230,14 +264,14 @@
         }
       },
       {
-        "id": "hermes-0.21.5-windows-x64",
+        "id": "hermes-0.21.5-windows-x64-acquired",
         "platform": "windows-x64",
         "channel": "stable",
         "artifactKind": "installed-console",
-        "acquiredAt": "2026-11-04T05:56:47.903Z",
+        "acquiredAt": "2026-11-04T09:12:52.802Z",
         "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)",
         "sourceUrl": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.9.24.tar.gz",
-        "acquisitionKey": "hermes@0.21.5@windows-x64@sha256:b944e768e7ba1bf4335104b6539d5bfc2604ae3717365694f713f58562f90eb5",
+        "acquisitionKey": "hermes@0.21.5@windows-x64@sha256:991e506fee052fa84639d4ec5f3e63687fba80933face54fd9fa80c3a33217e0",
         "identity": {
           "sourceArchiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
           "sourceTreeSha256": "sha256:867171ae4d917f85fe5f95a2cb224ec6e6e10a8ab98483e7cd21ec9ab4ce89df",
@@ -248,7 +282,7 @@
           "pythonVersion": "3.11.9",
           "pythonExecutableSha256": "sha256:21bb438c0d4a6f1f164b9a646f6ee000340185e5871180aec06db8d3f07c0082",
           "pythonStandardLibrarySha256": "sha256:3292232ee435e7c4ed883d8c6dcbb26544a6ab227a17afc5ccec54e8a67490f6",
-          "environmentSha256": "sha256:7e973e940b2dec1aa593fb74f20654707c5c48a4e30c9582f97eef11b8446433",
+          "environmentSha256": "sha256:964aa234c5c0d037d02d68cfa9936d142293f8802deedb203952624783d15b04",
           "consoleEntryPoint": "hermes_cli.main:main",
           "consoleBindingSha256": "sha256:1f3d700744a9f5e0cae6bbb497231a0d505ae99e020acd27b9b749570b987e7f",
           "runtimeNodeVersion": "22.22.0",
@@ -258,10 +292,8 @@
         },
         "integrity": {
           "status": "verified",
-          "sha256": "sha256:b944e768e7ba1bf4335104b6539d5bfc2604ae3717365694f713f58562f90eb5"
-        },
-        "kind": "superseded-installed-console-build",
-        "notes": "Historical Windows inventory incorrectly included generated command launchers. Its exact original manifest remains retained; a corrected independently acquired identity is required. No runtime claim is transferred."
+          "sha256": "sha256:991e506fee052fa84639d4ec5f3e63687fba80933face54fd9fa80c3a33217e0"
+        }
       }
     ],
     "sourceReferences": [
@@ -325,6 +357,13 @@
         "path": "packages/surface/vendors/hermes/builds/hermes@0.21.5-windows-inventory",
         "digestAlgorithm": "sha256-path-content-v1",
         "sha256": "5f940866d05feb5f9e375a2aa4ea7f023a4563487141cd0a13a2971957c8d240"
+      },
+      {
+        "id": "windows-reproducible-installed-console-build",
+        "kind": "build-provenance",
+        "path": "packages/surface/vendors/hermes/builds/hermes@0.21.5-windows-reproducible",
+        "digestAlgorithm": "sha256-path-content-v1",
+        "sha256": "c694e84fb646875a62018735e961da73d7e5a7d32a8c97a48d735a832b950ea2"
       }
     ],
     "claims": [
@@ -393,6 +432,17 @@
         "artifact": "hermes-0.21.5-windows-x64",
         "platform": "windows-x64",
         "notes": "Two independent Windows installs differ only in generated entry-point EXE launchers. The inventory correction needs fresh acquisition and protected four-platform verification; the historical identity and its bytes remain unchanged."
+      },
+      {
+        "id": "windows-reproducible-build-acquisition",
+        "kind": "binary-probe",
+        "confidence": "verified-headless",
+        "record": "windows-reproducible-installed-console-build",
+        "artifact": "hermes-0.21.5-windows-x64-acquired",
+        "platform": "windows-x64",
+        "capturedAt": "2026-11-04T09:12:52.802Z",
+        "harness": "agent-adaptation 41804810473 / materialize-installed-console / GitHub windows-2025",
+        "notes": "The exact production console printed 0.21.5 and its corrected installed-file inventory matches both independent diagnostic builds. This records acquisition and a version probe only; native-TUI/resume and protected promotion remain separate gates."
       }
     ],
     "limitations": [

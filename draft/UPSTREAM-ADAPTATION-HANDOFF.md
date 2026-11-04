@@ -2,7 +2,7 @@
 
 **Status:** Review fixes and the Rosetta dependency landed on their intended branches; capture gaps and promotion remain.
 Every vendor has a staged candidate or a recorded blocker.
-Every confirmed review finding is fixed. Codex 0.166.0, Claude 2.1.311, OpenCode 1.19.5 and Kimi 2.4.1 are promoted through the protected workflow. This file is the resume point for the draft PR
+Every confirmed review finding is fixed. Codex 0.166.0, Claude 2.1.311, OpenCode 1.19.5, Kimi 2.4.1 and Copilot 1.0.105 are promoted through the protected workflow. This file is the resume point for the draft PR
 [vibefield/puppeteer#59](https://github.com/vibefield/puppeteer/pull/59). Delete it when the PR is ready for review.
 
 PR #59's branch, `claude/nice-darwin-0vugls`, now includes the review-completion work through `a4965f2`
@@ -25,7 +25,7 @@ was scoped to this repository, so `pnpm upstream:detect` could not read GitHub r
 | Hermes      | pending 0.20.0   | 0.21.5 (`v2026.9.24`)                                   | candidate 0.21.5        | `919aded`                       | `3673427`            |
 | Kimi Code   | pending 0.34.0   | 2.4.1 (`@moonshot-ai/kimi-code@2.4.1`)                  | verified 2.4.1          | `4ac97ba`                       | `eb2e28c`            |
 | OpenCode    | pending 1.18.16  | 1.19.5 on the default 1.x line; 2.2.5 (`@opencode/cli`) | verified 1.19.5         | `1cff3a8`, `e78b8b3`, `b08a638` | `611a05d`            |
-| Copilot CLI | pending 1.0.80   | 1.0.105                                                 | candidate 1.0.105       | `da3d9df`, `eed27fb`            | `845ce4d`, `cab3aa5` |
+| Copilot CLI | pending 1.0.80   | 1.0.105                                                 | verified 1.0.105        | `da3d9df`, `eed27fb`            | `845ce4d`, `cab3aa5` |
 | Pi          | pending 0.84.3   | 1.5.0                                                   | candidate 1.5.0         | `9cd192e`                       | `bedd9d5`, `5e4d98f` |
 | Antigravity | pending 1.1.20   | 1.4.12                                                  | none — blocker recorded | `45ca9f8`                       | —                    |
 
@@ -237,3 +237,9 @@ Antigravity 1.4.12 descriptor extraction is complete, with exact executable SHA-
 Hermes Windows reconstruction diagnosis is complete. [The two-build inventory diagnostic](https://github.com/vibefield/puppeteer/actions/runs/41802941950) found exactly 19 generated `Scripts/*.exe` launchers changing across 16 distributions; the other 5,220 installed files were identical. Windows includes the environment root in `site.getsitepackages()`, so generated launchers incorrectly entered an inventory that claimed to exclude them. The correction excludes only names declared by `console_scripts`/`gui_scripts`; package code, entry-point metadata and unrelated EXEs remain hashed. [The corrected two-build diagnostic](https://github.com/vibefield/puppeteer/actions/runs/41803922116) produced identical complete manifests, SHA-256 `991e506fee052fa84639d4ec5f3e63687fba80933face54fd9fa80c3a33217e0`. The original Windows manifest and diagnostic file-level differences are preserved under `builds/hermes@0.21.5-windows-inventory`. Its old identity is historical and had no runtime claims; fresh production acquisition and protected reconstruction remain necessary. Neither diagnostic branch belongs in the PR.
 
 The Hermes macOS cleanup race is also fixed: the test host terminates and waits for its whole PTY process group, including a Node TUI that outlives its Python launcher, before removing the disposable home. A regression launches an orphaned child that ignores graceful termination; all 209 Hermes tests pass with real live mode enabled. The existing semantic assertions and strict reconstruction gate remain intact.
+
+Copilot protected promotion [41804202048](https://github.com/vibefield/puppeteer/actions/runs/41804202048) completed after owner approval; generated commit `cf4135e3` is merged into PR #59. Pi's promotion is next in the sequence.
+
+Hermes [production acquisition 41804810473](https://github.com/vibefield/puppeteer/actions/runs/41804810473) passed all four platforms, assembly and analysis. The actual Windows manifest is `sha256:991e506fee052fa84639d4ec5f3e63687fba80933face54fd9fa80c3a33217e0`, byte-identical to both corrected diagnostic builds. The other three platform identities are unchanged. The actual new Windows manifest is retained separately, with a version-probe claim bound to its new artifact ID. Historical manifests and all existing runtime capture bindings remain intact. A fresh four-platform native-TUI/resume rehearsal follows.
+
+The owner approved Antigravity's first-run terms for a disposable test with interaction-data collection off. The rendered screen confirmed the unchecked checkbox before Done was selected. That probe cannot establish 1.1.20 behavior: its earlier downloaded executable had auto-updated to 1.5.0 despite `AGY_CLI_DISABLE_AUTO_UPDATE=1`. The process was stopped. Reacquisition and verified update suppression are required before collecting version-bound runtime evidence; the run is not a promotion proof.
