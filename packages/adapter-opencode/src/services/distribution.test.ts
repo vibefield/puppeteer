@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   InstalledAgentSchema,
@@ -236,7 +236,7 @@ describe('OpenCode auto-update evidence', () => {
 
   it('merges the global config files in upstream order, the last autoupdate winning', async () => {
     const files = (contents: Record<string, string>) => async (path: string) => {
-      const text = contents[path.split('/').at(-1)!];
+      const text = contents[basename(path)];
       if (text === undefined) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
       return text;
     };
