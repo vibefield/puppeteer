@@ -1,112 +1,290 @@
 # OpenCode 2 Migration Plan
 
-Status: **Unstarted.** Recorded 2026-11-03 while advancing the 1.x candidate to 1.19.5.
-Current candidate: OpenCode **1.19.5** (`support/agents.json`, `baseline-pending`).
-Target line: OpenCode **2.x** (`@opencode/cli`, latest 2.2.5).
+Status: **Awaiting the ownership decision (§3).** Recorded 2026-11-03 while advancing the 1.x candidate to 1.19.5;
+refreshed 2026-11-04 with an upstream re-check and a second governed probe.
+Current 1.x line: OpenCode **1.19.5**, `verified` in `support/agents.json` (promotion run `41794896986`).
+Target line: OpenCode **2.x** (`@opencode/cli`, latest 2.2.5; no newer stable release as of 2026-11-04).
 
-This note says why the candidate stayed on 1.x, what OpenCode 2 changes, and the work a 2.x adaptation needs. None of the
-2.x facts below are Surface evidence. They come from one read-only linux-x64 probe and from upstream source. A 2.x
-adaptation must capture them again through the governed census.
+This note says why the ledger stayed on 1.x, what OpenCode 2 changes, the decision the owner has to make, and the work
+a 2.x adaptation needs. **None of the 2.x facts below are Surface evidence.** They come from two read-only probes
+(linux-x64 on 2026-11-03, darwin-arm64 on 2026-11-04) and from upstream source at tag `v2.2.5`. A 2.x adaptation must
+capture them again through the governed census.
+
+### Probe provenance
+
+| Probe | Binary | Isolation |
+| --- | --- | --- |
+| 2026-11-03, linux-x64 | `@opencode/cli-linux-x64@2.2.5`, tarball sha256 `92690eee07a680d3cb760ca02ba43878de9eab1b4e5d5dfae8795518c53628f4`, `bin/opencode` sha256 `8d060e1d2fbb9bb44cf09ae6ed1f3f6a7cff070b5227e2f90970132b23a92050` | empty home, environment-only password, no model or account |
+| 2026-11-04, darwin-arm64 | `@opencode/cli-darwin-arm64@2.2.5`, tarball sha256 `dfd827de3281b4c3ca2b0bfc8f4beb103fa660c419d148a1a515c4344f9e9c02` (sha1/sha512 match npm), `bin/opencode` sha256 `abe4d88594bffb12b364375b8a6732d2d1f7a977195ed1a35c5c76f8e89c9e0e`, signed TeamIdentifier `5NZ4Q7NXJ4`. A seed `opencode-darwin-arm64@1.19.5` (`bin/opencode` sha256 `feaafead…f83596c`, the ledger's darwin-arm64 artifact) built a 1.x store for the in-place test. | `env -i`, private HOME/XDG/TMPDIR, `OPENCODE_DISABLE_AUTOUPDATE=1` and `autoupdate:false`, 127.0.0.1 only, password generated in memory and passed only through the environment. The only provider was a loopback fake shaped like the census harness's, used for one 1.19.5 request. Port 49374 (the 2.x background service default) had no listener before or after, and the real `~/.local/state/opencode` was unchanged. |
+
+The 2026-11-04 outputs (redacted) and the upstream source at `9bbb8ce` were kept in the session scratchpad
+(`…/scratchpad/oc2/lane-probe/out/NN-*.json|txt|sse`, cited below as `probe:NN`). They are not committed and are not
+evidence; the binaries and tarballs were deleted.
 
 ## 1. Two maintained release lines
+
+Re-checked 2026-11-04 (metadata only). Nothing has been released on either line since the plan was first recorded.
 
 | Signal | OpenCode 1.x | OpenCode 2.x |
 | --- | --- | --- |
 | npm package | `opencode-ai` (`latest` 1.19.5, 2026-10-28) | `@opencode/cli` (`latest` 2.2.5, 2026-10-30) |
 | platform packages | `opencode-<platform>` | `@opencode/cli-<platform>` (12 targets, including `-musl` and `-baseline`) |
-| source line | branch `v1` (head `006d837`), tag `v1.19.5` = `810c0eb` | branch `dev` / `production`, tag `v2.2.5` = `9bbb8ce` |
-| first release | n/a | `v2.0.0`, 2026-09-11. The two lines ship in parallel. |
-| GitHub release | `gh release edit --latest` (`script/publish.ts`) | `gh release create --latest=false`, then `edit --draft=false --latest=false` (`.github/release/publish-github-release.sh`). Not a prerelease. |
-| GitHub "Latest" | `releases/latest/download/opencode-linux-x64.tar.gz` resolves to the v1.19.5 asset | never marked Latest |
-| default installer | `https://opencode.ai/install` redirects to `refs/heads/v1/install`, which "only installs OpenCode 1" and refuses 2.x | `https://opencode.ai/v2/install`, reading `https://opencode.ai/update/api/latest/cli/npm` (2.2.5, `@opencode/cli`) |
+| source line | branch `v1` (head `006d837`, one sync commit past the tag, no activity since 10-28), tag `v1.19.5` = `810c0eb` | branch `dev` (daily) / `production` (`d9184f2`, 11-02), tag `v2.2.5` = `9bbb8ce` |
+| cadence | 1.19.0 on 10-11 through 1.19.5 on 10-28; no snapshot since `0.0.0-dev-202610280534` | `v2.0.0` 2026-09-11; 2.1.0 10-20, 2.2.0 10-27, 2.2.1–2.2.5 10-29/30; `dev` snapshots daily (`0.0.0-dev-583` on 11-04) |
+| GitHub release | `gh release edit --latest` (`script/publish.ts`) | `gh release create --latest=false`, then `edit --draft=false --latest=false`. Not a prerelease. |
+| GitHub "Latest" | v1.19.5 (`releases/latest` 302 → `/releases/tag/v1.19.5`) | never marked Latest |
+| default installer | `https://opencode.ai/install` → `refs/heads/v1/install`; refuses major ≥2, points to `/v2/install` or `upgrade --major` | `https://opencode.ai/v2/install`, reading `https://opencode.ai/update/api/latest/cli/npm` (2.2.5, `@opencode/cli`) |
+| install target | `$HOME/.opencode/bin/opencode` | **the same** `$HOME/.opencode/bin/opencode`, plus an `opencode2` shim that execs it |
 | upgrade path | `opencode upgrade --major` moves a 1.x install to 2 | n/a |
-| docs and packages | `/docs`, Homebrew `anomalyco/tap/opencode`, AUR `opencode-bin` | `/v2/docs`, Homebrew `anomalyco/tap/opencode-v2`, AUR `opencode-beta` |
+| docs and packages | `/docs`, Homebrew `anomalyco/tap/opencode`, AUR `opencode-bin` | `/v2/docs`, Homebrew `anomalyco/tap/opencode-v2`, AUR `opencode-beta`; mise ≥ 2026.10.9 installs 2 |
+| deprecation | npm `deprecated` unset, no EOL notice in the v1 README | npm `deprecated` unset; "Migrate from V1" gives no 1.x end date |
 
-Upstream treats both lines as stable. 1.x is the default install and the GitHub Latest release. 2.x is an opt-in major
-that moves fast: 46 numbered releases between 2026-09-11 and 2026-10-30.
+Upstream still treats both lines as stable, but the weight is moving to 2.x: the `dev` README leads with the v2
+installer, mise switched to 2, and the v1 installer itself notes "GitHub's Latest release may be OpenCode 2, so it's
+never used". Re-check the Latest flag before relying on `releases/latest` anywhere.
+
+**The lines cannot coexist on one machine.** The migration page: "OpenCode 1 and OpenCode 2 both use the opencode
+command and are no longer installed side by side by default … the V2 curl installer replaces the V1 binary." Both
+read config from the same places and share one data file (§2.2). Whatever the ownership decision, detection must tell
+the lines apart from `--version` (`1.19.5` vs `opencode v2.2.5`), never from the path.
 
 **Detector consequence.** `upstream.json`'s `github-stable` detector takes the first non-draft, non-prerelease tag
-that matches `^v(\d+\.\d+\.\d+)$` in API order. v2 releases are non-prerelease and are created after the matching v1
-releases, so the detector can report a 2.x version. The 1.x acquisition URLs (`opencode-<platform>@2.x`) then 404.
-Detection stays as it is on purpose, so the 2.x line keeps showing as upstream activity. The ledger blocker and this plan
-are how reviewers see it. Narrowing the tag pattern to `v1.` would hide a real upstream change.
+that matches `^v(\d+\.\d+\.\d+)$` in API order. v2 releases are non-prerelease, so the detector can report a 2.x
+version, and the 1.x acquisition URLs (`opencode-<platform>@2.x`) then 404. Detection stays as it is for now so the
+2.x line keeps showing as upstream activity. Since the 1.19.5 promotion the ledger row carries no blocker, so this plan
+is the only place a reviewer sees why. Whether the pattern is narrowed later depends on the decision in §3.
 
 ## 2. Why 2.x is a new integration family
 
-Probe: `@opencode/cli-linux-x64@2.2.5` (tarball sha256 `92690eee07a680d3cb760ca02ba43878de9eab1b4e5d5dfae8795518c53628f4`,
-`bin/opencode` sha256 `8d060e1d2fbb9bb44cf09ae6ed1f3f6a7cff070b5227e2f90970132b23a92050`). It ran in an empty
-isolated home with an environment-only server password. No model or account was used.
+### 2.1 Interface changes
 
-| Puppeteer dependency (1.x, verified) | 2.2.5 observation |
+| Puppeteer dependency (1.x, verified) | 2.2.5 observation (probe, not Surface evidence) |
 | --- | --- |
-| `opencode --version` prints bare `1.19.5` | prints `opencode v2.2.5`. `OPENCODE_VERSION_PATTERN` and `detection.json` must change. |
-| `opencode serve` = instance REST + SSE | `serve` = "Start the v2 API and web server", with flags `--hostname --port --cors --service --stdio`. Startup prints `server listening on http://…`, without the `opencode ` prefix the 1.x harness matches. |
-| `opencode attach <url> --dir --session --pure` | no `attach` command. The root TUI takes `--server <url>`, `--standalone`, `--session/-s` (which creates the session if it is missing), `--continue`, `--prompt`, and `--auto`. By default it connects to a shared **background service** (`opencode service …`) that Puppeteer must not use. |
-| Basic auth from `OPENCODE_SERVER_PASSWORD` | still accepted: `/openapi.json` returned 401 without credentials and 200 with `opencode:<password>`. Unauthenticated paths serve the web app. |
-| `GET /doc` OpenAPI (188 operations) | `GET /openapi.json`, titled "opencode HttpApi … Experimental HttpApi surface". It has 138 paths, all under `/api/*` apart from `/auth/connect/{code}`. sha256 `f5c4571bf7e9afc22a440875a746f593f988c4c31bf824f602601c04b20e6c8e`. |
-| `GET /event` `{id,type,properties}` | `GET /api/event` (`event.subscribe`, an optional `types` filter over 96 names). Records are `{id, created, type, location, data, durable:{aggregateID, seq, version}}`. The OpenAPI types `data` only as an encoded JSON string (`V2EventEncoded`). Heartbeats are SSE comments. |
-| `POST /session/:id/prompt_async` with a caller `messageID` | `POST /api/session/{id}/prompt` with optional `id`, `text`, `files`, `agents`, `skills`, `metadata`, and `delivery` |
-| `message.updated` / `message.part.updated` / `message.part.delta` | replaced by `session.execution.*`, `session.step.*`, `session.text.*`, `session.reasoning.*`, `session.tool.{input.*,called,progress,success,failed}`, `session.compaction.*`, `session.retry.scheduled`, `session.usage.updated`, and `session.inbox.*` |
-| `permission.asked/replied`, `POST /permission/:id/reply {reply}` | `permission.asked/replied` remain. The reply is `POST /api/session/{id}/permission/{requestID}/reply {decision: once\|always\|reject, message?}`. |
-| `question.*`, `POST /question/:id/reply\|reject` | no question routes. `form.created/replied/cancelled` and `/api/session/{id}/form/{formID}/reply {answer}` take their place. |
-| `POST /session/:id/abort` | `POST /api/session/{id}/interrupt`, plus a `session.execution.interrupted` event |
+| `opencode --version` prints bare `1.19.5` | prints `opencode v2.2.5` (`probe:02`). `OPENCODE_VERSION_PATTERN` and `detection.json` must change. |
+| `opencode serve` = instance REST + SSE; ready line `opencode server listening on …` | `serve` = "Start the v2 API and web server", flags `--hostname --port --cors --service --stdio`, no `--pure`. Ready line `server listening on http://127.0.0.1:<port>`, without the `opencode ` prefix. (Side note for the 1.x lane: in one darwin run 1.19.5 bound 4096 despite `--port 0`; one observation, not reproduced.) |
+| `opencode attach <url> --dir --session --pure` | no `attach`, `web`, `github`, `pr`, `import`, `export` or `db`. Root flags `--standalone --server --auto --continue/-c --session/-s --prompt` (plus `--wizard`, `--completions`); the directory is positional; `-s` creates a missing session. Root commands: `upgrade/update uninstall acp api debug auth mcp plugin models stats mini run session service reload pair serve` (48 help pages, `probe:04`). The help is not yargs-shaped. |
+| Basic auth from `OPENCODE_SERVER_PASSWORD`, optional `OPENCODE_SERVER_USERNAME` | 2.x reads `OPENCODE_PASSWORD`, falling back to `OPENCODE_SERVER_PASSWORD` (`cli/src/env.ts`); `OPENCODE_SERVER_USERNAME` is no longer supported and the user is always `opencode`. `/openapi.json`, `/api/session`, `/api/event` return 401 with `WWW-Authenticate: Basic realm="Secure Area"` and `{_tag:"UnauthorizedError"}`. `/`, `/doc` and `/event` return **200 HTML** (the web app), so a 1.x-style `/event` probe against 2.x gets HTML, not 404 (`probe:12`). Launches must set or scrub both password variables. |
+| `GET /doc` OpenAPI (188 operations) | `GET /openapi.json`, OpenAPI 3.1.0, 138 paths, **169 operations**, all under `/api/*` apart from `/auth/connect/{code}`. sha256 `f5c4571bf7e9afc22a440875a746f593f988c4c31bf824f602601c04b20e6c8e`, byte-identical on linux-x64 and darwin-arm64 (`probe:10`, `probe:11`). No `components.schemas.Event`, only `V2EventEncoded` and `Event.SeqEncoded`. No `/experimental/console/orgs`; `/api/integration*`, `/api/credential*`, `/api/plugin`, `/api/mcp`, `/api/skill` instead. |
+| `GET /event` `{id,type,properties}` | `GET /api/event`. See §2.3 for the proven grammar. |
+| `POST /session/:id/prompt_async` with a caller `messageID` | `POST /api/session/{id}/prompt` with optional `id`, `text`, `files`, `agents`, `skills`, `metadata`, `delivery`. Which event echoes the prompt is still unproven (needs a model turn). |
+| `message.updated` / `message.part.updated` / `message.part.delta` | `session.execution.*`, `session.step.*`, `session.text.*`, `session.reasoning.*`, `session.tool.{input.*,called,progress,success,failed}`, `session.compaction.*`, `session.retry.scheduled`, `session.usage.updated`, `session.inbox.*` (96 type names in all) |
+| `permission.asked/replied`, `POST /permission/:id/reply {reply}` | `POST /api/session/{id}/permission` returns `{id, effect}`; default ruleset → `allow`, nothing published. With a session ruleset `{action:"*",resource:"*",effect:"ask"}` it emits `permission.asked {id,sessionID,action,resources,save?}`. Reply `POST /api/session/{id}/permission/{requestID}/reply {decision: once\|always\|reject, message?}` → 204 and `permission.replied {sessionID,requestID,reply}`: the event key is `reply` while the request field is `decision`, and a reject `message` is not in the event. The 1.x body `{reply}` → 400 "Missing key decision". A settled or unknown request → **404** `PermissionNotFoundError`. `always` saves a `psv_` rule (`probe:20`). |
+| `question.*`, `POST /question/:id/reply\|reject` | no question routes. Form create → `form.created`; reply 204 → `form.replied {id,sessionID,answer}`; DELETE 204 → `form.cancelled`. Invalid answer 400 `FormInvalidAnswerError`; settled **409** `FormAlreadySettledError`; unknown 404 `FormNotFoundError` (`probe:20`). |
+| `POST /session/:id/abort` | `POST /api/session/{id}/interrupt` (+ `session.execution.interrupted`). Idle: `200 {interrupted:false}` (also with `?resume=false`); unknown: 404 `SessionNotFoundError`; malformed id: 400 `InvalidRequestError` `kind:"Params"`. |
 | `POST /session/:id/summarize` | `POST /api/session/{id}/compact` |
-| no SSE replay cursor | each durable event carries `aggregateID`/`seq`. Whether `/api/event` can resume from a cursor is **unproven**. |
+| agent switch | switching to an unknown agent returns 204 with no validation, and emits durable `session.agent.selected` plus a synthetic `session.inbox.enqueued` carrying the plan-mode reminder. |
 | `@agentclientprotocol/sdk` | the CLI depends on `@agentclientprotocol/sdk` 1.6.0, and `opencode acp` remains |
-| v1 data | `GET /api/experimental/migration/v1` exists. Whether 2.x reads 1.x session storage in place is unproven. |
 
-Nearly every semantic rail the adapter normalizes changes name, envelope, route, or correlation key. Only Basic auth and
-the idea of a loopback server stay. Adapting to 2.x therefore means a new Surface census, ASM, persona, and adapter
-normalization, not a version bump.
+Model-free routes that work under a private `serve`: session create/get/list (with `directory`)/active/message/context/
+inbox/rename/metadata/archive/unarchive/fork/delete, interrupt, and `session.permission.create` / `session.form.create`.
+The last two let the census drive permission and form scenarios without a model.
 
-## 3. Migration work
+### 2.2 Storage: 2.x shares and migrates the 1.x data file (was "unproven")
 
-1. **Ownership decision.** Pick one of two shapes: (a) a second release line of the same `opencode` vendor, which
-   replaces the canonical ground truth once 2.x is promoted, or (b) a separate vendor id while 1.x stays supported.
-   One agent has one runtime authority. Option (a) means the adapter and the ledger move to 2.x together, and 1.x
-   support ends at that promotion. Decide this first, because it sets the `upstream.json`, ledger, and persona layout.
-2. **`upstream.json`.** Use the detector `kind: github-release` with a version-aware tag pattern, or the update API
-   once the schema allows it. Acquire from
-   `https://registry.npmjs.org/@opencode/cli-<platform>/-/cli-<platform>-${version}.tgz` with
-   `executableBasenames: ["opencode"]` (Windows: `opencode.exe`, unverified). Keep `maxBytes` above the 118 MB linux-x64
-   tarball. Run `pnpm upstream:check`.
-3. **Census harness** (`census/harness.mjs` v2 variant). Use private `serve --hostname 127.0.0.1 --port 0` with an
-   environment password and isolated XDG/OPENCODE dirs, and the fake OpenAI-compatible provider. Subscribe to
-   `/api/event` before creating the session. Capture the 1.x scenario set again against the new routes: turn,
-   lifecycle/fork/archive/delete, file write/edit/delete, task/subtask/background, permission once/always/reject, form
-   reply/cancel, interrupt during stream and tool, retry, provider error, reconnect, backend restart with exact
-   resume, manual/auto/overflow compaction, and unknown context. Add a cursor-resume probe for `durable.seq`. Use
-   `opencode --server <url> --session <id>` in a PTY for the interactive lanes. Confirm the TUI never starts or joins
-   the background service: `--server` must be explicit, and `opencode service status` must stay empty in the isolated
-   home.
-4. **Sanitizer/privacy.** v2 IDs, `location.directory`, `created` clocks, and `durable.aggregateID`. The encoded `data`
-   string must be decoded before redaction so the type-preserving guarantee holds.
-5. **ASM generator.** OpenAPI 3.1 from `/openapi.json`. The event schemas are not in the OpenAPI (they are an encoded
-   string), so take them from `packages/protocol`/`packages/schema` source at the exact tag as an `exact-source`
-   contract. Record that limitation.
-6. **Adapter.** Build a new `transport/` client (`/api/*`, `/api/event` framing, durable seq) and `launch/` (`serve`
-   without `--pure`, which does not exist in 2.x; TUI via `--server`/`--session` instead of `attach`, and version
-   parsing for `opencode vX.Y.Z`). Rewrite every category in `normalization/` (execution/step/text/tool/form/inbox).
-   Map `form.*` to Core `interaction:question-*` only where the native form is a question. The services for prompt
-   (deterministic `id`), approvals (`decision`), interrupt, compact, and history move to the new routes. The
-   invocation grammar needs a new 2.x help fixture: the 2.x command set differs (`mini`, `pair`, `service`, `api`,
-   `reload`, and no `attach/web/github/pr/import/export` at the root).
-7. **Imposter.** A new `http-serve.json`, ops, and scenarios for the v2 routes and envelope, plus `--server` attach
-   emulation.
-8. **Profiles and extensions.** 2.x moves credentials to `/api/credential` and integrations, with `auth export/import`
-   and `switch`. The 1.x SQLite readers in `services/profiles.ts` and the plugin/skill loaders in
-   `services/extensions.ts` must be read again from the 2.x source.
-9. **Gates.** Run the full `docs/guides/adapting-an-agent.md` Stage 1–6 matrix, then the four-platform protected lane.
+Both lines use `$XDG_DATA_HOME/opencode/opencode.db` (`core/src/database/path.ts`, `cli/src/database-path.ts` at the
+tag). The probe ran 1.19.5 to seed a store, then opened it with 2.2.5 (`probe:40`, `probe:41`, `probe:50`):
 
-## 4. Open questions
+- 2.2.5 applies 21 more migrations on the same migration-table lineage (38 → 59 rows; first `20260804233008_loose_psylocke`).
+- It drops `data_migration`, `session_context_epoch`, `session_input`; adds `session_v2`, `session_part`,
+  `session_inbox`, `kv`, `blob`, `job`, `schedule` and related tables; and **deletes every `event` row** (16 → 0).
+- At startup it copies 1.x sessions once in the background (`v1-migration.bun.ts`), `running` → `completed` within
+  250 ms, and records `kv` `migration.v1-v2 = {"phase":"completed"}`.
+- The 1.x session survives with its ids: `/api/session/{same ses_ id}` and `/message` return the same message ids,
+  agent and model, with token counts folded in.
+- The 1.x tables (`session`, `message`, `part`, `permission`) keep their rows and schema; 1.19.5 still starts on the
+  store afterwards, lists and reads the session, and creates new ones.
+- **The copy runs once.** A session 1.x creates after 2.x has opened the store never reaches 2.x: on reopen 2.x listed
+  only the seed session while the legacy `session` table held two.
+- `account`/`account_state` keep the 1.x columns; `credential` and `control_account` are new. A fresh 2.x database has
+  no `session` table.
 
-- How long does upstream keep shipping 1.x? The `v1` branch and 1.19.5 (two days before 2.2.5) say it is maintained
-  today. No end-of-life notice was found.
-- Does 2.x read 1.x session storage in place, or only through `experimental.migration.v1`? This decides whether
-  Puppeteer resume survives a user's 1→2 upgrade.
-- Is `durable.seq` a replay cursor for `/api/event`? If it is, the reconnect rule ("no replay; rehydrate over REST")
-  changes.
+Rule: Puppeteer resume survives a 1→2 upgrade for sessions written before the first 2.x launch, but a home used by both
+lines diverges after that launch. A Puppeteer-run 2.x backend on a profile's `XDG_DATA_HOME` migrates that store under
+any user who still runs 1.x by hand.
+
+### 2.3 Event stream: no replay cursor (was "unproven")
+
+- Headers `text/event-stream`, `cache-control: no-cache, no-transform`, `x-accel-buffering: no`. Every frame is
+  `data: <json>\n\n`; never `id:`, `event:` or `retry:` (upstream `server/src/event-feed.ts`). `: heartbeat` on connect
+  and every 15 s (`probe:21`, `probe:22`, `probe:31`).
+- First frame is always `{id:"evt_…",type:"server.connected",data:{}}` with no `created`/`location`.
+- Records are `{id, created, type, location?, data, durable?}`. **On the wire `data` is a JSON object**, not the encoded
+  string `V2EventEncoded` declares; the decoder must accept both.
+- Durable events seen were all `session.*` (`created`, `renamed`, `metadata.updated`, `agent.selected`,
+  `inbox.enqueued`, `archived`, `unarchived`) with `durable:{aggregateID:<sessionID>, seq, version}`, `seq` from 0 per
+  session. Some carry no `location` (`session.renamed`, `session.agent.selected`). `permission.*`, `form.*` and the
+  `*.updated` catalog events are not durable.
+- `types` is a repeated query parameter; `server.connected` is always sent; an unknown type → 400
+  `InvalidRequestError` listing all 96 names. Id prefixes: `evt_ ses_ per_ frm_ msg_ psv_`.
+- **No cursor.** `Last-Event-ID` (event id or seq), `?after=`, `?cursor=`, `?seq=` were all ignored. A rename made while
+  disconnected (seq 9) never arrived after reconnecting; the next live frame was seq 10 (`probe:30`). The OpenAPI calls
+  the stream "Volatile by contract … events during disconnection are missed"; `event-feed.ts` keeps one in-memory queue
+  per subscriber (4096, oldest dropped) and no history.
+- `GET /api/experimental/session/{id}/log?after=<seq>&follow=` exists but does nothing under `opencode serve`: the CLI
+  never sets `Bus.configured({ persist })`, the `event` table stayed empty, and every read returned only
+  `{"type":"log.synced",…,"seq":10}`.
+
+So the 1.x reconnect rule ("no replay; rehydrate over REST") still holds, and a per-session `seq` gap is a reliable
+signal to rehydrate.
+
+### 2.4 Background service: `--server` avoids it (was a plan assumption)
+
+`opencode --server <url> --session <id>` in a real PTY (screen never read) ran as one process with 14 TCP connections,
+all to the private server; no child process, nothing on 49374, no `service.json`, only
+`$XDG_STATE_HOME/opencode/latest/tui/tabs.json` and lock files. `opencode session list --server <url> --format json`
+exits 0, and exits 1 without a password. `opencode service status` printed `stopped` (`probe:50`, `probe:51`). In
+`server-connection.ts`, `--server` makes one health call (`server.info`) and warns on version mismatch; only the path
+with neither `--server` nor `--standalone` reaches `Service.ensure`. `session` and `api` subcommands default to that
+path too, so **Puppeteer must always pass `--server`**.
+
+Nearly every semantic rail the adapter normalizes changes name, envelope, route, or correlation key. Only Basic auth,
+the loopback server, the data root, and the no-replay rule survive. Adapting to 2.x means a new Surface census, ASM,
+persona, and adapter normalization, not a version bump.
+
+## 3. Decision needed: who owns 2.x
+
+The owner has not decided. Nothing in the repository may presuppose the answer: no `vendors/opencode-v2`, no
+`opencode@2.*` model folder, no ledger row or `candidateVersion`, no adapter package. Repo rules that shape the options:
+a manifest's vendor must equal its folder; model folders are `<vendor>@<version>`; Imposter's `loadModel` reads only
+the vendor's `groundtruth.json`; `upstream.json` allows one stable detector and one acquisition template per platform;
+the ledger has one row per id and no release-line notion; and a `groundtruth-map.json` digest-locks one surface per
+adapter.
+
+### Option (a): a second release line of `opencode`
+
+- **Layout.** `vendors/opencode/{model,captures,probes,references}/opencode@2.2.x` beside `@1.19.5`, a v2 harness, and
+  a line switch in the generator. `groundtruth.json` stays on 1.19.5 until promotion, then flips.
+- **Ledger.** The same row may carry `candidateVersion: 2.x` while 1.19.5 stays verified; promotion replaces
+  `currentVersion` and the receipt. Nothing can say 1.x is still supported.
+- **`upstream.json`.** Keep `^v(\d+\.\d+\.\d+)$`; acquisition switches to `@opencode/cli-<platform>` in the 2.x lane
+  (switching early breaks re-acquiring 1.x).
+- **Persona and adapter.** The 2.x persona cannot land on main before promotion (it validates against the canonical
+  file). `packages/adapter-opencode` is rewritten in place. Adapter, persona, canonical file, map and ledger switch in
+  **one PR**, developed on a long-lived branch while 2.x ships roughly weekly.
+- **Cost to 1.x users.** Support ends at promotion. 1.x is still the default installer and the GitHub Latest release,
+  and version detection would refuse it, so most current installs drop out. Saved continuations and the resume picker
+  survive only for sessions written before the user's first 2.x launch (§2.2). A Puppeteer-run 2.x backend migrates a
+  profile's store under a user who still runs 1.x. The distribution upgrade recipe becomes `upgrade --major` or the v2
+  installer.
+- **Benefit.** One OpenCode entry, one adapter, one census, one promotion lane; matches "one agent, one runtime
+  authority" once 1.x is gone.
+
+### Option (b): a separate vendor id (name is the owner's call; `opencode-v2` below is a placeholder)
+
+- **Layout.** `vendors/opencode-v2/` with its own `upstream.json`, census, `model/opencode-v2@2.2.5` and
+  `groundtruth.json`, importing shared harness pieces from `../opencode/census` or an extracted module.
+- **Ledger.** A second row (`@vibefield/puppeteer-adapter-opencode-v2`, persona `opencode-v2`), `baseline-pending` with
+  blockers until promoted. The 1.x row is untouched; no schema change.
+- **`upstream.json`.** Narrow 1.x to `^v(1\.\d+\.\d+)$` (the §1 objection disappears because 2.x is tracked
+  elsewhere); the new vendor uses `^v(2\.\d+\.\d+)$` or the npm `@opencode/cli` latest with `@opencode/cli-*`
+  acquisition.
+- **Persona.** `personas/opencode-v2`. The `opencode` shim name collides (the last persona wins), so use a distinct shim
+  or `AI_PERSONA`. The Imposter HTTP engine must serve both envelopes.
+- **Adapter.** New `packages/adapter-opencode-v2`, depending on `adapter-opencode` for loopback fetch, the SSE decoder,
+  the backend lifecycle, the prompt gate and the distribution/profile helpers (as `adapter-grok` depends on
+  `adapter-acp`). Registration: `scripts/check-package-layout.mjs`, `public-packages.mjs`,
+  `check-adapter-groundtruth-maps.mjs`, `release-please-config.json`, builtin-providers (`ProviderId`, descriptor,
+  services), imposter-control, the views service marks, and the `agent-*` workflows.
+- **Cost.** No functional cost to 1.x users. Instead: both lines install the same `opencode` command, so each provider
+  must refuse the other's binary by version string; users see two OpenCode entries, one "not installed"; both bind the
+  same `opencode.db`, so profile roots must be per line or guarded against the one-shot migration (§2.2); maintenance
+  doubles (two adapters, censuses and promotion lanes, against 46 2.x releases in seven weeks). When upstream ends 1.x,
+  the `opencode` row becomes `deprecated` (the schema supports it) and the placeholder name outlives its reason.
+
+### Recommendation: (b), with a planned exit to a single row
+
+1. 1.x is verified today and is what `/install`, Homebrew `opencode` and GitHub Latest install. Option (a) would refuse
+   most current installs at the moment of promotion; (b) costs 1.x users nothing.
+2. (a) forces a big-bang single PR (adapter + persona + canonical file + map + ledger) built on a branch that must chase
+   a weekly-shipping upstream. (b) lets 2.x land incrementally on main as `baseline-pending` with blockers, through the
+   normal Stage 1–6 gates.
+3. The shared-store hazard (§2.2) exists under both options; (b) is the one that can keep a 1.x home working while it
+   is still the default install.
+4. (b)'s main costs (registration, a second lane) are one-time and mechanical, and the reuse prepared in §4 A2–A4 keeps the
+   duplicated surface to roughly 1k lines.
+
+Pick a neutral id rather than one that hard-codes "v2" if the row is meant to outlive 1.x, and record an exit rule now:
+when upstream marks 2.x Latest or `/install` switches to 2, mark `opencode` `deprecated` and stop its promotion lane.
+Choose (a) instead if the owner expects 1.x to be retired upstream before a 2.x adapter could be promoted anyway
+(weeks, not months); then the second row is pure overhead.
+
+## 4. Work breakdown
+
+Ordered. Part A is decision-independent and can start now; each item must leave the 1.x lane green and must not create
+a vendor directory, model folder, ledger entry or adapter package for 2.x. Part B starts after the decision.
+
+### A. Before the decision
+
+1. **1.x guards both options need.** In `packages/adapter-opencode`: refuse a binary whose `--version` matches
+   `^opencode v2\.` with a typed result, not a crash; never pass `--major` to `upgrade`; detect a store that 2.x has
+   opened (`kv` `migration.v1-v2`, or `session_v2` present) and surface it as a qualified profile warning (sessions
+   created by 1.x after that point are invisible to 2.x). Scrub `OPENCODE_PASSWORD` as well as
+   `OPENCODE_SERVER_PASSWORD` from 1.x launch environments that Puppeteer does not own.
+2. **Parameterize reusable transport in `adapter-opencode`, behavior-preserving for 1.x.** `transport/event-stream.ts`:
+   envelope key (`properties` vs `data`), object-or-string `data`, path, repeated `types` filter, and an optional
+   per-aggregate `seq` gap hook that triggers REST rehydration. `launch/backend.ts`: readiness prefix and flag set as
+   inputs. These are reused under (a) in place and under (b) as a dependency.
+3. **Imposter HTTP engine made data-driven.** Move the envelope key, the readiness template, the auth realm, and
+   `--server` attach emulation into `http-serve.json`; keep the 1.x persona byte-for-byte green
+   (`conformance.opencode`, `opencode-mode`, `scenarios.opencode`). About 200 lines of the session state store become
+   envelope-neutral.
+4. **Surface shared tooling.** Add a decode-before-redact hook to `@vibefield/puppeteer-surface/sanitize` (type-
+   preserving for encoded `data`); teach the generator's HTTP half OpenAPI 3.1; add generic support for an
+   `exact-source` event contract (the 2.x events are not in the OpenAPI). Extract the vendor-neutral parts of
+   `vendors/opencode/census/harness.mjs` (utilities, isolated env, fake provider, fetch; about 450 lines) into a module
+   the 1.x harness imports unchanged.
+5. **Remaining 2.x probes, in scratch, recorded here.** (i) Does the loopback fake provider work through 2.x config and
+   environment handling — this gates every model-backed scenario; (ii) the prompt echo event; (iii) `?directory=`
+   scoping on `/api/*`; (iv) the 2.x config/plugin/skill/MCP loaders from source, and whether `/api/mcp` connects to
+   servers; (v) `auth export/import`/`switch` and the `credential` table for profiles; (vi) the `v2/install`,
+   Homebrew `opencode-v2` and 2.x autoupdate rules for distribution; (vii) the Windows executable name. Keep binaries
+   only in scratch with sha256 recorded, isolated homes, `--server` always, autoupdate off.
+6. **Draft the 2.x invocation grammar and event contract as data under `draft/`**, from the help tree and
+   `packages/protocol`/`packages/schema` at the exact tag, so either option's census can consume them.
+
+### B. After the decision
+
+7. **Layout.** (a): `vendors/opencode/*/opencode@2.2.x` and a generator line switch. (b): `vendors/opencode-<id>/`, a
+   `baseline-pending` ledger row with blockers, and the 1.x tag pattern narrowed to `^v(1\.`.
+8. **`upstream.json`.** Detector `github-release` with a version-aware pattern (or the update API once the schema allows
+   it); acquisition `https://registry.npmjs.org/@opencode/cli-<platform>/-/cli-<platform>-${version}.tgz`,
+   `executableBasenames: ["opencode"]` (Windows `opencode.exe`, unverified), `maxBytes` above the 118 MB linux-x64
+   tarball. `pnpm upstream:check`.
+9. **Census** (v2 harness on the shared module from A4). Private `serve --hostname 127.0.0.1 --port 0`, password through
+   `OPENCODE_PASSWORD` and `OPENCODE_SERVER_PASSWORD`, isolated XDG/OPENCODE dirs, fake provider. Subscribe to
+   `/api/event` before creating the session. Scenarios: turn, lifecycle/fork/archive/delete, file write/edit/delete,
+   task/subtask/background, permission once/always/reject (via `session.permission.create` and a session `ask`
+   ruleset), form reply/cancel/invalid/settled, interrupt during stream and tool, retry, provider error, reconnect with
+   a seq gap, backend restart with exact resume, manual/auto/overflow compaction, unknown context, a 1.x-store
+   migration case (§2.2), and the TUI on `--server` in a PTY with a check that port 49374 and `service status` stay
+   quiet.
+10. **Sanitizer/privacy** for the vendor: new id keys (`aggregateID`, `frm_`, inbox ids, `psv_`), `location.directory`,
+    `created` clocks, using the A4 hook.
+11. **ASM generation** from `/openapi.json` (HTTP) plus the exact-source event contract; record the limitation.
+12. **Adapter.** Rewrite `transport/client.ts` (`/api/*`, per-session permissions, forms, interrupt, compact, no console
+    orgs), the `launch/` invocation (`opencode --server <origin> --session <id> <cwd>`, never the background service;
+    check the session exists before `-s` because it creates missing ones; continuation state v3 recording the line),
+    `detection.ts` (`^opencode v(\d+\.\d+\.\d+)$`), and every `normalization/` category onto
+    `session.execution/step/text/reasoning/tool/usage/inbox`, `permission.*` (`decision` in, `reply` out) and `form.*`
+    (mapped to Core `interaction:question-*` only where the form is a question). History becomes REST rehydration on a
+    seq gap. Profiles, extensions, models and distribution follow the A5 findings. New `groundtruth-map.json` and tests.
+    (a) rewrites `adapter-opencode` in place; (b) builds the new package on the A2 pieces and registers it everywhere
+    listed in §3.
+13. **Imposter persona** for 2.x on the A3 engine. (b): distinct shim name.
+14. **Gates.** `docs/guides/adapting-an-agent.md` Stage 1–6, then the four-platform protected lane. (a): the switch PR
+    carries adapter, persona, canonical file, map and ledger together. (b): promote the new row; apply the exit rule
+    from §3 when its trigger fires.
+
+## 5. Open questions
+
+- How long does upstream keep shipping 1.x? No release, snapshot or `v1` commit since 2026-10-28 while 2.x shipped five
+  patches and daily snapshots; no EOL notice. This sets the timing of the §3 exit rule and weighs on (a) vs (b).
+- Can the census's fake provider drive 2.x model turns (A5 i)? Until it can, no model-backed 2.x scenario is capturable.
 - `opencode-ai@1.x` clients run `opencode upgrade --major` to move to 2. A Puppeteer-managed 1.x binary must not
   self-upgrade. 1.19.0 made autoupdate notify-only ("Updates are never installed automatically"; upstream
   `v1.19.0` `packages/opencode/src/cli/upgrade.ts`, recorded in the Surface findings §0.7), and the census keeps
   `OPENCODE_DISABLE_AUTOUPDATE=1`.
+
+Answered by the 2026-11-04 probe (still to be re-captured as Surface evidence): 2.x reads the 1.x store in place and
+migrates it once (§2.2); `durable.seq` is not a replay cursor and the CLI log route does not replay (§2.3); `--server`
+keeps the TUI and CLI off the background service (§2.4).
