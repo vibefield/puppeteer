@@ -24,7 +24,7 @@ specifications versus historical material.
 ## Agent support
 
 <!-- agent-support:start -->
-[![Antigravity: baseline pending 1.1.20](https://img.shields.io/badge/Antigravity-baseline_pending_1.1.20-lightgrey)](packages/surface/vendors/antigravity/groundtruth.json)
+[![Antigravity: verified 1.1.20](https://img.shields.io/badge/Antigravity-verified_1.1.20-blue)](packages/surface/vendors/antigravity/groundtruth.json)
 [![Claude Code: verified 2.1.311](https://img.shields.io/badge/Claude_Code-verified_2.1.311-blue)](packages/surface/vendors/claude/groundtruth.json)
 [![Codex: verified 0.166.0](https://img.shields.io/badge/Codex-verified_0.166.0-blue)](packages/surface/vendors/codex/groundtruth.json)
 [![GitHub Copilot CLI: verified 1.0.105](https://img.shields.io/badge/GitHub_Copilot_CLI-verified_1.0.105-blue)](packages/surface/vendors/copilot/groundtruth.json)

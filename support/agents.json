@@ -9,12 +9,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-antigravity",
       "persona": "antigravity",
       "groundTruth": "packages/surface/vendors/antigravity/groundtruth.json",
-      "candidateVersion": "1.1.20",
-      "status": "baseline-pending",
-      "blockers": [
-        "All four 1.1.20 executable identities are acquired and version-probed. The native-TUI/journal/resume proof passes locally on darwin-arm64 with approved disposable first-run terms and collection off. The protected four-platform rehearsal and owner-approved promotion are still outstanding.",
-        "The reviewed 1.4.12 migration remains separate from the 1.1.20 candidate. Writer descriptors are extracted from the exact 1.4.12 executable; fresh runtime fixtures, Rosetta raw types/goldens and adapter tool-result correlation still need migration. The newer journal uses GENERIC tool results without exit_code, changed run_command arguments, token counts on PLANNER_RESPONSE and no CHECKPOINT. Existing 1.1.20 runtime claims are not evidence for those changes."
-      ]
+      "status": "verified",
+      "currentVersion": "1.1.20",
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "c5bb95e044083ffeaf723c1d464a81654624bd08",
+        "groundTruth": "packages/surface/vendors/antigravity/groundtruth.json",
+        "vendorVersion": "1.1.20",
+        "evidenceDigest": "2ef96d30abf608ac431ee432f1a1f029b5b2cf11da5de11297cf3ba4a0617a07",
+        "replayDigest": "c2ee090dbe6fb6f34dbec52a0ff85412cda9c5a07f4d6f2b0b01676808e0a044",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/claude/antigravity-1.1.20-promotion",
+        "runId": "41891078677",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:b454577f8531fcdf985c3cc2f9012904edfb4b0664e0edb9e237f6f345734e53"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:34a133764898d2c82cf9acd7434589723ba3da5af5cdfd5856d46cbe74d87681"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:d743ebe97c822b07d010a5a836804528119f926de9b136c9f5b2c0925fe710cb"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:98ce5e394600094bedcef0458ed47add891b46f2de237b5b9a1e03f8911ec305"
+          }
+        ]
+      },
+      "introducedInPuppeteer": "0.3.3"
     },
     {
       "id": "claude",
