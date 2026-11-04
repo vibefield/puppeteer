@@ -49,16 +49,20 @@ describe('ClaudeHookNormalizer against captured fixtures', () => {
   });
 
   it('fails the turn on every captured StopFailure and closes what that turn left open', () => {
-    // The API-error lanes are the only source of real StopFailure payloads once a release has no headless lane.
+    // Real payloads: the credential-less headless lane's authentication failure and every loopback API-error lane.
     const failures = loadHookFixtures('StopFailure');
-    expect(failures.length).toBeGreaterThan(0);
+    expect(failures.length).toBeGreaterThan(1);
+    expect(failures.map((failure) => failure.error)).toContain('authentication_failed');
     for (const failure of failures) {
+      // Only the credential-less lane names a model alias that takes effort, so only its payload reports it.
+      const effort = (failure.effort as { level?: string } | undefined)?.level;
       expect(normalizeOne(failure as ClaudeHookPayload).events).toEqual([
         { type: 'turn:failed', turnId: failure.prompt_id, error: failure.error },
+        ...(effort ? [{ type: 'effort:updated', effort, intent: 'observed' }] : []),
       ]);
     }
 
-    const failure = failures[0]!;
+    const failure = failures.find((candidate) => candidate.effort === undefined)!;
     const promptId = failure.prompt_id as string;
     const normalizer = new ClaudeHookNormalizer();
     const bash = { prompt_id: promptId, tool_name: 'Bash', tool_input: { command: 'pwd' }, tool_use_id: 'tool-bash' };

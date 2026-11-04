@@ -26,6 +26,16 @@ node packages/surface/vendors/claude/census/switch-probes.mjs --artifact <claude
 node packages/surface/vendors/claude/census/generate-model.mjs --artifact <claude> --version 2.1.311 --captured-at 2026-11-03T19:12:57Z --retrieved-at 2026-11-03T19:33:22Z
 ```
 
+The headless lane was added on 2026-11-04 in a separate run inside the census network-deny sandbox
+(see "Headless lane in a network-deny sandbox" below). It was merged into the committed set, and the model
+was regenerated from the retained probes, so the artifact did not run for that step:
+
+```sh
+node packages/surface/vendors/claude/census/harness.mjs --artifact <claude> --version 2.1.311 --lanes headless
+node packages/surface/vendors/claude/sanitize-captures.mjs --merge packages/surface/vendors/claude/captures-raw/claude@2.1.311 packages/surface/vendors/claude/captures/claude@2.1.311
+node packages/surface/vendors/claude/census/generate-model.mjs --version 2.1.311
+```
+
 **Incident: the credential-less lane was not credential-less on this host.** The census ran in a
 hosted Linux container. The first full census run's `headless` lane (a print turn meant to have no
 credential, no `ANTHROPIC_BASE_URL`) completed a real model turn: one Haiku reply, reported cost
@@ -51,18 +61,71 @@ and two changes follow:
   CONNECT and keeps only the destination host and port, with only loopback exempt through `NO_PROXY`.
   The harness, interactive lane and switch probes fail any lane that attempted a non-loopback
   destination, and the headless lane's model endpoint is a loopback tripwire that refuses the run if
-  any request reaches it. No committed capture was taken with these guards yet, and a client that
-  ignores the proxy variables would still need a network-deny sandbox.
-- The committed set has **no `headless` mode**. The credential-less print path ("no credential →
-  StopFailure `authentication_failed`, no request") needs a host where the artifact holds no
-  credential; it remains evidenced only by the 2.1.308 darwin-arm64 capture. StopFailure stays
-  `verified-headless` through the five api-error lanes.
+  any request reaches it. The init, api-error and interactive captures predate these guards. A
+  client that ignores the proxy variables is covered only by the network-deny sandbox below.
+- The first committed set had **no `headless` mode**. The credential-less print path ("no credential →
+  StopFailure `authentication_failed`, no request") was added on 2026-11-04 by a run in the
+  network-deny sandbox. That run hid the artifact's credential directory and removed every
+  non-loopback route (below).
 
 To separate release drift from platform/host drift, the same lanes, probes and switch sessions were
 also run on the promoted 2.1.308 linux-x64 bytes (digest equal to the promoted evidence), raw only.
 
-The lanes observed the same **24 of 33 events** as 2.1.308, in 98 records (2.1.308: 103; six fewer
-from the omitted headless lane, one more compaction SubagentStop from the summary retry below).
+The lanes observed the same **24 of 33 events** as 2.1.308, in 104 records (2.1.308: 103; one more
+compaction SubagentStop from the summary retry below). Of those, 98 come from the 2026-11-03 run and 6
+from the sandboxed headless run.
+
+### Headless lane in a network-deny sandbox (2026-11-04)
+
+**Where the incident's credential came from.** This is a static reading of the artifact (a string
+search of the pinned bytes; nothing was executed outside the sandbox). When
+`CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR` names no descriptor, 2.1.311 falls back to a well-known
+path, `/home/claude/.claude/remote/.oauth_token`. It does this whatever `HOME` and the environment
+say. `.api_key` and `.session_ingress_token` sit beside that file in the same directory. Hosted
+Claude Code containers hold that directory, and the container for this run did too (presence only;
+no file in it was read). A disposable environment cannot hide a fixed path. That explains why the
+first run found a credential despite the empty environment.
+
+**The sandbox.** `census/sandbox.mjs` is now the Linux default for every census CLI that executes the
+artifact: the harness, the invocation and switch probes, and `generate-model.mjs --artifact`;
+`--sandbox none` opts out. Before any census code runs, the CLI re-executes itself under
+`unshare --user --map-root-user --net --mount`, from a scrubbed environment. That environment has
+only `PATH`, a fresh `HOME`, `TMPDIR`, `LANG`, `TERM` and the census's own markers; no caller token
+is carried in. `census/netns-enter.py` then brings up the namespace's own loopback (an
+`SIOCSIFFLAGS` ioctl). It mounts an empty read-only tmpfs over the artifact's credential directory
+and over the invoking user's home. The artifact still gets its disposable environment from
+`census/isolation.mjs` on top of that.
+
+**The proof.** Inside the namespace, before the artifact runs (not even `--version`), the harness
+observes the following and refuses to continue unless every item holds. The result is the capture
+set's value-free `sandbox.json` projection.
+
+- The only interface is `lo`, with 0 IPv4 routes and 0 non-loopback IPv6 routes.
+- `api.anthropic.com:443` and `platform.claude.com:443` fail at resolution (`EAI_AGAIN`).
+- `1.1.1.1:443` fails with `ENETUNREACH`, and `[2606:4700:4700::1111]:443` with `EAFNOSUPPORT`.
+- The caller's own HTTPS proxy, the only route off this container, is `ECONNREFUSED` from inside.
+- A loopback listener connects.
+- The credential directory is empty, and 2 directories are hidden.
+
+The egress recorder then saw **no attempt at all**, loopback included. The headless lane's loopback
+tripwire (its `ANTHROPIC_BASE_URL`) received **0 requests**. So "no non-loopback egress" for this
+lane is observed structurally, not only asserted.
+
+**Result.** The print turn ended `Not logged in · Please run /login` (`terminal_reason: api_error`,
+`api_error_status: null`, `duration_api_ms: 0`, cost 0). It emitted InstructionsLoaded,
+SessionStart(`startup`), UserPromptSubmit, MessageDisplay(`final`), StopFailure(`authentication_failed`,
+carrying `effort`) and SessionEnd(`other`). The order, key paths and JSON types equal the 2.1.308
+darwin-arm64 headless capture. StopFailure is again evidenced on the credential-less path as well as
+on the five api-error lanes. The adapter fixture set requires the `headless` lane again, and its
+`effort` is now observed on 2.1.311 as well.
+
+**Artifact.** `downloads.claude.ai` was refused by this container's egress proxy. The bytes therefore
+came from npm `@anthropic-ai/claude-code-linux-x64@2.1.311` (`npm pack`, never installed). Their
+SHA-256 equals the release manifest's linux-x64 checksum (`86dc1fcc…8ada`), so this is the same
+artifact.
+
+**Scope.** Only the `headless` mode carries the sandbox claim. The evidence limitations name the
+modes that ran without it (init, api-error, interactive and resume, from the 2026-11-03 run).
 
 ### Drift classification
 
@@ -70,7 +133,8 @@ Reconciliation (`surface:reconcile` with the linux-x64 acquisition report) is `u
 only because three required platforms are not acquired; its model diff has no added, removed or
 changed event and no behavior change. `channelsChanged` is the transcript note below, and
 `detectionChanged` is the version-bearing probe path in `detection.notes` (it changes every
-release). Replay passes (98 frames, digest `6ea41e30…0f0b`).
+release). Replay passes (104 frames with the headless lane, digest `98ee0e6e…a9ea`; 98 frames,
+`6ea41e30…0f0b`, before it).
 
 | Area | 2.1.308 → 2.1.311 | Class |
 | --- | --- | --- |
@@ -121,8 +185,9 @@ pinned by tests:
 
 - **Platforms**: linux-x64 only. The other three required platforms, the protected live lanes and
   promotion remain; `currentVersion` stays 2.1.308.
-- **Headless lane**: not run (above). Running it needs a host where the artifact presents no
-  credential; until then `headless` captures exist only for 2.1.308 and earlier.
+- **Sandbox coverage**: only `headless` ran in the network-deny sandbox. Re-running init,
+  api-error and interactive inside it would extend the structural egress claim to every mode;
+  the interactive lane would also need the nominal `/compact` loopback below.
 - Unreached events and branches are unchanged from 2.1.308 (UserPromptExpansion, PermissionDenied,
   TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate/WorktreeRemove, Elicitation/ElicitationResult,
   PostModelSwitch `auto`/`resume`, `mcp_server`, `scratchpad_dir`, `bashEditDiff`).

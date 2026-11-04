@@ -39,6 +39,60 @@
       "reason": "other"
     },
     {
+      "mode": "headless",
+      "seq": 1,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "headless",
+      "seq": 2,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "startup"
+    },
+    {
+      "mode": "headless",
+      "seq": 3,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "headless",
+      "seq": 4,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "headless",
+      "seq": 5,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "StopFailure",
+      "error": "authentication_failed"
+    },
+    {
+      "mode": "headless",
+      "seq": 6,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "other"
+    },
+    {
       "mode": "api-error-400",
       "seq": 1,
       "channel": "hook",

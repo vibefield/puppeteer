@@ -30,8 +30,9 @@
       "record": "sanitized-captures",
       "artifact": "installed-claude-2.1.311-linux-x64",
       "platform": "linux-x64",
-      "harness": "Isolated --init-only and loopback API-error print lanes (init, api-error-<status>) recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs",
-      "capturedAt": "2026-11-03T19:12:57Z"
+      "harness": "Isolated --init-only, credential-less print, and loopback API-error print lanes (init, headless, api-error-<status>) recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs",
+      "capturedAt": "2026-11-03T19:12:57Z",
+      "notes": "headless ran in the census network-deny sandbox (packages/surface/vendors/claude/census/sandbox.mjs; captures sandbox.json): a fresh user, network and mount namespace whose only interface was loopback, every public and caller-proxy destination refused and the artifact's well-known credential directory empty before the artifact ran, and no non-loopback attempt recorded. A sandboxed run writes sandbox.json for every mode it captures, so headless came from a separate census run from the claim's other modes; capturedAt dates one run only, and the capture set's SANITIZATION.md dates each."
     },
     {
       "id": "claude-runtime-interactive",
@@ -68,7 +69,7 @@
       "kind": "capture-set",
       "path": "packages/surface/vendors/claude/captures/claude@2.1.311",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "cace8a93dfcc3aab91e2a6feef6f6cc6157abdc879c56594f277cdef2059df34"
+      "sha256": "8b4c77b6324efacfc252aff6b92043f2fbef0e0b482dc49773ced270c1689374"
     },
     {
       "id": "binary-probes",
@@ -82,7 +83,7 @@
       "kind": "reference-snapshot",
       "path": "packages/surface/vendors/claude/references/claude@2.1.311",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "754d2511f79f3d4eacec29f66b163cd22a279808a4b79c2c2bc762798d6bd041"
+      "sha256": "a685e1a55d95c7ea19bd336a9f85a8f04cb9fa65138d87090e29f61c7f7fe167"
     },
     {
       "id": "agent-surface-model",
@@ -100,6 +101,6 @@
     "No committed lane sends a model anything but the placeholder ANTHROPIC_AUTH_TOKEN: the API-error and interactive lanes talk to a census loopback model, and the init and credential-less print lanes set no token (a credential-less print lane is committed only where it made no model request). Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.",
     "Not reached by any lane: Setup outside --init-only, UserPromptExpansion, PermissionDenied (auto mode), TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate, WorktreeRemove, Elicitation, ElicitationResult, PostModelSwitch outside a /model switch, mcp_server on MCP tool events, scratchpad_dir, and PostToolUse(Bash) tool_response.bashEditDiff.",
     "The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim.",
-    "No credential-less headless lane: on the census host the artifact presented a credential the disposable environment does not hold, so that lane could not run without one (findings.md). The committed lanes redirected only the model endpoint: egress to the artifact's hard-coded account and OAuth endpoints (api.anthropic.com, platform.claude.com) was neither recorded nor blocked in that run."
+    "Only headless ran in the network-deny sandbox. api-error-400, api-error-401, api-error-429, api-error-500, api-error-529, init, interactive, resume ran without it: their model traffic named a census loopback endpoint, but non-loopback egress was not structurally denied for them, and no egress claim covers them (findings.md records what was observed)."
   ]
 }

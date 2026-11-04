@@ -2181,7 +2181,7 @@
     {
       "subject": "effort",
       "reference": "Present on tool-context events when the model supports the effort parameter.",
-      "artifact": "Absent from every 2.1.311 census payload (the loopback model id; the credential-less headless lane did not run); present on the 2.1.308 credential-less headless StopFailure (model alias haiku).",
+      "artifact": "Present only on the credential-less headless StopFailure (model alias haiku) on 2.1.311 and 2.1.308; absent from every payload of the lanes that name the loopback model id.",
       "model": "optional common object"
     },
     {
