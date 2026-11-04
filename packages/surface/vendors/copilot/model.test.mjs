@@ -74,4 +74,10 @@ describe(`copilot@${version} model is scoped to its own release`, () => {
       expect(event.evidence.existence, name).toEqual(['copilot-rosetta-contract']);
     }
   });
+
+  it('stamps the manifest with the import date', () => {
+    const imported = readJson(join(vendorRoot, 'references', `copilot@${version}`, 'import.json'));
+    expect(imported.importedAt).toBe(rosettaAgentConfig('copilot').importedAt);
+    expect(readJson(join(modelRoot, 'manifest.json')).generatedAt).toBe(imported.importedAt);
+  });
 });

@@ -3,7 +3,7 @@
   "provider": "copilot",
   "adapterPackage": "@vibefield/puppeteer-adapter-copilot",
   "groundTruth": "packages/surface/vendors/copilot/groundtruth.json",
-  "groundTruthSha256": "af0c17633ab074126770c02802ce86938f74cf0c3a1fc208cdc51cad2f0b2571",
+  "groundTruthSha256": "1a634abde209ed90f8ab275a84ed2cf19eca03d26b390f1b8d9ae953743ad095",
   "semanticEvents": [
     "abort",
     "assistant.message",

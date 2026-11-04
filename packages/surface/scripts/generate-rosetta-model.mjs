@@ -391,6 +391,8 @@ export function generateRosettaSurfaceModel(vendor) {
   const eventsRoot = join(modelRoot, 'events');
   const canonical = JSON.parse(readFileSync(join(referencesRoot, 'rosetta-groundtruth.json'), 'utf8'));
   const imported = JSON.parse(readFileSync(join(referencesRoot, 'import.json'), 'utf8'));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(imported.importedAt ?? ''))
+    throw new Error(`${vendor}@${config.version} import.json has no importedAt date`);
   if (
     canonical.agent !== vendor ||
     canonical.agent_version !== config.version ||
@@ -420,7 +422,8 @@ export function generateRosettaSurfaceModel(vendor) {
     asmVersion: 3,
     vendor,
     vendorVersion: config.version,
-    generatedAt: '2026-08-28',
+    // The model is generated from the import, so it carries the import's date (2026-08-28 for the first imports).
+    generatedAt: imported.importedAt,
     source: `Complete Rosetta ${canonical.format} stream inventory plus type-preserving controlled native ${config.primaryStream} journals.`,
     evidence: 'evidence.json',
   });
