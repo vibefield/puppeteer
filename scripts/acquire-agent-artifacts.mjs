@@ -34,6 +34,9 @@ function knownDigests(repoRoot, vendor, version) {
     const evidencePath = join(models, entry.name, 'evidence.json');
     if (!existsSync(evidencePath)) continue;
     for (const artifact of json(evidencePath).artifacts ?? []) {
+      // A source pin or fixture-corpus digest does not identify acquired executable bytes.
+      // Keep its capture provenance, but never classify a first binary acquisition as a republication of it.
+      if (artifact.kind !== undefined) continue;
       const digest = artifact.integrity?.sha256;
       if (artifact.platform && /^sha256:[0-9a-f]{64}$/.test(digest ?? '')) {
         known.set(artifact.platform, {
