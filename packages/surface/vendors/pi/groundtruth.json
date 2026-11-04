@@ -186,6 +186,86 @@
           "status": "verified",
           "sha256": "sha256:c5e26f710e3758b4c563d0af16ce28c722943d99616b8432a6be295f3ef2da3a"
         }
+      },
+      {
+        "id": "pi-1.5.0-darwin-arm64",
+        "platform": "darwin-arm64",
+        "channel": "stable",
+        "artifactKind": "release-bundle",
+        "acquiredAt": "2026-11-04T06:17:06.317Z",
+        "versionOutput": "1.5.0",
+        "sourceUrl": "https://github.com/earendil-works/pi/releases/download/v1.5.0/pi-darwin-arm64.tar.gz",
+        "acquisitionKey": "pi@1.5.0@darwin-arm64@sha256:f6f3109fe100f7a72e9d7fd65c22c527771eb44c72f42fe02c9fe8391c0f3c4e",
+        "identity": {
+          "archiveSha256": "sha256:a9bf0d82d58d2a7d337f4ae4171b5fc9ebffe42509527a831364c4b65adf2cdf",
+          "treeSha256": "sha256:bf7123b0422a36399c503d2a6e47cd1aa686eb66e7f86c58495f5d9856561bd4",
+          "entrySha256": "sha256:9fa16dd5c093aaa74a17ccd8c10e337addcbe08e6f21797ef6de8006017addd8",
+          "entry": "pi"
+        },
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:f6f3109fe100f7a72e9d7fd65c22c527771eb44c72f42fe02c9fe8391c0f3c4e"
+        }
+      },
+      {
+        "id": "pi-1.5.0-darwin-x64",
+        "platform": "darwin-x64",
+        "channel": "stable",
+        "artifactKind": "release-bundle",
+        "acquiredAt": "2026-11-04T06:17:06.498Z",
+        "versionOutput": "1.5.0",
+        "sourceUrl": "https://github.com/earendil-works/pi/releases/download/v1.5.0/pi-darwin-x64.tar.gz",
+        "acquisitionKey": "pi@1.5.0@darwin-x64@sha256:6c3615bf1855efc350c86861565bc02e7cf1dbdce49224fa84b27e5a2666881e",
+        "identity": {
+          "archiveSha256": "sha256:f41b26cd9a1754abe259e05a421fb33b00936779cb0783c893a6389d1bd2ee0d",
+          "treeSha256": "sha256:77a2a93920d392c766228d447be57a3457f81744b8af0c9304863adb58a9cba2",
+          "entrySha256": "sha256:b36706f3ed105a7d027b749bbcf59a6b70ad6aa87ccb08a9091578c854201e15",
+          "entry": "pi"
+        },
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:6c3615bf1855efc350c86861565bc02e7cf1dbdce49224fa84b27e5a2666881e"
+        }
+      },
+      {
+        "id": "pi-1.5.0-linux-x64",
+        "artifactKind": "release-bundle",
+        "platform": "linux-x64",
+        "versionOutput": "1.5.0",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:3262e81938a6dfbaa1cc65eb87cda26dfb0b9b3ffce69f5d88e512d827b9f57d"
+        },
+        "channel": "stable",
+        "acquiredAt": "2026-11-04T06:17:06.696Z",
+        "sourceUrl": "https://github.com/earendil-works/pi/releases/download/v1.5.0/pi-linux-x64.tar.gz",
+        "acquisitionKey": "pi@1.5.0@linux-x64@sha256:3262e81938a6dfbaa1cc65eb87cda26dfb0b9b3ffce69f5d88e512d827b9f57d",
+        "identity": {
+          "archiveSha256": "sha256:df870ba0e344cb7b3358d8d8f19397b8b8d225a8669784736ad68a5c2169d53b",
+          "treeSha256": "sha256:fea0cce0f7b74b3686d205d1285e145d1b8b6ce5f2d9877f9001042a20cd3d62",
+          "entrySha256": "sha256:61a84400938da652ed69aac9c1ad2ca23af3c9bd8cc2f46ce571ed84ae6a35e5",
+          "entry": "pi"
+        }
+      },
+      {
+        "id": "pi-1.5.0-windows-x64",
+        "platform": "windows-x64",
+        "channel": "stable",
+        "artifactKind": "release-bundle",
+        "acquiredAt": "2026-11-04T06:17:06.909Z",
+        "versionOutput": "1.5.0",
+        "sourceUrl": "https://github.com/earendil-works/pi/releases/download/v1.5.0/pi-windows-x64.zip",
+        "acquisitionKey": "pi@1.5.0@windows-x64@sha256:bb4033903fa668f6c676a430921d0683e78b167775fa9353bbf2db0707c4a8c9",
+        "identity": {
+          "archiveSha256": "sha256:12d58a70e80b16ba9f764950b7a42bdeb07959495c0db68396cf2988c0b71af3",
+          "treeSha256": "sha256:7039a60f518b2aae722282b04c3c964e71eee898f1c3e3b304de77e38f3d7e0a",
+          "entrySha256": "sha256:4051be4025130cb53dea11115df7f1905104af3dbc574af7dd75ddd76e4b0ae2",
+          "entry": "pi.exe"
+        },
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:bb4033903fa668f6c676a430921d0683e78b167775fa9353bbf2db0707c4a8c9"
+        }
       }
     ],
     "sourceReferences": [
@@ -200,7 +280,7 @@
         "id": "pi-captures",
         "path": "packages/surface/vendors/pi/captures/pi@1.5.0",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "f29c00d71bb7657129f773284594e990b51c78f91c50bb940052fef6e303549d"
+        "sha256": "c19e52bb5212fb97d1320c41b4ab7b60890588affe0ba73efd0f384226c6d885"
       },
       {
         "id": "pi-references",
@@ -215,11 +295,11 @@
         "kind": "runtime-capture",
         "confidence": "verified-headless",
         "record": "pi-captures",
-        "artifact": "pi-1.5.0-rosetta-fixture-corpus",
+        "artifact": "pi-1.5.0-linux-x64",
         "platform": "linux-x64",
-        "harness": "rosetta controlled mock-provider farm",
-        "capturedAt": "2026-11-03T19:35:32Z",
-        "notes": "Type-preserving session native journal captures."
+        "harness": "pi/census/release.py with pinned Rosetta mock-provider scenarios",
+        "capturedAt": "2026-11-04T06:20:53.380244+00:00",
+        "notes": "Type-preserving journals from the complete official release bundle, captured with the pinned Rosetta loopback scenarios in Docker with no external network. Source and observed-schema claims retain their original Rosetta corpus identity."
       },
       {
         "id": "pi-rosetta-observed",

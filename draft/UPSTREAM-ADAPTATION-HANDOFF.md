@@ -31,13 +31,13 @@ was scoped to this repository, so `pnpm upstream:detect` could not read GitHub r
 
 Verified entries keep `currentVersion` and `verification`, with `candidateVersion` staged beside them by
 `scripts/stage-agent-candidate.mjs`. Pending entries keep `baseline-pending` and carry updated `blockers`. No artifact
-digest, receipt or `currentVersion` was written by hand. Codex, Claude, OpenCode and Hermes now have acquired artifact identities on all four platforms.
+digest, receipt or `currentVersion` was written by hand. Codex, Claude, OpenCode, Hermes and Pi now have acquired artifact identities on all four platforms.
 Acquisition alone does not promote support or relabel earlier runtime captures.
 
 The earlier review tree passed `support:check`, `groundtruth:mapping:check`, `upstream:check`, `surface:groundtruth:check`,
 `surface:audit`, `surface:workflow:check`, `packages:check`, `format:check` and `COLORTERM=truecolor pnpm test`. The
-PR description has the earlier results. The refreshed captures are undergoing a new complete run;
-five OpenCode assertions with old capture IDs were updated to the new observed IDs.
+PR description has the earlier results. The full suite passed on `a3001aa7`: 188 script tests and every package/app suite. Subsequent Pi capture changes have focused checks
+and fresh CI. Five OpenCode assertions with old capture IDs now use the new observed IDs.
 
 ## Completed dependency work and remaining readiness checks
 
@@ -136,8 +136,7 @@ The fixes were made on per-vendor branches and merged.
 Residual items the fixers recorded but could not close in a container:
 
 - **Claude Code:**
-  - Only `headless` ran inside the network-deny sandbox. init, api-error, interactive and resume are still the
-    2026-11-03 captures, taken without it.
+  - All nine modes now have a network-deny sandbox capture; that original gap is closed.
   - The nominal single-stop `/compact` path on 2.1.311 is read from code, not captured.
   - Runtime recapture claims now have their own completion timestamp; original probe dates are retained.
 - **OpenCode:**
@@ -161,8 +160,11 @@ Residual items the fixers recorded but could not close in a container:
 - **OpenCode:** 2.x (`@opencode/cli`, an `/api/*` HttpApi with a new event envelope) is a separate integration family.
   The plan is in [`OPENCODE-2-MIGRATION-PLAN.md`](OPENCODE-2-MIGRATION-PLAN.md). The `github-stable` detector
   deliberately still sees 2.x tags, and the 1.x acquisition URLs would 404 for them.
-- **Pi 1.5.0:** the capture came from the npm package, but official acquisition uses the GitHub release binaries, and
-  those have no 1.5.0 capture.
+- **Pi 1.5.0:** complete release-bundle acquisition passed on all four platforms in
+  [run 41784334179](https://github.com/vibefield/puppeteer/actions/runs/41784334179). All seven scenarios were
+  recaptured on the exact Linux release under Docker `--network none`: 62 records, eight journal files.
+  Runtime claims now bind to the acquired release; Rosetta schema references retain their original provenance.
+  The native-TUI promotion lane remains absent.
 - **Antigravity 1.4.12:** see its findings section and ledger blocker. It needs a writer document from the binary's
   protobuf descriptors, Rosetta raw types and goldens, and adapter tool-result matching that no longer relies on
   `RUN_COMMAND`/`exit_code`, because results are now `GENERIC` steps.
@@ -173,8 +175,9 @@ Residual items the fixers recorded but could not close in a container:
 
 Codex rehearsal passed in [run 41781648679](https://github.com/vibefield/puppeteer/actions/runs/41781648679).
 Protected promotion runs separately on `claude/codex-0.166.0-promotion` in
-[run 41783073832](https://github.com/vibefield/puppeteer/actions/runs/41783073832); integrate its receipt only
-after success. Other work can continue on PR #59 without moving the verified promotion commit.
+[run 41784518623](https://github.com/vibefield/puppeteer/actions/runs/41784518623); integrate its receipt only
+after success. The first promotion attempt was correctly refused because its snapshot preceded the OpenCode
+fixture-ID corrections. Other work can continue on PR #59 without moving the verified promotion commit.
 
 For each staged vendor:
 

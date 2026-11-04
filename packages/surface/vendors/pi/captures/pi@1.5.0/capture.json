@@ -3,15 +3,14 @@
   "representation": "type-preserving-redaction",
   "vendor": "pi",
   "vendorVersion": "1.5.0",
-  "mode": "imported-rosetta-controlled-native-journals",
+  "mode": "controlled-release-native-journals",
   "scenarios": [
     "basic-chat",
-    "compaction",
-    "error",
-    "fork",
-    "resume",
     "tool-use",
+    "resume",
+    "fork",
+    "error",
+    "compaction",
     "usage"
-  ],
-  "records": 62
+  ]
 }

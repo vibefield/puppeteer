@@ -198,11 +198,9 @@ pinned by tests:
 
 ### Known gaps / follow-ups
 
-- **Platforms**: linux-x64 only. The other three required platforms, the protected live lanes and
-  promotion remain; `currentVersion` stays 2.1.308.
-- **Sandbox coverage**: only `headless` ran in the network-deny sandbox. Re-running init,
-  api-error and interactive inside it would extend the structural egress claim to every mode;
-  the interactive lane would also need the nominal `/compact` loopback below.
+- **Platforms**: artifact acquisition is complete on all four platforms. Runtime census evidence is
+  linux-x64; protected native-TUI/resume verification and promotion remain. `currentVersion` stays 2.1.308.
+- **Sandbox coverage**: all nine modes now have the full sandbox proof recorded above.
 - Unreached events and branches are unchanged from 2.1.308 (UserPromptExpansion, PermissionDenied,
   TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate/WorktreeRemove, Elicitation/ElicitationResult,
   PostModelSwitch `auto`/`resume`, `mcp_server`, `scratchpad_dir`, `bashEditDiff`).

@@ -7,7 +7,6 @@
     "**/*.jsonl"
   ],
   "limitations": [
-    "Only the session append-only journal is copied from each Rosetta scenario; the committed Rosetta reference preserves the complete 20-stream inventory.",
-    "All native object keys, containers, primitive types, and record ordering are retained; sensitive scalar values are redacted in place."
+    "Native JSONL keys, containers, primitive types, and ordering are retained while sensitive scalar values are redacted in place."
   ]
 }
