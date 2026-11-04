@@ -157,8 +157,7 @@ Residual items the fixers recorded but could not close in a container:
   [run 41781642980](https://github.com/vibefield/puppeteer/actions/runs/41781642980). Earlier survey claims
   still reference their original source identity. Approval denial, clarify answer and `request.cancel` now pass against a real attached TUI on macOS arm64, with retained adapter regression fixtures. That run found and fixed unanswered adapter question state after a native TUI answer. The local Python runtime identity is recorded separately; four-platform protected verification remains.
 - **Kimi 2.4.1:** all four artifacts were acquired and attested in
-  [run 41785477841](https://github.com/vibefield/puppeteer/actions/runs/41785477841). The interactive-TUI paths (Esc-cancel, permissions, questions, steer, undo) and ACP shapes are not
-  captured. Account and profile services rest on 2.0.2 evidence.
+  [run 41785477841](https://github.com/vibefield/puppeteer/actions/runs/41785477841). Native-TUI approval allow/deny, question submission and Esc-cancel are now captured on darwin-arm64 against the acquired executable. Steer, undo, question dismissal and ACP shapes remain unexercised. Account and profile services rest on 2.0.2 evidence.
 - **OpenCode:** 2.x (`@opencode/cli`, an `/api/*` HttpApi with a new event envelope) is a separate integration family.
   The plan is in [`OPENCODE-2-MIGRATION-PLAN.md`](OPENCODE-2-MIGRATION-PLAN.md). The `github-stable` detector
   deliberately still sees 2.x tags, and the 1.x acquisition URLs would 404 for them.
@@ -191,7 +190,7 @@ Claude 2.1.311 rehearsal passed on `claude/claude-2.1.311-promotion` in
 Its earlier attempt passed all native lanes but the final transaction caught Kimi's artifact-order test assumption;
 the successful rehearsal and promotion include that correction.
 
-Hermes 0.21.5 is rehearsing the complete four-platform workflow with the new attached-TUI interaction checks in [run 41791044639](https://github.com/vibefield/puppeteer/actions/runs/41791044639), from `fea59d0c` on `claude/hermes-0.21.5-promotion`. It has not been promoted.
+Hermes 0.21.5 rehearsal [41791044639](https://github.com/vibefield/puppeteer/actions/runs/41791044639), from `fea59d0c`, stopped at immutable artifact assembly. Only darwin-x64 changed: cryptography 50.0.0 has no Intel macOS wheel in the lockfile and its source-built installed-file digest differed. The gate correctly refused it; no prior digest was replaced. A read-only two-build diagnostic is running on the separate `claude/hermes-build-diagnostic` branch in [run 41792349819](https://github.com/vibefield/puppeteer/actions/runs/41792349819). That diagnostic branch is not part of PR #59.
 
 For each staged vendor:
 

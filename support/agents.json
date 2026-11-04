@@ -163,7 +163,7 @@
       "candidateVersion": "0.21.5",
       "status": "baseline-pending",
       "blockers": [
-        "The protected four-platform locked installed-console reconstruction and adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."
+        "The four-platform rehearsal failed artifact assembly on darwin-x64: source-built cryptography 50.0.0 produced a different installed-file digest on rebuild. The identity gate refused it; other platforms matched. A reproducible dependency build is required before protected native-TUI verification and promotion."
       ]
     },
     {
@@ -177,7 +177,7 @@
       "status": "baseline-pending",
       "blockers": [
         "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform.",
-        "The 2.4.1 native TUI has been exercised through the adapter only in an unattested local linux-x64 KIMI_LIVE run (startup, first-prompt discovery, prompt confirmation, and basic --session resume) with no committed receipt; folder-trust behavior changes, Esc-cancel, permission accept/deny, questions, steer, and resume tail offsets under engine-journal interleaving remain unexercised."
+        "The 2.4.1 native TUI now has local darwin-arm64 approval allow/deny, question submission, Escape-cancel and basic resume evidence. Steer, queueing, undo/branch switching, question dismissal and resume tail offsets under engine-journal interleaving remain unexercised; no protected four-platform receipt exists."
       ]
     },
     {
