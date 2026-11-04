@@ -26,6 +26,23 @@ export function validateVersionOutput(output, version) {
   return value;
 }
 
+/** Copilot prints an identity sentence and a fixed update hint, not a one-line version. */
+export function normalizeVersionOutput(output, version, format = 'single-line') {
+  if (format === 'single-line') return validateVersionOutput(output, version);
+  if (format !== 'copilot-cli') throw new Error('unsupported version output format');
+  const lines = String(output ?? '')
+    .trim()
+    .split(/\r?\n/);
+  const hints = [
+    "Run 'copilot update' to check for updates.",
+    "Offline mode is enabled. Run 'copilot version' after reconnecting to check for updates.",
+  ];
+  if (lines.length !== 2 || lines[0] !== `GitHub Copilot CLI ${version}.` || !hints.includes(lines[1])) {
+    throw new Error('Copilot version output differs from the reviewed two-line grammar');
+  }
+  return validateVersionOutput(lines[0], version);
+}
+
 export function validateProbeMetadata(metadata, { artifact, version }) {
   if (!metadata || typeof metadata !== 'object') throw new Error('download metadata is required');
   if (!['standalone-executable', 'release-bundle'].includes(metadata.artifactKind)) {
@@ -50,11 +67,16 @@ export function probeAgentArtifact({
     throw new Error(`cannot execute artifact kind ${artifactKind ?? 'unknown'}`);
   }
   let artifactPath = safePath(artifact);
+  let config;
+  if (vendor !== undefined) {
+    if (!/^[a-z][a-z0-9-]*$/.test(vendor)) throw new Error('invalid probe vendor');
+    config = JSON.parse(readFileSync(safePath(`packages/surface/vendors/${vendor}/upstream.json`), 'utf8'));
+    if (config.vendor !== vendor) throw new Error('probe configuration vendor differs');
+  }
   let verifyBundle;
   if (artifactKind === 'release-bundle') {
     if (!/^[a-z][a-z0-9-]*$/.test(vendor ?? '')) throw new Error('release bundle vendor is required');
-    const config = JSON.parse(readFileSync(safePath(`packages/surface/vendors/${vendor}/upstream.json`), 'utf8'));
-    const spec = config.acquisition?.artifacts?.[platform];
+    const spec = config?.acquisition?.artifacts?.[platform];
     verifyBundle = () =>
       verifyReleaseBundle(safePath(artifact), {
         vendor,
@@ -75,6 +97,7 @@ export function probeAgentArtifact({
   env.USERPROFILE = homePath;
   env.NO_COLOR = '1';
   const result = spawnSync(artifactPath, ['--version'], {
+    cwd: homePath,
     encoding: 'utf8',
     timeout: 20_000,
     maxBuffer: 4_096,
@@ -87,7 +110,7 @@ export function probeAgentArtifact({
     );
   }
   verifyBundle?.();
-  const value = validateVersionOutput(result.stdout || result.stderr, version);
+  const value = normalizeVersionOutput(result.stdout || result.stderr, version, config?.acquisition?.versionOutput);
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, `${value}\n`);
   return value;

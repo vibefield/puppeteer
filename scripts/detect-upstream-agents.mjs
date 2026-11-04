@@ -137,6 +137,12 @@ function validateAcquisitionHosts(label, acquisition, issues) {
 function validateAcquisition(label, config, issues) {
   const acquisition = config.acquisition;
   if (acquisition?.strategy === 'https-template') {
+    if (
+      acquisition.versionOutput !== undefined &&
+      !['single-line', 'copilot-cli'].includes(acquisition.versionOutput)
+    ) {
+      issues.push(`${label}: unsupported version output format`);
+    }
     const hosts = validateAcquisitionHosts(label, acquisition, issues);
     const artifactPlatforms = Object.keys(acquisition.artifacts ?? {});
     for (const platform of config.platforms ?? []) {
