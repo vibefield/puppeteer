@@ -53,12 +53,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: darwin-arm64
-            runner: macos-14
-          - platform: darwin-x64
-            runner: macos-15-intel
-          - platform: linux-x64
-            runner: ubuntu-24.04
           - platform: windows-x64
             runner: windows-2025
     runs-on: ${{ matrix.runner }}
@@ -146,6 +140,24 @@ jobs:
           --node node
           --npm npm
 
+      - name: Rebuild in independent directory
+        if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
+        run: >-
+          node scripts/materialize-installed-console.mjs
+          --vendor "${{ inputs.vendor }}"
+          --version "${{ inputs.version }}"
+          --platform "${{ matrix.platform }}"
+          --source-archive ".agent-adaptation/source/${{ matrix.platform }}/${{ steps.policy.outputs.sourceFile }}"
+          --source-metadata ".agent-adaptation/source/${{ matrix.platform }}/download.json"
+          --work ".agent-adaptation/work-second/${{ matrix.platform }}"
+          --output ".agent-adaptation/artifacts-second/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
+          --metadata ".agent-adaptation/artifacts-second/${{ matrix.platform }}/download.json"
+          --version-output ".agent-adaptation/artifacts-second/${{ matrix.platform }}/version.txt"
+          --python python
+          --uv uv
+          --node node
+          --npm npm
+
       - uses: actions/upload-artifact@v4
         with:
           name: agent-artifact-${{ matrix.platform }}
@@ -153,206 +165,14 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
-  claude-census:
-    if: ${{ inputs.claude_census && inputs.vendor == 'claude' }}
-    needs: acquire
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.34.5
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22.22.0
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - uses: actions/download-artifact@v5
-        with:
-          name: agent-artifact-linux-x64
-          path: .agent-adaptation/census-artifact
-      - name: Capture every Claude lane inside the proven network-deny sandbox
-        run: |
-          artifact="$PWD/.agent-adaptation/census-artifact/linux-x64/agent"
-          chmod +x "$artifact"
-          # Namespace root cannot traverse runner-owned private directories. Stage only
-          # the harness/dependencies and artifact in a disposable root-owned tree.
-          census_root=$(sudo mktemp -d /tmp/claude-census.XXXXXX)
-          sudo cp -a packages node_modules "$census_root/"
-          sudo cp "$artifact" "$census_root/agent"
-          sudo chown -R root:root "$census_root"
-          sudo "$(command -v node)" "$census_root/packages/surface/vendors/claude/census/harness.mjs" \
-            --artifact "$census_root/agent" --version "$AGENT_VERSION" \
-            --output "$census_root/raw" \
-            --aux "$census_root/aux" \
-            --lanes init,headless,api-error,interactive --sandbox netns
-          sudo cp -a "$census_root/raw" .agent-adaptation/census-raw
-          sudo chown -R "$(id -u):$(id -g)" .agent-adaptation/census-raw
-      - name: Sanitize and audit before uploading any evidence
-        run: |
-          node packages/surface/vendors/claude/sanitize-captures.mjs \
-            .agent-adaptation/census-raw ".agent-adaptation/census-reviewed/captures/claude@${AGENT_VERSION}"
-          node packages/surface/vendors/claude/sanitize-captures.mjs \
-            --check ".agent-adaptation/census-reviewed/captures/claude@${AGENT_VERSION}"
-          sha256sum .agent-adaptation/census-artifact/linux-x64/agent \
-            > .agent-adaptation/census-reviewed/artifact.sha256
       - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
         with:
-          name: claude-census-linux-x64
-          path: .agent-adaptation/census-reviewed
-          include-hidden-files: true
-          retention-days: 14
-
-  assemble:
-    needs: acquire
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - uses: actions/download-artifact@v5
-        with:
-          pattern: agent-artifact-*
-          path: .agent-adaptation/artifacts
-          merge-multiple: true
-
-      - name: Bind every platform to immutable bytes
-        run: >-
-          node scripts/assemble-agent-artifacts.mjs
-          --vendor "$AGENT_VENDOR"
-          --version "$AGENT_VERSION"
-          --directory .agent-adaptation/artifacts
-          --output .agent-adaptation/acquisition.json
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: agent-acquisition
-          path: .agent-adaptation/acquisition.json
+          name: windows-two-build-inventories
+          path: |
+            .agent-adaptation/artifacts/windows-x64/installed-console.json
+            .agent-adaptation/artifacts-second/windows-x64/installed-console.json
+            .agent-adaptation/work/windows-x64/file-inventory.json
+            .agent-adaptation/work-second/windows-x64/file-inventory.json
           include-hidden-files: true
           retention-days: 7
-
-  analyze:
-    needs: assemble
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.34.5
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22.18.0
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile --filter './packages/**'
-
-      - uses: actions/download-artifact@v5
-        with:
-          name: agent-acquisition
-          path: .agent-adaptation
-
-      - name: Attach exact artifacts without inventing claims
-        run: >-
-          pnpm surface:evidence:artifacts
-          --ground-truth "$AGENT_GROUND_TRUTH"
-          --artifacts .agent-adaptation/acquisition.json
-
-      - name: Stage candidate pointer and Imposter projection
-        run: >-
-          node scripts/stage-agent-candidate.mjs
-          --vendor "$AGENT_VENDOR"
-          --ground-truth "$AGENT_GROUND_TRUTH"
-
-      - name: Refresh and audit immutable evidence
-        run: pnpm --filter @vibefield/puppeteer-surface surface:evidence:write
-
-      - name: Refresh the candidate adapter evidence lock
-        run: node scripts/check-adapter-groundtruth-maps.mjs --write --vendor "$AGENT_VENDOR"
-
-      - run: pnpm --filter @vibefield/puppeteer-surface run "surface:audit:${AGENT_VENDOR}"
-      - run: pnpm --filter "@vibefield/puppeteer-adapter-${AGENT_VENDOR}" test
-      - run: pnpm --filter @vibefield/puppeteer-imposter test
-      - run: pnpm packages:check
-      - run: pnpm support:check
-
-      - name: Exact replay and drift classification
-        run: >-
-          pnpm surface:reconcile
-          --vendor "$AGENT_VENDOR"
-          --ground-truth "$AGENT_GROUND_TRUTH"
-          --artifacts .agent-adaptation/acquisition.json
-          --output "packages/surface/vendors/${AGENT_VENDOR}/candidates/${AGENT_VENDOR}@${AGENT_VERSION}/reconciliation.json"
-
-      - name: Confine automated changes
-        run: |
-          node scripts/validate-agent-candidate-changes.mjs \
-            --vendor "$AGENT_VENDOR" \
-            --version "$AGENT_VERSION" \
-            --ground-truth "$AGENT_GROUND_TRUTH" \
-            --base "$GITHUB_SHA"
-
-      - name: Build publisher-safe patch
-        run: |
-          git add -A
-          git diff --cached --binary --output=.agent-adaptation/candidate.patch
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: agent-candidate-output
-          path: .agent-adaptation/candidate.patch
-          include-hidden-files: true
-          retention-days: 14
-
-  publish-draft:
-    needs: analyze
-    if: ${{ inputs.publish_draft && github.ref_name != 'main' }}
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - uses: actions/download-artifact@v5
-        with:
-          name: agent-candidate-output
-          path: .agent-adaptation
-
-      - name: Apply and revalidate the data-only candidate patch
-        run: |
-          git apply --index .agent-adaptation/candidate.patch
-          node scripts/validate-agent-candidate-changes.mjs \
-            --vendor "$AGENT_VENDOR" \
-            --version "$AGENT_VERSION" \
-            --ground-truth "$AGENT_GROUND_TRUTH" \
-            --base "$GITHUB_SHA"
-
-      - name: Commit candidate branch
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git diff --cached --quiet || git commit -m "chore(surface): stage ${AGENT_VENDOR} ${AGENT_VERSION}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
-
-      - name: Open a draft review without promoting support
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ -z "$(gh pr list --head "$GITHUB_REF_NAME" --base main --json number --jq '.[0].number')" ]; then
-            gh pr create --draft --base main --head "$GITHUB_REF_NAME" \
-              --title "chore(surface): adapt ${AGENT_VENDOR} ${AGENT_VERSION}" \
-              --body "Automated candidate analysis from workflow run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. Support metadata is not promoted; review the reconciliation report and complete every protected promotion gate."
-          fi

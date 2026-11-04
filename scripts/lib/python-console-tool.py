@@ -22,6 +22,8 @@ from urllib.request import url2pathname
 import zipfile
 
 
+DIAGNOSTIC_FILES = {}
+
 CHUNK_BYTES = 1024 * 1024
 MAX_ARCHIVE_FILES = 100_000
 
@@ -248,6 +250,7 @@ def stable_distribution_files(
         entries.append((relative.as_posix(), normalized_file_sha256(located, normalized_roots)))
     if not entries:
         raise ValueError(f"distribution {distribution.metadata['Name']} has no stable installed files")
+    DIAGNOSTIC_FILES[distribution.metadata["Name"]] = sorted(entries)
     digest = hashlib.sha256(b"sha256-python-distribution-files-v1\0")
     for path, file_digest in sorted(entries):
         digest.update(path.encode("utf-8"))
@@ -389,6 +392,7 @@ def inventory_console(arguments: argparse.Namespace) -> None:
             "bindingSha256": f"sha256:{binding_sha256}",
         },
     }
+    (source_root.parent / "file-inventory.json").write_text(json.dumps(DIAGNOSTIC_FILES, sort_keys=True, indent=2))
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
 
 
