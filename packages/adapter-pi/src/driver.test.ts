@@ -17,12 +17,13 @@ async function root(): Promise<string> {
   return value;
 }
 
-/** What Pi writes with a session's first assistant record: the header line names the id. */
-async function writeSession(sessionDir: string, id: string): Promise<void> {
+/** What Pi writes when a session's first user or assistant message lands: the header line names the id. */
+async function writeSession(sessionDir: string, id: string, entries: readonly object[] = []): Promise<void> {
   await mkdir(sessionDir, { recursive: true });
+  const header = { type: 'session', version: 3, id, timestamp: '2026-10-27T00:00:00Z', cwd: '/repo' };
   await writeFile(
     join(sessionDir, `2026-10-27T00-00-00-000Z_${id}.jsonl`),
-    `${JSON.stringify({ type: 'session', version: 3, id, timestamp: '2026-10-27T00:00:00Z', cwd: '/repo' })}\n`,
+    [header, ...entries].map((entry) => `${JSON.stringify(entry)}\n`).join(''),
   );
 }
 
@@ -67,6 +68,40 @@ describe('Pi native TUI session: the durable record (RA-D7)', () => {
       pollIntervalMs: 60_000,
     });
     const session = await prepared.adopt('runtime-pi-resume');
+    expect(session.durableRecordSeen()).toBe(true);
+    await prepared.dispose();
+  });
+
+  it('resumes a 1.5.0 journal whose first turn stopped after the user message', async () => {
+    const home = await root();
+    const sessionDir = join(home, 'sessions');
+    await writeSession(sessionDir, 'pi-session-user-only', [
+      {
+        type: 'thinking_level_change',
+        id: 'e1',
+        parentId: null,
+        timestamp: '2026-10-27T00:00:00Z',
+        thinkingLevel: 'off',
+      },
+      {
+        type: 'message',
+        id: 'e2',
+        parentId: 'e1',
+        timestamp: '2026-10-27T00:00:01Z',
+        message: { role: 'user', content: [{ type: 'text', text: 'hello' }], timestamp: 1 },
+      },
+    ]);
+    const prepared = await preparePiTuiSession({
+      cwd: '/repo',
+      host: host(),
+      executable: '/opt/pi',
+      piAgentDir: join(home, 'agent'),
+      sessionDir,
+      resume: 'pi-session-user-only',
+      pollIntervalMs: 60_000,
+    });
+    expect(prepared.launch.args).toContain('pi-session-user-only');
+    const session = await prepared.adopt('runtime-pi-user-only');
     expect(session.durableRecordSeen()).toBe(true);
     await prepared.dispose();
   });

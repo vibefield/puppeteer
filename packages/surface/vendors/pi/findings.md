@@ -44,6 +44,10 @@ mock `message_start.responseId`) are not credited to 1.5.0.
 - Assistant messages gain `durationMs`, `thinkingLevel` and
   `providerThinkingLevel`; tool results gain `durationMs` and `nestedCalls`;
   `usage.cost.totalFromProvider` is new. None changes a consumed field.
+- Journal creation moves earlier: 0.84.3 deferred the whole file until the
+  first assistant message; 1.5.0 writes it at the first user or assistant
+  message entry (`SessionManager._hasConversation`). An aborted first turn now
+  leaves a resumable journal holding only the user message.
 - New writer-only entries: `usage` (prompt-cache warming and other
   model-attributed usage) and `context_edit`. Both are retained native events;
   usage stays excluded from the session-JSONL usage family as before.
@@ -70,10 +74,12 @@ native `usage.totalTokens` includes cache/reasoning accounting, while the
 portable billable meter is deliberately input plus output; both facts are
 kept distinct.
 
-Pi flushes a user message with the first assistant record rather than at
-terminal submission time. Prompt submission therefore returns an honest
-`uncertain` receipt after accepted terminal automation; later durable
-observation establishes the turn. Resume captures the byte boundary before
+Pi 1.5.0 creates the session file, with the setup entries it buffered, when
+the first user or assistant message is appended, and appends each entry
+immediately after that; a setup-only session still leaves no file. The user
+record is written by Pi's own submission handling, not by the terminal paste,
+so prompt submission returns an honest `uncertain` receipt after accepted
+terminal automation; later durable observation establishes the turn. Resume captures the byte boundary before
 launch, and JSONL replacement/truncation advances a source generation so
 deduplication identities cannot collide. Observer failure degrades the
 monitor rail without claiming the native TUI process stopped.
