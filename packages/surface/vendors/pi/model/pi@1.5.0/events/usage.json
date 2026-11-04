@@ -230,5 +230,5 @@
     ]
   },
   "confidence": "unverified",
-  "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s); source evidence: writer."
+  "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s) in the 1.5.0 sources; source evidence: writer."
 }

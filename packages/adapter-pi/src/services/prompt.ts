@@ -15,7 +15,7 @@ export class PiPromptService {
       reason:
         submission.mode === 'paste-only'
           ? 'prompt text was staged but not submitted'
-          : 'Pi durably flushes the user message only when the first assistant record is persisted',
+          : 'Pi persists the user message when its own submission handling appends it, not on terminal paste',
     };
   }
 }

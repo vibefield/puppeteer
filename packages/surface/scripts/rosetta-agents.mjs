@@ -78,6 +78,8 @@ export const ROSETTA_AGENT_CONFIGS = Object.freeze({
     primaryEnvelopeFields: ['type', 'id', 'parentId', 'timestamp'],
     primaryRecord: (path) => path.includes('/sessions/') && path.endsWith('.jsonl'),
     referenceFiles: ['sources/1.5.0.writer.json', 'sources/1.5.0.fixtures.json'],
+    // Rosetta's canonical sums the 0.84.3 (darwin-arm64) and 1.5.0 (linux-x64) corpora; the model credits only 1.5.0.
+    versionScopedSources: true,
     repository: 'https://github.com/earendil-works/pi',
     revision: 'v1.5.0',
     relation: 'exact-release',
@@ -97,7 +99,15 @@ export const ROSETTA_AGENT_CONFIGS = Object.freeze({
       effort: '--thinking',
       name: '--name',
     },
-    privacy: { sensitiveTextKey: /^(?:timestamp)$/i, pathKey: /^(?:parentSession)$/i },
+    // 1.5.0 persists the system prompt as a role=system message (and on compaction.systemMessage): every
+    // `sections` value is prompt text (`sections.cwd` stays a path), and tool descriptions and parameter schemas can
+    // carry extension-authored text, so only tool names and schema keys/types survive. `argumentsError` embeds the
+    // raw model-sent arguments.
+    privacy: {
+      sensitiveTextKey: /^(?:timestamp|description|argumentsError)$/i,
+      sensitiveContainer: /^(?:sections|parameters)$/i,
+      pathKey: /^(?:parentSession)$/i,
+    },
   }),
 });
 

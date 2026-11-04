@@ -27,7 +27,7 @@
       "id": "pi-captures",
       "path": "packages/surface/vendors/pi/captures/pi@1.5.0",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "828f46e25e036454f4bf3d432db400a2c72d02f53df79c900eb5499a58b0fd80"
+      "sha256": "f29c00d71bb7657129f773284594e990b51c78f91c50bb940052fef6e303549d"
     },
     {
       "id": "pi-references",
@@ -58,7 +58,7 @@
       "platform": "linux-x64",
       "harness": "rosetta controlled mock-provider farm",
       "capturedAt": "2026-11-03T19:35:32Z",
-      "notes": "Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence."
+      "notes": "Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence. Counts and shapes come from the 1.5.0 writer and fixture sources only, not from the cumulative multi-release inventory."
     },
     {
       "id": "pi-rosetta-contract",

@@ -24,6 +24,9 @@
           "content": {
             "anyOf": [
               {
+                "type": "string"
+              },
+              {
                 "type": "array",
                 "items": {
                   "type": "object",
@@ -62,9 +65,6 @@
                   ],
                   "additionalProperties": true
                 }
-              },
-              {
-                "type": "string"
               }
             ]
           },
@@ -85,9 +85,6 @@
             "enum": [
               "mock"
             ]
-          },
-          "responseId": {
-            "type": "string"
           },
           "role": {
             "type": "string",
@@ -504,6 +501,9 @@
           "content": {
             "anyOf": [
               {
+                "type": "string"
+              },
+              {
                 "type": "array",
                 "items": {
                   "type": "object",
@@ -542,9 +542,6 @@
                   ],
                   "additionalProperties": true
                 }
-              },
-              {
-                "type": "string"
               }
             ]
           },
@@ -565,9 +562,6 @@
             "enum": [
               "mock"
             ]
-          },
-          "responseId": {
-            "type": "string"
           },
           "role": {
             "type": "string",
@@ -995,5 +989,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "<farm>/stdout*.jsonl; 55 retained observation(s); source evidence: fixture."
+  "notes": "<farm>/stdout*.jsonl; 33 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
 }

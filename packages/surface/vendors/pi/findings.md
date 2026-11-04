@@ -29,9 +29,11 @@ Official acquisition still uses the GitHub release binaries, so the captured
 artifact is the same release through its npm distribution, not the acquired
 bytes. Rosetta's `sources/1.5.0.writer.json` is its 0.84.3 writer document with
 the reviewed v0.84.3..v1.5.0 diff of the persistence types applied. Rosetta's
-canonical inventory is cumulative across its pinned versions, so a shape shown
-here is proven for 0.84.3 or 1.5.0, not necessarily both (for example
-`toolResult.addedToolNames` exists only at 0.84.3).
+canonical inventory is cumulative across its pinned versions, so the 1.5.0
+model is rebuilt from the 1.5.0 writer and fixture sources only
+(`versionScopedSources`): shapes and occurrence counts seen only in the 0.84.3
+darwin-arm64 corpus or writer (for example `toolResult.addedToolNames` or the
+mock `message_start.responseId`) are not credited to 1.5.0.
 
 - The session header stays at version 3 and the record types are unchanged in
   the fixtures. 1.5.0 persists the system prompt as a `message` entry with
@@ -41,7 +43,19 @@ here is proven for 0.84.3 or 1.5.0, not necessarily both (for example
   turn.
 - Assistant messages gain `durationMs`, `thinkingLevel` and
   `providerThinkingLevel`; tool results gain `durationMs` and `nestedCalls`;
-  `usage.cost.totalFromProvider` is new. None changes a consumed field.
+  `usage.cost.totalFromProvider` is new. None of these changes a consumed
+  field.
+- `ToolCall` gains `argumentsError`, which changes the meaning of the consumed
+  `toolCall.arguments`: when a finished call's arguments text is not a JSON
+  object, 1.5.0 persists `arguments: {}` beside `argumentsError` (the parse
+  error plus the raw text the model sent) and Pi fails the call, where 0.84.3
+  kept the partially parsed prefix. The adapter reports no tool input and no
+  proposed file operation for such a call and never copies `argumentsError`;
+  the privacy rules redact it.
+- Journal creation moves earlier: 0.84.3 deferred the whole file until the
+  first assistant message; 1.5.0 writes it at the first user or assistant
+  message entry (`SessionManager._hasConversation`). An aborted first turn now
+  leaves a resumable journal holding only the user message.
 - New writer-only entries: `usage` (prompt-cache warming and other
   model-attributed usage) and `context_edit`. Both are retained native events;
   usage stays excluded from the session-JSONL usage family as before.
@@ -68,10 +82,12 @@ native `usage.totalTokens` includes cache/reasoning accounting, while the
 portable billable meter is deliberately input plus output; both facts are
 kept distinct.
 
-Pi flushes a user message with the first assistant record rather than at
-terminal submission time. Prompt submission therefore returns an honest
-`uncertain` receipt after accepted terminal automation; later durable
-observation establishes the turn. Resume captures the byte boundary before
+Pi 1.5.0 creates the session file, with the setup entries it buffered, when
+the first user or assistant message is appended, and appends each entry
+immediately after that; a setup-only session still leaves no file. The user
+record is written by Pi's own submission handling, not by the terminal paste,
+so prompt submission returns an honest `uncertain` receipt after accepted
+terminal automation; later durable observation establishes the turn. Resume captures the byte boundary before
 launch, and JSONL replacement/truncation advances a source generation so
 deduplication identities cannot collide. Observer failure degrades the
 monitor rail without claiming the native TUI process stopped.

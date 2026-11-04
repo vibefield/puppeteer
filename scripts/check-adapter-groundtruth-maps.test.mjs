@@ -25,3 +25,15 @@ test('known semantic inputs are classified from adapter-owned normalization modu
     );
   }
 });
+
+test('a monitor-capability family that shares a native event name does not mark that event consumed', () => {
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  // Pi's monitor capabilities declare the Core `usage` family; Pi 1.5.0's writer-only `usage` entry is not consumed.
+  const map = buildAdapterGroundTruthMap(root, 'pi');
+  for (const event of ['usage', 'context_edit']) {
+    assert.ok(!map.semanticEvents.includes(event), `pi must not classify ${event} as semantic`);
+    assert.ok(!map.observedOrControlledEvents.includes(event), `pi must not classify ${event} as observed`);
+  }
+  assert.ok(map.semanticEvents.includes('message'));
+  assert.equal(map.totals.semantic, 5);
+});

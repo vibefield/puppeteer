@@ -69,7 +69,8 @@
           }
         },
         "required": [
-          "content"
+          "content",
+          "structuredContent"
         ],
         "additionalProperties": true
       },
@@ -84,6 +85,7 @@
       }
     },
     "required": [
+      "durationMs",
       "isError",
       "result",
       "toolCallId",
@@ -151,7 +153,8 @@
           }
         },
         "required": [
-          "content"
+          "content",
+          "structuredContent"
         ],
         "additionalProperties": true
       },
@@ -172,6 +175,7 @@
       }
     },
     "required": [
+      "durationMs",
       "isError",
       "result",
       "toolCallId",
@@ -199,5 +203,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "<farm>/stdout*.jsonl; 3 retained observation(s); source evidence: fixture."
+  "notes": "<farm>/stdout*.jsonl; 2 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
 }

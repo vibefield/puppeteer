@@ -959,5 +959,5 @@
   },
   "confidence": "verified-headless",
   "fixture": "captures/pi@1.5.0/compaction/events.jsonl",
-  "notes": "agent/sessions/*/*.jsonl; 2 retained observation(s); source evidence: writer."
+  "notes": "agent/sessions/*/*.jsonl; 1 retained observation(s) in the 1.5.0 sources; source evidence: writer."
 }

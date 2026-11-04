@@ -49,10 +49,14 @@ export function buildAdapterGroundTruthMap(root, provider) {
   const events = model.events.map(({ event }) => event).sort();
   if (new Set(events).size !== events.length) throw new Error(`${groundTruth} contains duplicate event names`);
 
-  const sources = filesUnder(join(adapterDirectory, 'src')).map((path) => ({
-    path: relative(adapterDirectory, path).replaceAll('\\', '/'),
-    source: readFileSync(path, 'utf8'),
-  }));
+  const sources = filesUnder(join(adapterDirectory, 'src'))
+    .map((path) => ({
+      path: relative(adapterDirectory, path).replaceAll('\\', '/'),
+      source: readFileSync(path, 'utf8'),
+    }))
+    // A monitor-capability declaration names Core monitor families (`family: 'usage'`), never native events; a family
+    // that shares a native event's name would otherwise mark that event consumed.
+    .filter(({ path }) => !path.endsWith('normalization/monitor-capabilities.ts'));
   const semanticSources = sources.filter(
     ({ path }) =>
       path.includes('normalization/') || path.endsWith('normalizer.ts') || path.endsWith('monitor-evidence.ts'),

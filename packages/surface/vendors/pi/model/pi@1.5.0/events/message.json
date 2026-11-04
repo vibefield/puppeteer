@@ -14,12 +14,6 @@
       "message": {
         "type": "object",
         "properties": {
-          "addedToolNames": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
           "api": {
             "type": "string"
           },
@@ -643,12 +637,6 @@
       "message": {
         "type": "object",
         "properties": {
-          "addedToolNames": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
           "api": {
             "type": "string"
           },
@@ -1303,5 +1291,5 @@
   },
   "confidence": "verified-headless",
   "fixture": "captures/pi@1.5.0/basic-chat/events.jsonl",
-  "notes": "agent/sessions/*/*.jsonl; 60 retained observation(s); source evidence: writer."
+  "notes": "agent/sessions/*/*.jsonl; 36 retained observation(s) in the 1.5.0 sources; source evidence: writer."
 }

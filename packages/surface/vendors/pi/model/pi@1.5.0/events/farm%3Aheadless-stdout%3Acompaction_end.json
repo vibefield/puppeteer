@@ -88,7 +88,8 @@
                   "cacheWrite",
                   "input",
                   "output",
-                  "total"
+                  "total",
+                  "totalFromProvider"
                 ],
                 "additionalProperties": true
               },
@@ -218,7 +219,8 @@
                   "cacheWrite",
                   "input",
                   "output",
-                  "total"
+                  "total",
+                  "totalFromProvider"
                 ],
                 "additionalProperties": true
               },
@@ -295,5 +297,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "<farm>/stdout*.jsonl; 2 retained observation(s); source evidence: fixture."
+  "notes": "<farm>/stdout*.jsonl; 1 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
 }

@@ -149,7 +149,8 @@
                   "cacheWrite",
                   "input",
                   "output",
-                  "total"
+                  "total",
+                  "totalFromProvider"
                 ],
                 "additionalProperties": true
               },
@@ -181,12 +182,14 @@
         "required": [
           "api",
           "content",
+          "durationMs",
           "model",
           "provider",
           "rawStopReason",
           "responseId",
           "role",
           "stopReason",
+          "thinkingLevel",
           "timestamp",
           "usage"
         ],
@@ -246,6 +249,7 @@
           },
           "required": [
             "content",
+            "durationMs",
             "isError",
             "role",
             "timestamp",
@@ -402,7 +406,8 @@
                   "cacheWrite",
                   "input",
                   "output",
-                  "total"
+                  "total",
+                  "totalFromProvider"
                 ],
                 "additionalProperties": true
               },
@@ -434,12 +439,14 @@
         "required": [
           "api",
           "content",
+          "durationMs",
           "model",
           "provider",
           "rawStopReason",
           "responseId",
           "role",
           "stopReason",
+          "thinkingLevel",
           "timestamp",
           "usage"
         ],
@@ -499,6 +506,7 @@
           },
           "required": [
             "content",
+            "durationMs",
             "isError",
             "role",
             "timestamp",
@@ -541,5 +549,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "<farm>/stdout*.jsonl; 24 retained observation(s); source evidence: fixture."
+  "notes": "<farm>/stdout*.jsonl; 13 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
 }

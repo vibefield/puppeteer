@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /** Generate a complete Surface authoring model from committed Rosetta evidence. */
 
-import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { eventDocumentPath } from '@vibefield/puppeteer-surface';
 import { digestTree } from './check-evidence.mjs';
@@ -85,12 +86,206 @@ export function rosettaEventInventory(canonical, primaryStream) {
     )) {
       inventory.push(
         nativeName.length > 0
-          ? { event: rosettaEventIdentity(stream, nativeName, primaryStream), nativeName, stream, record }
-          : { event: `${stream.id}:document`, nativeName: stream.glob, stream, record },
+          ? {
+              event: rosettaEventIdentity(stream, nativeName, primaryStream),
+              nativeName,
+              recordType: nativeName,
+              stream,
+              record,
+            }
+          : { event: `${stream.id}:document`, nativeName: stream.glob, recordType: nativeName, stream, record },
       );
     }
   }
   return inventory;
+}
+
+// A faithful port of Rosetta's `merge_shapes` / `merge_docs` record merge (tools/groundtruth/model.py), used to rebuild
+// one release's inventory from that release's own source documents. Rosetta's canonical document sums every farmed
+// release, so its occurrence counts and shapes would otherwise credit an older release's corpus to the pinned one.
+const ROSETTA_EVIDENCE_STRENGTH = { research: 0, observed: 1, fixture: 2, writer: 3 };
+const ROSETTA_ENUM_CARDINALITY_CAP = 128;
+const ROSETTA_DYNAMIC_KEY_CAP = 40;
+const ROSETTA_UUID_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ROSETTA_OPAQUE_VALUE =
+  /^(?:msg|tool|toolu|call|session|req|request|task|thread|run|wf)_[A-Za-z0-9-]*[0-9][A-Za-z0-9-]+$/i;
+const ROSETTA_LONG_HEX_VALUE = /^[0-9a-f]{12,}$/i;
+
+function rosettaValueLikeKey(key) {
+  if (Buffer.byteLength(key) > 48) return true;
+  if (/[\s/\\]/u.test(key)) return true;
+  if (ROSETTA_UUID_KEY.test(key) || ROSETTA_OPAQUE_VALUE.test(key) || ROSETTA_LONG_HEX_VALUE.test(key)) return true;
+  return key.length > 2 && key.startsWith('<') && key.endsWith('>');
+}
+
+function rosettaSchemaFieldKey(key) {
+  if (!key || rosettaValueLikeKey(key) || /^\p{N}/u.test(key)) return false;
+  return /^[\p{L}\p{N}_]+$/u.test(key);
+}
+
+function rosettaField(shape, required, observed) {
+  return { shape, required, ...(observed === undefined ? {} : { observed }) };
+}
+
+function sortedEntries(object) {
+  return Object.entries(object).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+}
+
+function collapseRosettaDynamic(fields) {
+  const sorted = Object.fromEntries(sortedEntries(fields));
+  const keys = Object.keys(sorted);
+  if (
+    !keys.some(rosettaValueLikeKey) &&
+    (keys.length <= ROSETTA_DYNAMIC_KEY_CAP || keys.every(rosettaSchemaFieldKey))
+  ) {
+    return sorted;
+  }
+  let merged;
+  let total = 0;
+  let hasCounts = true;
+  for (const field of Object.values(sorted)) {
+    merged = merged === undefined ? structuredClone(field.shape) : mergeRosettaShapes(merged, field.shape);
+    if ('observed' in field) total += field.observed;
+    else hasCounts = false;
+  }
+  return { [ROSETTA_DYNAMIC_KEY]: rosettaField(merged ?? { kind: 'unknown' }, true, hasCounts ? total : undefined) };
+}
+
+function mergeableRosettaShapes(left, right) {
+  return (
+    JSON.stringify(left) === JSON.stringify(right) ||
+    (left.kind === right.kind && (left.kind === 'object' || left.kind === 'array'))
+  );
+}
+
+export function mergeRosettaShapes(leftShape, rightShape) {
+  const left = structuredClone(leftShape);
+  const right = structuredClone(rightShape);
+  if (left.kind === 'unknown') return right;
+  if (right.kind === 'unknown') return left;
+  if (left.kind === 'object' && right.kind === 'object') {
+    const leftFields = left.fields ?? {};
+    const rightFields = right.fields ?? {};
+    const fields = {};
+    for (const key of [...new Set([...Object.keys(leftFields), ...Object.keys(rightFields)])].sort()) {
+      const first = leftFields[key];
+      const second = rightFields[key];
+      if (first === undefined || second === undefined) {
+        fields[key] = { ...structuredClone(first ?? second), required: false };
+        continue;
+      }
+      const observed = 'observed' in first && 'observed' in second ? first.observed + second.observed : undefined;
+      fields[key] = rosettaField(
+        mergeRosettaShapes(first.shape, second.shape),
+        Boolean(first.required && second.required),
+        observed,
+      );
+    }
+    return { kind: 'object', fields: collapseRosettaDynamic(fields) };
+  }
+  if (left.kind === 'array' && right.kind === 'array') {
+    const shape = { kind: 'array' };
+    if (left.items !== undefined && right.items !== undefined)
+      shape.items = mergeRosettaShapes(left.items, right.items);
+    else if (left.items !== undefined || right.items !== undefined)
+      shape.items = structuredClone(left.items ?? right.items);
+    return shape;
+  }
+  if (left.kind === 'string' && right.kind === 'string') {
+    const shape = { kind: 'string' };
+    if (left.values !== undefined && right.values !== undefined) {
+      const values = { ...left.values };
+      for (const [key, count] of Object.entries(right.values)) values[key] = (values[key] ?? 0) + count;
+      if (Object.keys(values).length <= ROSETTA_ENUM_CARDINALITY_CAP)
+        shape.values = Object.fromEntries(sortedEntries(values));
+    }
+    return shape;
+  }
+  if (JSON.stringify(left) === JSON.stringify(right)) return left;
+  const variants = [left, right].flatMap((shape) => (shape.kind === 'any_of' ? (shape.variants ?? []) : [shape]));
+  const merged = [];
+  for (const variant of variants) {
+    const index = merged.findIndex((existing) => mergeableRosettaShapes(existing, variant));
+    if (index >= 0) merged[index] = mergeRosettaShapes(merged[index], variant);
+    else merged.push(variant);
+  }
+  return merged.length === 1 ? merged[0] : { kind: 'any_of', variants: merged };
+}
+
+/**
+ * Rebuild each stream's record types from source documents of one release only, merged in Rosetta's evidence order.
+ * Returns `Map<streamId, Map<recordType, record>>`.
+ */
+export function mergeRosettaRecordTypes(documents) {
+  const ordered = [...documents].sort(
+    (left, right) => ROSETTA_EVIDENCE_STRENGTH[right.evidence] - ROSETTA_EVIDENCE_STRENGTH[left.evidence],
+  );
+  const streams = new Map();
+  for (const document of ordered) {
+    for (const stream of document.streams ?? []) {
+      const target = streams.get(stream.id) ?? new Map();
+      streams.set(stream.id, target);
+      for (const [name, record] of Object.entries(stream.record_types ?? {})) {
+        const evidence = record.evidence ?? document.evidence;
+        const current = target.get(name);
+        if (!current) {
+          target.set(name, { ...structuredClone(record), evidence });
+          continue;
+        }
+        current.observed += record.observed;
+        current.shape = mergeRosettaShapes(current.shape, record.shape);
+        if (ROSETTA_EVIDENCE_STRENGTH[evidence] > ROSETTA_EVIDENCE_STRENGTH[current.evidence])
+          current.evidence = evidence;
+      }
+    }
+  }
+  return streams;
+}
+
+/**
+ * Scope the cumulative inventory to the pinned release. Every canonical record stays in the inventory (the audit
+ * compares it with the canonical one), but its shape, occurrence count and evidence come from the release's own
+ * writer/fixture documents. A record no such document carries keeps the canonical shape with no occurrence, so it can
+ * only support the contract claim.
+ */
+export function scopeRosettaInventory(inventory, versionRecords) {
+  return inventory.map((item) => {
+    if (!item.record) return item;
+    const scoped = versionRecords.get(item.stream.id)?.get(item.recordType);
+    return {
+      ...item,
+      record: scoped ?? { ...item.record, observed: 0 },
+      versionScoped: true,
+      inVersionSources: !!scoped,
+    };
+  });
+}
+
+function recordNotes(item, version) {
+  if (!item.record)
+    return `${item.stream.glob}; non-record native artifact tracked by the complete Rosetta stream inventory.`;
+  if (item.versionScoped && !item.inVersionSources) {
+    return `${item.stream.glob}; no ${version} writer or fixture source carries this record; its shape is the cumulative Rosetta inventory's (other releases) and is a contract lead only.`;
+  }
+  const scope = item.versionScoped ? ` in the ${version} sources` : '';
+  return `${item.stream.glob}; ${item.record.observed ?? 0} retained observation(s)${scope}; source evidence: ${item.record.evidence ?? item.stream.evidence}.`;
+}
+
+function versionSourceDocuments(canonical, referencesRoot, version) {
+  return canonical.sources
+    .filter((source) => source.agent_version === version)
+    .map((source) => {
+      const path = join(referencesRoot, basename(source.path));
+      if (!existsSync(path)) throw new Error(`version-scoped model needs the imported Rosetta source ${source.path}`);
+      const document = JSON.parse(readFileSync(path, 'utf8'));
+      const digest = createHash('sha256').update(readFileSync(path)).digest('hex');
+      if (source.sha256 && digest !== source.sha256)
+        throw new Error(`${source.path} does not match its canonical digest`);
+      if (document.agent_version !== version || document.evidence !== source.evidence) {
+        throw new Error(`${source.path} identity does not match its canonical source entry`);
+      }
+      return document;
+    });
 }
 
 function captureFacts(capturesRoot) {
@@ -203,7 +398,13 @@ export function generateRosettaSurfaceModel(vendor) {
   ) {
     throw new Error(`invalid Rosetta reference identity for ${vendor}@${config.version}`);
   }
-  const inventory = rosettaEventInventory(canonical, config.primaryStream);
+  const cumulative = rosettaEventInventory(canonical, config.primaryStream);
+  const inventory = config.versionScopedSources
+    ? scopeRosettaInventory(
+        cumulative,
+        mergeRosettaRecordTypes(versionSourceDocuments(canonical, referencesRoot, config.version)),
+      )
+    : cumulative;
   if (inventory.length > 256)
     throw new Error(`${vendor} has ${inventory.length} events; behavior nodes support at most 256`);
   const captured = captureFacts(capturesRoot);
@@ -278,9 +479,7 @@ export function generateRosettaSurfaceModel(vendor) {
       evidence: eventEvidence,
       confidence: eventConfidence,
       ...(capturedPrimary ? { fixture: captured.fixtures.get(item.nativeName) } : {}),
-      notes: item.record
-        ? `${item.stream.glob}; ${item.record.observed ?? 0} retained observation(s); source evidence: ${item.record.evidence ?? item.stream.evidence}.`
-        : `${item.stream.glob}; non-record native artifact tracked by the complete Rosetta stream inventory.`,
+      notes: recordNotes(item, config.version),
     };
     writeJson(join(eventsRoot, eventDocumentPath(item.event)), document);
     nodeByEvent.set(item.event, `event-${String(index + 1).padStart(3, '0')}`);
@@ -389,8 +588,7 @@ export function generateRosettaSurfaceModel(vendor) {
         platform: corpus.platform,
         harness: 'rosetta controlled mock-provider farm',
         capturedAt: corpus.capturedAt,
-        notes:
-          'Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence.',
+        notes: `Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence.${config.versionScopedSources ? ` Counts and shapes come from the ${config.version} writer and fixture sources only, not from the cumulative multi-release inventory.` : ''}`,
       },
       {
         id: contractClaim,
