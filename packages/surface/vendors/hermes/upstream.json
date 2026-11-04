@@ -64,6 +64,16 @@
         "outputFile": "ui-tui/dist/entry.js",
         "environmentVariable": "HERMES_TUI_DIR",
         "maxBytes": 33554432
+      },
+      "dependencyBuilds": {
+        "darwin-x64": {
+          "strategy": "rust-cyclonedx-v1",
+          "sourceDateEpoch": 0,
+          "distribution": "cryptography",
+          "version": "50.0.0",
+          "sbom": "sboms/cryptography-rust.cyclonedx.json",
+          "normalizedRoot": "/hermes-build"
+        }
       }
     }
   },
@@ -77,5 +87,8 @@
     "acp-survey",
     "controlled-census"
   ],
-  "debounce": { "polls": 2, "minutes": 30 }
+  "debounce": {
+    "polls": 2,
+    "minutes": 30
+  }
 }

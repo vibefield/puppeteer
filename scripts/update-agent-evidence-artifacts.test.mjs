@@ -184,3 +184,52 @@ test('a fixture corpus or digest-less legacy capture never becomes an executable
     assert.deepEqual(evidence.artifacts[1].integrity, { status: 'verified', sha256: `sha256:${'a'.repeat(64)}` });
   }
 });
+
+test('an explicit retired-build identity stays historical and never donates claims to its replacement', () => {
+  const oldDigest = `sha256:${'a'.repeat(64)}`;
+  const newDigest = `sha256:${'b'.repeat(64)}`;
+  const evidence = {
+    evidenceVersion: 2,
+    vendor: 'fake',
+    vendorVersion: '2.0.0',
+    artifacts: [
+      {
+        id: 'fake-2.0.0-darwin-x64',
+        platform: 'darwin-x64',
+        kind: 'superseded-installed-console-build',
+        artifactKind: 'installed-console',
+        integrity: { status: 'verified', sha256: oldDigest },
+      },
+    ],
+    claims: [{ id: 'build-history', kind: 'inference', artifact: 'fake-2.0.0-darwin-x64', platform: 'darwin-x64' }],
+  };
+  const report = {
+    vendor: 'fake',
+    version: '2.0.0',
+    status: 'complete',
+    artifacts: [
+      {
+        key: `fake@2.0.0@darwin-x64@${newDigest}`,
+        platform: 'darwin-x64',
+        artifactKind: 'installed-console',
+        sha256: newDigest,
+        versionOutput: 'fake 2.0.0',
+        acquiredAt: '2026-11-04T00:00:00.000Z',
+      },
+    ],
+  };
+  const claims = structuredClone(evidence.claims);
+  mergeArtifactReport({ evidence, report, requiredPlatforms: ['darwin-x64'] });
+  assert.deepEqual(evidence.claims, claims);
+  assert.equal(evidence.artifacts[0].integrity.sha256, oldDigest);
+  assert.equal(evidence.artifacts[1].id, 'fake-2.0.0-darwin-x64-acquired');
+  assert.equal(evidence.artifacts[1].integrity.sha256, newDigest);
+  const once = structuredClone(evidence);
+  mergeArtifactReport({ evidence, report, requiredPlatforms: ['darwin-x64'] });
+  assert.deepEqual(evidence, once);
+  report.artifacts[0].sha256 = `sha256:${'c'.repeat(64)}`;
+  assert.throws(
+    () => mergeArtifactReport({ evidence, report, requiredPlatforms: ['darwin-x64'] }),
+    /same-version artifact change/,
+  );
+});

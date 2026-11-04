@@ -171,6 +171,9 @@
                     "pattern": "^[A-Z][A-Z0-9_]*$",
                     "not": {
                       "enum": [
+                        "CARGO_ENCODED_RUSTFLAGS",
+                        "RUSTFLAGS",
+                        "SOURCE_DATE_EPOCH",
                         "COMSPEC",
                         "HOME",
                         "HTTP_PROXY",
@@ -195,6 +198,50 @@
                         "UV_PROJECT_ENVIRONMENT",
                         "WINDIR"
                       ]
+                    }
+                  }
+                },
+                "dependencyBuilds": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "darwin-x64": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "strategy",
+                        "sourceDateEpoch",
+                        "distribution",
+                        "version",
+                        "sbom",
+                        "normalizedRoot"
+                      ],
+                      "properties": {
+                        "strategy": {
+                          "const": "rust-cyclonedx-v1"
+                        },
+                        "sourceDateEpoch": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 4102444800
+                        },
+                        "distribution": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "version": {
+                          "type": "string",
+                          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+                        },
+                        "sbom": {
+                          "type": "string",
+                          "pattern": "^sboms/[A-Za-z0-9_-]+\\.cyclonedx\\.json$"
+                        },
+                        "normalizedRoot": {
+                          "type": "string",
+                          "pattern": "^/[a-z][a-z0-9-]*$"
+                        }
+                      }
                     }
                   }
                 },

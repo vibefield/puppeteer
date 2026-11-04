@@ -3,7 +3,7 @@
   "provider": "hermes",
   "adapterPackage": "@vibefield/puppeteer-adapter-hermes",
   "groundTruth": "packages/surface/vendors/hermes/groundtruth.json",
-  "groundTruthSha256": "4e2b7d5f2fe4333d1b8b3607d83a9defb5063294aca7b35a12f057a6fdbd52a2",
+  "groundTruthSha256": "319224ffa954788a6fb5e909d26fa38d708b6c7ac921b7456ace39614a0a3a3b",
   "semanticEvents": [
     "approval",
     "clarify",

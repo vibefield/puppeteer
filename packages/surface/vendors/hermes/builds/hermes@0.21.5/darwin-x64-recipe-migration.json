@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "vendor": "hermes",
+  "version": "0.21.5",
+  "platform": "darwin-x64",
+  "priorManifestSha256": "sha256:86aff42eea88afea9ff7d7717e575aadeff0cf434cdeceffa82decc06ec173f6",
+  "sourceArchiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
+  "reason": "The original cryptography 50.0.0 source build embeds Cargo paths and a nondeterministic CycloneDX SBOM. Its immutable identity remains historical; a new, explicitly attested recipe must pass acquisition, native-TUI verification and protected promotion.",
+  "recipe": {
+    "strategy": "rust-cyclonedx-v1",
+    "sourceDateEpoch": 0,
+    "distribution": "cryptography",
+    "version": "50.0.0",
+    "sbom": "sboms/cryptography-rust.cyclonedx.json",
+    "normalizedRoot": "/hermes-build"
+  },
+  "diagnostic": {
+    "run": "https://github.com/vibefield/puppeteer/actions/runs/41795530615",
+    "independentBuilds": 2,
+    "identicalManifestSha256": "sha256:7e404bd872a66fa48d0fac4ca7e5257b8de2a8b020801a6277a867b3967bedc8",
+    "note": "Diagnostic recipe proof only. Production manifests additionally attest the recipe and must be independently acquired."
+  }
+}

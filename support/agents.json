@@ -163,7 +163,7 @@
       "candidateVersion": "0.21.5",
       "status": "baseline-pending",
       "blockers": [
-        "The four-platform rehearsal failed artifact assembly on darwin-x64: source-built cryptography 50.0.0 produced a different installed-file digest on rebuild. The identity gate refused it; other platforms matched. An isolated two-build diagnostic produced identical native extensions after Rust path remapping and a fixed epoch, but the SBOM still embeds randomized uv source paths. A reviewed deterministic build recipe and explicit identity migration are required before protected native-TUI verification and promotion."
+        "The four-platform rehearsal failed artifact assembly on darwin-x64: source-built cryptography 50.0.0 produced a different installed-file digest on rebuild. The identity gate refused it; other platforms matched. Two isolated builds produced identical complete manifests after Rust path remapping, a fixed epoch and scoped SBOM source-root canonicalization. The production recipe now attests those transformations explicitly. The original Intel manifest remains historical evidence; new acquisition, reconstruction and protected native-TUI verification are still required before promotion."
       ]
     },
     {

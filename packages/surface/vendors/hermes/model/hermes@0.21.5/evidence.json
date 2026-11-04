@@ -80,7 +80,9 @@
       "integrity": {
         "status": "verified",
         "sha256": "sha256:86aff42eea88afea9ff7d7717e575aadeff0cf434cdeceffa82decc06ec173f6"
-      }
+      },
+      "kind": "superseded-installed-console-build",
+      "notes": "Original acquired build retained byte-for-byte in the build-history record; superseded by the reviewed rust-cyclonedx-v1 recipe. This identity is not the new recipe identity."
     },
     {
       "id": "hermes-0.21.5-linux-x64",
@@ -187,6 +189,13 @@
       ],
       "digestAlgorithm": "sha256-path-content-v1",
       "sha256": "3b40919b6210b9f638dbb2cca00da47eba6594635afb540bb23d11353992e0fe"
+    },
+    {
+      "id": "installed-console-build-history",
+      "kind": "build-provenance",
+      "path": "packages/surface/vendors/hermes/builds/hermes@0.21.5",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "b81e3472aa798535cbdb5f84b5c8a3a570aab838d27a9a109beafd3c4263fb4d"
     }
   ],
   "claims": [
@@ -226,6 +235,15 @@
       "record": "exact-source-surface",
       "sourceReference": 0,
       "notes": "Digest-pinned VALID_HOOKS, hook envelopes, hook result handling, and the inline-diff preview projection."
+    },
+    {
+      "id": "intel-reproducible-build-migration",
+      "kind": "inference",
+      "confidence": "unverified",
+      "record": "installed-console-build-history",
+      "artifact": "hermes-0.21.5-darwin-x64",
+      "platform": "darwin-x64",
+      "notes": "The two-build diagnostic proves a reproducible recipe on its runner. It does not attest a production acquisition or transfer runtime claims. The original build is historical; the production recipe needs its own immutable manifest and protected four-platform verification."
     }
   ],
   "limitations": [

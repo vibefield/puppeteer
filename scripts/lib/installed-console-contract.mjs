@@ -1,10 +1,14 @@
 /** Deterministic schema and validation for source-materialized console artifacts. */
 import { createHash } from 'node:crypto';
+import { validateDependencyBuilds } from './reproducible-dependency-build.mjs';
 import { validateVersionOutput } from '../probe-agent-artifact.mjs';
 import { validateNodeRuntimeBundleManifest, validateNodeRuntimeBundlePolicy } from './runtime-bundle-contract.mjs';
 
 const sha256Pattern = /^sha256:[0-9a-f]{64}$/;
 const reservedEnvironment = new Set([
+  'CARGO_ENCODED_RUSTFLAGS',
+  'RUSTFLAGS',
+  'SOURCE_DATE_EPOCH',
   'COMSPEC',
   'HOME',
   'HTTP_PROXY',
@@ -43,6 +47,7 @@ function pathsOverlap(left, right) {
 }
 
 export function validatePythonUvLockPolicy(policy) {
+  validateDependencyBuilds(policy?.dependencyBuilds);
   if (policy?.strategy !== 'python-uv-lock') throw new Error('unsupported installed-console strategy');
   if (!/^3\.\d+\.\d+$/.test(policy.pythonVersion ?? '')) throw new Error('exact Python 3 version is required');
   if (!/^\d+\.\d+\.\d+$/.test(policy.uvVersion ?? '')) throw new Error('exact uv version is required');
@@ -209,6 +214,7 @@ export function validateInstalledConsoleManifest(
   manifest,
   { vendor, version, platform, versionOutput = manifest?.console?.versionOutput, policy },
 ) {
+  validateDependencyBuilds(policy?.dependencyBuilds);
   if (
     manifest?.schemaVersion !== 2 ||
     manifest.artifactKind !== 'installed-console' ||
@@ -248,7 +254,8 @@ export function validateInstalledConsoleManifest(
     manifest.materialization?.frozen !== true ||
     manifest.materialization?.exact !== true ||
     manifest.materialization?.editable !== (policy?.installMode === 'editable') ||
-    manifest.materialization?.defaultGroups !== false
+    manifest.materialization?.defaultGroups !== false ||
+    JSON.stringify(manifest.materialization?.dependencyBuild) !== JSON.stringify(policy?.dependencyBuilds?.[platform])
   ) {
     throw new Error('installed-console materialization differs from its reviewed policy');
   }
@@ -303,6 +310,7 @@ export function createInstalledConsoleManifest({
       exact: true,
       editable: policy.installMode === 'editable',
       defaultGroups: false,
+      ...(policy.dependencyBuilds?.[platform] ? { dependencyBuild: policy.dependencyBuilds[platform] } : {}),
     },
     pythonInventorySchemaVersion: inventory.schemaVersion,
     runtime: inventory.runtime,

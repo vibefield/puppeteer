@@ -9,6 +9,7 @@ import {
   createInstalledConsoleManifest,
   normalizeInstalledVersionOutput,
   validatePythonUvLockPolicy,
+  validateInstalledConsoleManifest,
 } from './lib/installed-console-contract.mjs';
 import {
   createNodeRuntimeBundleManifest,
@@ -304,5 +305,58 @@ test('installed-console policies reject traversal, overlapping output roots, and
         runtimeBundle: runtimePolicy,
       }),
     /must not also be an isolated home/,
+  );
+});
+
+test('installed-console identity binds the platform-specific dependency build recipe', () => {
+  const recipe = {
+    strategy: 'rust-cyclonedx-v1',
+    sourceDateEpoch: 0,
+    distribution: 'cryptography',
+    version: '50.0.0',
+    sbom: 'sboms/cryptography-rust.cyclonedx.json',
+    normalizedRoot: '/hermes-build',
+  };
+  const selected = { ...policy, dependencyBuilds: { 'darwin-x64': recipe } };
+  const manifest = createInstalledConsoleManifest({
+    vendor: 'hermes',
+    version: '0.20.0',
+    platform: 'darwin-x64',
+    downloadMetadata: { sourceReference: 'v2026.8.3', archiveRoot: 'hermes-agent-2026.8.3' },
+    archiveSha256: digest('a'),
+    sourceTreeSha256: digest('d'),
+    generatedSource: {
+      roots: ['hermes_agent.egg-info'],
+      fileCount: 7,
+      digestAlgorithm: 'sha256-generated-source-trees-v1',
+      sha256: digest('e'),
+    },
+    projectFileSha256: digest('b'),
+    lockFileSha256: digest('c'),
+    policy: selected,
+    inventory,
+    versionOutput: 'Hermes Agent v0.20.0 (2026.8.3)\nInstall directory: /private/path\nPython: 3.11.9\n',
+  });
+  assert.deepEqual(manifest.materialization.dependencyBuild, recipe);
+  assert.throws(
+    () =>
+      validateInstalledConsoleManifest(manifest, {
+        vendor: 'hermes',
+        version: '0.20.0',
+        platform: 'darwin-x64',
+        policy,
+      }),
+    /materialization differs/,
+  );
+  delete manifest.materialization.dependencyBuild;
+  assert.throws(
+    () =>
+      validateInstalledConsoleManifest(manifest, {
+        vendor: 'hermes',
+        version: '0.20.0',
+        platform: 'darwin-x64',
+        policy: selected,
+      }),
+    /materialization differs/,
   );
 });
