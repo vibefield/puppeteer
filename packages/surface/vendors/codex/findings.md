@@ -1042,7 +1042,8 @@ asset digest GitHub publishes was not compared (its REST API was unreachable fro
 0.164.0 linux-x64 package was re-acquired (`bin/codex` `b93f6811…`, equal to the promoted linux-x64 digest) and the
 census, the schema generation, the help and the parse/config probes were run on both. Differences between the two
 linux runs are release drift; differences that also hold between the 0.164.0 linux and darwin runs are platform
-branches. Nothing from the 0.164.0 linux run is committed beyond its digests.
+branches. Nothing from the 0.164.0 linux run is committed beyond its digests and the hand-merged `baseline` block of
+`probes/codex@0.166.0/provider-mismatch-results.json` (probes README, Method 6).
 
 ## Census
 
@@ -1088,9 +1089,11 @@ requests, 1 client notification, 179 client requests).
   {modelProvider}`, `modelProviderPolicyConflict {modelProvider, requiredModelProvider}`. No method's params or result
   references it, so the method-name audit and the shape diff above cannot see it; it is the `data` of the refusals in
   the next section. The ASM has no error-schema field, so `generate-model.mjs` names the definition in the `notes` of
-  the seven gated client requests (`thread/resume`, `turn/start`, `turn/steer`, `review/start`,
-  `thread/compact/start`, `thread/queue/start`, `thread/goal/set`). Carrying error shapes structurally needs a reviewed
-  ASM field (Known gaps).
+  the nine gated client requests: the seven resume and input requests (`thread/resume`, `turn/start`, `turn/steer`,
+  `review/start`, `thread/compact/start`, `thread/queue/start`, `thread/goal/set`), and `model/list` and
+  `thread/sample`, which run only the managed-policy check (`check_thread_model_provider`; `catalog_processor.rs`,
+  `model_catalog.rs`, `thread_processor.rs`) and so can carry only `modelProviderPolicyConflict`. Carrying error shapes
+  structurally needs a reviewed ASM field (Known gaps).
 
 Reconciliation (`candidates/codex@0.166.0/reconciliation.json`, local, linux-x64 only): 4 added, 0 removed, 21 changed
 documents, behavior, channels and detection unchanged, replay passed. It classifies `unsafe-or-unknown` only because
@@ -1220,6 +1223,9 @@ deprecation event reaching consumers. The other opt-in live tests were not run h
 - **Guardian forwarding is source-read only**, as is the backfilled exec history (#57800).
 - **Error shapes are not structural in Surface.** `ModelProviderError` is named in event notes only; an ASM field for
   JSON-RPC error data (and the Imposter serving it) would let conformance hold the refusals to the schema.
+- **A policy refusal of `model/list` is not decoded.** The adapter sends `model/list` (display names in the observer
+  and driver, prewarm, and the model catalogue service); under a managed provider-policy conflict it can carry
+  `modelProviderPolicyConflict`, which those callers treat as an ordinary failure. Source-read only; not probed.
 - **A refusal mid-session is a rejected prompt, not a state.** After the provider configuration changes under a running
   session, each `turn/start` is rejected with the provider sentence; Core has no field marking the session as unable
   to take input until the configuration changes.

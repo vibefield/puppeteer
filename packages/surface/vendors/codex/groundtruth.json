@@ -108,9 +108,20 @@
         "record": "binary-probes",
         "artifact": "codex-0.166.0-linux-x64",
         "platform": "linux-x64",
-        "harness": "probes/codex@0.166.0: parse-probe.mjs, config-probe.mjs, file-change-probe.mjs, history-truncation-probe.mjs, provider-mismatch-probe.mjs",
+        "harness": "probes/codex@0.166.0: parse-probe.mjs, config-probe.mjs, file-change-probe.mjs, history-truncation-probe.mjs",
         "capturedAt": "2026-11-03T19:18:10.000Z",
-        "notes": "Session-free parse and config-loader probes, root and resume help, the runtime meaning of FileUpdateChange.diff per kind, the 64 KiB command-output cap in replayed history, and the model-provider admission refusals (ModelProviderError data on thread/resume and turn/start), in isolated homes against a loopback model. The S1-S35 invocation landing and the ema_auth probe were not re-run at 0.166.0 (findings C9)."
+        "notes": "Session-free parse and config-loader probes, root and resume help, the runtime meaning of FileUpdateChange.diff per kind, and the 64 KiB command-output cap in replayed history, in isolated homes against a loopback model. The S1-S35 invocation landing and the ema_auth probe were not re-run at 0.166.0 (findings C9)."
+      },
+      {
+        "id": "codex-provider-mismatch-probe",
+        "kind": "binary-probe",
+        "confidence": "verified-headless",
+        "record": "binary-probes",
+        "artifact": "codex-0.166.0-linux-x64",
+        "platform": "linux-x64",
+        "harness": "probes/codex@0.166.0: provider-mismatch-probe.mjs",
+        "capturedAt": "2026-11-03",
+        "notes": "The model-provider admission refusals (ModelProviderError data on thread/resume and turn/start), in isolated homes against a loopback model, plus a 0.164.0 baseline (probes README, Method 6). provider-mismatch-results.json records no run time: the probe ran after the artifact's acquisition and before the commit that added the record, both on 2026-11-03 (UTC), so only that date is given."
       },
       {
         "id": "codex-file-change-source",
@@ -137,14 +148,14 @@
           "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "1b0f0c45599a199fc8456c587c0163994fa3a26ad5edd064436037b44ef0b50f"
+        "sha256": "06d325cfda37b1e3267d71342d2825b335be1cc4b008630e7281977a3d6388b6"
       },
       {
         "id": "binary-probes",
         "kind": "probe-set",
         "path": "packages/surface/vendors/codex/probes/codex@0.166.0",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "eb7627ec0604b224478dc92d3947990e8b2c414d5118cf3387d4876203102aa2"
+        "sha256": "c2dd04ed4ee7550ba6ac12850978c6dff52f193298937f68af9d1b0fb4d6ba90"
       },
       {
         "id": "source-file-changes",
@@ -33787,6 +33798,7 @@
         ]
       },
       "confidence": "unverified",
+      "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); this request runs only the managed-policy check, so only `modelProviderPolicyConflict` reaches it; it lasts until the provider configuration changes.",
       "channels": [
         "appserver"
       ]
@@ -60737,6 +60749,7 @@
         ]
       },
       "confidence": "unverified",
+      "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); this request runs only the managed-policy check, so only `modelProviderPolicyConflict` reaches it; it lasts until the provider configuration changes.",
       "channels": [
         "appserver"
       ]

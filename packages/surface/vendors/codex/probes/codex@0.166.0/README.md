@@ -2,7 +2,7 @@
 
 **Probed:** 2026-11-03 (UTC), `codex-cli 0.166.0`, linux-x64. The session-free and census-based methods of
 `probes/codex@0.164.0/` re-run against 0.166.0, each beside a same-platform 0.164.0 re-run, so that a platform branch
-is not mistaken for release drift. Findings: `findings.md` C9.
+is not mistaken for release drift, and one new method (Method 6). Findings: `findings.md` C9.
 
 ## Artifact
 
@@ -15,7 +15,9 @@ and `codex-resources/voice/`; neither is started by any method here. The GitHub-
 (the REST API was unreachable).
 
 For the comparisons only, the 0.164.0 linux-x64 package was re-acquired the same way (`bin/codex` `b93f6811…`, equal
-to the promoted linux-x64 digest). Nothing from that run is committed beyond the digests in `artifact.json`.
+to the promoted linux-x64 digest). From the Method 1, 3 and 4 runs against it nothing is committed beyond the digests in
+`artifact.json` and the comparisons below; Method 6's 0.164.0 answers are committed as the `baseline` block of
+`provider-mismatch-results.json`.
 
 ## Bounds
 
@@ -25,8 +27,9 @@ with `TMPDIR` outside `/tmp`: under `/tmp` codex 0.164.0 and 0.166.0 both print 
 create helper binaries under temporary dir") that would mask the answer being recorded. Isolated is not offline: a run
 that starts an app-server lets its curated-plugin sync reach the network unauthenticated (findings C8).
 
-The scripts are the 0.164.0 scripts, copied unchanged so each record names the directory it lives in. They run only the
-executable they are given (`PUPPETEER_CODEX_BIN`, `--bin` or `--package-root`), never `codex` on `PATH`.
+The Method 1, 3 and 4 scripts are the 0.164.0 scripts, copied unchanged so each record names the directory it lives in.
+`provider-mismatch-probe.mjs` (Method 6) is new here. Every script runs only the executable it is given
+(`PUPPETEER_CODEX_BIN`, `--bin` or `--package-root`), never `codex` on `PATH`.
 
 ## Method 1 — session-free parse and config probes
 
@@ -90,9 +93,16 @@ pointing at the probe's own Responses endpoint; each case in its own throwaway h
   with `modelProviderMismatch` data. 0.164.0: both succeed.
 
 The error message is a display string (the source's `Display` for `ModelProviderError`); the record keeps a digest of
-it, since the privacy rules treat `message` as free text. The 0.164.0 answers are under `baseline` (the same script
-run against the 0.164.0 linux-x64 package). `modelProviderPolicyConflict` needs a managed requirements layer and is
-source-read only.
+it, since the privacy rules treat `message` as free text. `modelProviderPolicyConflict` needs a managed requirements
+layer and is source-read only.
+
+The top level of `provider-mismatch-results.json` is the script's output against 0.166.0. The `baseline` block is not
+script output as committed: the script writes one release per run and refuses an executable that does not report
+`codex-cli $CODEX_VERSION`, so the 0.164.0 answers come from a separate run against the 0.164.0 linux-x64 package
+(`bin/codex` `b93f6811…`), whose output was merged in by hand under `baseline`, with its `probe` field edited to name
+this script. The command line of that run was not recorded; reproducing it needs `PUPPETEER_CODEX_VERSION=0.164.0`
+(or `--version 0.164.0`), and its output then names 0.164.0 in `codex` and `probe`. Neither run recorded its time
+(see the `codex-provider-mismatch-probe` evidence claim).
 
 ## Files
 
@@ -103,4 +113,4 @@ source-read only.
 | `parse-probe.mjs`, `config-probe.mjs`, `parse-cases.json`, `config-cases.json`, `parse-results.json` | Method 1 |
 | `file-change-probe.mjs`, `file-change-results.json` | Method 3 |
 | `history-truncation-probe.mjs`, `history-truncation-results.json` | Method 4 |
-| `provider-mismatch-probe.mjs`, `provider-mismatch-results.json` | Method 6 |
+| `provider-mismatch-probe.mjs`, `provider-mismatch-results.json` | Method 6 (`baseline` merged by hand, see Method 6) |

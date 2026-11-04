@@ -30,48 +30,70 @@ export type CodexModelProviderRefusalCode =
 const rec = (v: unknown): Record<string, unknown> | undefined =>
   v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined;
 
-/** A provider id fit to quote back to the person; anything else is left out of the sentence. */
-const providerId = (v: unknown): string | undefined =>
-  typeof v === 'string' && /^[\w.:@/-]{1,128}$/u.test(v) ? v : undefined;
+const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 
 /** The `ModelProviderError` a refused request carries, or `undefined` for every other failure. */
 export function codexModelProviderRefusal(error: unknown): CodexModelProviderRefusal | undefined {
   if (!(error instanceof AppServerError) || error.body.code !== -32600) return undefined;
+  // The variant is `data.type` alone; the ids are whatever Codex's configuration names (any
+  // string), so they are only sanitised where a sentence quotes them back.
   const data = rec(error.body.data);
-  const modelProvider = providerId(data?.modelProvider);
-  if (!data || !modelProvider) return undefined;
+  const modelProvider = str(data?.modelProvider);
+  if (!data || modelProvider === undefined) return undefined;
   if (data.type === 'modelProviderMismatch') {
-    const currentModelProvider = providerId(data.currentModelProvider);
-    return currentModelProvider ? { type: data.type, modelProvider, currentModelProvider } : undefined;
+    const currentModelProvider = str(data.currentModelProvider);
+    return currentModelProvider === undefined ? undefined : { type: data.type, modelProvider, currentModelProvider };
   }
   if (data.type === 'modelProviderNotConfigured') return { type: data.type, modelProvider };
   if (data.type === 'modelProviderPolicyConflict') {
-    const requiredModelProvider = providerId(data.requiredModelProvider);
-    return requiredModelProvider ? { type: data.type, modelProvider, requiredModelProvider } : undefined;
+    const requiredModelProvider = str(data.requiredModelProvider);
+    return requiredModelProvider === undefined ? undefined : { type: data.type, modelProvider, requiredModelProvider };
   }
   return undefined;
 }
 
+/**
+ * A provider id as the sentence quotes it: control, format and separator characters
+ * dropped, quotes replaced, and at most 64 characters. `undefined` when nothing is left.
+ */
+function quoted(id: string): string | undefined {
+  const shown = id
+    .replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, '')
+    .replace(/"/gu, "'")
+    .trim();
+  if (!shown) return undefined;
+  const chars = [...shown];
+  return `"${chars.length > 64 ? `${chars.slice(0, 63).join('')}…` : shown}"`;
+}
+
 function describe(refusal: CodexModelProviderRefusal): { code: CodexModelProviderRefusalCode; message: string } {
+  const thread = quoted(refusal.modelProvider);
+  const uses = thread ? `This Codex thread uses model provider ${thread}` : "This Codex thread's model provider";
   switch (refusal.type) {
-    case 'modelProviderMismatch':
+    case 'modelProviderMismatch': {
+      const current = quoted(refusal.currentModelProvider);
       return {
         code: 'CODEX_MODEL_PROVIDER_MISMATCH',
-        message: `This Codex thread uses model provider "${refusal.modelProvider}", but the configured provider is "${refusal.currentModelProvider}".`,
+        message: thread
+          ? `${uses}, but the configured provider is ${current ?? 'a different one'}.`
+          : `${uses} differs from the configured provider${current ? ` ${current}` : ''}.`,
       };
+    }
     case 'modelProviderNotConfigured':
       return {
         code: 'CODEX_MODEL_PROVIDER_NOT_CONFIGURED',
-        message: `This Codex thread uses model provider "${refusal.modelProvider}", which is no longer configured.`,
+        message: thread ? `${uses}, which is no longer configured.` : `${uses} is no longer configured.`,
       };
-    case 'modelProviderPolicyConflict':
+    case 'modelProviderPolicyConflict': {
+      const required = quoted(refusal.requiredModelProvider);
       return {
         code: 'CODEX_MODEL_PROVIDER_POLICY_CONFLICT',
         message:
-          refusal.modelProvider === refusal.requiredModelProvider
+          refusal.modelProvider === refusal.requiredModelProvider || !thread || !required
             ? "This Codex thread's model provider settings no longer meet the organization's requirements."
-            : `This Codex thread uses model provider "${refusal.modelProvider}", but the organization requires "${refusal.requiredModelProvider}".`,
+            : `${uses}, but the organization requires ${required}.`,
       };
+    }
   }
 }
 

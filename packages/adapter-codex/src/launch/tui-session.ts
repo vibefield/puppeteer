@@ -217,7 +217,9 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
     resumeTap = createWebSocketTapProxy(serverEndpoint, (message) => {
       const request = message as { method?: unknown; params?: { threadId?: unknown } };
       if (request.method === 'thread/resume' && typeof request.params?.threadId === 'string') {
-        void observer.attachThread(request.params.threadId);
+        // The observer publishes a provider refusal as a diagnostic, and the TUI's own request receives
+        // Codex's error; nothing awaits this attach, so its rejection must not go unhandled.
+        observer.attachThread(request.params.threadId).catch(() => undefined);
       }
     });
     try {

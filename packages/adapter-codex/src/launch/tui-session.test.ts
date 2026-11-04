@@ -346,4 +346,39 @@ describe('Codex TUI preparation', () => {
     await session.dispose();
     expect(fakes.tapDispose).toHaveBeenCalledOnce();
   });
+
+  it('handles a picked thread Codex refuses, leaving the diagnostic to the observer', async () => {
+    // findings C9: the observer publishes the refusal, then rejects the attach nobody awaits.
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    // A plain function: a mock records its settled result, which would handle the rejection itself.
+    const attached: string[] = [];
+    const attachThread = (threadId: string): Promise<void> => {
+      attached.push(threadId);
+      return Promise.reject(new Error('refused for its model provider'));
+    };
+    fakes.createObserver.mockResolvedValue({
+      sessionId: undefined,
+      observationLevel: () => 'structured',
+      threadPath: () => undefined,
+      events: { onCandidate: fakes.observerOnCandidate },
+      attachThread,
+      dispose: fakes.observerDispose,
+    });
+    try {
+      const prepared = await prepareCodexTuiSession({
+        cwd: '/work/repo',
+        executable: '/opt/codex',
+        host: host(),
+        resumeInvocation: ['resume'],
+      });
+      fakes.tapClientMessage?.({ method: 'thread/resume', params: { threadId: 'thread-refused' } });
+      expect(attached).toEqual(['thread-refused']);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(unhandled).not.toHaveBeenCalled();
+      await prepared.dispose();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
 });
