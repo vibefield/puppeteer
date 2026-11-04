@@ -29,7 +29,7 @@ Re-checked 2026-11-04 (metadata only). Nothing has been released on either line 
 | --- | --- | --- |
 | npm package | `opencode-ai` (`latest` 1.19.5, 2026-10-28) | `@opencode/cli` (`latest` 2.2.5, 2026-10-30) |
 | platform packages | `opencode-<platform>` | `@opencode/cli-<platform>` (12 targets, including `-musl` and `-baseline`) |
-| source line | branch `v1` (head `006d837`, one sync commit past the tag, no activity since 10-28), tag `v1.19.5` = `810c0eb` | branch `dev` (daily) / `production` (`d9184f2`, 11-02), tag `v2.2.5` = `9bbb8ce` |
+| source line | branch `v1` (head `006d837` "sync release versions for v1.19.5", 10-28; the tag commit is not on the branch, compare is ahead 1 / behind 1; no activity since), tag `v1.19.5` = `810c0eb` | branch `dev` (daily) / `production` (`d9184f2`, 11-02), tag `v2.2.5` = `9bbb8ce` |
 | cadence | 1.19.0 on 10-11 through 1.19.5 on 10-28; no snapshot since `0.0.0-dev-202610280534` | `v2.0.0` 2026-09-11; 2.1.0 10-20, 2.2.0 10-27, 2.2.1–2.2.5 10-29/30; `dev` snapshots daily (`0.0.0-dev-583` on 11-04) |
 | GitHub release | `gh release edit --latest` (`script/publish.ts`) | `gh release create --latest=false`, then `edit --draft=false --latest=false`. Not a prerelease. |
 | GitHub "Latest" | v1.19.5 (`releases/latest` 302 → `/releases/tag/v1.19.5`) | never marked Latest |
@@ -72,7 +72,7 @@ is the only place a reviewer sees why. Whether the pattern is narrowed later dep
 | `question.*`, `POST /question/:id/reply\|reject` | no question routes. Form create → `form.created`; reply 204 → `form.replied {id,sessionID,answer}`; DELETE 204 → `form.cancelled`. Invalid answer 400 `FormInvalidAnswerError`; settled **409** `FormAlreadySettledError`; unknown 404 `FormNotFoundError` (`probe:20`). |
 | `POST /session/:id/abort` | `POST /api/session/{id}/interrupt` (+ `session.execution.interrupted`). Idle: `200 {interrupted:false}` (also with `?resume=false`); unknown: 404 `SessionNotFoundError`; malformed id: 400 `InvalidRequestError` `kind:"Params"`. |
 | `POST /session/:id/summarize` | `POST /api/session/{id}/compact` |
-| agent switch | switching to an unknown agent returns 204 with no validation, and emits durable `session.agent.selected` plus a synthetic `session.inbox.enqueued` carrying the plan-mode reminder. |
+| agent switch | `POST /api/session/{id}/agent` returns 204 even for an unknown agent (no validation) and emits durable `session.agent.selected` (`previous` set when it changes). Entering or leaving `plan` also enqueues a durable synthetic `session.inbox.enqueued` steer reminder ("You are in Plan mode" / "You are NO LONGER in Plan mode"). |
 | `@agentclientprotocol/sdk` | the CLI depends on `@agentclientprotocol/sdk` 1.6.0, and `opencode acp` remains |
 
 Model-free routes that work under a private `serve`: session create/get/list (with `directory`)/active/message/context/
@@ -81,22 +81,26 @@ The last two let the census drive permission and form scenarios without a model.
 
 ### 2.2 Storage: 2.x shares and migrates the 1.x data file (was "unproven")
 
-Both lines use `$XDG_DATA_HOME/opencode/opencode.db` (`core/src/database/path.ts`, `cli/src/database-path.ts` at the
-tag). The probe ran 1.19.5 to seed a store, then opened it with 2.2.5 (`probe:40`, `probe:41`, `probe:50`):
+Both lines use `$XDG_DATA_HOME/opencode/opencode.db`. In 2.x, `cli/src/database-path.ts` at the tag picks
+`opencode.db` for the `latest`/`dev`/`beta`/`next`/`prod` channels (otherwise `opencode-<channel>.db`) and honours an
+`OPENCODE_DB` override (unprobed). The probe ran 1.19.5 to seed a store, then opened it with 2.2.5 (`probe:40`,
+`probe:41`, `probe:50`):
 
 - 2.2.5 applies 21 more migrations on the same migration-table lineage (38 → 59 rows; first `20260804233008_loose_psylocke`).
-- It drops `data_migration`, `session_context_epoch`, `session_input`; adds `session_v2`, `session_part`,
-  `session_inbox`, `kv`, `blob`, `job`, `schedule` and related tables; and **deletes every `event` row** (16 → 0).
+  They drop `data_migration`, `session_context_epoch`, `session_input` and add `session_v2`, `session_part`,
+  `session_inbox`, `kv`, `blob`, `job`, `schedule` and related tables.
 - At startup it copies 1.x sessions once in the background (`v1-migration.bun.ts`), `running` → `completed` within
-  250 ms, and records `kv` `migration.v1-v2 = {"phase":"completed"}`.
+  250 ms (`GET /api/experimental/migration/v1`), and records `kv` `migration.v1-v2 = {"phase":"completed"}`. That
+  one-time copy, not a schema migration, first **deletes every `event` row** (16 → 0).
 - The 1.x session survives with its ids: `/api/session/{same ses_ id}` and `/message` return the same message ids,
   agent and model, with token counts folded in.
 - The 1.x tables (`session`, `message`, `part`, `permission`) keep their rows and schema; 1.19.5 still starts on the
   store afterwards, lists and reads the session, and creates new ones.
 - **The copy runs once.** A session 1.x creates after 2.x has opened the store never reaches 2.x: on reopen 2.x listed
   only the seed session while the legacy `session` table held two.
-- `account`/`account_state` keep the 1.x columns; `credential` and `control_account` are new. A fresh 2.x database has
-  no `session` table.
+- `account`, `account_state`, `credential` and `control_account` already exist in the 1.19.5 store (the probe did
+  not diff their schemas). The 2.x migration `20260805200742_import_legacy_credentials` imports the data root's
+  `auth.json` (`$XDG_DATA_HOME/opencode/auth.json`) into `credential` rows. A fresh 2.x database has no `session` table.
 
 Rule: Puppeteer resume survives a 1→2 upgrade for sessions written before the first 2.x launch, but a home used by both
 lines diverges after that launch. A Puppeteer-run 2.x backend on a profile's `XDG_DATA_HOME` migrates that store under
@@ -112,17 +116,20 @@ any user who still runs 1.x by hand.
   string `V2EventEncoded` declares; the decoder must accept both.
 - Durable events seen were all `session.*` (`created`, `renamed`, `metadata.updated`, `agent.selected`,
   `inbox.enqueued`, `archived`, `unarchived`) with `durable:{aggregateID:<sessionID>, seq, version}`, `seq` from 0 per
-  session. Some carry no `location` (`session.renamed`, `session.agent.selected`). `permission.*`, `form.*` and the
-  `*.updated` catalog events are not durable.
+  session. Only `session.created` and `session.inbox.enqueued` carried a `location`; `session.renamed`,
+  `metadata.updated`, `agent.selected`, `archived` and `unarchived` did not. `permission.*`, `form.*`,
+  `project.updated` and the `*.updated` catalog events are not durable.
 - `types` is a repeated query parameter; `server.connected` is always sent; an unknown type → 400
   `InvalidRequestError` listing all 96 names. Id prefixes: `evt_ ses_ per_ frm_ msg_ psv_`.
 - **No cursor.** `Last-Event-ID` (event id or seq), `?after=`, `?cursor=`, `?seq=` were all ignored. A rename made while
   disconnected (seq 9) never arrived after reconnecting; the next live frame was seq 10 (`probe:30`). The OpenAPI calls
-  the stream "Volatile by contract … events during disconnection are missed"; `event-feed.ts` keeps one in-memory queue
-  per subscriber (4096, oldest dropped) and no history.
-- `GET /api/experimental/session/{id}/log?after=<seq>&follow=` exists but does nothing under `opencode serve`: the CLI
-  never sets `Bus.configured({ persist })`, the `event` table stayed empty, and every read returned only
-  `{"type":"log.synced",…,"seq":10}`.
+  the stream "Volatile by contract: a slow consumer overflows and fails the stream, and events during disconnection are
+  missed". `event-feed.ts` keeps one bounded in-memory queue per subscriber (4096) and no history; when a queue is full
+  the subscriber is removed and its stream fails with `EventFeed.SubscriberOverflow` (nothing is silently dropped).
+- `GET /api/experimental/session/{id}/log?after=<seq>&follow=` exists but does nothing under `opencode serve`: the
+  server wires `Bus.configured({ persist: options.events?.persist })` and the CLI never sets `events.persist`, so the
+  `event` table stayed empty and every read (with or without `after`, `follow`) returned only one
+  `{"type":"log.synced",…,"seq":<current>}` frame (seq 0 in `probe:20`, 10 in `probe:30`), and no live events followed.
 
 So the 1.x reconnect rule ("no replay; rehydrate over REST") still holds, and a per-session `seq` gap is a reliable
 signal to rehydrate.
@@ -134,8 +141,10 @@ all to the private server; no child process, nothing on 49374, no `service.json`
 `$XDG_STATE_HOME/opencode/latest/tui/tabs.json` and lock files. `opencode session list --server <url> --format json`
 exits 0, and exits 1 without a password. `opencode service status` printed `stopped` (`probe:50`, `probe:51`). In
 `server-connection.ts`, `--server` makes one health call (`server.info`) and warns on version mismatch; only the path
-with neither `--server` nor `--standalone` reaches `Service.ensure`. `session` and `api` subcommands default to that
-path too, so **Puppeteer must always pass `--server`**.
+with neither `--server` nor `--standalone` (and no `disabled` service config) reaches `Service.ensure`. Every
+server-backed subcommand takes the same flags and defaults to that path too (the help lists `--server` on `api`, `auth`,
+`debug agents|config|heap-dump`, `mcp list|auth|logout`, `plugin list|check|update`, `models`, `stats`, `mini`, `run`,
+`session`, `reload`), so **Puppeteer must always pass `--server`**.
 
 Nearly every semantic rail the adapter normalizes changes name, envelope, route, or correlation key. Only Basic auth,
 the loopback server, the data root, and the no-replay rule survive. Adapting to 2.x means a new Surface census, ASM,
@@ -146,7 +155,8 @@ persona, and adapter normalization, not a version bump.
 The owner has not decided. Nothing in the repository may presuppose the answer: no `vendors/opencode-v2`, no
 `opencode@2.*` model folder, no ledger row or `candidateVersion`, no adapter package. Repo rules that shape the options:
 a manifest's vendor must equal its folder; model folders are `<vendor>@<version>`; Imposter's `loadModel` reads only
-the vendor's `groundtruth.json`; `upstream.json` allows one stable detector and one acquisition template per platform;
+the vendor's `groundtruth.json`; `upstream.json` resolves one authoritative stable detector
+(`detect-upstream-agents.mjs`) and one acquisition template per platform;
 the ledger has one row per id and no release-line notion; and a `groundtruth-map.json` digest-locks one surface per
 adapter.
 
@@ -188,7 +198,8 @@ adapter.
 - **Cost.** No functional cost to 1.x users. Instead: both lines install the same `opencode` command, so each provider
   must refuse the other's binary by version string; users see two OpenCode entries, one "not installed"; both bind the
   same `opencode.db`, so profile roots must be per line or guarded against the one-shot migration (§2.2); maintenance
-  doubles (two adapters, censuses and promotion lanes, against 46 2.x releases in seven weeks). When upstream ends 1.x,
+  doubles (two adapters, censuses and promotion lanes, against 44 numbered 2.x releases in seven weeks, 2.0.0 on 09-11
+  to 2.2.5 on 10-30). When upstream ends 1.x,
   the `opencode` row becomes `deprecated` (the schema supports it) and the placeholder name outlives its reason.
 
 ### Recommendation: (b), with a planned exit to a single row
