@@ -91,6 +91,9 @@ export function isolatedPiLiveEnvironment(root: string, agentDir: string, baseUr
     TMP: root,
     TEMP: root,
     PI_CODING_AGENT_DIR: agentDir,
+    PI_OFFLINE: '1',
+    PI_SKIP_VERSION_CHECK: '1',
+    PI_TELEMETRY: '0',
     NO_PROXY: '127.0.0.1,localhost',
     no_proxy: '127.0.0.1,localhost',
   };

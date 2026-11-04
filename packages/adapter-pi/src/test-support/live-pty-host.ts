@@ -36,11 +36,9 @@ export class PiLivePtyHost implements AgentHost {
       record.exited = true;
       resolveExit();
     });
-    await waitFor(
-      () => record.exited || record.output.includes('Press ctrl+o to show full startup help'),
-      'Pi native TUI startup',
-      20_000,
-    );
+    // Pi 1.5.0 sets this title during session binding, after managed-tool setup and
+    // installation of its submit handler. The earlier startup banner is not readiness.
+    await waitFor(() => record.exited || record.output.includes('π - workspace'), 'Pi native TUI startup', 20_000);
     if (record.exited) throw new Error(`Pi TUI exited during startup:\n${this.output(runtimeSessionId)}`);
     await delay(300);
     return { runtimeSessionId };
