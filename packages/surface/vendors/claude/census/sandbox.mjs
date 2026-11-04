@@ -168,6 +168,7 @@ export function enterCensusSandbox({ argv = process.argv, passEnvironment = [] }
   for (const name of passEnvironment) {
     if (process.env[name] !== undefined) environment[name] = process.env[name];
   }
+  let status;
   try {
     const result = spawnSync(
       unshare,
@@ -185,10 +186,12 @@ export function enterCensusSandbox({ argv = process.argv, passEnvironment = [] }
       { stdio: 'inherit', env: environment },
     );
     if (result.error) throw result.error;
-    process.exit(result.status ?? 1);
+    status = result.status ?? 1;
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
+  // Exit only after the disposable home is removed; process.exit skips pending finally blocks.
+  process.exit(status);
 }
 
 /** Interface names in this process's network namespace. */
