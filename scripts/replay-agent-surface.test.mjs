@@ -14,17 +14,35 @@ test('every committed native capture replays through its declared fidelity and I
   }
 });
 
-test('hermes replay shape-validates every tui_gateway frame, server request, and plugin hook', () => {
+test('hermes replay shape-validates every tui_gateway frame, correlated result, server request, and plugin hook', () => {
   const report = replayAgentSurface({
     vendor: 'hermes',
     groundTruthPath: 'packages/surface/vendors/hermes/groundtruth.json',
   });
   assert.equal(report.status, 'passed', JSON.stringify(report.issues, null, 2));
   assert.ok(report.frames > 100);
+  // Method results and the answer to the `approval` server request correlate through the census's inline
+  // `"direction": "client"` marker; none may be skipped as unattributed.
+  assert.equal(report.results, 17);
+  assert.equal(report.unattributedResults, 0);
   assert.equal(report.captureFidelity.defaultRepresentation, 'type-preserving-redaction');
   assert.equal(report.shapeValidatedRecords, report.frames + report.results);
   assert.equal(report.projectionOnlyRecords, 0);
   assert.match(report.replayDigest, /^[0-9a-f]{64}$/);
+});
+
+test('inline-marked Hermes captures fail closed on an orphaned result in either direction', () => {
+  const report = replayAgentSurface({
+    vendor: 'hermes',
+    groundTruthPath: 'packages/surface/vendors/hermes/groundtruth.json',
+    capturesDir: 'scripts/fixtures/replay-hermes-orphan',
+  });
+  assert.equal(report.status, 'failed');
+  assert.deepEqual(
+    report.issues.map(({ kind }) => kind),
+    ['unattributed-result', 'unattributed-result'],
+  );
+  assert.equal(report.unattributedResults, 2);
 });
 
 test('opencode replay covers exact SSE carriers and correlated HTTP results', () => {

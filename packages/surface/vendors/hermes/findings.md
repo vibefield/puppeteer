@@ -145,7 +145,10 @@ Same harness and scenarios as 0.20.0, with two changes: the census client advert
 channel does) and answers the `approval` server request with `{choice: "deny"}`. Sanitized
 fixtures under `captures/hermes@0.21.5/` are **type-preserving** (schemaVersion 2), unlike
 the 0.20.0 legacy projections, so every captured frame is validated against its exact
-contract schema by the audit and by `surface:replay` (143 frames, 0 issues).
+contract schema by the audit and by `surface:replay`. Replay correlates results through
+the census's inline `"direction": "client"` marker, so the method results and the
+response to the `approval` server request are validated against their result schemas too
+(143 frames + 17 results, 0 unattributed, 0 issues).
 
 ### Identities
 
