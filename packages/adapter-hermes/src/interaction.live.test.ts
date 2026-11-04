@@ -72,11 +72,13 @@ describe.runIf(live)('Hermes interactions beside the real native TUI (live)', ()
           if (scenario === 'clarify-interrupt') {
             expect(await session.services.turnStop!.submit()).toMatchObject({ accepted: true });
           } else {
+            // The question text also appears in the tool-call summary before the answer menu mounts.
+            // Wait for the menu's own input instructions so Enter cannot land on the composer.
             await waitFor(
               () =>
                 host
                   .output(session!.runtimeSessionId)
-                  .includes(permission ? 'approval required' : 'SURFACE_HERMES_QUESTION'),
+                  .includes(permission ? 'approval required' : 'Enter confirm · 1-2 quick pick'),
               'native interaction overlay',
             );
             expect(
