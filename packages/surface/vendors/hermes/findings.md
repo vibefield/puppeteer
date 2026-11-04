@@ -250,6 +250,24 @@ Sanitization rules now also redact `arguments` (stringified tool-call arguments)
 header so it joins its body's `delivery_id`. Probe text has the checkout and environment
 roots redacted.
 
+## Gateway shutdown correction — 2026-11-04
+
+The Puppeteer-owned WebSocket host previously relied on Hermes's `atexit` session
+cleanup. The pinned uvicorn server restores and re-raises `SIGTERM` after its
+shutdown cycle, so that Python callback is bypassed. Native session flushes and
+detached slash-worker cleanup must run in the application's lifespan shutdown.
+The host now invokes Hermes's own `_shutdown_sessions` there and gives its
+five-second flush plus worker teardown a ten-second termination grace period.
+
+A regression using the real host script and uvicorn failed before the change:
+the native shutdown callback never ran. It now passes, including a callback that
+outlasts the previous two-second termination timeout. All 210 local Hermes tests
+pass with the real native-TUI proofs enabled. Hosted reconstruction and native
+verification are being repeated; earlier disposable-home cleanup failures are
+not waived. The test harness also waits for the actual clarification menu's
+input instructions, because the question text appears earlier in its tool-call
+summary and is not proof that the answer handler is ready.
+
 ## Unverified / next census
 
 - protected four-platform native-TUI verification and promotion (source-archive and installed-console acquisition passed on all four platforms; local attached-TUI interactions passed on darwin-arm64);
