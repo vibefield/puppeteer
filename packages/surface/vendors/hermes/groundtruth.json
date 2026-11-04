@@ -139,7 +139,7 @@
           "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "caf7f7e6b64c5c4d7da40b97425f708e1c7b55977e8cde126322b9c9020faaa8"
+        "sha256": "3b40919b6210b9f638dbb2cca00da47eba6594635afb540bb23d11353992e0fe"
       }
     ],
     "claims": [
@@ -885,7 +885,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "Replaces the 0.20.0 approval.request event and approval.respond reply. The id is srq-<12 hex>; every attached client receives the frame, and the first response settles it. Puppeteer never answers: the native TUI does."
+      "notes": "Replaces the 0.20.0 approval.request event; the client answers with a JSON-RPC response frame, and the legacy approval.respond method remains beside it. The id is srq-<12 hex>. Per the release source (not captured), every attached client receives the frame and the first response settles it. Puppeteer never answers: the native TUI does."
     },
     {
       "surface": "hermes",

@@ -56,7 +56,7 @@
       "path": "packages/surface/vendors/hermes/model/hermes@0.21.5",
       "exclude": ["evidence.json"],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "caf7f7e6b64c5c4d7da40b97425f708e1c7b55977e8cde126322b9c9020faaa8"
+      "sha256": "3b40919b6210b9f638dbb2cca00da47eba6594635afb540bb23d11353992e0fe"
     }
   ],
   "claims": [
