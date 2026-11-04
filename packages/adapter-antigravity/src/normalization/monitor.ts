@@ -1,11 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import type { AdapterMonitorObservationBatch, ObservationCoverage } from '@vibefield/puppeteer-core/monitor-spi';
-import { ANTIGRAVITY_CONTRACT, ANTIGRAVITY_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
+import type { AntigravityJournalShape } from './journal.js';
+import { antigravityMonitorContract } from './monitor-capabilities.js';
 export function antigravityCapabilitiesBatch(
   nativeSessionId: string,
   observedAt: string,
   sequence = 1,
+  shape: AntigravityJournalShape = '1.1.20',
 ): AdapterMonitorObservationBatch {
+  const { contractVersion, capabilities } = antigravityMonitorContract(shape);
   return {
     schemaVersion: 1,
     batchId: `antigravity-capabilities:${randomUUID()}`,
@@ -13,7 +16,7 @@ export function antigravityCapabilitiesBatch(
       id: 'antigravity:transcript-monitor',
       epoch: `antigravity:${nativeSessionId}`,
       sequence,
-      contractVersion: ANTIGRAVITY_CONTRACT,
+      contractVersion,
     },
     phase: 'bootstrap',
     observedAt,
@@ -24,8 +27,8 @@ export function antigravityCapabilitiesBatch(
     scope: { nativeSessionId },
     updates: [],
     sourceWatermarks: [],
-    evidence: [{ namespace: 'antigravity:surface-contract', id: ANTIGRAVITY_CONTRACT }],
-    capabilities: [...ANTIGRAVITY_MONITOR_CAPABILITIES],
+    evidence: [{ namespace: 'antigravity:surface-contract', id: contractVersion }],
+    capabilities: [...capabilities],
   };
 }
 
@@ -33,9 +36,11 @@ export function antigravityObservationDegradedBatch(
   nativeSessionId: string,
   observedAt: string,
   sequence: number,
+  shape: AntigravityJournalShape = '1.1.20',
 ): AdapterMonitorObservationBatch {
+  const { contractVersion, capabilities: claimed } = antigravityMonitorContract(shape);
   const reason = 'Antigravity durable transcript observation is unavailable or incomplete';
-  const capabilities = ANTIGRAVITY_MONITOR_CAPABILITIES.map((capability) =>
+  const capabilities = claimed.map((capability) =>
     capability.support === 'unsupported'
       ? capability
       : {
@@ -44,9 +49,9 @@ export function antigravityObservationDegradedBatch(
           limitations: [...capability.limitations, `${reason}; native TUI liveness is unchanged.`],
         },
   );
-  const coverage: ObservationCoverage[] = ANTIGRAVITY_MONITOR_CAPABILITIES.filter(
-    ({ support }) => support !== 'unsupported',
-  ).map(({ family }) => ({ family, completeness: 'unavailable', asOf: observedAt, reason }));
+  const coverage: ObservationCoverage[] = claimed
+    .filter(({ support }) => support !== 'unsupported')
+    .map(({ family }) => ({ family, completeness: 'unavailable', asOf: observedAt, reason }));
   return {
     schemaVersion: 1,
     batchId: `antigravity-observer-degraded:${randomUUID()}`,
@@ -54,7 +59,7 @@ export function antigravityObservationDegradedBatch(
       id: 'antigravity:transcript-monitor',
       epoch: `antigravity:${nativeSessionId}`,
       sequence,
-      contractVersion: ANTIGRAVITY_CONTRACT,
+      contractVersion,
     },
     phase: 'live',
     observedAt,

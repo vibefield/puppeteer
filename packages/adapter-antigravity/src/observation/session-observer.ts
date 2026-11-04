@@ -6,6 +6,7 @@ import type {
   AgentEventSource,
   AgentEventSourceRef,
 } from '@vibefield/puppeteer-core';
+import type { AntigravityJournalShape } from '../normalization/journal.js';
 import { AntigravityTranscriptNormalizer } from '../normalization/pipeline.js';
 import { antigravityPrompt, antigravityRecord, antigravitySourceRef } from '../normalization/types.js';
 import { listAntigravitySessions, transcriptContainsPrompt, type AntigravitySessionLocation } from './session-store.js';
@@ -33,6 +34,9 @@ export interface AntigravitySessionObserver {
   onEvent(listener: (event: AntigravityObservedEvent) => void): () => void;
   onError(listener: (error: Error) => void): () => void;
   onBind(listener: (location: AntigravitySessionLocation) => void): () => void;
+  /** Fires once a record proves a newer journal shape than 1.1.20. */
+  onJournalShape(listener: (shape: AntigravityJournalShape) => void): () => void;
+  journalShape(): AntigravityJournalShape | undefined;
   expectPrompt(text: string, timeoutMs: number): AntigravityPromptExpectation;
   poll(): Promise<void>;
   stop(): Promise<void>;
@@ -68,6 +72,7 @@ export function createAntigravitySessionObserver(options: {
   const events = new Set<(event: AntigravityObservedEvent) => void>();
   const errors = new Set<(error: Error) => void>();
   const binds = new Set<(location: AntigravitySessionLocation) => void>();
+  const shapes = new Set<(shape: AntigravityJournalShape) => void>();
   const waiters = new Map<number, PromptWaiter>();
   const baseline = new Set(options.baselineSessionIds ?? []);
   let location = options.location;
@@ -148,7 +153,15 @@ export function createAntigravitySessionObserver(options: {
     for (const diagnostic of result.diagnostics) report(new Error(diagnostic.message));
     for (const record of result.records) {
       observePrompt(record.value);
+      const shapeBefore = normalizer.journalShape();
       const normalized = normalizer.normalize(record.value);
+      const shape = normalizer.journalShape();
+      if (shape && shape !== shapeBefore)
+        for (const listener of shapes) {
+          try {
+            listener(shape);
+          } catch {}
+        }
       for (const [index, event] of normalized.events.entries()) {
         const sourceEventRef = antigravitySourceRef(location.sessionId, record, `${index}:${event.type}`);
         const observed: AntigravityObservedEvent = {
@@ -190,6 +203,11 @@ export function createAntigravitySessionObserver(options: {
       errors.add(listener);
       return () => errors.delete(listener);
     },
+    onJournalShape(listener) {
+      shapes.add(listener);
+      return () => shapes.delete(listener);
+    },
+    journalShape: () => normalizer.journalShape(),
     onBind(listener) {
       binds.add(listener);
       if (location) listener(location);
@@ -244,6 +262,7 @@ export function createAntigravitySessionObserver(options: {
       events.clear();
       errors.clear();
       binds.clear();
+      shapes.clear();
       discoveries.delete(discovery);
       if (discoveries.size === 0) discoveriesByRoot.delete(root);
     },

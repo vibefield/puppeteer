@@ -1,4 +1,5 @@
 import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
+import type { AntigravityJournalShape } from './journal.js';
 export const ANTIGRAVITY_CONTRACT = 'antigravity-transcript@1.1.20';
 export const ANTIGRAVITY_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   {
@@ -85,3 +86,59 @@ export const ANTIGRAVITY_MONITOR_CAPABILITIES: readonly ObservationCapability[] 
     limitations: ['Cwd is configured at launch; Git topology remains runtime-owned.'],
   },
 ] as const;
+
+export const ANTIGRAVITY_1_4_CONTRACT = 'antigravity-transcript@1.4.12';
+const replaced: Partial<Record<ObservationCapability['family'], Omit<ObservationCapability, 'contractVersion'>>> = {
+  status: {
+    family: 'status',
+    support: 'degraded',
+    actorScope: 'root',
+    latency: 'file-flush',
+    source: 'antigravity-transcript-jsonl',
+    limitations: [
+      'Planner content is the strongest observed turn-completion boundary; the transcript has no explicit turn-end record.',
+      'Command results are GENERIC steps without exit_code. One joins only the oldest outstanding call, and only when that call is a command; other tools stay unresolved until the next prompt.',
+      'Only exit code 0 has been captured; a failed command is detected from step status or error only.',
+    ],
+  },
+  usage: {
+    family: 'usage',
+    support: 'unsupported',
+    actorScope: 'root',
+    latency: 'response',
+    source: 'antigravity-planner-response-tokens',
+    limitations: [
+      'PLANNER_RESPONSE token counts are transcript usage, which the live ledger excludes. No independent live usage rail is integrated.',
+    ],
+  },
+  context: {
+    family: 'context',
+    support: 'unsupported',
+    actorScope: 'root',
+    latency: 'historical',
+    source: 'none-in-antigravity-transcript',
+    limitations: ['Planner token counts are not proven to measure prompt occupancy, and no capacity is recorded.'],
+  },
+  compaction: {
+    family: 'compaction',
+    support: 'unsupported',
+    actorScope: 'session',
+    latency: 'historical',
+    source: 'none-in-antigravity-transcript',
+    limitations: ['1.4.12 journals write no CHECKPOINT, and no compaction record was observed.'],
+  },
+};
+/** 1.4.12 journal claims; every family 1.4.12 did not change keeps its 1.1.20 claim. */
+export const ANTIGRAVITY_1_4_MONITOR_CAPABILITIES: readonly ObservationCapability[] =
+  ANTIGRAVITY_MONITOR_CAPABILITIES.map((capability) => ({
+    ...(replaced[capability.family] ?? capability),
+    contractVersion: ANTIGRAVITY_1_4_CONTRACT,
+  }));
+export function antigravityMonitorContract(shape: AntigravityJournalShape = '1.1.20'): {
+  contractVersion: string;
+  capabilities: readonly ObservationCapability[];
+} {
+  return shape === '1.4.12'
+    ? { contractVersion: ANTIGRAVITY_1_4_CONTRACT, capabilities: ANTIGRAVITY_1_4_MONITOR_CAPABILITIES }
+    : { contractVersion: ANTIGRAVITY_CONTRACT, capabilities: ANTIGRAVITY_MONITOR_CAPABILITIES };
+}
