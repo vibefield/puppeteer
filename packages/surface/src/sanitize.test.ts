@@ -7,6 +7,7 @@ import {
   checkCaptureDirectory,
   checkRecord,
   extendRules,
+  jsonEncodedValue,
   REDACTED_EPOCH_MS,
   sanitizeCaptureDirectory,
   sanitizeRecord,
@@ -291,3 +292,96 @@ describe('UUID-keyed maps', () => {
     expect(issues.join('\n')).not.toContain(sessionId);
   });
 });
+
+describe('decode-before-redact for string-encoded documents', () => {
+  // OpenCode 2.x declares an event's `data` as a JSON string
+  // (`contentMediaType: application/json`) and sends the object on the wire.
+  const rules = extendRules({
+    idKey: /^sessionID$/,
+    timestampKey: /^created$/,
+    encodedValues: [jsonEncodedValue(/^data$/)],
+  });
+  const payload = {
+    sessionID: 'ses_1a7e7dcc0001UrGsSLpWiEYxXB',
+    title: 'operator prompt',
+    created: 1793818352832,
+    seq: 3,
+    cwd: '/Users/operator/repo',
+  };
+
+  it('sanitizes the encoded and the object form alike, and each keeps its type', () => {
+    const asObject = sanitizeRecord({ type: 'session.created', data: payload }, rules) as Record<string, unknown>;
+    const asString = sanitizeRecord({ type: 'session.created', data: JSON.stringify(payload) }, rules) as Record<
+      string,
+      unknown
+    >;
+    expect(typeof asObject.data).toBe('object');
+    expect(typeof asString.data).toBe('string');
+    expect(JSON.parse(asString.data as string)).toEqual(asObject.data);
+    const decoded = asObject.data as Record<string, unknown>;
+    expect(decoded.sessionID).toBe(alias(payload.sessionID));
+    expect(decoded.title).toBe('<redacted:title>');
+    expect(decoded.created).toBe(REDACTED_EPOCH_MS);
+    expect(decoded.seq).toBe(3);
+    expect(decoded.cwd).toBe('/workspace');
+  });
+
+  it('keeps redactor and detector in lockstep through the encoding, idempotently', () => {
+    const raw = { data: JSON.stringify(payload) };
+    expect(checkRecord(raw, rules).join('\n')).toContain('<decoded>');
+    const once = sanitizeRecord(raw, rules);
+    expect(checkRecord(once, rules)).toEqual([]);
+    expect(sanitizeRecord(once, rules)).toEqual(once);
+  });
+
+  it('does not rescan the encoded text, so a kept number is not a false positive', () => {
+    const out = sanitizeRecord({ data: JSON.stringify({ count: 1793818352832 }) }, rules);
+    expect(out).toEqual({ data: '{"count":1793818352832}' });
+    expect(checkRecord(out, rules)).toEqual([]);
+  });
+
+  it('leaves strings that are not encoded documents to the text rules', () => {
+    const out = sanitizeRecord(
+      { data: 'see /Users/operator/repo', other: JSON.stringify({ sessionID: 'ses_x' }) },
+      rules,
+    ) as Record<string, string>;
+    expect(out.data).toBe('see /workspace/redacted-path');
+    // `other` has no codec, so it is text: its id survives only as text and the detector says so.
+    expect(
+      checkRecord(
+        { other: JSON.stringify({ sessionID: 'ses_1a7e7dcc0001UrGsSLpWiEYxXB' }) },
+        extendRules({
+          unsafeTextPatterns: [/\bses_(?!a11a5ed0)[A-Za-z0-9]{8,}/],
+        }),
+      ),
+    ).not.toEqual([]);
+    expect(sanitizeRecord({ data: '"quoted"' }, rules)).toEqual({ data: '"quoted"' });
+  });
+
+  it('treats a throwing codec as no codec, falling back to text redaction', () => {
+    const throwing = extendRules({
+      sensitiveTextKey: /^data$/,
+      encodedValues: [
+        {
+          key: /^data$/,
+          decode: () => {
+            throw new Error('malformed');
+          },
+          encode: String,
+        },
+      ],
+    });
+    expect(sanitizeRecord({ data: '{"a":1}' }, throwing)).toEqual({ data: '<redacted:data>' });
+  });
+
+  it('is off by default, and extendRules appends codecs to a base', () => {
+    expect(sanitizeRecord({ data: '{"title":"x"}' })).toEqual({ data: '{"title":"x"}' });
+    expect(defaultRulesHaveNoCodecs()).toBe(true);
+    const twice = extendRules({ encodedValues: [jsonEncodedValue(/^body$/)] }, rules);
+    expect(twice.encodedValues).toHaveLength(2);
+  });
+});
+
+function defaultRulesHaveNoCodecs(): boolean {
+  return extendRules({}).encodedValues === undefined;
+}
