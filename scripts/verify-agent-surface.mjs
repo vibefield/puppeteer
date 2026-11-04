@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /** Run repository-owned promotion gates and bind them to platform reports plus the active GHA attempt. */
+import { acquiredArtifactForPlatform } from './lib/acquired-artifact.mjs';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
@@ -43,7 +44,6 @@ export function validatePlatformReports({
   expectedWorkflow,
 }) {
   const issues = [];
-  const artifacts = new Map((evidence.artifacts ?? []).map((artifact) => [artifact.platform, artifact]));
   const byPlatform = new Map();
   for (const report of reports) {
     if (byPlatform.has(report.platform)) issues.push(`duplicate platform report for ${report.platform}`);
@@ -52,7 +52,7 @@ export function validatePlatformReports({
   }
   for (const platform of requiredPlatforms) {
     const report = byPlatform.get(platform);
-    const artifact = artifacts.get(platform);
+    const artifact = acquiredArtifactForPlatform(evidence, platform);
     if (!report) {
       issues.push(`missing platform report for ${platform}`);
       continue;

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /** Validate the promotion ledger and deterministically render README badges. */
+import { acquiredArtifactForPlatform } from './lib/acquired-artifact.mjs';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -175,18 +176,9 @@ export function validateSupportLedger(repoRoot = root) {
       }
       const upstreamPath = join(repoRoot, 'packages', 'surface', 'vendors', agent.id, 'upstream.json');
       const requiredPlatforms = existsSync(upstreamPath) ? (json(upstreamPath).platforms ?? []) : [];
-      const verifiedPlatforms = new Set(
-        (promoted.evidence.artifacts ?? [])
-          .filter(
-            (artifact) =>
-              artifact.integrity?.status === 'verified' &&
-              /^sha256:[0-9a-f]{64}$/.test(artifact.integrity?.sha256 ?? ''),
-          )
-          .map((artifact) => artifact.platform),
-      );
       for (const platform of requiredPlatforms) {
-        if (!verifiedPlatforms.has(platform)) {
-          issues.push(`${agent.id}: verified support has no immutable artifact for ${platform}`);
+        if (!acquiredArtifactForPlatform(promoted.evidence, platform)) {
+          issues.push(`${agent.id}: verified support has no unambiguous immutable acquired artifact for ${platform}`);
         }
       }
       const attestation = agent.verification;
@@ -218,9 +210,8 @@ export function validateSupportLedger(repoRoot = root) {
         issues.push(`${agent.id}: promotion attestation platform set differs from policy`);
       }
       for (const platform of requiredPlatforms) {
-        const digest = (promoted.evidence.artifacts ?? []).find((artifact) => artifact.platform === platform)?.integrity
-          ?.sha256;
-        if (reportArtifacts.get(platform) !== digest) {
+        const digest = acquiredArtifactForPlatform(promoted.evidence, platform)?.integrity.sha256;
+        if (!digest || reportArtifacts.get(platform) !== digest) {
           issues.push(`${agent.id}: promotion attestation does not bind the ${platform} artifact`);
         }
       }
