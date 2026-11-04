@@ -7,6 +7,7 @@
   "semanticEvents": [
     "CHECKPOINT",
     "ERROR_MESSAGE",
+    "GENERIC",
     "LIST_DIRECTORY",
     "PLANNER_RESPONSE",
     "RUN_COMMAND",
@@ -15,13 +16,13 @@
   ],
   "observedOrControlledEvents": [],
   "unmapped": {
-    "count": 70,
-    "sha256": "b3b50fe5a1cb8ed44cb39453a97e6a841b8e2877a914c7e310535c81caf78ffb",
+    "count": 69,
+    "sha256": "fe5a9d3252b453ec42fccaf1eed26cc4ed62c9555bfa4f77ba2dfd024b969111",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 77,
-    "semantic": 7,
+    "semantic": 8,
     "observedOrControlled": 0
   }
 }

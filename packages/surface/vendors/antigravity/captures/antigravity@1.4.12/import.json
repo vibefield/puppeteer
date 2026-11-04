@@ -1,0 +1,31 @@
+{
+  "format": "puppeteer-rosetta-captures-import/1",
+  "vendor": "antigravity",
+  "vendorVersion": "1.4.12",
+  "importer": "packages/surface/scripts/import-rosetta.mjs",
+  "source": {
+    "project": "rosetta",
+    "commit": "f879d9cd2bf5f5fa0e04b95c36bd12d9690f3513",
+    "sourceTreeClean": true,
+    "canonicalSha256": "93082b68880ce2b3c9dff60fa4a0d6abc70392ee04c59fc452924102d31833da",
+    "fixtureSourceSha256": "3828e6e31872ae536610f68e845e97b0d6d67553bc0a75858b167547621344a5",
+    "journals": [
+      {
+        "capture": "basic-chat/events.jsonl",
+        "sourceSha256": "7daeb8d3f264a84b730ff26627234162a7a1302060359ac3cd31988467e56ba6"
+      },
+      {
+        "capture": "resume/events.jsonl",
+        "sourceSha256": "21d51db6a5366704df9f9bbd7ad5a2e79ddcdfc9d4080ae13f5ea41fea6a4608"
+      },
+      {
+        "capture": "tool-use/events.jsonl",
+        "sourceSha256": "fc3cb3be6d647d36c3d4afe71c1d139cb768758bf9291238496000f8b563d66b"
+      },
+      {
+        "capture": "usage/events.jsonl",
+        "sourceSha256": "0ce8c8ceb3e5990e576c2f22928c36e9d3495348658a2abfbcb3f501cfe72a4b"
+      }
+    ]
+  }
+}

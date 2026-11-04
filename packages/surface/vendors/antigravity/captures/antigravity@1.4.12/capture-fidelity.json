@@ -1,0 +1,13 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "antigravity",
+  "vendorVersion": "1.4.12",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": [
+    "**/*.jsonl"
+  ],
+  "limitations": [
+    "Captures-only import: only the transcript append-only journal is copied from each Rosetta 1.4.12 scenario. The active canonical stays antigravity@1.1.20; this set backs adapter compatibility and is not folded into the model.",
+    "All native object keys, containers, primitive types, and record ordering are retained; sensitive scalar values are redacted in place."
+  ]
+}
