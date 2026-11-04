@@ -327,4 +327,4 @@ This run used disposable state and a loopback model provider without an OS netwo
 
 ## Promotion status
 
-Support remains `baseline-pending`; only the protected promotion workflow may change it. Four-platform artifact acquisition passed in [run 41785477841](https://github.com/vibefield/puppeteer/actions/runs/41785477841), and those identities are recorded. Protected four-platform native-TUI/resume verification remains required.
+Four-platform artifact acquisition passed in [run 41785477841](https://github.com/vibefield/puppeteer/actions/runs/41785477841), and those identities are recorded. Protected promotion [run 41798646315](https://github.com/vibefield/puppeteer/actions/runs/41798646315) passed native-TUI/resume verification on all four platforms, so 2.4.1 is verified.

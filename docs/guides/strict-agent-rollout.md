@@ -27,15 +27,16 @@ or name the argument preventing management. The host owns strictness; adapters o
 
 The adapters' existing managed launch subsets remain explicit. A new CLI option is refused
 until its semantics can be preserved; a help census makes that maintenance visible. An agent's
-broader preview/verified status is independent and is not promoted by this work. ACP is a
+support status in `support/agents.json` is independent and is not promoted by this work. ACP is a
 protocol provider with no native command grammar, so it receives no command launcher.
 
 VibeField remains strict. Puppeteer's standalone Godview remains a permissive reference host
 until it implements the terminal inventory and strict-host lifecycle required by the kit guide.
 Its adapter behavior is tested through the same provider composition.
 
-Installed grammar evidence: Grok 1.0.41, Kimi 2.0.2, OpenCode 1.18.32, Hermes 0.21.4,
-Antigravity 1.2.12, Copilot 1.0.88, Pi 0.87.1. See each adapter's launch fixtures for provenance.
+Installed grammar evidence at the 2026-09-28 rollout: Grok 1.0.41, Kimi 2.0.2, OpenCode 1.18.32,
+Hermes 0.21.4, Antigravity 1.2.12, Copilot 1.0.88, Pi 0.87.1. Each adapter's launch fixtures hold
+the current help captures. Grammar evidence is not a support claim; `support/agents.json` is.
 
 ## Managed interactive clauses
 
@@ -109,7 +110,8 @@ current grammar evidence and archived-version adapter live proofs are distinct.
 - Extend managed recipes for useful currently refused clauses (initial prompts,
   model selection in OpenCode/Hermes, continuation pickers) with observation and
   exact-session proofs before accepting the syntax.
-- Advance native version support through Surface evidence and the promotion ledger,
-  including live pane coverage for Antigravity, Copilot, and Pi.
+- Done in PR #59: all nine vendors are verified through the promotion ledger, and
+  Antigravity, Copilot and Pi gained native-TUI live proofs. Antigravity 1.4.12
+  (draft PR #60) and the OpenCode 2.x line remain in progress.
 - Ship a real Node shim runtime for packaged hosts and add non-zsh/Windows shell
   integration under the existing host contract. Those host gaps are unchanged.

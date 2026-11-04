@@ -12,7 +12,8 @@ fetched with `surface:download`) reports `2.1.311 (Claude Code)` and has SHA-256
 `claude-help-2.1.311.txt`. The identity, probes, reviewed hook reference, sanitized captures and the
 generated ASM v3 tree are digest-bound in `model/claude@2.1.311/evidence.json`. All four platform artifacts now have exact-version acquisition evidence from
 [run 41782999182](https://github.com/vibefield/puppeteer/actions/runs/41782999182).
-Runtime capture evidence remains linux-x64; protected promotion is still required.
+Runtime capture evidence remains linux-x64. Protected promotion passed in
+[run 41788894962](https://github.com/vibefield/puppeteer/actions/runs/41788894962); 2.1.311 is the verified version.
 
 ### Full sandbox recapture (2026-11-04)
 
@@ -199,7 +200,7 @@ pinned by tests:
 ### Known gaps / follow-ups
 
 - **Platforms**: artifact acquisition is complete on all four platforms. Runtime census evidence is
-  linux-x64; protected native-TUI/resume verification and promotion remain. `currentVersion` stays 2.1.308.
+  linux-x64. Protected native-TUI/resume verification passed in run 41788894962; `currentVersion` is 2.1.311.
 - **Sandbox coverage**: all nine modes now have the full sandbox proof recorded above.
 - Unreached events and branches are unchanged from 2.1.308 (UserPromptExpansion, PermissionDenied,
   TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate/WorktreeRemove, Elicitation/ElicitationResult,

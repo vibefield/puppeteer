@@ -49,8 +49,8 @@ One development machine now carries nine agents installed five different ways (p
 Nobody knows which are behind. Every one updates differently. Several auto-update on their own. Checked on
 2026-09-06, five of the eight were behind their stable channel: Copilot 1.0.80 → 1.0.83, Kimi 0.37.1 → 0.41.0,
 OpenCode 1.18.23 → 1.18.29, Pi 0.84.3 → 0.85.1, Hermes 0.20.5 → 0.21.0. The support ledger
-adds a third number: Claude Code is verified at 2.1.207, staged at 2.1.226, and installed at 2.1.263, so the
-adapter is already observing a build it has never been promoted against.
+added a third number: Claude Code was verified at 2.1.207, staged at 2.1.226, and installed at 2.1.263, so the
+adapter was already observing a build it had never been promoted against.
 
 Subscriptions are the second pain. Several Claude Max and Codex Pro accounts cannot run at once because the CLIs
 default to `~/.claude` and `~/.codex`; switching means logout and login, and every account shares one history,

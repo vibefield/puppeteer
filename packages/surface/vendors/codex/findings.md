@@ -1,9 +1,9 @@
 # C0 — Codex Surface Findings
 
 > **Current projection (2026-11-03):** the candidate model is Codex CLI **0.166.0** (C9), captured on linux-x64
-> from the release package with its `codex-code-mode-host` companion, while promoted support remains the verified
-> 0.164.0. Only linux-x64 is acquired and probed for the candidate; the other three platforms are left to the
-> protected workflow.
+> from the release package with its `codex-code-mode-host` companion. Protected promotion
+> [run 41784518623](https://github.com/vibefield/puppeteer/actions/runs/41784518623) verified it on all four platforms, so 0.166.0 is now the promoted
+> version, replacing 0.164.0.
 
 > **Previous projection (2026-10-24):** the candidate model is Codex CLI **0.164.0** (C8), captured from the release
 > package with its `codex-code-mode-host` companion, while promoted support remains the grandfathered 0.147.0

@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Stage 1 authorized print-mode/hook census in progress; native-TUI PTY still open |
+| Status | Complete for 1.1.20, verified in `support/agents.json` (protected run 41891078677). 1.4.12 is in progress in draft PR #60. |
 | Target | Official Antigravity CLI native TUI (`agy`) |
 | Initial surveyed release | `1.1.12`, observed 2026-08-10 |
 | Canonical process | [adapting-an-agent.md](../docs/guides/adapting-an-agent.md) |
