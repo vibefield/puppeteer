@@ -16,9 +16,10 @@ export const HERMES_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     source: 'hermes-gateway-message-tool-and-blocker-events',
     contractVersion: HERMES_CONTRACT,
     limitations: [
-      'Root turn, tool, and approval (server→client approval request) activity is runtime verified.',
+      'Root turn and tool activity, and the frame shape of the server→client approval request, are runtime verified; the approval shape was captured by a census client that advertises server_requests.',
+      'Delivery of approval, clarify, and request.cancel to this non-advertising observer beside the attached native TUI is exact-release-source-backed (server.write_json → FanoutTransport.write; session_transports._session_client_answers_requests) but not runtime captured.',
       'Structured clarify choices and subagent activity are exact-release-contract-backed but not pinned-runtime captured.',
-      'The native TUI answers approvals and clarifications; only a request.cancel withdrawal reaches this observer.',
+      "The native TUI answers approvals and clarifications and the answer never reaches this observer; an approval settles on its tool's or turn's completion, or on a request.cancel withdrawal.",
       'Loss of the gateway rail degrades observation and never proves that the attached native TUI exited.',
     ],
   },

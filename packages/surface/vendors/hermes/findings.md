@@ -114,8 +114,14 @@ attaches the caller beside the clients already streaming
 receive session events without help. Puppeteer's gateway host keeps its 0.20 event tee
 only when `tui_gateway.transport` has no `FanoutTransport`.
 
-Server→client requests travel the same fan-out: every attached client receives the
-`approval` request and the first response settles it. The native TUI answers. The
+Server→client requests travel the same fan-out. This is read from the exact release
+source, not captured: `server.write_json` routes a server request carrying
+`params.session_id` to the session's transport, `FanoutTransport.write` queues it for
+every attached peer, and `server_requests.resolve_response` settles it on the first
+response. `session_transports._session_client_answers_requests` fails a request fast only
+when no attached WebSocket client advertised `server_requests`. The census captured the
+`approval` frame through a single client that advertises; delivery to the adapter's
+non-advertising connection beside a real attached TUI is not yet captured. The native TUI answers. The
 adapter observes and must never reply, because even an error reply would settle the
 request in the TUI's place. Approvals therefore stay `native-tui`. Until the TUI has
 resumed the session, the adapter's WebSocket is the session's only client and has not
