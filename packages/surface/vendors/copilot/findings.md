@@ -128,3 +128,18 @@ acquired executable proving native TUI launch, durable `events.jsonl`
 attachment, prompt receipt, normalized completion, and native resume. Hosted
 model parity with the controlled BYOK fixtures is also an explicit ongoing
 reconciliation concern, not an assumption baked into normalization.
+
+## Four-platform acquisition and replay follow-up (2026-11-04)
+
+All four official executable acquisitions and exact-version probes passed in
+[run 41786233830](https://github.com/vibefield/puppeteer/actions/runs/41786233830).
+The native version command prints a two-line banner: an identity sentence and a fixed update hint.
+The probe validates that complete grammar and stores the bounded identity line. Fixture-corpus
+digests remain distinct from acquired executable identities; the original Rosetta capture claims
+keep their corpus binding.
+
+The workflow's replay step exposed a separate envelope bug. Copilot's payload lives under `data`,
+while the replay runner was checking the outer carrier against the payload schema. Replay now
+uses the declared Rosetta payload path and independently validates the complete envelope.
+All 70 committed records pass; negative tests still reject both malformed nested payloads and
+malformed envelopes. Protected native-TUI/resume promotion remains unimplemented.

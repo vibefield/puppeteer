@@ -179,7 +179,6 @@
       "status": "baseline-pending",
       "blockers": [
         "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform.",
-        "Kimi Code 2.4.1 runtime evidence is a linux-x64 print-mode census only; the darwin-arm64, darwin-x64, and windows-x64 artifacts have not been acquired or attested.",
         "The 2.4.1 native TUI has been exercised through the adapter only in an unattested local linux-x64 KIMI_LIVE run (startup, first-prompt discovery, prompt confirmation, and basic --session resume) with no committed receipt; folder-trust behavior changes, Esc-cancel, permission accept/deny, questions, steer, and resume tail offsets under engine-journal interleaving remain unexercised."
       ]
     },
@@ -194,7 +193,6 @@
       "status": "baseline-pending",
       "blockers": [
         "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform.",
-        "OpenCode 1.19.5 artifacts are acquired, hashed and censused only for linux-x64; darwin-arm64, darwin-x64 and windows-x64 have no 1.19.5 artifact identity yet.",
         "OpenCode 2.x (@opencode/cli, tags v2.0.0-v2.2.5) is a separate protocol family: no `attach`, a `/api/*` HttpApi with sequenced v2 events, and different npm packages. The github-stable detector reports it because v2 releases are non-prerelease, while acquisition covers only the 1.x opencode-<platform> packages; draft/OPENCODE-2-MIGRATION-PLAN.md records the unstarted migration."
       ]
     },
@@ -209,7 +207,7 @@
       "status": "baseline-pending",
       "blockers": [
         "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed.",
-        "The 1.5.0 Surface evidence is imported from Rosetta commit 768de81d529d187523cbdf2f0995c6f63a6be8fc (hermetic linux-x64 farm of the npm package, plus a writer document derived from the v0.84.3..v1.5.0 source diff), whose contents are now merged via vibefield/rosetta#39 as 4282c44276d070958fbc442ca7a5b7021354aa5e. On 2026-11-04, re-importing and rebuilding the model from that Rosetta main commit reproduced the committed evidence byte for byte. The acquired GitHub release binaries carry no 1.5.0 capture on any platform."
+        "Pi 1.5.0 now has complete GitHub release-bundle identities on all four platforms. All seven controlled scenarios were recaptured on the exact linux-x64 release under Docker network isolation on 2026-11-04; runtime claims bind to that manifest and the original Rosetta writer/schema claims retain their fixture-corpus provenance. The native-TUI/resume promotion proof remains unimplemented."
       ]
     }
   ]

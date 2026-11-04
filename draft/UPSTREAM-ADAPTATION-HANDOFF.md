@@ -2,7 +2,7 @@
 
 **Status:** Review fixes and the Rosetta dependency landed on their intended branches; capture gaps and promotion remain.
 Every vendor has a staged candidate or a recorded blocker.
-Every confirmed review finding is fixed. Nothing is promoted. This file is the resume point for the draft PR
+Every confirmed review finding is fixed. Codex 0.166.0 is now promoted through the protected workflow. This file is the resume point for the draft PR
 [vibefield/puppeteer#59](https://github.com/vibefield/puppeteer/pull/59). Delete it when the PR is ready for review.
 
 PR #59's branch, `claude/nice-darwin-0vugls`, now includes the review-completion work through `a4965f2`
@@ -20,7 +20,7 @@ was scoped to this repository, so `pnpm upstream:detect` could not read GitHub r
 | Agent       | Ledger before    | Latest upstream stable                                  | Staged in this branch   | Adaptation commits              | Review fixes (merge) |
 | ----------- | ---------------- | ------------------------------------------------------- | ----------------------- | ------------------------------- | -------------------- |
 | Claude Code | verified 2.1.308 | 2.1.311 (`stable` channel; `latest` is 2.1.317)         | candidate 2.1.311       | `d817eed`                       | `2b75e0f`, `6e4bdb7` |
-| Codex       | verified 0.164.0 | 0.166.0 (`rust-v0.166.0`)                               | candidate 0.166.0       | `e9fab8a`, `c76adca`            | `a2bb042`            |
+| Codex       | verified 0.164.0 | 0.166.0 (`rust-v0.166.0`)                               | verified 0.166.0       | `e9fab8a`, `c76adca`            | `a2bb042`            |
 | Grok Build  | verified 1.0.70  | 1.0.70                                                  | — (already current)     | —                               | —                    |
 | Hermes      | pending 0.20.0   | 0.21.5 (`v2026.9.24`)                                   | candidate 0.21.5        | `919aded`                       | `3673427`            |
 | Kimi Code   | pending 0.34.0   | 2.4.1 (`@moonshot-ai/kimi-code@2.4.1`)                  | candidate 2.4.1         | `4ac97ba`                       | `eb2e28c`            |
@@ -31,7 +31,7 @@ was scoped to this repository, so `pnpm upstream:detect` could not read GitHub r
 
 Verified entries keep `currentVersion` and `verification`, with `candidateVersion` staged beside them by
 `scripts/stage-agent-candidate.mjs`. Pending entries keep `baseline-pending` and carry updated `blockers`. No artifact
-digest, receipt or `currentVersion` was written by hand. Codex, Claude, OpenCode, Hermes and Pi now have acquired artifact identities on all four platforms.
+digest, receipt or `currentVersion` was written by hand. Codex, Claude, OpenCode, Hermes, Kimi, Copilot and Pi now have acquired artifact identities on all four platforms.
 Acquisition alone does not promote support or relabel earlier runtime captures.
 
 The earlier review tree passed `support:check`, `groundtruth:mapping:check`, `upstream:check`, `surface:groundtruth:check`,
@@ -59,7 +59,9 @@ The original evidence commits were:
 **Re-import verified on 2026-11-04.** With merged Rosetta `main` at `4282c44276d070958fbc442ca7a5b7021354aa5e`
 checked out as the sibling `../rosetta`, `surface:census:copilot`,
 `surface:model:copilot`, `surface:census:pi`, `surface:model:pi` and `surface:groundtruth:write` reproduce this
-branch's committed output byte for byte. That includes the Copilot and Pi sanitizer fixes from §2, which change the
+the then-current committed output byte for byte. Pi's primary journals were subsequently replaced by the
+artifact-bound official-release census described below; re-importing its old npm fixtures would intentionally
+replace that newer runtime evidence. That original import included the Copilot and Pi sanitizer fixes from §2, which change the
 import but not Rosetta.
 
 **rosetta#39's two privacy questions, checked against its fixtures:**
@@ -155,7 +157,8 @@ Residual items the fixers recorded but could not close in a container:
   [run 41781642980](https://github.com/vibefield/puppeteer/actions/runs/41781642980). Earlier survey claims
   still reference their original source identity. Approval, clarify and `request.cancel` against a real attached
   TUI remain unexercised.
-- **Kimi 2.4.1:** the interactive-TUI paths (Esc-cancel, permissions, questions, steer, undo) and ACP shapes are not
+- **Kimi 2.4.1:** all four artifacts were acquired and attested in
+  [run 41785477841](https://github.com/vibefield/puppeteer/actions/runs/41785477841). The interactive-TUI paths (Esc-cancel, permissions, questions, steer, undo) and ACP shapes are not
   captured. Account and profile services rest on 2.0.2 evidence.
 - **OpenCode:** 2.x (`@opencode/cli`, an `/api/*` HttpApi with a new event envelope) is a separate integration family.
   The plan is in [`OPENCODE-2-MIGRATION-PLAN.md`](OPENCODE-2-MIGRATION-PLAN.md). The `github-stable` detector
@@ -168,16 +171,21 @@ Residual items the fixers recorded but could not close in a container:
 - **Antigravity 1.4.12:** see its findings section and ledger blocker. It needs a writer document from the binary's
   protobuf descriptors, Rosetta raw types and goldens, and adapter tool-result matching that no longer relies on
   `RUN_COMMAND`/`exit_code`, because results are now `GENERIC` steps.
+- **Copilot 1.0.105:** all four native executable probes and immutable report assembly passed in
+  [run 41786233830](https://github.com/vibefield/puppeteer/actions/runs/41786233830). That run exposed a replay
+  bug: it validated the outer journal envelope as the nested `data` payload. Replay now uses the declared payload
+  path and still checks the complete envelope. All nine vendors' committed captures now have replay tests.
 - **Copilot, Pi and Antigravity** have no protected promotion lane: `agent-surface-promotion.yml` offers only claude,
   codex, grok, hermes, kimi and opencode. This blocker predates this work.
 
 ### 4. Promotion
 
-Codex rehearsal passed in [run 41781648679](https://github.com/vibefield/puppeteer/actions/runs/41781648679).
-Protected promotion runs separately on `claude/codex-0.166.0-promotion` in
-[run 41784518623](https://github.com/vibefield/puppeteer/actions/runs/41784518623); integrate its receipt only
-after success. The first promotion attempt was correctly refused because its snapshot preceded the OpenCode
-fixture-ID corrections. Other work can continue on PR #59 without moving the verified promotion commit.
+Codex 0.166.0 promotion completed in
+[run 41784518623](https://github.com/vibefield/puppeteer/actions/runs/41784518623) after the repository owner's
+protected-environment approval. Its generated commit `1ec8cc98` was merged into PR #59 as `be603cff`.
+The first attempt was correctly refused because its snapshot preceded the OpenCode fixture-ID corrections.
+Claude 2.1.311 rehearsal is running on `claude/claude-2.1.311-promotion` in
+[run 41786029913](https://github.com/vibefield/puppeteer/actions/runs/41786029913).
 
 For each staged vendor:
 
