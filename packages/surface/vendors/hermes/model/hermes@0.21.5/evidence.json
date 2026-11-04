@@ -19,38 +19,6 @@
       "uvLockSha256": "5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590"
     },
     {
-      "id": "hermes-0.21.5-darwin-arm64",
-      "platform": "darwin-arm64",
-      "channel": "stable",
-      "artifactKind": "installed-console",
-      "acquiredAt": "2026-11-04T05:56:47.848Z",
-      "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)",
-      "sourceUrl": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.9.24.tar.gz",
-      "acquisitionKey": "hermes@0.21.5@darwin-arm64@sha256:b8974fc6de9c980eec2f3197f6ed2fcdc92436baedbb0e83d5ea985ec5a33c59",
-      "identity": {
-        "sourceArchiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
-        "sourceTreeSha256": "sha256:867171ae4d917f85fe5f95a2cb224ec6e6e10a8ab98483e7cd21ec9ab4ce89df",
-        "generatedSourceSha256": "sha256:d2b67a252bdbdc4625de83d8eeb353e9818aeb55e4699e0c0ab4f726633a4bdd",
-        "sourceReference": "v2026.9.24",
-        "projectFileSha256": "sha256:6f969b9fdff95e7269ec808361e3ae8be5357036e6257e53a3306878cf8c41dd",
-        "lockFileSha256": "sha256:5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590",
-        "pythonVersion": "3.11.9",
-        "pythonExecutableSha256": "sha256:4e28e811a89aeac6eed668ae641c7f85f5831e42e8dc6cd9a85a3bcc032ec46a",
-        "pythonStandardLibrarySha256": "sha256:34e8157ee551e7fe31a2b5607f6cce9134a70eca2c60cfd8d176d957e34c7d67",
-        "environmentSha256": "sha256:870ae4437c188a9060c6a05b7eaefcb7ff204b272d3bfa97be4d70d8f44804e5",
-        "consoleEntryPoint": "hermes_cli.main:main",
-        "consoleBindingSha256": "sha256:30337f8ab4e4cc9e74e2099d53d1d0563993a74bf052e798493c4af6d8fa1672",
-        "runtimeNodeVersion": "22.22.0",
-        "runtimeNodeExecutableSha256": "sha256:913b144fdb40638b1acef7974ab3c33fbd527cc0974cb5da467ab1e6ac51b4d4",
-        "runtimeBundleSha256": "sha256:0fbd2209f1ab5befab9ed4057c1ce13dace08cf8674aee6e5b1189b856fa4891",
-        "runtimeEntrySha256": "sha256:2f88a6810f33a1e8d2f961e0d0b89c374a5bc186b4e6d05b94fb1a54765d9540"
-      },
-      "integrity": {
-        "status": "verified",
-        "sha256": "sha256:b8974fc6de9c980eec2f3197f6ed2fcdc92436baedbb0e83d5ea985ec5a33c59"
-      }
-    },
-    {
       "id": "hermes-0.21.5-darwin-x64",
       "platform": "darwin-x64",
       "channel": "stable",
@@ -83,6 +51,70 @@
       },
       "kind": "superseded-installed-console-build",
       "notes": "Original acquired build retained byte-for-byte in the build-history record; superseded by the reviewed rust-cyclonedx-v1 recipe. This identity is not the new recipe identity."
+    },
+    {
+      "id": "hermes-0.21.5-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "artifactKind": "installed-console",
+      "acquiredAt": "2026-11-04T05:56:47.848Z",
+      "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)",
+      "sourceUrl": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.9.24.tar.gz",
+      "acquisitionKey": "hermes@0.21.5@darwin-arm64@sha256:b8974fc6de9c980eec2f3197f6ed2fcdc92436baedbb0e83d5ea985ec5a33c59",
+      "identity": {
+        "sourceArchiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
+        "sourceTreeSha256": "sha256:867171ae4d917f85fe5f95a2cb224ec6e6e10a8ab98483e7cd21ec9ab4ce89df",
+        "generatedSourceSha256": "sha256:d2b67a252bdbdc4625de83d8eeb353e9818aeb55e4699e0c0ab4f726633a4bdd",
+        "sourceReference": "v2026.9.24",
+        "projectFileSha256": "sha256:6f969b9fdff95e7269ec808361e3ae8be5357036e6257e53a3306878cf8c41dd",
+        "lockFileSha256": "sha256:5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590",
+        "pythonVersion": "3.11.9",
+        "pythonExecutableSha256": "sha256:4e28e811a89aeac6eed668ae641c7f85f5831e42e8dc6cd9a85a3bcc032ec46a",
+        "pythonStandardLibrarySha256": "sha256:34e8157ee551e7fe31a2b5607f6cce9134a70eca2c60cfd8d176d957e34c7d67",
+        "environmentSha256": "sha256:870ae4437c188a9060c6a05b7eaefcb7ff204b272d3bfa97be4d70d8f44804e5",
+        "consoleEntryPoint": "hermes_cli.main:main",
+        "consoleBindingSha256": "sha256:30337f8ab4e4cc9e74e2099d53d1d0563993a74bf052e798493c4af6d8fa1672",
+        "runtimeNodeVersion": "22.22.0",
+        "runtimeNodeExecutableSha256": "sha256:913b144fdb40638b1acef7974ab3c33fbd527cc0974cb5da467ab1e6ac51b4d4",
+        "runtimeBundleSha256": "sha256:0fbd2209f1ab5befab9ed4057c1ce13dace08cf8674aee6e5b1189b856fa4891",
+        "runtimeEntrySha256": "sha256:2f88a6810f33a1e8d2f961e0d0b89c374a5bc186b4e6d05b94fb1a54765d9540"
+      },
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:b8974fc6de9c980eec2f3197f6ed2fcdc92436baedbb0e83d5ea985ec5a33c59"
+      }
+    },
+    {
+      "id": "hermes-0.21.5-darwin-x64-acquired",
+      "platform": "darwin-x64",
+      "channel": "stable",
+      "artifactKind": "installed-console",
+      "acquiredAt": "2026-11-04T08:25:07.118Z",
+      "versionOutput": "Hermes Agent v0.21.5 (2026.9.24)",
+      "sourceUrl": "https://github.com/NousResearch/hermes-agent/archive/refs/tags/v2026.9.24.tar.gz",
+      "acquisitionKey": "hermes@0.21.5@darwin-x64@sha256:8fa21f355cfe28848000e7bfc17d8cdc046dd90a6049bbfb92a6f78ef23ac4d6",
+      "identity": {
+        "sourceArchiveSha256": "sha256:15b15ce4e6ec8ea424a081823709d1e17f0943e7b42b59597d24ebb94cbd1742",
+        "sourceTreeSha256": "sha256:867171ae4d917f85fe5f95a2cb224ec6e6e10a8ab98483e7cd21ec9ab4ce89df",
+        "generatedSourceSha256": "sha256:d2b67a252bdbdc4625de83d8eeb353e9818aeb55e4699e0c0ab4f726633a4bdd",
+        "sourceReference": "v2026.9.24",
+        "projectFileSha256": "sha256:6f969b9fdff95e7269ec808361e3ae8be5357036e6257e53a3306878cf8c41dd",
+        "lockFileSha256": "sha256:5b3798f326209475abca8ef7cbf7c9406f12e687c28c0b540dfe597466f48590",
+        "pythonVersion": "3.11.9",
+        "pythonExecutableSha256": "sha256:4e28e811a89aeac6eed668ae641c7f85f5831e42e8dc6cd9a85a3bcc032ec46a",
+        "pythonStandardLibrarySha256": "sha256:34e8157ee551e7fe31a2b5607f6cce9134a70eca2c60cfd8d176d957e34c7d67",
+        "environmentSha256": "sha256:8a00d3da6087c67e392ca5e64bfe617519d4bb358aeff6b1e9a3e4159e792e0f",
+        "consoleEntryPoint": "hermes_cli.main:main",
+        "consoleBindingSha256": "sha256:30337f8ab4e4cc9e74e2099d53d1d0563993a74bf052e798493c4af6d8fa1672",
+        "runtimeNodeVersion": "22.22.0",
+        "runtimeNodeExecutableSha256": "sha256:bf0e0ff20d4e5a16436d1ec372e47161e52be8e487db8070ae3f06b01efbba0c",
+        "runtimeBundleSha256": "sha256:0fbd2209f1ab5befab9ed4057c1ce13dace08cf8674aee6e5b1189b856fa4891",
+        "runtimeEntrySha256": "sha256:2f88a6810f33a1e8d2f961e0d0b89c374a5bc186b4e6d05b94fb1a54765d9540"
+      },
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:8fa21f355cfe28848000e7bfc17d8cdc046dd90a6049bbfb92a6f78ef23ac4d6"
+      }
     },
     {
       "id": "hermes-0.21.5-linux-x64",
@@ -196,6 +228,13 @@
       "path": "packages/surface/vendors/hermes/builds/hermes@0.21.5",
       "digestAlgorithm": "sha256-path-content-v1",
       "sha256": "b81e3472aa798535cbdb5f84b5c8a3a570aab838d27a9a109beafd3c4263fb4d"
+    },
+    {
+      "id": "reproducible-installed-console-build",
+      "kind": "build-provenance",
+      "path": "packages/surface/vendors/hermes/builds/hermes@0.21.5-reproducible",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "98b403e1fefee75df918c0ab975c5f7b1976e505249c4495b234cde0e12a2bce"
     }
   ],
   "claims": [
@@ -244,6 +283,17 @@
       "artifact": "hermes-0.21.5-darwin-x64",
       "platform": "darwin-x64",
       "notes": "The two-build diagnostic proves a reproducible recipe on its runner. It does not attest a production acquisition or transfer runtime claims. The original build is historical; the production recipe needs its own immutable manifest and protected four-platform verification."
+    },
+    {
+      "id": "intel-reproducible-build-acquisition",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "reproducible-installed-console-build",
+      "artifact": "hermes-0.21.5-darwin-x64-acquired",
+      "platform": "darwin-x64",
+      "capturedAt": "2026-11-04T08:25:07.118Z",
+      "harness": "agent-adaptation 41798422033 / materialize-installed-console / GitHub macos-15-intel",
+      "notes": "The exact installed console printed the recorded 0.21.5 version and its complete manifest attests the reviewed reproducible dependency recipe. This is an acquisition/version probe, not interactive or resume evidence."
     }
   ],
   "limitations": [

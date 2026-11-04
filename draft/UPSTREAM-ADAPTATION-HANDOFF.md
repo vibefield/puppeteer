@@ -2,7 +2,7 @@
 
 **Status:** Review fixes and the Rosetta dependency landed on their intended branches; capture gaps and promotion remain.
 Every vendor has a staged candidate or a recorded blocker.
-Every confirmed review finding is fixed. Codex 0.166.0 is now promoted through the protected workflow. This file is the resume point for the draft PR
+Every confirmed review finding is fixed. Codex 0.166.0, Claude 2.1.311 and OpenCode 1.19.5 are promoted through the protected workflow. This file is the resume point for the draft PR
 [vibefield/puppeteer#59](https://github.com/vibefield/puppeteer/pull/59). Delete it when the PR is ready for review.
 
 PR #59's branch, `claude/nice-darwin-0vugls`, now includes the review-completion work through `a4965f2`
@@ -24,7 +24,7 @@ was scoped to this repository, so `pnpm upstream:detect` could not read GitHub r
 | Grok Build  | verified 1.0.70  | 1.0.70                                                  | — (already current)     | —                               | —                    |
 | Hermes      | pending 0.20.0   | 0.21.5 (`v2026.9.24`)                                   | candidate 0.21.5        | `919aded`                       | `3673427`            |
 | Kimi Code   | pending 0.34.0   | 2.4.1 (`@moonshot-ai/kimi-code@2.4.1`)                  | candidate 2.4.1         | `4ac97ba`                       | `eb2e28c`            |
-| OpenCode    | pending 1.18.16  | 1.19.5 on the default 1.x line; 2.2.5 (`@opencode/cli`) | candidate 1.19.5        | `1cff3a8`, `e78b8b3`, `b08a638` | `611a05d`            |
+| OpenCode    | pending 1.18.16  | 1.19.5 on the default 1.x line; 2.2.5 (`@opencode/cli`) | verified 1.19.5         | `1cff3a8`, `e78b8b3`, `b08a638` | `611a05d`            |
 | Copilot CLI | pending 1.0.80   | 1.0.105                                                 | candidate 1.0.105       | `da3d9df`, `eed27fb`            | `845ce4d`, `cab3aa5` |
 | Pi          | pending 0.84.3   | 1.5.0                                                   | candidate 1.5.0         | `9cd192e`                       | `bedd9d5`, `5e4d98f` |
 | Antigravity | pending 1.1.20   | 1.4.12                                                  | none — blocker recorded | `45ca9f8`                       | —                    |
@@ -34,9 +34,7 @@ Verified entries keep `currentVersion` and `verification`, with `candidateVersio
 digest, receipt or `currentVersion` was written by hand. Codex, Claude, OpenCode, Hermes, Kimi, Copilot and Pi now have acquired artifact identities on all four platforms.
 Acquisition alone does not promote support or relabel earlier runtime captures.
 
-The complete `COLORTERM=truecolor pnpm test` run passed on `41da191d`: 191 script tests and every package/app
-suite. Surface audits for all nine vendors, generated models, evidence, workflow checks, adapter mappings,
-support ledger and formatting also pass. All seven CI checks passed on that commit. The subsequent Hermes fix passed all 205 adapter tests with live mode enabled; its saved-frame regression tests also pass without an installed agent. Five OpenCode assertions with old capture
+The integrated `COLORTERM=truecolor pnpm test` run passed at `1f7d5995`: 194 script tests and all 24 package/app suites. CI passed all seven checks at `e6f2b934`. Subsequent transaction and reproducible-build changes pass all 203 local script tests, evidence/model/map checks, affected vendor audits and formatting; their platform workflows are running. The subsequent Hermes fix passed all 205 adapter tests with live mode enabled; its saved-frame regression tests also pass without an installed agent. Five OpenCode assertions with old capture
 IDs now use the fresh observed IDs; Kimi's identity assertion selects its exact Linux artifact by ID.
 
 ## Completed dependency work and remaining readiness checks
@@ -190,7 +188,7 @@ Claude 2.1.311 rehearsal passed on `claude/claude-2.1.311-promotion` in
 Its earlier attempt passed all native lanes but the final transaction caught Kimi's artifact-order test assumption;
 the successful rehearsal and promotion include that correction.
 
-Hermes 0.21.5 rehearsal [41791044639](https://github.com/vibefield/puppeteer/actions/runs/41791044639), from `fea59d0c`, stopped at immutable artifact assembly. Only darwin-x64 changed: cryptography 50.0.0 has no Intel macOS wheel in the lockfile and its source-built installed-file digest differed. The gate correctly refused it; no prior digest was replaced. The first isolated [two-build diagnostic](https://github.com/vibefield/puppeteer/actions/runs/41792349819) identified Cargo build paths embedded in the native extension. A second [diagnostic](https://github.com/vibefield/puppeteer/actions/runs/41794308944) used Rust path remapping and a fixed build epoch: both native extensions now have SHA-256 `eb11a7db3f3faf7d2d511f7487cff8dff86203ff1c97e7a7cb44892b2cbd5393`. The remaining installed-file mismatch is the CycloneDX SBOM: its references include randomized uv source-directory paths. Comparing those path spellings accounts for the entire SBOM difference. This experiment has not changed production hashing or replaced any acquired identity. A reviewed deterministic build recipe and explicit identity migration are still required. The separate `claude/hermes-build-diagnostic` branch is not part of PR #59.
+Hermes 0.21.5 rehearsal [41791044639](https://github.com/vibefield/puppeteer/actions/runs/41791044639), from `fea59d0c`, stopped at immutable artifact assembly. Only darwin-x64 changed: cryptography 50.0.0 has no Intel macOS wheel in the lockfile and its source-built installed-file digest differed. The gate correctly refused it; no prior digest was replaced. The first isolated [two-build diagnostic](https://github.com/vibefield/puppeteer/actions/runs/41792349819) identified Cargo build paths embedded in the native extension. A second [diagnostic](https://github.com/vibefield/puppeteer/actions/runs/41794308944) used Rust path remapping and a fixed build epoch: both native extensions now have SHA-256 `eb11a7db3f3faf7d2d511f7487cff8dff86203ff1c97e7a7cb44892b2cbd5393`. The remaining installed-file mismatch is the CycloneDX SBOM: its references include randomized uv source-directory paths. Comparing those path spellings accounts for the entire SBOM difference. This experiment has not changed production hashing or replaced any acquired identity. The production recipe and explicit identity migration are now committed in `0aba7fd2`; fresh acquisition is running in [41798422033](https://github.com/vibefield/puppeteer/actions/runs/41798422033). The separate `claude/hermes-build-diagnostic` branch is not part of PR #59.
 
 For each staged vendor:
 
@@ -214,7 +212,7 @@ For each staged vendor:
 - Running a vendor binary in a container: use an unprivileged network namespace (`unshare -rn`) with a scrubbed
   environment and a throwaway HOME. `ip` is absent; `census/netns-enter.py` brings loopback up with an ioctl.
 
-OpenCode 1.19.5 rehearsal [41793796253](https://github.com/vibefield/puppeteer/actions/runs/41793796253) passed all four native-TUI/resume lanes, complete repository validation and transaction checks after the Windows directory-identity fix. Protected promotion [41794896986](https://github.com/vibefield/puppeteer/actions/runs/41794896986) is running.
+OpenCode 1.19.5 rehearsal [41793796253](https://github.com/vibefield/puppeteer/actions/runs/41793796253) passed all four native-TUI/resume lanes, complete repository validation and transaction checks after the Windows directory-identity fix. Owner-approved protected promotion [41794896986](https://github.com/vibefield/puppeteer/actions/runs/41794896986) completed successfully. Generated commit `5bc92ea4` was integrated by `079ba54e`.
 
 Pi rehearsal [41794414355](https://github.com/vibefield/puppeteer/actions/runs/41794414355) exposed a test-host startup race while the native TUI downloaded fd/ripgrep. The test now uses Pi's offline settings and waits for the terminal title emitted after submit-handler installation; its local proof passes. Corrected rehearsal: [41795150316](https://github.com/vibefield/puppeteer/actions/runs/41795150316). Copilot rehearsal: [41794858702](https://github.com/vibefield/puppeteer/actions/runs/41794858702). Kimi rehearsal: [41795209402](https://github.com/vibefield/puppeteer/actions/runs/41795209402). These runs do not confer verified support until the protected transaction completes.
 
@@ -225,3 +223,9 @@ Hermes's third [diagnostic](https://github.com/vibefield/puppeteer/actions/runs/
 The original Intel manifest is retained byte-for-byte under `packages/surface/vendors/hermes/builds/hermes@0.21.5`, alongside the explicit recipe-migration rationale. Its existing artifact identity is historical, and no runtime claims are transferred. A new production acquisition and reconstruction must pass before Hermes promotion. The diagnostic branch itself remains outside PR #59.
 
 Copilot and Pi then exposed a second shared transaction bug: ledger validation selected the first same-platform artifact (the retained fixture corpus) instead of the acquired binary/bundle. Verification, promotion and ledger rendering now use one unambiguous acquired-artifact selector; historical-only or duplicate current identities fail. Regression tests execute the promotion transaction with both historical/current orderings and reject missing or ambiguous acquired identities.
+
+Kimi's full rehearsal [41795209402](https://github.com/vibefield/puppeteer/actions/runs/41795209402) passed. Its sequential protected promotion [41798646315](https://github.com/vibefield/puppeteer/actions/runs/41798646315) started after OpenCode's generated receipt landed. The latest Copilot and Pi rehearsals include both transaction fixes: [Copilot 41798284522](https://github.com/vibefield/puppeteer/actions/runs/41798284522), [Pi 41798288532](https://github.com/vibefield/puppeteer/actions/runs/41798288532).
+
+Antigravity's current 1.1.20 native startup reaches the vendor Terms of Service and interaction-data-collection screen. Consent has been requested before completing that screen in a disposable home, with data collection disabled. No terms were accepted or real-account credentials used. The separate 1.4.12 writer/protobuf and adapter migration remains recorded above.
+
+Hermes production acquisition [41798422033](https://github.com/vibefield/puppeteer/actions/runs/41798422033) passed all four platforms, assembly and analysis. The new Intel manifest is `sha256:8fa21f355cfe28848000e7bfc17d8cdc046dd90a6049bbfb92a6f78ef23ac4d6`; apart from its explicit recipe attestation, it exactly matches both independent diagnostic builds. The other three acquired identities are unchanged. The actual production manifest is retained separately under `builds/hermes@0.21.5-reproducible`, with an acquisition/version-probe claim using the workflow's actual timestamp. Original capture bindings and the historical Intel identity remain intact. Fresh native-TUI reconstruction is the next gate.
