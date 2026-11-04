@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { stripVTControlCharacters } from 'node:util';
 import type { AgentHost, TerminalAutomationOperation, TerminalSpec } from '@vibefield/puppeteer-core';
 import { spawn, type IPty } from 'node-pty';
@@ -57,8 +58,38 @@ export class HermesLivePtyHost implements AgentHost {
   async disposeTerminal(runtimeSessionId: string): Promise<void> {
     const record = this.records.get(runtimeSessionId);
     if (!record) return;
-    if (!record.exited) record.terminal.kill();
+    if (process.platform === 'win32') {
+      if (!record.exited) record.terminal.kill();
+    } else {
+      // forkpty gives this terminal its own process group. Hermes's Python launcher can exit
+      // before its Node TUI, so killing only the launcher leaves a writer in the disposable home.
+      const groupAlive = (): boolean =>
+        execFileSync('ps', ['-axo', 'pgid=,stat='], { encoding: 'utf8', timeout: 2_000 })
+          .trim()
+          .split('\n')
+          .some((line) => {
+            const [group, state] = line.trim().split(/\s+/);
+            return Number(group) === record.terminal.pid && !state?.startsWith('Z');
+          });
+      const signalGroup = (signal: NodeJS.Signals): void => {
+        try {
+          process.kill(-record.terminal.pid, signal);
+        } catch (error) {
+          // macOS can report EPERM for a group containing only exiting/zombie processes.
+          // Inspect process states so a permissions error never hides a surviving writer.
+          const code = (error as NodeJS.ErrnoException).code;
+          if ((code === 'ESRCH' || code === 'EPERM') && !groupAlive()) return;
+          throw error;
+        }
+      };
+      if (groupAlive()) signalGroup('SIGTERM');
+      const deadline = Date.now() + 2_000;
+      while (groupAlive() && Date.now() < deadline) await delay(25);
+      if (groupAlive()) signalGroup('SIGKILL');
+      await waitFor(() => !groupAlive(), 'Hermes terminal process group exit', 5_000);
+    }
     await Promise.race([record.exit, delay(2_000)]);
+    if (!record.exited) throw new Error('Hermes terminal did not report exit during disposal');
     this.records.delete(runtimeSessionId);
   }
 
