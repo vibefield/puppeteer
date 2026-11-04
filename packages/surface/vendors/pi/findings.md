@@ -29,9 +29,11 @@ Official acquisition still uses the GitHub release binaries, so the captured
 artifact is the same release through its npm distribution, not the acquired
 bytes. Rosetta's `sources/1.5.0.writer.json` is its 0.84.3 writer document with
 the reviewed v0.84.3..v1.5.0 diff of the persistence types applied. Rosetta's
-canonical inventory is cumulative across its pinned versions, so a shape shown
-here is proven for 0.84.3 or 1.5.0, not necessarily both (for example
-`toolResult.addedToolNames` exists only at 0.84.3).
+canonical inventory is cumulative across its pinned versions, so the 1.5.0
+model is rebuilt from the 1.5.0 writer and fixture sources only
+(`versionScopedSources`): shapes and occurrence counts seen only in the 0.84.3
+darwin-arm64 corpus or writer (for example `toolResult.addedToolNames` or the
+mock `message_start.responseId`) are not credited to 1.5.0.
 
 - The session header stays at version 3 and the record types are unchanged in
   the fixtures. 1.5.0 persists the system prompt as a `message` entry with

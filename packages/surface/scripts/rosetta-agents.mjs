@@ -78,6 +78,8 @@ export const ROSETTA_AGENT_CONFIGS = Object.freeze({
     primaryEnvelopeFields: ['type', 'id', 'parentId', 'timestamp'],
     primaryRecord: (path) => path.includes('/sessions/') && path.endsWith('.jsonl'),
     referenceFiles: ['sources/1.5.0.writer.json', 'sources/1.5.0.fixtures.json'],
+    // Rosetta's canonical sums the 0.84.3 (darwin-arm64) and 1.5.0 (linux-x64) corpora; the model credits only 1.5.0.
+    versionScopedSources: true,
     repository: 'https://github.com/earendil-works/pi',
     revision: 'v1.5.0',
     relation: 'exact-release',

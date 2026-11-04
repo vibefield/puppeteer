@@ -123,7 +123,8 @@
               "cacheWrite",
               "input",
               "output",
-              "total"
+              "total",
+              "totalFromProvider"
             ],
             "additionalProperties": true
           },
@@ -146,6 +147,7 @@
           "cost",
           "input",
           "output",
+          "reasoning",
           "totalTokens"
         ],
         "additionalProperties": true
@@ -277,7 +279,8 @@
               "cacheWrite",
               "input",
               "output",
-              "total"
+              "total",
+              "totalFromProvider"
             ],
             "additionalProperties": true
           },
@@ -300,6 +303,7 @@
           "cost",
           "input",
           "output",
+          "reasoning",
           "totalTokens"
         ],
         "additionalProperties": true
@@ -331,5 +335,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "<farm>/stdout*.jsonl; 91 retained observation(s); source evidence: fixture."
+  "notes": "<farm>/stdout*.jsonl; 49 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
 }

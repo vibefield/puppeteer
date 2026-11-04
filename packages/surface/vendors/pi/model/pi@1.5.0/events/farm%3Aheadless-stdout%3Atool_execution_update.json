@@ -171,5 +171,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "<farm>/stdout*.jsonl; 6 retained observation(s); source evidence: fixture."
+  "notes": "<farm>/stdout*.jsonl; 4 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
 }

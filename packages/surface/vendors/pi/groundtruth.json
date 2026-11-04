@@ -231,7 +231,7 @@
         "platform": "linux-x64",
         "harness": "rosetta controlled mock-provider farm",
         "capturedAt": "2026-11-03T19:35:32Z",
-        "notes": "Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence."
+        "notes": "Digest-pinned Rosetta record inventory whose occurrence count is non-zero. It proves occurrence; it proves retained shape only for records classified as fixture or observed rather than writer evidence. Counts and shapes come from the 1.5.0 writer and fixture sources only, not from the cumulative multi-release inventory."
       },
       {
         "id": "pi-rosetta-contract",
@@ -557,7 +557,7 @@
         ]
       },
       "confidence": "unverified",
-      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     },
     {
       "surface": "pi",
@@ -1520,7 +1520,7 @@
       },
       "confidence": "verified-headless",
       "fixture": "captures/pi@1.5.0/compaction/events.jsonl",
-      "notes": "agent/sessions/*/*.jsonl; 2 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 1 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     },
     {
       "surface": "pi",
@@ -1750,7 +1750,7 @@
         ]
       },
       "confidence": "unverified",
-      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     },
     {
       "surface": "pi",
@@ -1836,7 +1836,7 @@
         ]
       },
       "confidence": "unverified",
-      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     },
     {
       "surface": "pi",
@@ -2050,7 +2050,7 @@
         ]
       },
       "confidence": "unverified",
-      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     },
     {
       "surface": "pi",
@@ -2124,6 +2124,9 @@
                 "content": {
                   "anyOf": [
                     {
+                      "type": "string"
+                    },
+                    {
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -2162,9 +2165,6 @@
                         ],
                         "additionalProperties": true
                       }
-                    },
-                    {
-                      "type": "string"
                     }
                   ]
                 },
@@ -2573,7 +2573,8 @@
                         "cacheWrite",
                         "input",
                         "output",
-                        "total"
+                        "total",
+                        "totalFromProvider"
                       ],
                       "additionalProperties": true
                     },
@@ -2637,6 +2638,9 @@
                 "content": {
                   "anyOf": [
                     {
+                      "type": "string"
+                    },
+                    {
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -2675,9 +2679,6 @@
                         ],
                         "additionalProperties": true
                       }
-                    },
-                    {
-                      "type": "string"
                     }
                   ]
                 },
@@ -3086,7 +3087,8 @@
                         "cacheWrite",
                         "input",
                         "output",
-                        "total"
+                        "total",
+                        "totalFromProvider"
                       ],
                       "additionalProperties": true
                     },
@@ -3159,7 +3161,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 21 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 11 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -3179,7 +3181,9 @@
             "type": "boolean"
           }
         },
-        "required": [],
+        "required": [
+          "aborted"
+        ],
         "additionalProperties": true
       },
       "recordSchema": {
@@ -3196,6 +3200,7 @@
           }
         },
         "required": [
+          "aborted",
           "type"
         ],
         "additionalProperties": true
@@ -3219,7 +3224,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 21 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 11 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -3272,7 +3277,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 21 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 11 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -3364,7 +3369,8 @@
                       "cacheWrite",
                       "input",
                       "output",
-                      "total"
+                      "total",
+                      "totalFromProvider"
                     ],
                     "additionalProperties": true
                   },
@@ -3494,7 +3500,8 @@
                       "cacheWrite",
                       "input",
                       "output",
-                      "total"
+                      "total",
+                      "totalFromProvider"
                     ],
                     "additionalProperties": true
                   },
@@ -3571,7 +3578,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 2 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 1 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -3640,7 +3647,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 2 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 1 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -3667,6 +3674,9 @@
               },
               "content": {
                 "anyOf": [
+                  {
+                    "type": "string"
+                  },
                   {
                     "type": "array",
                     "items": {
@@ -3706,9 +3716,6 @@
                       ],
                       "additionalProperties": true
                     }
-                  },
-                  {
-                    "type": "string"
                   }
                 ]
               },
@@ -4117,7 +4124,8 @@
                       "cacheWrite",
                       "input",
                       "output",
-                      "total"
+                      "total",
+                      "totalFromProvider"
                     ],
                     "additionalProperties": true
                   },
@@ -4174,6 +4182,9 @@
               "content": {
                 "anyOf": [
                   {
+                    "type": "string"
+                  },
+                  {
                     "type": "array",
                     "items": {
                       "type": "object",
@@ -4212,9 +4223,6 @@
                       ],
                       "additionalProperties": true
                     }
-                  },
-                  {
-                    "type": "string"
                   }
                 ]
               },
@@ -4623,7 +4631,8 @@
                       "cacheWrite",
                       "input",
                       "output",
-                      "total"
+                      "total",
+                      "totalFromProvider"
                     ],
                     "additionalProperties": true
                   },
@@ -4691,7 +4700,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 55 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 33 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -4718,6 +4727,9 @@
               },
               "content": {
                 "anyOf": [
+                  {
+                    "type": "string"
+                  },
                   {
                     "type": "array",
                     "items": {
@@ -4757,9 +4769,6 @@
                       ],
                       "additionalProperties": true
                     }
-                  },
-                  {
-                    "type": "string"
                   }
                 ]
               },
@@ -4780,9 +4789,6 @@
                 "enum": [
                   "mock"
                 ]
-              },
-              "responseId": {
-                "type": "string"
               },
               "role": {
                 "type": "string",
@@ -5199,6 +5205,9 @@
               "content": {
                 "anyOf": [
                   {
+                    "type": "string"
+                  },
+                  {
                     "type": "array",
                     "items": {
                       "type": "object",
@@ -5237,9 +5246,6 @@
                       ],
                       "additionalProperties": true
                     }
-                  },
-                  {
-                    "type": "string"
                   }
                 ]
               },
@@ -5260,9 +5266,6 @@
                 "enum": [
                   "mock"
                 ]
-              },
-              "responseId": {
-                "type": "string"
               },
               "role": {
                 "type": "string",
@@ -5690,7 +5693,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 55 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 33 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -5817,7 +5820,8 @@
                   "cacheWrite",
                   "input",
                   "output",
-                  "total"
+                  "total",
+                  "totalFromProvider"
                 ],
                 "additionalProperties": true
               },
@@ -5840,6 +5844,7 @@
               "cost",
               "input",
               "output",
+              "reasoning",
               "totalTokens"
             ],
             "additionalProperties": true
@@ -5971,7 +5976,8 @@
                   "cacheWrite",
                   "input",
                   "output",
-                  "total"
+                  "total",
+                  "totalFromProvider"
                 ],
                 "additionalProperties": true
               },
@@ -5994,6 +6000,7 @@
               "cost",
               "input",
               "output",
+              "reasoning",
               "totalTokens"
             ],
             "additionalProperties": true
@@ -6025,7 +6032,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 91 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 49 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -6118,7 +6125,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 21 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 11 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -6191,7 +6198,8 @@
               }
             },
             "required": [
-              "content"
+              "content",
+              "structuredContent"
             ],
             "additionalProperties": true
           },
@@ -6206,6 +6214,7 @@
           }
         },
         "required": [
+          "durationMs",
           "isError",
           "result",
           "toolCallId",
@@ -6273,7 +6282,8 @@
               }
             },
             "required": [
-              "content"
+              "content",
+              "structuredContent"
             ],
             "additionalProperties": true
           },
@@ -6294,6 +6304,7 @@
           }
         },
         "required": [
+          "durationMs",
           "isError",
           "result",
           "toolCallId",
@@ -6321,7 +6332,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 3 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 2 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -6424,7 +6435,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 3 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 2 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -6599,7 +6610,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 6 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 4 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -6752,7 +6763,8 @@
                       "cacheWrite",
                       "input",
                       "output",
-                      "total"
+                      "total",
+                      "totalFromProvider"
                     ],
                     "additionalProperties": true
                   },
@@ -6784,12 +6796,14 @@
             "required": [
               "api",
               "content",
+              "durationMs",
               "model",
               "provider",
               "rawStopReason",
               "responseId",
               "role",
               "stopReason",
+              "thinkingLevel",
               "timestamp",
               "usage"
             ],
@@ -6849,6 +6863,7 @@
               },
               "required": [
                 "content",
+                "durationMs",
                 "isError",
                 "role",
                 "timestamp",
@@ -7005,7 +7020,8 @@
                       "cacheWrite",
                       "input",
                       "output",
-                      "total"
+                      "total",
+                      "totalFromProvider"
                     ],
                     "additionalProperties": true
                   },
@@ -7037,12 +7053,14 @@
             "required": [
               "api",
               "content",
+              "durationMs",
               "model",
               "provider",
               "rawStopReason",
               "responseId",
               "role",
               "stopReason",
+              "thinkingLevel",
               "timestamp",
               "usage"
             ],
@@ -7102,6 +7120,7 @@
               },
               "required": [
                 "content",
+                "durationMs",
                 "isError",
                 "role",
                 "timestamp",
@@ -7144,7 +7163,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 24 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 13 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -7197,7 +7216,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "<farm>/stdout*.jsonl; 24 retained observation(s); source evidence: fixture."
+      "notes": "<farm>/stdout*.jsonl; 13 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -7325,7 +7344,7 @@
         ]
       },
       "confidence": "unverified",
-      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     },
     {
       "surface": "pi",
@@ -7343,12 +7362,6 @@
           "message": {
             "type": "object",
             "properties": {
-              "addedToolNames": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
               "api": {
                 "type": "string"
               },
@@ -7972,12 +7985,6 @@
           "message": {
             "type": "object",
             "properties": {
-              "addedToolNames": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
               "api": {
                 "type": "string"
               },
@@ -8632,7 +8639,7 @@
       },
       "confidence": "verified-headless",
       "fixture": "captures/pi@1.5.0/basic-chat/events.jsonl",
-      "notes": "agent/sessions/*/*.jsonl; 60 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 36 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     },
     {
       "surface": "pi",
@@ -8719,7 +8726,7 @@
       },
       "confidence": "verified-headless",
       "fixture": "captures/pi@1.5.0/basic-chat/events.jsonl",
-      "notes": "agent/sessions/*/*.jsonl; 15 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 8 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     },
     {
       "surface": "pi",
@@ -8751,7 +8758,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "agent/models-store.json; 13 retained observation(s); source evidence: fixture."
+      "notes": "agent/models-store.json; 7 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -8905,7 +8912,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "agent/models.json; 13 retained observation(s); source evidence: fixture."
+      "notes": "agent/models.json; 7 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -9029,7 +9036,7 @@
       },
       "confidence": "verified-headless",
       "fixture": "captures/pi@1.5.0/basic-chat/events.jsonl",
-      "notes": "agent/sessions/*/*.jsonl; 15 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 8 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     },
     {
       "surface": "pi",
@@ -9105,7 +9112,7 @@
       },
       "confidence": "verified-headless",
       "fixture": "captures/pi@1.5.0/basic-chat/events.jsonl",
-      "notes": "agent/sessions/*/*.jsonl; 2 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 1 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     },
     {
       "surface": "pi",
@@ -9182,7 +9189,7 @@
         ]
       },
       "confidence": "verified-headless",
-      "notes": "agent/settings.json; 13 retained observation(s); source evidence: fixture."
+      "notes": "agent/settings.json; 7 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
     },
     {
       "surface": "pi",
@@ -9327,7 +9334,7 @@
       },
       "confidence": "verified-headless",
       "fixture": "captures/pi@1.5.0/basic-chat/events.jsonl",
-      "notes": "agent/sessions/*/*.jsonl; 15 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 8 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     },
     {
       "surface": "pi",
@@ -9605,7 +9612,7 @@
         ]
       },
       "confidence": "unverified",
-      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s); source evidence: writer."
+      "notes": "agent/sessions/*/*.jsonl; 0 retained observation(s) in the 1.5.0 sources; source evidence: writer."
     }
   ],
   "behavior": {

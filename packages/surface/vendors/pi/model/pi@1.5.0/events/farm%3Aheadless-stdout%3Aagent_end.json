@@ -26,6 +26,9 @@
             "content": {
               "anyOf": [
                 {
+                  "type": "string"
+                },
+                {
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -64,9 +67,6 @@
                     ],
                     "additionalProperties": true
                   }
-                },
-                {
-                  "type": "string"
                 }
               ]
             },
@@ -475,7 +475,8 @@
                     "cacheWrite",
                     "input",
                     "output",
-                    "total"
+                    "total",
+                    "totalFromProvider"
                   ],
                   "additionalProperties": true
                 },
@@ -539,6 +540,9 @@
             "content": {
               "anyOf": [
                 {
+                  "type": "string"
+                },
+                {
                   "type": "array",
                   "items": {
                     "type": "object",
@@ -577,9 +581,6 @@
                     ],
                     "additionalProperties": true
                   }
-                },
-                {
-                  "type": "string"
                 }
               ]
             },
@@ -988,7 +989,8 @@
                     "cacheWrite",
                     "input",
                     "output",
-                    "total"
+                    "total",
+                    "totalFromProvider"
                   ],
                   "additionalProperties": true
                 },
@@ -1061,5 +1063,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "<farm>/stdout*.jsonl; 21 retained observation(s); source evidence: fixture."
+  "notes": "<farm>/stdout*.jsonl; 11 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
 }

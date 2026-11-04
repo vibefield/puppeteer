@@ -28,5 +28,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "agent/models-store.json; 13 retained observation(s); source evidence: fixture."
+  "notes": "agent/models-store.json; 7 retained observation(s) in the 1.5.0 sources; source evidence: fixture."
 }
