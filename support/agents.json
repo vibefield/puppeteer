@@ -105,12 +105,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-copilot",
       "persona": "copilot",
       "groundTruth": "packages/surface/vendors/copilot/groundtruth.json",
-      "candidateVersion": "1.0.105",
-      "status": "baseline-pending",
-      "blockers": [
-        "The protected four-platform native-TUI/resume lane is implemented. All 130 local adapter tests pass with the exact 1.0.105 executable, including prompt confirmation, native completion and same-session journal replay against a loopback provider. Matching-platform workflow verification and protected promotion are still pending.",
-        "The 1.0.105 Surface evidence is imported from Rosetta commit 8ebdd48d2cd52586ee7c524b6a36261295ce4ead (hermetic linux-x64 BYOK farm), whose contents are now merged via vibefield/rosetta#39 as 4282c44276d070958fbc442ca7a5b7021354aa5e. On 2026-11-04, re-importing and rebuilding the model from that Rosetta main commit reproduced the committed evidence byte for byte. The other three platforms carry no 1.0.105 capture."
-      ]
+      "status": "verified",
+      "currentVersion": "1.0.105",
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "fee155dead156decaf24451901c7f7053ff37da5",
+        "groundTruth": "packages/surface/vendors/copilot/groundtruth.json",
+        "vendorVersion": "1.0.105",
+        "evidenceDigest": "a9f0583c05592ca38fe5823a3718689d432a4cef1de738f43bec28587d90e0a0",
+        "replayDigest": "102b5cf77785ad2b67b801d3888367fc421312c0c67228350109b89cd1d5be51",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/claude/copilot-1.0.105-promotion",
+        "runId": "41804202048",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:5fd7d15ff02deb08a58593b1b488015bb52c1686014b80b5509e28263cb3ad70"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:83e8dfacc3e79e55e4ab723edaf5b9a38d83aec85e9e115a131b973c98265801"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:3bd8bdc75670d7b4ec445725f6a5b9af66ee7ec49e6194646e4a40a0bc09091c"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:ab6d710d551c137c766a6c8ef6ee2e7779c106870c96b9a91a91fa17b9748624"
+          }
+        ]
+      },
+      "introducedInPuppeteer": "0.3.3"
     },
     {
       "id": "grok",
