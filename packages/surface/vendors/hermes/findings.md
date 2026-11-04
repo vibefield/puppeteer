@@ -193,7 +193,10 @@ from the census (`sampled` fidelity); hooks not encountered have none.
   `interaction:permission-requested` (`requestId` = the approval queue's `request_id`,
   `presentation: native-tui`); `clarify` → `interaction:question-requested`, single or
   batch, named by the `srq-` id; `request.cancel` → `permission-resolved` (`dismissed`)
-  or `question-resolved` (`cancelled`). Other server requests stay `adapter:native-event`.
+  or `question-resolved` (`cancelled`). The native TUI's answer never reaches the observer,
+  so an approval still open when its gated tool's `tool.complete` (the tool in flight when
+  it was raised) or the turn's `message.complete` arrives resolves with outcome `unknown`,
+  matching the monitor projection. Other server requests stay `adapter:native-event`.
   The 0.20 event spellings remain accepted. Answers stay invisible, as before.
 - The gateway host leaves a native fan-out Hermes as shipped.
 - Live test support recognizes the 0.21 title prompt.

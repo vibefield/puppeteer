@@ -84,13 +84,25 @@ export class HermesGatewayNormalizer {
       case 'message.complete': {
         const conversation = this.conversation.complete(parsed.payload, currentTurnId);
         const completed = this.turn.complete(parsed.payload, conversation.text);
-        return this.record([...conversation.events, ...completed.events], { ...base, turnId: completed.turnId });
+        const settled = this.interaction.turnCompleted();
+        return this.record([...conversation.events, ...settled, ...completed.events], {
+          ...base,
+          turnId: completed.turnId,
+        });
       }
       case 'tool.start':
+        this.interaction.toolStarted(parsed.payload);
         return this.record(this.tool.start(parsed.payload), base);
       case 'tool.complete': {
         const workspace = normalizeHermesWorkspace(parsed.payload);
-        return this.record([...this.tool.complete(parsed.payload), ...(workspace ? [workspace] : [])], base);
+        return this.record(
+          [
+            ...this.tool.complete(parsed.payload),
+            ...this.interaction.toolCompleted(parsed.payload),
+            ...(workspace ? [workspace] : []),
+          ],
+          base,
+        );
       }
       case 'approval.request':
         return this.record(this.interaction.permission(parsed.payload, parsed.liveSessionId), base);
