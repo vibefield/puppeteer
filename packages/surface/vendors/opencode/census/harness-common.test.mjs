@@ -170,6 +170,74 @@ describe('loopback fetch', () => {
     ]);
     expect(seen[0].connection).toBe('close');
   });
+
+  // The route carrier is the one line-specific piece of the retry record: the
+  // trace keeps its route grammar, never the raw path with the ids in it.
+  const carrier = (path) => ({ route: path.replace(/ses_\w+/, ':sessionID'), carried: path });
+
+  it('re-sends a GET whose pooled socket was reset, recording each retry through the route carrier', async () => {
+    let requests = 0;
+    const origin = await listen((request, response) => {
+      requests += 1;
+      if (requests === 1) {
+        request.socket.destroy();
+        return;
+      }
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end('{"ok":true}');
+    });
+    const trace = [];
+    const response = await createLoopbackFetch(carrier)(
+      new URL('/session/ses_abc?directory=x', origin),
+      {},
+      { trace, path: '/session/ses_abc?directory=x' },
+    );
+    expect(await response.json()).toEqual({ ok: true });
+    expect(requests).toBe(2);
+    expect(trace).toEqual([
+      {
+        direction: 'client-transport',
+        retry: {
+          method: 'GET',
+          route: '/session/:sessionID?directory=x',
+          carried: '/session/ses_abc?directory=x',
+          attempt: 1,
+          failure: expect.stringMatching(/^(?:ECONNRESET|UND_ERR_SOCKET)$/),
+        },
+      },
+    ]);
+  });
+
+  it('gives up after the third reset, falling back to the URL path when no path is given', async () => {
+    let requests = 0;
+    const origin = await listen((request) => {
+      requests += 1;
+      request.socket.destroy();
+    });
+    const trace = [];
+    await expect(createLoopbackFetch(carrier)(new URL('/session/ses_abc', origin), {}, { trace })).rejects.toThrow(
+      'fetch failed',
+    );
+    expect(requests).toBe(3);
+    expect(trace.map((record) => [record.retry.route, record.retry.attempt])).toEqual([
+      ['/session/:sessionID', 1],
+      ['/session/:sessionID', 2],
+    ]);
+  });
+
+  it('never re-sends a reset POST', async () => {
+    let requests = 0;
+    const origin = await listen((request) => {
+      requests += 1;
+      request.socket.destroy();
+    });
+    const trace = [];
+    await expect(
+      createLoopbackFetch(carrier)(new URL('/session', origin), { method: 'POST', body: '{}' }, { trace }),
+    ).rejects.toThrow('fetch failed');
+    expect(requests).toBe(1);
+    expect(trace).toEqual([]);
+  });
 });
 
 describe('SSE JSON stream', () => {
