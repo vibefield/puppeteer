@@ -17,8 +17,7 @@ capture them again through the governed census.
 | --- | --- | --- |
 | 2026-11-03, linux-x64 | `@opencode/cli-linux-x64@2.2.5`, tarball sha256 `92690eee07a680d3cb760ca02ba43878de9eab1b4e5d5dfae8795518c53628f4`, `bin/opencode` sha256 `8d060e1d2fbb9bb44cf09ae6ed1f3f6a7cff070b5227e2f90970132b23a92050` | empty home, environment-only password, no model or account |
 | 2026-11-04, darwin-arm64 | `@opencode/cli-darwin-arm64@2.2.5`, tarball sha256 `dfd827de3281b4c3ca2b0bfc8f4beb103fa660c419d148a1a515c4344f9e9c02` (sha1/sha512 match npm), `bin/opencode` sha256 `abe4d88594bffb12b364375b8a6732d2d1f7a977195ed1a35c5c76f8e89c9e0e`, signed TeamIdentifier `5NZ4Q7NXJ4`. A seed `opencode-darwin-arm64@1.19.5` (`bin/opencode` sha256 `feaafead…f83596c`, the ledger's darwin-arm64 artifact) built a 1.x store for the in-place test. | `env -i`, private HOME/XDG/TMPDIR, `OPENCODE_DISABLE_AUTOUPDATE=1` and `autoupdate:false`, 127.0.0.1 only, password generated in memory and passed only through the environment. The only provider was a loopback fake shaped like the census harness's, used for one 1.19.5 request. Port 49374 (the 2.x background service default) had no listener before or after, and the real `~/.local/state/opencode` was unchanged. |
-
-| 2026-11-04 (A5), darwin-arm64 | the same `@opencode/cli-darwin-arm64@2.2.5` `bin/opencode`, sha256 `abe4d885…c89e0e` re-checked before use, TeamIdentifier `5NZ4Q7NXJ4` | as above, one fresh root per scenario, `--server` on every server-backed CLI call. Loopback fake provider (OpenAI-compatible SSE) and a stdio MCP server written for the probe; synthetic API keys only, redacted from every saved output. `lsof` on the server found no off-loopback socket at boot, after a turn, or at the end of any scenario. Port 49374 had no listener and the real `~/.local/{state,share}/opencode` files kept their size and mtime. |
+| 2026-11-04 (A5), darwin-arm64 | the same `@opencode/cli-darwin-arm64@2.2.5` `bin/opencode`, sha256 `abe4d885…c89e0e` re-checked before use, TeamIdentifier `5NZ4Q7NXJ4` | as above, one fresh root per scenario, `--server` on every server-backed CLI call. Loopback fake provider (OpenAI-compatible SSE) and a stdio MCP server written for the probe; synthetic API keys only, redacted from every saved output. `lsof` on the `serve` process and its children found no off-loopback socket in the `a5:a-*` runs (at boot, after the first turn and at the end) or at the end of `a5:b-ext` and `a5:b-ext-compat`. The two `a5:b-auth` servers and the short-lived CLI calls (`auth`/`mcp`/`plugin`/`models` over `--server`, `auth export/import`, the offline `debug paths` and `--version`/`--help` parser probes) were not socket-checked. Port 49374 had no listener and the real `~/.local/{state,share}/opencode` files kept their size and mtime. |
 
 The 2026-11-04 outputs (redacted) and the upstream source at `9bbb8ce` were kept in the session scratchpad
 (`…/scratchpad/oc2/lane-probe/out/NN-*.json|txt|sse`, cited below as `probe:NN`; the A5 run is `…/scratchpad/oc2/a5/out`,
@@ -157,9 +156,11 @@ persona, and adapter normalization, not a version bump.
 
 Probe results under the A5 governance in §4, with upstream source at `v2.2.5` read as text. Not Surface evidence.
 
-**(i) The loopback fake provider works through 2.x config; model-backed scenarios are capturable.** Three variants
-each completed three turns (text, text with a caller id, and a tool call) with `session.execution.succeeded`, four
-requests to the fake provider and no off-loopback socket (`a5:a-native`, `a5:a-v1shape`, `a5:a-filev1`):
+**(i) The loopback fake provider works through 2.x config; text turns are capturable, the tool-success path is not yet
+shown.** Three variants each completed three turns (text, text with a caller id, and a scripted tool call) with
+`session.execution.succeeded`, four requests to the fake provider and no off-loopback socket on the server
+(`a5:a-native`, `a5:a-v1shape`, `a5:a-filev1`). In every variant the tool call failed (`session.tool.failed`, one per
+variant, see below) and no `session.tool.success` was observed, so a successful 2.x tool call is still undemonstrated:
 
 - *Native 2.x shape* in `OPENCODE_CONFIG_CONTENT`: `model: "test/test-model"`, `providers.test = {name, package:
   "@ai-sdk/openai-compatible", settings: {apiKey, baseURL}, models: {"test-model": {name, capabilities: {tools,
@@ -180,7 +181,7 @@ requests to the fake provider and no off-loopback socket (`a5:a-native`, `a5:a-v
   websearch write execute`. A 1.x-shaped `read {filePath}` call failed with `session.tool.failed` (`error.type:
   "tool.execution"`, "Invalid arguments for tool \"read\": path: Missing key", `executed: false`) and the turn still
   succeeded. Every scripted tool call in the 2.x census must use the 2.x input schemas (`read {path}`, `shell`, not
-  `bash`, `subagent`, not `task`).
+  `bash`, `subagent`, not `task`). The source names these schemas; no probe has yet run one to `session.tool.success`.
 - A text turn emits `session.inbox.enqueued → execution.started → instructions.updated (first turn only) →
   inbox.delivered → step.started → reasoning.started/delta/ended → text.started/delta/ended → step.streamed →
   step.ended → usage.updated → execution.succeeded`. `*.delta` and `usage.updated` are not durable; everything else
@@ -275,16 +276,23 @@ update API, metadata only):
   `OPENCODE_DISABLE_AUTOUPDATE=1`, and a managed profile should write `update: "disable"` into its config directory.
 
 **(vii) Windows executable name: `bin/opencode.exe`** in `@opencode/cli-windows-x64`, `-x64-baseline` and `-arm64`
-2.2.5 (unpkg file listings; 259,169,160 / 259,169,160 / 239,739,784 bytes). The installer renames nothing
+2.2.5 (unpkg `?meta` file listings, `a5:unpkg-win.json` for x64 and, re-fetched after review on 2026-11-04,
+`a5:unpkg-windows-x64-baseline.json` and `a5:unpkg-windows-arm64.json`; 259,169,160 / 259,169,160 / 239,739,784 bytes;
+each package also holds only `package.json`, which matches npm's `fileCount`). The installer renames nothing
 (`opencode.exe`) and adds `opencode2.cmd`.
 
 **CLI parser** (`draft/opencode-2/invocation-grammar.json`; effect/cli 4.0.6 source, the catalog pin, and offline
 `debug paths`/`--version` probes): `--flag=value`, `-f=value`, short clusters, booleans with an inline value or a
-following `true|false|yes|no|on|off|1|0`, `--no-<flag>` negation, `--` ends options, and a value flag never consumes an
-option-like token. `--help`, `--version` and `--completions` are extracted before parsing, so `--bogus --version` and
-`--session --version` both print the version and exit 0. An unknown flag is exit 1 with `Unrecognized flag`. Hidden
-root and `run` flags: `--yolo`, `--dangerously-skip-permissions`; hidden `mini --demo`. The first `debug paths` on a
-fresh home did not finish within 20 s and was killed; repeats returned at once. Not investigated.
+following `true|false|yes|no|y|n|on|off|1|0`, `--no-<flag>` negation, `--` ends options, and a value flag never consumes
+an option-like token. `--help`, `--version` and `--completions` are extracted before parsing, so `--bogus --version` and
+`--session --version` both print the version and exit 0. An unknown flag is exit 1 with `Unrecognized flag`. Hidden root
+and `run` flags: `--yolo`, `--dangerously-skip-permissions`; hidden `mini --demo`. The first `debug paths` on a fresh
+home did not finish within 20 s and was killed; repeats returned at once. Not investigated, and its sockets were not
+checked. Core's `readNativeInvocationArguments` reads the proposed grammar more narrowly than effect/cli: only
+`true|false` literals, no `--no-<flag>`, and no help/version extraction past an unknown flag or a missing value. The
+grammar file lists each case with Core's actual reading (`coreDivergences`). All of them fail closed. The one fail-open
+case, Core reading `-sfoo` as `-s foo` where effect/cli lexes `-s -f -o -o`, is why the proposal sets
+`shortClusters: false`.
 
 ## 3. Decision: who owns 2.x
 
@@ -393,13 +401,15 @@ a vendor directory, model folder, ledger entry or adapter package for 2.x. Part 
    only in scratch with sha256 recorded, isolated homes, `--server` always, autoupdate off.
 6. **Draft the 2.x invocation grammar and event contract as data under `draft/`**, from the help tree and
    `packages/protocol`/`packages/schema` at the exact tag, so either option's census can consume them. **Done
-   2026-11-04:** `draft/opencode-2/invocation-grammar.json` (the 48 parsed help pages, parser traits, the offline
-   parser probes, hidden flags from `commands.ts`, and a proposed `NativeInvocationGrammar` for the TUI root) and
-   `draft/opencode-2/event-contract.json` (transport and envelope rules, then 107 current event types from every
-   `Event.durable`/`Event.ephemeral` call in `packages/schema/src`: durability, durable version and aggregate
-   (`sessionID` or `projectID`), data fields, whether the type is on the public stream (96 plus `server.connected`),
-   and the keys seen in 267 probe frames for 41 types; the 14 `v1/` legacy definitions are listed apart). The upstream
-   source was read as text, not executed, so field schemas are source expressions and spreads from other files stay
+   2026-11-04:** `draft/opencode-2/invocation-grammar.json` (the 48 parsed help pages, parser traits, the offline parser
+   probes, hidden flags from `commands.ts`, a proposed `NativeInvocationGrammar` for the TUI root, and where Core reads
+   that grammar differently from effect/cli) and `draft/opencode-2/event-contract.json` (transport and envelope rules,
+   then 107 current event types from every `Event.durable`/`Event.ephemeral` call in `packages/schema/src`: durability,
+   durable version and aggregate (`sessionID` or `projectID`), data fields, whether the type is on the public stream (96
+   plus `server.connected`), and the keys seen in 288 probe frames for 45 types, with the captures each type came from;
+   the B probes kept only their MCP and credential frames; the 14 `v1/` legacy definitions are listed apart). The
+   upstream source was read as text, not executed, so field schemas are source expressions. Same-file spreads, including
+   `Name.fields` of a `Schema.Struct`, are resolved; the one spread from another file (`session.moved`) stays
    unresolved. HTTP operations stay with `/openapi.json` (A4's OpenAPI 3.1 projection).
 
 ### B. After the decision
@@ -440,7 +450,9 @@ a vendor directory, model folder, ledger entry or adapter package for 2.x. Part 
 - How long does upstream keep shipping 1.x? No release, snapshot or `v1` commit since 2026-10-28 while 2.x shipped five
   patches and daily snapshots; no EOL notice. This sets the timing of the §3 exit rule and weighs on (a) vs (b).
 - ~~Can the census's fake provider drive 2.x model turns (A5 i)?~~ Yes, in both config shapes (§2.5 i). Still open for
-  the census: the 2.x tool input schemas for every scripted tool call, and answering the title-generation request.
+  the census: no 2.x tool call has yet succeeded (every probed one failed on 1.x-shaped input, and
+  `session.tool.success` is unobserved), so the census's first tool scenario must show the success path with the 2.x
+  input schemas; and the census provider must answer the title-generation request.
 - Code Mode puts MCP tools behind `execute`. How a tool call made inside `execute` appears on the event stream
   (`session.tool.progress` rows? nested ids?) is unprobed and decides how the adapter reports MCP tool activity.
 - Where should a managed 2.x profile keep secrets? The `credential` table stores keys in the clear in `opencode.db`,
@@ -450,7 +462,8 @@ a vendor directory, model folder, ledger entry or adapter package for 2.x. Part 
   dir therefore also drops the user's own skills and MCP servers; decide whether profiles point it at the profile root
   or leave it unset and rely on `OPENCODE_CONFIG_CONTENT`.
 - The first `debug paths` on a fresh home hung for over 20 s once (§2.5 parser note). Check whether first-launch
-  initialization also delays `serve` readiness before the census sets its timeouts.
+  initialization also delays `serve` readiness before the census sets its timeouts, and socket-check the CLI calls
+  (that one included): the A5 loopback check covered only the `serve` process, and not the `a5:b-auth` servers.
 - `opencode-ai@1.x` clients run `opencode upgrade --major` to move to 2. A Puppeteer-managed 1.x binary must not
   self-upgrade. 1.19.0 made autoupdate notify-only ("Updates are never installed automatically"; upstream
   `v1.19.0` `packages/opencode/src/cli/upgrade.ts`, recorded in the Surface findings §0.7), and the census keeps

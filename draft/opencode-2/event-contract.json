@@ -11,9 +11,9 @@
   },
   "status": "Draft. Probe results and upstream source read as text, recorded 2026-11-04 for draft/OPENCODE-2-MIGRATION-PLAN.md §4 A6. Not Surface evidence: the 2.x census must capture every row again.",
   "sources": {
-    "definitions": "packages/schema/src/**/*.ts at v2.2.5: every Event.durable/Event.ephemeral call, read as text (spreads of same-file consts resolved; cross-file spreads kept as `spread`)",
+    "definitions": "packages/schema/src/**/*.ts at v2.2.5: every Event.durable/Event.ephemeral call, read as text. Same-file spreads are resolved, both plain field objects and `Name.fields` of a `Schema.Struct`; a spread from another file is kept as `spread` (only `session.moved`: `SessionInbox.MovePayload.fields`, session-inbox.ts)",
     "publicTypes": "`types` enum of GET /api/event in the 2.2.5 /openapi.json (sha256 f5c4571b…, byte-identical on linux-x64 and darwin-arm64)",
-    "observed": "267 frames from the 2026-11-04 probes (model-free lifecycle, permission/form, reconnect, and three fake-provider turns)"
+    "observed": "288 frames from the 2026-11-03/04 probes: probe:22 and probe:31 (model-free lifecycle, permission/form, reconnect), a5:a-* (three fake-provider turns in each of three config shapes), and the MCP and credential frames a5:b-ext, a5:b-ext-compat and a5:b-auth kept (those probes did not keep their whole stream). `seenIn` names the captures per type; an unobserved type is `null`"
   },
   "transport": {
     "route": "GET /api/event",
@@ -54,7 +54,7 @@
     "currentTypes": 107,
     "durableTypes": 48,
     "publicTypes": 96,
-    "observedTypes": 41,
+    "observedTypes": 45,
     "legacyV1Definitions": 14
   },
   "events": [
@@ -68,7 +68,8 @@
         "frames": 8,
         "dataKeys": [],
         "withLocation": 8,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
       }
     },
     {
@@ -89,7 +90,8 @@
         "frames": 8,
         "dataKeys": [],
         "withLocation": 8,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
       }
     },
     {
@@ -117,7 +119,13 @@
           "schema": "Schema.NullOr(ID)"
         }
       ],
-      "observed": null
+      "observed": {
+        "frames": 2,
+        "dataKeys": ["credentialID", "integrationID"],
+        "withLocation": 0,
+        "withDurable": 0,
+        "seenIn": ["a5:b-auth"]
+      }
     },
     {
       "type": "credential.updated",
@@ -125,7 +133,13 @@
       "publicStream": true,
       "source": ["credential.ts"],
       "data": [],
-      "observed": null
+      "observed": {
+        "frames": 2,
+        "dataKeys": [],
+        "withLocation": 0,
+        "withDurable": 0,
+        "seenIn": ["a5:b-auth"]
+      }
     },
     {
       "type": "filesystem.changed",
@@ -167,7 +181,8 @@
         "frames": 1,
         "dataKeys": ["id", "sessionID"],
         "withLocation": 1,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["probe:22"]
       }
     },
     {
@@ -186,7 +201,8 @@
         "frames": 2,
         "dataKeys": ["form"],
         "withLocation": 2,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["probe:22"]
       }
     },
     {
@@ -215,7 +231,8 @@
         "frames": 1,
         "dataKeys": ["answer", "id", "sessionID"],
         "withLocation": 1,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["probe:22"]
       }
     },
     {
@@ -261,10 +278,11 @@
       "source": ["integration.ts"],
       "data": [],
       "observed": {
-        "frames": 8,
+        "frames": 9,
         "dataKeys": [],
-        "withLocation": 8,
-        "withDurable": 0
+        "withLocation": 9,
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "a5:b-auth", "probe:22", "probe:31"]
       }
     },
     {
@@ -295,7 +313,13 @@
           "schema": "Schema.String"
         }
       ],
-      "observed": null
+      "observed": {
+        "frames": 6,
+        "dataKeys": ["server"],
+        "withLocation": 6,
+        "withDurable": 0,
+        "seenIn": ["a5:b-ext", "a5:b-ext-compat"]
+      }
     },
     {
       "type": "mcp.status.changed",
@@ -309,7 +333,13 @@
           "schema": "Schema.String"
         }
       ],
-      "observed": null
+      "observed": {
+        "frames": 10,
+        "dataKeys": ["server"],
+        "withLocation": 10,
+        "withDurable": 0,
+        "seenIn": ["a5:b-ext", "a5:b-ext-compat"]
+      }
     },
     {
       "type": "mcp.tools.changed",
@@ -335,7 +365,8 @@
         "frames": 8,
         "dataKeys": [],
         "withLocation": 8,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
       }
     },
     {
@@ -353,14 +384,52 @@
       "source": ["permission.ts"],
       "data": [
         {
-          "spread": "Request.fields"
+          "name": "id",
+          "optional": false,
+          "schema": "ID"
+        },
+        {
+          "name": "sessionID",
+          "optional": false,
+          "schema": "SessionID"
+        },
+        {
+          "name": "action",
+          "optional": false,
+          "schema": "Schema.String"
+        },
+        {
+          "name": "resources",
+          "optional": false,
+          "schema": "Schema.Array(Schema.String)"
+        },
+        {
+          "name": "save",
+          "optional": true,
+          "schema": "Schema.Array(Schema.String).pipe(optional)"
+        },
+        {
+          "name": "metadata",
+          "optional": true,
+          "schema": "Schema.Record(Schema.String, Schema.Unknown).pipe(optional)"
+        },
+        {
+          "name": "source",
+          "optional": true,
+          "schema": "Source.pipe(optional)"
+        },
+        {
+          "name": "message",
+          "optional": true,
+          "schema": "Schema.String.pipe(optional)"
         }
       ],
       "observed": {
         "frames": 3,
         "dataKeys": ["action", "id", "resources", "save", "sessionID"],
         "withLocation": 3,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["probe:31"]
       }
     },
     {
@@ -389,7 +458,8 @@
         "frames": 3,
         "dataKeys": ["reply", "requestID", "sessionID"],
         "withLocation": 3,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["probe:31"]
       }
     },
     {
@@ -459,7 +529,8 @@
         "frames": 8,
         "dataKeys": [],
         "withLocation": 8,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
       }
     },
     {
@@ -469,14 +540,52 @@
       "source": ["project.ts"],
       "data": [
         {
-          "spread": "Info.fields"
+          "name": "id",
+          "optional": false,
+          "schema": "ID"
+        },
+        {
+          "name": "canonical",
+          "optional": false,
+          "schema": "AbsolutePath"
+        },
+        {
+          "name": "vcs",
+          "optional": true,
+          "schema": "optional(Vcs)"
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "schema": "optional(Schema.String)"
+        },
+        {
+          "name": "icon",
+          "optional": true,
+          "schema": "optional(Icon)"
+        },
+        {
+          "name": "commands",
+          "optional": true,
+          "schema": "optional(Commands)"
+        },
+        {
+          "name": "time",
+          "optional": false,
+          "schema": "Time"
+        },
+        {
+          "name": "sandboxes",
+          "optional": false,
+          "schema": "Schema.Array(Schema.String)"
         }
       ],
       "observed": {
         "frames": 11,
         "dataKeys": ["canonical", "id", "sandboxes", "time"],
         "withLocation": 11,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
       }
     },
     {
@@ -489,7 +598,8 @@
         "frames": 8,
         "dataKeys": [],
         "withLocation": 8,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
       }
     },
     {
@@ -563,7 +673,8 @@
         "frames": 8,
         "dataKeys": [],
         "withLocation": 8,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
       }
     },
     {
@@ -577,7 +688,8 @@
         "frames": 5,
         "dataKeys": [],
         "withLocation": 0,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
       }
     },
     {
@@ -611,7 +723,8 @@
         "dataKeys": ["agent", "previous", "sessionID"],
         "withLocation": 0,
         "withDurable": 2,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["probe:31"]
       }
     },
     {
@@ -635,7 +748,8 @@
         "dataKeys": ["sessionID"],
         "withLocation": 0,
         "withDurable": 1,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["probe:31"]
       }
     },
     {
@@ -862,7 +976,8 @@
         ],
         "withLocation": 8,
         "withDurable": 8,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
       }
     },
     {
@@ -950,7 +1065,8 @@
         "dataKeys": ["sessionID"],
         "withLocation": 0,
         "withDurable": 9,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -974,7 +1090,8 @@
         "dataKeys": ["sessionID"],
         "withLocation": 0,
         "withDurable": 9,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -1078,7 +1195,8 @@
         "dataKeys": ["inboxID", "sessionID"],
         "withLocation": 9,
         "withDurable": 9,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -1140,7 +1258,8 @@
         "dataKeys": ["inboxID", "item", "sessionID"],
         "withLocation": 11,
         "withDurable": 11,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:31"]
       }
     },
     {
@@ -1174,7 +1293,8 @@
         "dataKeys": ["delta", "sessionID"],
         "withLocation": 3,
         "withDurable": 3,
-        "durableVersions": [2]
+        "durableVersions": [2],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -1231,7 +1351,8 @@
         "dataKeys": ["metadata", "sessionID"],
         "withLocation": 0,
         "withDurable": 1,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["probe:31"]
       }
     },
     {
@@ -1337,7 +1458,8 @@
         "frames": 9,
         "dataKeys": ["assistantMessageID", "delta", "ordinal", "sessionID"],
         "withLocation": 9,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -1381,7 +1503,8 @@
         "dataKeys": ["assistantMessageID", "native", "ordinal", "sessionID", "text"],
         "withLocation": 9,
         "withDurable": 9,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -1420,7 +1543,8 @@
         "dataKeys": ["assistantMessageID", "native", "ordinal", "sessionID"],
         "withLocation": 9,
         "withDurable": 9,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -1449,7 +1573,8 @@
         "dataKeys": ["sessionID", "title"],
         "withLocation": 0,
         "withDurable": 1,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["probe:31"]
       }
     },
     {
@@ -1718,7 +1843,8 @@
         "dataKeys": ["assistantMessageID", "cost", "finish", "rawFinish", "sessionID", "tokens"],
         "withLocation": 12,
         "withDurable": 12,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -1830,7 +1956,8 @@
         "dataKeys": ["agent", "assistantMessageID", "model", "sessionID", "started"],
         "withLocation": 12,
         "withDurable": 12,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -1859,7 +1986,8 @@
         "dataKeys": ["assistantMessageID", "sessionID"],
         "withLocation": 12,
         "withDurable": 12,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -1926,7 +2054,8 @@
         "frames": 9,
         "dataKeys": ["assistantMessageID", "delta", "ordinal", "sessionID"],
         "withLocation": 9,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -1970,7 +2099,8 @@
         "dataKeys": ["assistantMessageID", "ordinal", "sessionID", "text"],
         "withLocation": 9,
         "withDurable": 9,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -2004,7 +2134,8 @@
         "dataKeys": ["assistantMessageID", "ordinal", "sessionID"],
         "withLocation": 9,
         "withDurable": 9,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -2053,7 +2184,8 @@
         "dataKeys": ["assistantMessageID", "executed", "id", "input", "sessionID"],
         "withLocation": 3,
         "withDurable": 3,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -2112,7 +2244,8 @@
         "dataKeys": ["assistantMessageID", "error", "executed", "id", "sessionID"],
         "withLocation": 3,
         "withDurable": 3,
-        "durableVersions": [2]
+        "durableVersions": [2],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -2180,7 +2313,8 @@
         "dataKeys": ["assistantMessageID", "id", "sessionID", "text"],
         "withLocation": 3,
         "withDurable": 3,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -2219,7 +2353,8 @@
         "dataKeys": ["assistantMessageID", "id", "name", "sessionID"],
         "withLocation": 3,
         "withDurable": 3,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -2320,7 +2455,8 @@
         "dataKeys": ["sessionID"],
         "withLocation": 0,
         "withDurable": 1,
-        "durableVersions": [1]
+        "durableVersions": [1],
+        "seenIn": ["probe:31"]
       }
     },
     {
@@ -2382,7 +2518,8 @@
         "frames": 12,
         "dataKeys": ["cost", "sessionID", "tokens"],
         "withLocation": 0,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape"]
       }
     },
     {
@@ -2470,7 +2607,8 @@
         "frames": 8,
         "dataKeys": [],
         "withLocation": 8,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
       }
     },
     {
@@ -2568,7 +2706,8 @@
         "frames": 8,
         "dataKeys": [],
         "withLocation": 8,
-        "withDurable": 0
+        "withDurable": 0,
+        "seenIn": ["a5:a-filev1", "a5:a-native", "a5:a-v1shape", "probe:22", "probe:31"]
       }
     },
     {
@@ -2606,7 +2745,14 @@
       "source": ["workspace-event.ts"],
       "data": [
         {
-          "spread": "ConnectionStatus.fields"
+          "name": "workspaceID",
+          "optional": false,
+          "schema": "WorkspaceID"
+        },
+        {
+          "name": "status",
+          "optional": false,
+          "schema": "Schema.Literals([\"connected\", \"connecting\", \"disconnected\", \"error\"])"
         }
       ],
       "observed": null

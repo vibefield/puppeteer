@@ -19,7 +19,7 @@
     "library": "effect/cli 4.0.6",
     "longEquals": "--name=value and -n=value attach inline",
     "shortClusters": "-abc lexes as -a -b -c",
-    "booleans": "a boolean flag takes an inline value, or consumes a following literal true/false/yes/no/on/off/1/0; --no-<name> negates it",
+    "booleans": "a boolean flag takes an inline value, or consumes a following literal true/false/yes/no/y/n/on/off/1/0; --no-<name> negates it",
     "values": "a value flag consumes only the next non-option token; an option-like next token is a missing value",
     "endOfOptions": "`--` ends option parsing; the rest are operands",
     "builtIns": "--help/-h, --version/-v and --completions are extracted before command parsing, so they win anywhere in argv, even after an unknown flag or where a value was expected",
@@ -1447,10 +1447,10 @@
     }
   ],
   "draftGrammar": {
-    "$comment": "Shape follows NativeInvocationGrammar in packages/core/src/services/invocation-arguments.ts so the 2.x adapter can adopt it after review. Classifications are proposals.",
+    "$comment": "Shape follows NativeInvocationGrammar in packages/core/src/services/invocation-arguments.ts so the 2.x adapter can adopt it after review. Classifications are proposals. Core reads this grammar more narrowly than effect/cli parses argv: see coreDivergences before adopting it.",
     "booleanEquals": true,
     "booleanValues": true,
-    "shortClusters": true,
+    "shortClusters": false,
     "optionLikeValues": false,
     "equals": true,
     "deferUtilityOptions": false,
@@ -1596,6 +1596,75 @@
       {
         "names": ["mini"],
         "reason": "this native command starts an interactive session the managed launch cannot preserve"
+      }
+    ]
+  },
+  "coreDivergences": {
+    "$comment": "With draftGrammar as written every divergence fails closed: Core rejects some argv the native CLI would run, and accepts none that the native CLI reads differently (shortClusters is false for that reason). A 2.x adapter adopting draftGrammar either accepts these rejections or extends Core first.",
+    "rows": [
+      {
+        "trait": "boolean literals",
+        "native": "a boolean flag takes true/false/yes/no/y/n/on/off/1/0 inline or as the next token (effect 4.0.6 Schema.TrueLiterals/FalseLiterals; `--print-logs false` exit 0, a5:c-parser)",
+        "core": "booleanEquals and booleanValues take only true/false; any other inline value is \"does not take a value\", and a following yes/no/y/n/on/off/1/0 is left as a positional",
+        "examples": [
+          {
+            "argv": ["opencode", "--continue=on"],
+            "core": "rejected at --continue=on: this native flag does not take a value"
+          },
+          {
+            "argv": ["opencode", "--continue", "yes"],
+            "core": "rejected at --continue: the managed launch cannot preserve this option"
+          },
+          {
+            "argv": ["opencode", "--print-logs", "off"],
+            "core": "rejected at --print-logs: the managed launch cannot preserve this option"
+          }
+        ]
+      },
+      {
+        "trait": "--no-<flag> negation",
+        "native": "--no-<name> sets a boolean false (effect/cli source; `debug paths --no-print-logs data` exit 0, a5:c-parser)",
+        "core": "Core has no negation form; --no-<name> is an unknown option",
+        "examples": [
+          {
+            "argv": ["opencode", "--no-continue"],
+            "core": "rejected at --no-continue: the adapter does not know this option or its arity"
+          }
+        ]
+      },
+      {
+        "trait": "built-ins anywhere",
+        "native": "--help/-h, --version/-v and --completions are extracted before parsing and win anywhere (`--bogus --version` and `--session --version` exit 0 printing the version, a5:c-parser)",
+        "core": "Core reads left to right and stops at the first unknown option or missing value, so a later utility flag is never reached",
+        "examples": [
+          {
+            "argv": ["opencode", "--bogus", "--version"],
+            "core": "rejected at --bogus: the adapter does not know this option or its arity"
+          },
+          {
+            "argv": ["opencode", "--session", "--version"],
+            "core": "rejected at --session: this native option requires a value"
+          }
+        ]
+      },
+      {
+        "trait": "short clusters and attached short values",
+        "native": "every character after a single dash is its own flag (effect 4.0.6 cli/internal/lexer.ts): `-cs x` is -c -s x, and `-sfoo` is -s -f -o -o, a missing value for -s; only `-s=foo` attaches a value. Source only, not probed",
+        "core": "with shortClusters, Core reads `-sfoo` as -s foo, getopt style, and would accept an argv the native CLI rejects. draftGrammar therefore sets shortClusters false: clusters and attached short values are rejected, and `-s=foo` still reads through equals",
+        "examples": [
+          {
+            "argv": ["opencode", "-sfoo"],
+            "core": "rejected at -sfoo: the adapter does not know this option or its arity"
+          },
+          {
+            "argv": ["opencode", "-cs", "ses_x"],
+            "core": "rejected at -cs: the adapter does not know this option or its arity"
+          },
+          {
+            "argv": ["opencode", "-s=ses_x"],
+            "core": "accepted [\"--session\",\"ses_x\"]"
+          }
+        ]
       }
     ]
   }
