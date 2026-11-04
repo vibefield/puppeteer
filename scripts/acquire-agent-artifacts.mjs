@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { validateInstalledConsoleManifest } from './lib/installed-console-contract.mjs';
 import { verifyRuntimeBundleFiles } from './lib/runtime-bundle-contract.mjs';
 
+import { verifyReleaseBundle } from './lib/release-bundle.mjs';
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
 function json(path) {
@@ -88,8 +90,6 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
   const upstreamPath = join(repoRoot, 'packages', 'surface', 'vendors', vendor, 'upstream.json');
   if (!existsSync(upstreamPath)) throw new Error(`no upstream policy for ${vendor}`);
   const upstream = json(upstreamPath);
-  const expectedArtifactKind =
-    upstream.acquisition?.strategy === 'source-revision' ? 'installed-console' : 'standalone-executable';
   const requiredPlatforms = upstream.platforms ?? [];
   const supplied = new Map();
   const issues = [];
@@ -122,6 +122,13 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
     } else if (!versionPattern.test(versionOutput)) {
       issues.push(`${platform} version output does not identify ${version}`);
     }
+    const spec = upstream.acquisition?.artifacts?.[platform];
+    const expectedArtifactKind =
+      upstream.acquisition?.strategy === 'source-revision'
+        ? 'installed-console'
+        : spec?.bundle
+          ? 'release-bundle'
+          : 'standalone-executable';
     const artifactKind = artifact.artifactKind ?? expectedArtifactKind;
     if (artifactKind !== expectedArtifactKind) {
       issues.push(`${platform} is ${artifactKind}, expected ${expectedArtifactKind}`);
@@ -147,6 +154,25 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
         identity = installedConsoleIdentity(manifest);
       } catch (error) {
         issues.push(`${platform} installed-console manifest is invalid: ${error.message}`);
+      }
+    }
+    if (artifactKind === 'release-bundle') {
+      try {
+        const { manifest } = verifyReleaseBundle(absolute, {
+          vendor,
+          version,
+          platform,
+          policy: spec?.bundle,
+          format: spec?.format,
+        });
+        identity = {
+          archiveSha256: manifest.archive.sha256,
+          treeSha256: manifest.tree.sha256,
+          entrySha256: manifest.tree.entrySha256,
+          entry: manifest.tree.entry,
+        };
+      } catch (error) {
+        issues.push(`${platform} release bundle is invalid: ${error.message}`);
       }
     }
     const prior = known.get(platform);

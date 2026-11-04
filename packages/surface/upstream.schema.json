@@ -69,6 +69,16 @@
                     "items": { "type": "string", "pattern": "^https://.*\\$\\{version\\}" }
                   },
                   "format": { "enum": ["binary", "tar.gz", "zip"] },
+                  "bundle": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["entry", "rootFiles", "maxExtractedBytes"],
+                    "properties": {
+                      "entry": { "type": "string", "minLength": 1 },
+                      "rootFiles": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+                      "maxExtractedBytes": { "type": "integer", "minimum": 1, "maximum": 1073741824 }
+                    }
+                  },
                   "executableBasenames": {
                     "type": "array",
                     "minItems": 1,

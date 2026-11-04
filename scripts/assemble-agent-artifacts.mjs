@@ -55,11 +55,13 @@ export function acquisitionBundles({ repoRoot = root, vendor, version, directory
     const artifact =
       metadata.artifactKind === 'installed-console'
         ? join(bundle, 'installed-console.json')
-        : ['agent', 'agent.exe'].map((name) => join(bundle, name)).find(existsSync);
+        : metadata.artifactKind === 'release-bundle'
+          ? join(bundle, 'release-bundle.json')
+          : ['agent', 'agent.exe'].map((name) => join(bundle, name)).find(existsSync);
     if (
       !artifact ||
       !existsSync(artifact) ||
-      !['standalone-executable', 'installed-console'].includes(metadata.artifactKind)
+      !['standalone-executable', 'installed-console', 'release-bundle'].includes(metadata.artifactKind)
     ) {
       throw new Error(`acquisition bundle for ${platform} has no supported artifact`);
     }

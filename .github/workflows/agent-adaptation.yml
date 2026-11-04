@@ -97,8 +97,8 @@ jobs:
         with:
           node-version: ${{ steps.policy.outputs.nodeVersion }}
 
-      - name: Download reviewed standalone executable bytes
-        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
+      - name: Download reviewed executable or release bundle
+        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' || steps.policy.outputs.artifactKind == 'release-bundle' }}
         run: >-
           node scripts/download-agent-artifact.mjs
           --vendor "${{ inputs.vendor }}"
@@ -108,7 +108,7 @@ jobs:
           --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
 
       - name: Probe exact version in a disposable home
-        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
+        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' || steps.policy.outputs.artifactKind == 'release-bundle' }}
         run: >-
           node scripts/probe-agent-artifact.mjs
           --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"

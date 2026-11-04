@@ -5,6 +5,8 @@ import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { verifyReleaseBundle } from './lib/release-bundle.mjs';
+
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
 function safePath(path) {
@@ -26,7 +28,7 @@ export function validateVersionOutput(output, version) {
 
 export function validateProbeMetadata(metadata, { artifact, version }) {
   if (!metadata || typeof metadata !== 'object') throw new Error('download metadata is required');
-  if (metadata.artifactKind !== 'standalone-executable') {
+  if (!['standalone-executable', 'release-bundle'].includes(metadata.artifactKind)) {
     throw new Error(`cannot execute artifact kind ${metadata.artifactKind ?? 'unknown'}`);
   }
   if (metadata.version !== version) throw new Error('download metadata version differs from the probe');
@@ -34,11 +36,35 @@ export function validateProbeMetadata(metadata, { artifact, version }) {
   return metadata;
 }
 
-export function probeAgentArtifact({ artifact, artifactKind, version, output, home, environment = process.env }) {
-  if (artifactKind !== 'standalone-executable') {
+export function probeAgentArtifact({
+  artifact,
+  artifactKind,
+  vendor,
+  platform,
+  version,
+  output,
+  home,
+  environment = process.env,
+}) {
+  if (!['standalone-executable', 'release-bundle'].includes(artifactKind)) {
     throw new Error(`cannot execute artifact kind ${artifactKind ?? 'unknown'}`);
   }
-  const artifactPath = safePath(artifact);
+  let artifactPath = safePath(artifact);
+  let verifyBundle;
+  if (artifactKind === 'release-bundle') {
+    if (!/^[a-z][a-z0-9-]*$/.test(vendor ?? '')) throw new Error('release bundle vendor is required');
+    const config = JSON.parse(readFileSync(safePath(`packages/surface/vendors/${vendor}/upstream.json`), 'utf8'));
+    const spec = config.acquisition?.artifacts?.[platform];
+    verifyBundle = () =>
+      verifyReleaseBundle(safePath(artifact), {
+        vendor,
+        version,
+        platform,
+        policy: spec?.bundle,
+        format: spec?.format,
+      });
+    artifactPath = verifyBundle().executable;
+  }
   const outputPath = safePath(output);
   const homePath = safePath(home);
   mkdirSync(homePath, { recursive: true });
@@ -60,6 +86,7 @@ export function probeAgentArtifact({ artifact, artifactKind, version, output, ho
       `artifact version probe failed: ${result.error?.message ?? result.stderr ?? `exit ${result.status}`}`,
     );
   }
+  verifyBundle?.();
   const value = validateVersionOutput(result.stdout || result.stderr, version);
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, `${value}\n`);
@@ -85,6 +112,8 @@ if (invokedDirectly) {
     probeAgentArtifact({
       artifact,
       artifactKind: metadata.artifactKind,
+      vendor: metadata.vendor,
+      platform: metadata.platform,
       version,
       output: flag('--output'),
       home: flag('--home'),
