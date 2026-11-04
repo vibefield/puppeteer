@@ -71,6 +71,17 @@ describe('adapter-supplied invocation argument mechanics', () => {
     });
   });
 
+  it('never consumes the next argument for a require-equals option', () => {
+    const sync: NativeInvocationGrammar = {
+      ...grammar,
+      options: [...grammar.options, { names: ['--sync'], arity: 'optional', requireEquals: true }],
+    };
+    expect(read(['--sync', 'login'], sync)).toMatchObject({ status: 'passthrough', kind: 'utility' });
+    expect(read(['--sync=off'], sync)).toMatchObject({ status: 'rejected', argument: '--sync=off' });
+    expect(read(['--sync', 'prompt'], sync)).toMatchObject({ status: 'rejected', argument: '--sync' });
+    expect(read(['--resume', 'login'], grammar)).toEqual({ status: 'accepted', argv: ['--resume', 'login'] });
+  });
+
   it('does not treat a variadic option value as a command', () => {
     expect(read(['--allow', 'login'], grammar)).toMatchObject({ status: 'rejected', argument: '--allow' });
     expect(read(['--allow', 'login', '-p', 'hello'], grammar)).toMatchObject({
