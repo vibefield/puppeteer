@@ -225,8 +225,25 @@ def path_is_within(path: Path, roots: list[Path]) -> tuple[Path, Path] | None:
     return None
 
 
+def generated_console_launchers(distribution, scripts_root: Path, windows: bool) -> set[Path]:
+    # Windows includes sys.prefix itself in site.getsitepackages(), so its generated
+    # Scripts/*.exe launchers otherwise leak into the installed-package inventory.
+    # Their embedded environment paths and ZIP offsets change between build roots.
+    # Only declared entry-point launchers are excluded; metadata and package bytes stay hashed.
+    launchers = set()
+    for entry in distribution.entry_points:
+        if entry.group not in ("console_scripts", "gui_scripts"):
+            continue
+        name = entry.name
+        if not name or name in (".", "..") or "/" in name or "\\" in name:
+            raise ValueError("unsafe installed entry-point name")
+        launchers.add((scripts_root / (f"{name}.exe" if windows else name)).resolve())
+    return launchers
+
+
 def stable_distribution_files(
-    distribution, site_roots: list[Path], normalized_roots: list[Path]
+    distribution, site_roots: list[Path], normalized_roots: list[Path],
+    generated_launchers: set[Path] | None = None,
 ) -> tuple[int, str]:
     entries: list[tuple[str, str]] = []
     files = distribution.files
@@ -234,6 +251,8 @@ def stable_distribution_files(
         raise ValueError(f"distribution {distribution.metadata['Name']} has no installed-file inventory")
     for package_path in files:
         located = Path(distribution.locate_file(package_path)).resolve()
+        if generated_launchers is not None and located in generated_launchers:
+            continue
         within = path_is_within(located, site_roots)
         if within is None:
             continue
@@ -314,7 +333,12 @@ def inventory_console(arguments: argparse.Namespace) -> None:
         if name in seen_names:
             raise ValueError(f"Python environment repeats distribution {name}")
         seen_names.add(name)
-        file_count, files_sha256 = stable_distribution_files(distribution, site_roots, [prefix, source_root])
+        launchers = generated_console_launchers(
+            distribution, Path(sysconfig.get_path("scripts")).resolve(), os.name == "nt"
+        )
+        file_count, files_sha256 = stable_distribution_files(
+            distribution, site_roots, [prefix, source_root], launchers
+        )
         entry = {
             "name": name,
             "version": distribution.version,
