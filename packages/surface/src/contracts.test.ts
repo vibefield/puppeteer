@@ -341,6 +341,8 @@ describe('exact-source event contracts', () => {
     };
     expect(validatePayload(created!.recordSchema, record)).toEqual([]);
     expect(validatePayload(created!.recordSchema, { ...record, data: JSON.stringify(record.data) })).toEqual([]);
+    expect(validatePayload(created!.recordSchema, { ...record, data: 'not json' })).not.toEqual([]);
+    expect(validatePayload(created!.recordSchema, { ...record, data: '{"sessionID":"x_1"}' })).not.toEqual([]);
     expect(validatePayload(created!.recordSchema, { ...record, type: 'session.deleted' })).not.toEqual([]);
     const { durable: _durable, ...volatile } = record;
     expect(validatePayload(created!.recordSchema, volatile)).not.toEqual([]);
@@ -360,6 +362,11 @@ describe('exact-source event contracts', () => {
     expect(validatePayload(objectSchema, record)).toEqual([]);
     expect(validatePayload(objectSchema, { ...record, data: '{"id":"per_1"}' })).not.toEqual([]);
     expect(validatePayload(stringSchema, { ...record, data: '{"id":"per_1"}' })).toEqual([]);
+    // The json-string arm asserts its content, not only its type.
+    expect(validatePayload(stringSchema, { ...record, data: 'not json' })).toEqual([
+      'field "data" is not the JSON document its contentMediaType declares',
+    ]);
+    expect(validatePayload(stringSchema, { ...record, data: '{"x":1}' })).toEqual(['missing required field "data.id"']);
     expect(validatePayload(stringSchema, record)).not.toEqual([]);
   });
 

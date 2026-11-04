@@ -571,6 +571,11 @@ function enumContains(values: readonly unknown[], candidate: unknown): boolean {
   });
 }
 
+/** `application/json` or a structured `+json` suffix type, parameters allowed. */
+function jsonMediaType(mediaType: string | undefined): boolean {
+  return mediaType !== undefined && /^application\/(?:[\w.-]+\+)?json\s*(?:;.*)?$/i.test(mediaType);
+}
+
 function validateSchemaNode(
   schema: PayloadSchemaNode,
   value: unknown,
@@ -690,6 +695,26 @@ function validateSchemaNode(
     }
     if (schema.pattern !== undefined && !new RegExp(schema.pattern, 'u').test(value)) {
       violations.push(`${label} does not match pattern ${schema.pattern}`);
+    }
+    // An encoded JSON document (OpenAPI 3.1 `contentMediaType` + `contentSchema`)
+    // is asserted, not only annotated: an exact-source contract's json-string
+    // arm would otherwise accept any string at all. A transfer encoding
+    // (`contentEncoding`) is outside the subset and stays an annotation.
+    if (
+      schema.contentSchema !== undefined &&
+      schema.contentEncoding === undefined &&
+      jsonMediaType(schema.contentMediaType)
+    ) {
+      let decoded: unknown;
+      let parsed = true;
+      try {
+        decoded = JSON.parse(value);
+      } catch {
+        parsed = false;
+      }
+      if (!parsed) violations.push(`${label} is not the JSON document its contentMediaType declares`);
+      else
+        validateSchemaNode(schema.contentSchema, decoded, path, violations, root, depth + 1, allowRedactedPlaceholders);
     }
   }
   if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
