@@ -31,7 +31,8 @@ export const KIMI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     contractVersion: KIMI_CONTRACT,
     limitations: [
       'Request input occupancy is exact, but the durable wire exposes no context capacity.',
-      'llm.request.maxTokens is a completion limit and is never treated as context capacity.',
+      // Source still declares llm.request.maxTokens, but no 2.4.1 capture persists it.
+      'llm.request.maxTokens, when persisted, is a completion limit and is never treated as context capacity.',
       'Real-time context-window percentage is unavailable.',
     ],
   },
