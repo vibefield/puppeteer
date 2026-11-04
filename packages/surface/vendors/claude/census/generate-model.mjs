@@ -1281,13 +1281,13 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
     ],
     limitations: [
       `Artifact integrity and controlled runtime captures currently cover only ${artifactPlatform}; protected promotion still requires every configured platform.`,
-      'No lane uses an account or credential. Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.',
+      'No committed lane sends a model anything but the placeholder ANTHROPIC_AUTH_TOKEN: the API-error and interactive lanes talk to a census loopback model, and the init and credential-less print lanes set no token (a credential-less print lane is committed only where it made no model request). Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.',
       'Not reached by any lane: Setup outside --init-only, UserPromptExpansion, PermissionDenied (auto mode), TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate, WorktreeRemove, Elicitation, ElicitationResult, PostModelSwitch outside a /model switch, mcp_server on MCP tool events, scratchpad_dir, and PostToolUse(Bash) tool_response.bashEditDiff.',
       'The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim.',
       ...(modes.includes('headless')
         ? []
         : [
-            'No credential-less headless lane: on the census host the artifact presented a credential the disposable environment does not hold, so that lane could not run without one (findings.md).',
+            "No credential-less headless lane: on the census host the artifact presented a credential the disposable environment does not hold, so that lane could not run without one (findings.md). The committed lanes redirected only the model endpoint: egress to the artifact's hard-coded account and OAuth endpoints (api.anthropic.com, platform.claude.com) was neither recorded nor blocked in that run.",
           ]),
     ],
   });

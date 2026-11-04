@@ -38,10 +38,21 @@ captures were discarded (kept only in the gitignored `captures-raw/`, never sani
 and two changes follow:
 
 - `census/isolation.mjs` now defaults `ANTHROPIC_BASE_URL` to `http://127.0.0.1:0`, which refuses every
-  connection; lanes with a loopback model override it. With it, every census, generator, invocation
-  and switch execution in this candidate either talked to the harness's loopback model or failed
-  with ECONNREFUSED. (On a host where the artifact holds no credential, the default changes nothing:
-  2.1.308's headless lane made no request.)
+  connection; lanes with a loopback model override it. With it, the **model traffic** of every census,
+  generator, invocation and switch execution in this candidate either reached the harness's loopback
+  model or failed with ECONNREFUSED. (On a host where the artifact holds no credential, the default
+  changes nothing: 2.1.308's headless lane made no request.) That default redirects only the model
+  endpoint. The binary's hard-coded account and OAuth endpoints (`BASE_API_URL`: `api.anthropic.com`,
+  `platform.claude.com`) are not covered by it, and the host credential stayed readable to the
+  artifact, so for the committed 2.1.311 runs non-model egress was **neither recorded nor blocked**;
+  "no non-loopback egress" is not claimed for them.
+- Since then the census closes and records that egress too: every HTTP(S) proxy variable points at a
+  refusing loopback port or at a census-owned recorder (`census/egress-guard.mjs`) that refuses every
+  CONNECT and keeps only the destination host and port, with only loopback exempt through `NO_PROXY`.
+  The harness, interactive lane and switch probes fail any lane that attempted a non-loopback
+  destination, and the headless lane's model endpoint is a loopback tripwire that refuses the run if
+  any request reaches it. No committed capture was taken with these guards yet, and a client that
+  ignores the proxy variables would still need a network-deny sandbox.
 - The committed set has **no `headless` mode**. The credential-less print path ("no credential →
   StopFailure `authentication_failed`, no request") needs a host where the artifact holds no
   credential; it remains evidenced only by the 2.1.308 darwin-arm64 capture. StopFailure stays
