@@ -106,5 +106,12 @@ if (invokedDirectly) {
   const output = safePath(flag('--output'));
   mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
-  if (report.status !== 'complete') process.exitCode = 1;
+  if (report.status !== 'complete') {
+    console.error(`Artifact acquisition refused: ${report.status}`);
+    for (const issue of report.issues ?? []) console.error(issue);
+    for (const artifact of report.republished ?? []) {
+      console.error(`${artifact.platform}: recorded ${artifact.priorDigest}, acquired ${artifact.acquiredDigest}`);
+    }
+    process.exitCode = 1;
+  }
 }

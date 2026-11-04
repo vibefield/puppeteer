@@ -220,6 +220,16 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
+      - name: Retain refused acquisition diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: promotion-acquisition-failure
+          path: .agent-adaptation/acquisition.json
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
+
   # The live lanes run on fresh GitHub-hosted VMs, one per platform. The workflow references no secrets or
   # repository variables, the job token is read-only (workflow-level contents: read), checkout persists no
   # credentials, and each lane is configured to give the vendor binary only the tests' loopback model provider
