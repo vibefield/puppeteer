@@ -842,13 +842,13 @@
     {
       "id": "event-044",
       "event": "session.model_change",
-      "confidence": "verified-headless",
+      "confidence": "unverified",
       "evidence": {
         "existence": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ],
         "shape": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ]
       },
       "lane": "events",
@@ -1690,13 +1690,13 @@
     {
       "id": "event-097",
       "event": "session-store:session-store.db:search_index",
-      "confidence": "verified-headless",
+      "confidence": "unverified",
       "evidence": {
         "existence": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ],
         "shape": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ]
       },
       "lane": "session-store",
@@ -1722,13 +1722,13 @@
     {
       "id": "event-099",
       "event": "session-store:session-store.db:search_index_content",
-      "confidence": "verified-headless",
+      "confidence": "unverified",
       "evidence": {
         "existence": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ],
         "shape": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ]
       },
       "lane": "session-store",
@@ -1754,13 +1754,13 @@
     {
       "id": "event-101",
       "event": "session-store:session-store.db:search_index_docsize",
-      "confidence": "verified-headless",
+      "confidence": "unverified",
       "evidence": {
         "existence": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ],
         "shape": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ]
       },
       "lane": "session-store",
@@ -1770,13 +1770,13 @@
     {
       "id": "event-102",
       "event": "session-store:session-store.db:search_index_idx",
-      "confidence": "verified-headless",
+      "confidence": "unverified",
       "evidence": {
         "existence": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ],
         "shape": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ]
       },
       "lane": "session-store",
@@ -1834,13 +1834,13 @@
     {
       "id": "event-106",
       "event": "session-store:session-store.db:turns",
-      "confidence": "verified-headless",
+      "confidence": "unverified",
       "evidence": {
         "existence": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ],
         "shape": [
-          "copilot-rosetta-observed"
+          "copilot-rosetta-contract"
         ]
       },
       "lane": "session-store",

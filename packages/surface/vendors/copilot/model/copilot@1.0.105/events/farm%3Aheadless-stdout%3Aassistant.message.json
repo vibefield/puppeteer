@@ -36,9 +36,6 @@
           "originatingMessageId": {
             "type": "string"
           },
-          "outputTokens": {
-            "type": "number"
-          },
           "rte": {
             "type": "boolean"
           },
@@ -83,6 +80,7 @@
                 "intentionSummary",
                 "name",
                 "toolCallId",
+                "toolTitle",
                 "type"
               ],
               "additionalProperties": true
@@ -98,6 +96,7 @@
           "interactionId",
           "messageId",
           "model",
+          "originatingMessageId",
           "rte",
           "toolRequests",
           "turnId"
@@ -149,9 +148,6 @@
           "originatingMessageId": {
             "type": "string"
           },
-          "outputTokens": {
-            "type": "number"
-          },
           "rte": {
             "type": "boolean"
           },
@@ -196,6 +192,7 @@
                 "intentionSummary",
                 "name",
                 "toolCallId",
+                "toolTitle",
                 "type"
               ],
               "additionalProperties": true
@@ -211,6 +208,7 @@
           "interactionId",
           "messageId",
           "model",
+          "originatingMessageId",
           "rte",
           "toolRequests",
           "turnId"
@@ -261,5 +259,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "<farm>/stdout*.jsonl; 16 retained observation(s); source evidence: fixture."
+  "notes": "<farm>/stdout*.jsonl; 9 retained observation(s) in the 1.0.105 sources; source evidence: fixture."
 }

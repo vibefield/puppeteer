@@ -15,9 +15,6 @@
       "data": {
         "type": "object",
         "properties": {
-          "attachments": {
-            "type": "array"
-          },
           "content": {
             "type": "string"
           },
@@ -47,9 +44,11 @@
           "content",
           "delivery",
           "interactionId",
+          "messageId",
           "parentAgentTaskId",
           "supportedNativeDocumentMimeTypes",
-          "transformedContent"
+          "transformedContent",
+          "turnId"
         ],
         "additionalProperties": true
       },
@@ -77,9 +76,6 @@
       "data": {
         "type": "object",
         "properties": {
-          "attachments": {
-            "type": "array"
-          },
           "content": {
             "type": "string"
           },
@@ -109,9 +105,11 @@
           "content",
           "delivery",
           "interactionId",
+          "messageId",
           "parentAgentTaskId",
           "supportedNativeDocumentMimeTypes",
-          "transformedContent"
+          "transformedContent",
+          "turnId"
         ],
         "additionalProperties": true
       },
@@ -159,5 +157,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "<farm>/stdout*.jsonl; 11 retained observation(s); source evidence: fixture."
+  "notes": "<farm>/stdout*.jsonl; 6 retained observation(s) in the 1.0.105 sources; source evidence: fixture."
 }

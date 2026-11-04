@@ -205,30 +205,97 @@
           "contents": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "cwd": {},
-                "data": {},
-                "description": {},
-                "exitCode": {},
-                "icons": {},
-                "mimeType": {},
-                "name": {},
-                "outputFilePath": {},
-                "outputPreview": {},
-                "outputTruncated": {},
-                "resource": {},
-                "shellId": {},
-                "size": {},
-                "text": {},
-                "title": {},
-                "type": {},
-                "uri": {}
-              },
-              "required": [
-                "type"
-              ],
-              "additionalProperties": true
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "text": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "text",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "cwd": {},
+                    "exitCode": {},
+                    "text": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "text",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "cwd": {},
+                    "exitCode": {},
+                    "outputFilePath": {},
+                    "outputPreview": {},
+                    "outputTruncated": {},
+                    "shellId": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "exitCode",
+                    "shellId",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "data": {},
+                    "mimeType": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "data",
+                    "mimeType",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "description": {},
+                    "icons": {},
+                    "mimeType": {},
+                    "name": {},
+                    "size": {},
+                    "title": {},
+                    "type": {},
+                    "uri": {}
+                  },
+                  "required": [
+                    "name",
+                    "type",
+                    "uri"
+                  ],
+                  "additionalProperties": true
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "resource": {},
+                    "type": {}
+                  },
+                  "required": [
+                    "resource",
+                    "type"
+                  ],
+                  "additionalProperties": true
+                }
+              ]
             }
           },
           "detailedContent": {
@@ -360,14 +427,16 @@
                 "type": "number"
               }
             },
+            "required": [
+              "context_current_tokens",
+              "context_token_limit",
+              "large_output_threshold_bytes"
+            ],
             "additionalProperties": true
           },
           "properties": {
             "type": "object",
             "properties": {
-              "asyncOnlyShell": {
-                "type": "string"
-              },
               "customTimeout": {
                 "type": "string"
               },
@@ -747,30 +816,97 @@
               "contents": {
                 "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "cwd": {},
-                    "data": {},
-                    "description": {},
-                    "exitCode": {},
-                    "icons": {},
-                    "mimeType": {},
-                    "name": {},
-                    "outputFilePath": {},
-                    "outputPreview": {},
-                    "outputTruncated": {},
-                    "resource": {},
-                    "shellId": {},
-                    "size": {},
-                    "text": {},
-                    "title": {},
-                    "type": {},
-                    "uri": {}
-                  },
-                  "required": [
-                    "type"
-                  ],
-                  "additionalProperties": true
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "text": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "text",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "cwd": {},
+                        "exitCode": {},
+                        "text": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "text",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "cwd": {},
+                        "exitCode": {},
+                        "outputFilePath": {},
+                        "outputPreview": {},
+                        "outputTruncated": {},
+                        "shellId": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "exitCode",
+                        "shellId",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {},
+                        "mimeType": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "data",
+                        "mimeType",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "description": {},
+                        "icons": {},
+                        "mimeType": {},
+                        "name": {},
+                        "size": {},
+                        "title": {},
+                        "type": {},
+                        "uri": {}
+                      },
+                      "required": [
+                        "name",
+                        "type",
+                        "uri"
+                      ],
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "resource": {},
+                        "type": {}
+                      },
+                      "required": [
+                        "resource",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    }
+                  ]
                 }
               },
               "detailedContent": {
@@ -902,14 +1038,16 @@
                     "type": "number"
                   }
                 },
+                "required": [
+                  "context_current_tokens",
+                  "context_token_limit",
+                  "large_output_threshold_bytes"
+                ],
                 "additionalProperties": true
               },
               "properties": {
                 "type": "object",
                 "properties": {
-                  "asyncOnlyShell": {
-                    "type": "string"
-                  },
                   "customTimeout": {
                     "type": "string"
                   },
@@ -1138,5 +1276,5 @@
   },
   "confidence": "verified-headless",
   "fixture": "captures/copilot@1.0.105/tool-denied/events.jsonl",
-  "notes": "session-state/*/events.jsonl; 5 retained observation(s); source evidence: writer."
+  "notes": "session-state/*/events.jsonl; 3 retained observation(s) in the 1.0.105 sources; source evidence: writer."
 }

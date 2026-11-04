@@ -46,44 +46,6 @@
               "content": {
                 "type": "string"
               },
-              "contents": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "cwd": {
-                      "type": "string"
-                    },
-                    "exitCode": {
-                      "type": "number"
-                    },
-                    "outputPreview": {
-                      "type": "string"
-                    },
-                    "outputTruncated": {
-                      "type": "boolean"
-                    },
-                    "shellId": {
-                      "type": "string"
-                    },
-                    "type": {
-                      "type": "string",
-                      "enum": [
-                        "shell_exit"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "cwd",
-                    "exitCode",
-                    "outputPreview",
-                    "outputTruncated",
-                    "shellId",
-                    "type"
-                  ],
-                  "additionalProperties": true
-                }
-              },
               "detailedContent": {
                 "type": "string"
               }
@@ -137,14 +99,16 @@
                     "type": "number"
                   }
                 },
+                "required": [
+                  "context_current_tokens",
+                  "context_token_limit",
+                  "large_output_threshold_bytes"
+                ],
                 "additionalProperties": true
               },
               "properties": {
                 "type": "object",
                 "properties": {
-                  "asyncOnlyShell": {
-                    "type": "string"
-                  },
                   "customTimeout": {
                     "type": "string"
                   },
@@ -174,6 +138,7 @@
               }
             },
             "required": [
+              "metrics",
               "properties"
             ],
             "additionalProperties": true
@@ -248,44 +213,6 @@
               "content": {
                 "type": "string"
               },
-              "contents": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "cwd": {
-                      "type": "string"
-                    },
-                    "exitCode": {
-                      "type": "number"
-                    },
-                    "outputPreview": {
-                      "type": "string"
-                    },
-                    "outputTruncated": {
-                      "type": "boolean"
-                    },
-                    "shellId": {
-                      "type": "string"
-                    },
-                    "type": {
-                      "type": "string",
-                      "enum": [
-                        "shell_exit"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "cwd",
-                    "exitCode",
-                    "outputPreview",
-                    "outputTruncated",
-                    "shellId",
-                    "type"
-                  ],
-                  "additionalProperties": true
-                }
-              },
               "detailedContent": {
                 "type": "string"
               }
@@ -339,14 +266,16 @@
                     "type": "number"
                   }
                 },
+                "required": [
+                  "context_current_tokens",
+                  "context_token_limit",
+                  "large_output_threshold_bytes"
+                ],
                 "additionalProperties": true
               },
               "properties": {
                 "type": "object",
                 "properties": {
-                  "asyncOnlyShell": {
-                    "type": "string"
-                  },
                   "customTimeout": {
                     "type": "string"
                   },
@@ -376,6 +305,7 @@
               }
             },
             "required": [
+              "metrics",
               "properties"
             ],
             "additionalProperties": true
@@ -439,5 +369,5 @@
     ]
   },
   "confidence": "verified-headless",
-  "notes": "<farm>/stdout*.jsonl; 5 retained observation(s); source evidence: fixture."
+  "notes": "<farm>/stdout*.jsonl; 3 retained observation(s) in the 1.0.105 sources; source evidence: fixture."
 }

@@ -15,116 +15,249 @@
         "type": "string"
       },
       "kind": {
-        "type": "object",
-        "properties": {
-          "agentId": {
-            "type": "string"
-          },
-          "agentType": {
-            "type": "string"
-          },
-          "attempt": {
-            "type": "number"
-          },
-          "consumedNanoAiu": {
-            "type": "number"
-          },
-          "consumedSubagents": {
-            "type": "number"
-          },
-          "description": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "elapsedMs": {
-            "type": "number"
-          },
-          "entryId": {
-            "type": "string"
-          },
-          "exitCode": {
-            "type": "number"
-          },
-          "factoryName": {
-            "type": "string"
-          },
-          "failure": {},
-          "metadata": {},
-          "pauseInfo": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "type": {}
-                },
-                "required": [
-                  "type"
-                ],
-                "additionalProperties": true
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "agentId": {
+                "type": "string"
               },
-              {
-                "type": "object",
-                "properties": {
-                  "key": {},
-                  "type": {}
-                },
-                "required": [
-                  "key",
-                  "type"
-                ],
-                "additionalProperties": true
+              "agentType": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
               }
-            ]
+            },
+            "required": [
+              "agentId",
+              "agentType",
+              "status",
+              "type"
+            ],
+            "additionalProperties": true
           },
-          "prompt": {
-            "type": "string"
+          {
+            "type": "object",
+            "properties": {
+              "agentId": {
+                "type": "string"
+              },
+              "agentType": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "agentId",
+              "agentType",
+              "type"
+            ],
+            "additionalProperties": true
           },
-          "resultPreview": {
-            "type": "string"
+          {
+            "type": "object",
+            "properties": {
+              "entryId": {
+                "type": "string"
+              },
+              "senderName": {
+                "type": "string"
+              },
+              "senderType": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "entryId",
+              "senderName",
+              "senderType",
+              "summary",
+              "type"
+            ],
+            "additionalProperties": true
           },
-          "retryGuidance": {
-            "type": "string"
+          {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "exitCode": {
+                "type": "number"
+              },
+              "shellId": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "shellId",
+              "type"
+            ],
+            "additionalProperties": true
           },
-          "runId": {
-            "type": "string"
+          {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "shellId": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "shellId",
+              "type"
+            ],
+            "additionalProperties": true
           },
-          "senderName": {
-            "type": "string"
+          {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "sourcePath": {
+                "type": "string"
+              },
+              "triggerFile": {
+                "type": "string"
+              },
+              "triggerTool": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sourcePath",
+              "triggerFile",
+              "triggerTool",
+              "type"
+            ],
+            "additionalProperties": true
           },
-          "senderType": {
-            "type": "string"
+          {
+            "type": "object",
+            "properties": {
+              "attempt": {
+                "type": "number"
+              },
+              "consumedNanoAiu": {
+                "type": "number"
+              },
+              "consumedSubagents": {
+                "type": "number"
+              },
+              "elapsedMs": {
+                "type": "number"
+              },
+              "failure": {},
+              "pauseInfo": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {}
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "key": {},
+                      "type": {}
+                    },
+                    "required": [
+                      "key",
+                      "type"
+                    ],
+                    "additionalProperties": true
+                  }
+                ]
+              },
+              "resultPreview": {
+                "type": "string"
+              },
+              "retryGuidance": {
+                "type": "string"
+              },
+              "runId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "workflowName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "attempt",
+              "consumedNanoAiu",
+              "consumedSubagents",
+              "elapsedMs",
+              "runId",
+              "status",
+              "type",
+              "workflowName"
+            ],
+            "additionalProperties": true
           },
-          "shellId": {
-            "type": "string"
-          },
-          "sourcePath": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "summary": {
-            "type": "string"
-          },
-          "triggerFile": {
-            "type": "string"
-          },
-          "triggerTool": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string"
-          },
-          "workflowName": {
-            "type": "string"
+          {
+            "type": "object",
+            "properties": {
+              "metadata": {},
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": true
           }
-        },
-        "required": [
-          "type"
-        ],
-        "additionalProperties": true
+        ]
       },
       "responsesReasoning": {
         "type": "object",
@@ -166,116 +299,249 @@
             "type": "string"
           },
           "kind": {
-            "type": "object",
-            "properties": {
-              "agentId": {
-                "type": "string"
-              },
-              "agentType": {
-                "type": "string"
-              },
-              "attempt": {
-                "type": "number"
-              },
-              "consumedNanoAiu": {
-                "type": "number"
-              },
-              "consumedSubagents": {
-                "type": "number"
-              },
-              "description": {
-                "type": "string"
-              },
-              "displayName": {
-                "type": "string"
-              },
-              "elapsedMs": {
-                "type": "number"
-              },
-              "entryId": {
-                "type": "string"
-              },
-              "exitCode": {
-                "type": "number"
-              },
-              "factoryName": {
-                "type": "string"
-              },
-              "failure": {},
-              "metadata": {},
-              "pauseInfo": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "type": {}
-                    },
-                    "required": [
-                      "type"
-                    ],
-                    "additionalProperties": true
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "agentId": {
+                    "type": "string"
                   },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "key": {},
-                      "type": {}
-                    },
-                    "required": [
-                      "key",
-                      "type"
-                    ],
-                    "additionalProperties": true
+                  "agentType": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "type": "string"
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
                   }
-                ]
+                },
+                "required": [
+                  "agentId",
+                  "agentType",
+                  "status",
+                  "type"
+                ],
+                "additionalProperties": true
               },
-              "prompt": {
-                "type": "string"
+              {
+                "type": "object",
+                "properties": {
+                  "agentId": {
+                    "type": "string"
+                  },
+                  "agentType": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "agentId",
+                  "agentType",
+                  "type"
+                ],
+                "additionalProperties": true
               },
-              "resultPreview": {
-                "type": "string"
+              {
+                "type": "object",
+                "properties": {
+                  "entryId": {
+                    "type": "string"
+                  },
+                  "senderName": {
+                    "type": "string"
+                  },
+                  "senderType": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "entryId",
+                  "senderName",
+                  "senderType",
+                  "summary",
+                  "type"
+                ],
+                "additionalProperties": true
               },
-              "retryGuidance": {
-                "type": "string"
+              {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "exitCode": {
+                    "type": "number"
+                  },
+                  "shellId": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "shellId",
+                  "type"
+                ],
+                "additionalProperties": true
               },
-              "runId": {
-                "type": "string"
+              {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "shellId": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "shellId",
+                  "type"
+                ],
+                "additionalProperties": true
               },
-              "senderName": {
-                "type": "string"
+              {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "sourcePath": {
+                    "type": "string"
+                  },
+                  "triggerFile": {
+                    "type": "string"
+                  },
+                  "triggerTool": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sourcePath",
+                  "triggerFile",
+                  "triggerTool",
+                  "type"
+                ],
+                "additionalProperties": true
               },
-              "senderType": {
-                "type": "string"
+              {
+                "type": "object",
+                "properties": {
+                  "attempt": {
+                    "type": "number"
+                  },
+                  "consumedNanoAiu": {
+                    "type": "number"
+                  },
+                  "consumedSubagents": {
+                    "type": "number"
+                  },
+                  "elapsedMs": {
+                    "type": "number"
+                  },
+                  "failure": {},
+                  "pauseInfo": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {}
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "key": {},
+                          "type": {}
+                        },
+                        "required": [
+                          "key",
+                          "type"
+                        ],
+                        "additionalProperties": true
+                      }
+                    ]
+                  },
+                  "resultPreview": {
+                    "type": "string"
+                  },
+                  "retryGuidance": {
+                    "type": "string"
+                  },
+                  "runId": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "workflowName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "attempt",
+                  "consumedNanoAiu",
+                  "consumedSubagents",
+                  "elapsedMs",
+                  "runId",
+                  "status",
+                  "type",
+                  "workflowName"
+                ],
+                "additionalProperties": true
               },
-              "shellId": {
-                "type": "string"
-              },
-              "sourcePath": {
-                "type": "string"
-              },
-              "status": {
-                "type": "string"
-              },
-              "summary": {
-                "type": "string"
-              },
-              "triggerFile": {
-                "type": "string"
-              },
-              "triggerTool": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string"
-              },
-              "workflowName": {
-                "type": "string"
+              {
+                "type": "object",
+                "properties": {
+                  "metadata": {},
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": true
               }
-            },
-            "required": [
-              "type"
-            ],
-            "additionalProperties": true
+            ]
           },
           "responsesReasoning": {
             "type": "object",
@@ -355,5 +621,5 @@
     ]
   },
   "confidence": "unverified",
-  "notes": "session-state/*/events.jsonl; 0 retained observation(s); source evidence: writer."
+  "notes": "session-state/*/events.jsonl; 0 retained observation(s) in the 1.0.105 sources; source evidence: writer."
 }

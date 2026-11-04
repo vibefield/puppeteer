@@ -47,6 +47,9 @@ export const ROSETTA_AGENT_CONFIGS = Object.freeze({
       'sources/1.0.105.fixtures.json',
       'sources/1.0.105.sqlite-schema.sql',
     ],
+    // Rosetta's canonical sums the 1.0.80 (darwin-arm64 fixtures, 2026-09-24 census) and 1.0.105 (linux-x64) corpora;
+    // the model credits only 1.0.105.
+    versionScopedSources: true,
     repository: 'https://github.com/github/copilot-cli',
     revision: 'v1.0.105',
     relation: 'exact-release',
