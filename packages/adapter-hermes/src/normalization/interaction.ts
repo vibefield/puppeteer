@@ -63,11 +63,12 @@ export class HermesInteractionNormalizer {
    */
   private readonly permissions = new Map<string, { toolCallId?: string; serverRequestId?: string }>();
   /** Native tool ids in flight, oldest first; an approval that names no tool gates the latest one. */
-  private readonly activeTools = new Map<string, true>();
+  private readonly activeTools = new Map<string, string>();
+  private readonly questions = new Map<string, { toolCallId?: string }>();
 
   toolStarted(payload: Record<string, unknown>): void {
     const toolCallId = hermesString(payload.tool_id);
-    if (toolCallId) boundedHermesMapSet(this.activeTools, toolCallId, true);
+    if (toolCallId) boundedHermesMapSet(this.activeTools, toolCallId, hermesString(payload.name) ?? 'unknown');
   }
 
   /** `tool.complete`: the gated tool only finishes after its approval is answered, withdrawn, or timed out. */
@@ -75,13 +76,16 @@ export class HermesInteractionNormalizer {
     const toolCallId = hermesString(payload.tool_id);
     if (!toolCallId) return [];
     this.activeTools.delete(toolCallId);
-    return this.settlePermissions((open) => open.toolCallId === toolCallId);
+    return [
+      ...this.settlePermissions((open) => open.toolCallId === toolCallId),
+      ...this.settleQuestions((open) => open.toolCallId === toolCallId, questionOutcome(payload.result)),
+    ];
   }
 
   /** `message.complete`: nothing in the finished turn can still be waiting on an approval. */
   turnCompleted(): AgentEvent[] {
     this.activeTools.clear();
-    return this.settlePermissions(() => true);
+    return [...this.settlePermissions(() => true), ...this.settleQuestions(() => true, 'superseded')];
   }
 
   /** The 0.20 `approval.request` event, which names the gated tool. */
@@ -105,6 +109,7 @@ export class HermesInteractionNormalizer {
     const questions = hermesStructuredQuestions(payload);
     if (!requestId || !questions || this.questionStates.has(requestId)) return [];
     boundedHermesMapSet(this.questionStates, requestId, 'requested');
+    this.trackQuestion(requestId);
     return [{ type: 'interaction:question-requested', requestId, questions }];
   }
 
@@ -137,10 +142,33 @@ export class HermesInteractionNormalizer {
   /** The 0.21 `clarify` server request; its params carry no request id, so the `srq-` id names it. */
   requestServerQuestion(serverRequestId: string, payload: Record<string, unknown>): AgentEvent[] {
     const questions = hermesStructuredQuestions({ ...payload, request_id: undefined });
-    if (!questions || this.serverRequests.has(serverRequestId)) return [];
+    if (!questions || this.serverRequests.has(serverRequestId) || this.questionStates.has(serverRequestId)) return [];
     boundedHermesMapSet(this.serverRequests, serverRequestId, { kind: 'question', requestId: serverRequestId });
     boundedHermesMapSet(this.questionStates, serverRequestId, 'requested');
+    this.trackQuestion(serverRequestId);
     return [{ type: 'interaction:question-requested', requestId: serverRequestId, questions }];
+  }
+
+  private trackQuestion(requestId: string): void {
+    const tools = [...this.activeTools].filter(([, name]) => name === 'clarify');
+    const toolCallId = tools.length === 1 ? tools[0]?.[0] : undefined;
+    boundedHermesMapSet(this.questions, requestId, toolCallId ? { toolCallId } : {});
+  }
+
+  /** The TUI response is private, but the native clarify tool result carries the answer/skip/error. */
+  private settleQuestions(
+    matches: (open: { toolCallId?: string }) => boolean,
+    outcome: 'answered' | 'failed' | 'cancelled' | 'superseded',
+  ): AgentEvent[] {
+    const events: AgentEvent[] = [];
+    for (const [requestId, open] of this.questions) {
+      if (!matches(open)) continue;
+      this.questions.delete(requestId);
+      this.serverRequests.delete(requestId);
+      boundedHermesMapSet(this.questionStates, requestId, 'resolved');
+      events.push({ type: 'interaction:question-resolved', requestId, outcome });
+    }
+    return events;
   }
 
   /** `request.cancel {id, method, reason}`: a timeout, interrupt, or close withdrew an open request. */
@@ -174,6 +202,28 @@ export class HermesInteractionNormalizer {
     const requestId = hermesString(payload.request_id);
     if (!requestId || this.questionStates.get(requestId) === 'resolved') return [];
     boundedHermesMapSet(this.questionStates, requestId, 'resolved');
+    this.questions.delete(requestId);
+    this.serverRequests.delete(requestId);
     return [{ type: 'interaction:question-resolved', requestId, outcome: 'cancelled' }];
   }
+}
+
+function questionOutcome(value: unknown): 'answered' | 'failed' | 'cancelled' | 'superseded' {
+  const result = record(value);
+  if (!result) return 'superseded';
+  if (typeof result.error === 'string') return 'failed';
+  if (result.timed_out === true) return 'cancelled';
+  const answer = result.user_response;
+  if (typeof answer === 'string') return answer.trim() ? 'answered' : 'cancelled';
+  if (Array.isArray(answer)) return answer.length > 0 ? 'answered' : 'cancelled';
+  if (Array.isArray(result.responses)) {
+    return result.responses.length > 0 &&
+      result.responses.every((response) => {
+        const answer = record(response)?.user_response;
+        return typeof answer === 'string' ? Boolean(answer.trim()) : Array.isArray(answer) && answer.length > 0;
+      })
+      ? 'answered'
+      : 'cancelled';
+  }
+  return 'superseded';
 }

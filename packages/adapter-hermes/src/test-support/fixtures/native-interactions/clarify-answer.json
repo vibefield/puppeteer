@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "scenario": "clarify-answer",
+  "startedAt": "2026-11-04T07:12:01.351Z",
+  "completedAt": "2026-11-04T07:12:04.004Z",
+  "platform": "darwin-arm64",
+  "nodeVersion": "22.22.0",
+  "artifactSha256": "sha256:6627b61d399a3e1a0d677f17faa10af0f84c5610ab00c7288b66d88b38e965df",
+  "scope": "selected native gateway frames observed beside an attached TUI; not a promotion receipt",
+  "frames": [
+    {
+      "jsonrpc": "2.0",
+      "method": "event",
+      "params": {
+        "type": "tool.start",
+        "session_id": "e4841697",
+        "payload": {
+          "tool_id": "call_live_interaction",
+          "name": "clarify",
+          "context": "SURFACE_HERMES_QUESTION",
+          "args": {
+            "question": "SURFACE_HERMES_QUESTION",
+            "choices": ["Alpha", "Beta"]
+          }
+        },
+        "seq": 8
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": "srq-99d0a9a88540",
+      "method": "clarify",
+      "params": {
+        "session_id": "e4841697",
+        "question": "SURFACE_HERMES_QUESTION",
+        "choices": ["Alpha (Recommended)", "Beta"]
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "method": "event",
+      "params": {
+        "type": "tool.complete",
+        "session_id": "e4841697",
+        "payload": {
+          "tool_id": "call_live_interaction",
+          "name": "clarify",
+          "args": {
+            "question": "SURFACE_HERMES_QUESTION",
+            "choices": ["Alpha", "Beta"]
+          },
+          "duration_s": 0.019659042358398438,
+          "result": {
+            "question": "SURFACE_HERMES_QUESTION",
+            "choices_offered": ["Alpha", "Beta"],
+            "user_response": "Alpha"
+          }
+        },
+        "seq": 9
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "method": "event",
+      "params": {
+        "type": "message.complete",
+        "session_id": "e4841697",
+        "payload": {
+          "text": "SURFACE_HERMES_TUI_OK",
+          "usage": {
+            "model": "puppeteer-hermes-live",
+            "input": 54,
+            "output": 14,
+            "reasoning": 0,
+            "prompt": 54,
+            "completion": 14,
+            "total": 68,
+            "calls": 2,
+            "context_used": 27,
+            "context_max": 256000,
+            "context_percent": 0,
+            "context_source": "provider_usage",
+            "context_estimated": false,
+            "compressions": 0,
+            "avg_latency_s": 0.1,
+            "avg_tps": 57.1,
+            "active_subagents": 0
+          },
+          "status": "complete",
+          "persisted_turn": {
+            "row_ids": [1, 2, 3, 4],
+            "complete": true,
+            "user_row_id": 1,
+            "final_assistant_row_id": 4
+          }
+        },
+        "seq": 16
+      }
+    }
+  ]
+}

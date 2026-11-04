@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "scenario": "clarify-interrupt",
+  "startedAt": "2026-11-04T07:12:04.195Z",
+  "completedAt": "2026-11-04T07:12:06.821Z",
+  "platform": "darwin-arm64",
+  "nodeVersion": "22.22.0",
+  "artifactSha256": "sha256:6627b61d399a3e1a0d677f17faa10af0f84c5610ab00c7288b66d88b38e965df",
+  "scope": "selected native gateway frames observed beside an attached TUI; not a promotion receipt",
+  "frames": [
+    {
+      "jsonrpc": "2.0",
+      "method": "event",
+      "params": {
+        "type": "tool.start",
+        "session_id": "bff14729",
+        "payload": {
+          "tool_id": "call_live_interaction",
+          "name": "clarify",
+          "context": "SURFACE_HERMES_QUESTION",
+          "args": {
+            "question": "SURFACE_HERMES_QUESTION",
+            "choices": ["Alpha", "Beta"]
+          }
+        },
+        "seq": 8
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": "srq-0994297b617b",
+      "method": "clarify",
+      "params": {
+        "session_id": "bff14729",
+        "question": "SURFACE_HERMES_QUESTION",
+        "choices": ["Alpha (Recommended)", "Beta"]
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "method": "event",
+      "params": {
+        "type": "request.cancel",
+        "session_id": "bff14729",
+        "payload": {
+          "id": "srq-0994297b617b",
+          "method": "clarify",
+          "reason": "interrupted"
+        },
+        "seq": 9
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "method": "event",
+      "params": {
+        "type": "tool.complete",
+        "session_id": "bff14729",
+        "payload": {
+          "tool_id": "call_live_interaction",
+          "name": "clarify",
+          "args": {
+            "question": "SURFACE_HERMES_QUESTION",
+            "choices": ["Alpha", "Beta"]
+          },
+          "duration_s": 0.019423961639404297,
+          "result": {
+            "question": "SURFACE_HERMES_QUESTION",
+            "choices_offered": ["Alpha", "Beta"],
+            "user_response": ""
+          }
+        },
+        "seq": 10
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "method": "event",
+      "params": {
+        "type": "message.complete",
+        "session_id": "bff14729",
+        "payload": {
+          "text": null,
+          "usage": {
+            "model": "puppeteer-hermes-live",
+            "input": 27,
+            "output": 7,
+            "reasoning": 0,
+            "prompt": 27,
+            "completion": 7,
+            "total": 34,
+            "calls": 1,
+            "context_used": 27,
+            "context_max": 256000,
+            "context_percent": 0,
+            "context_source": "provider_usage",
+            "context_estimated": false,
+            "compressions": 0,
+            "avg_latency_s": 0.2,
+            "avg_tps": 37.7,
+            "active_subagents": 0
+          },
+          "status": "interrupted",
+          "persisted_turn": {
+            "row_ids": [1, 2, 3, 4],
+            "complete": false,
+            "user_row_id": 1
+          }
+        },
+        "seq": 11
+      }
+    }
+  ]
+}

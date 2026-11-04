@@ -4,6 +4,7 @@ import { buildHermesAttachLaunch } from './recipe.js';
 describe('Hermes attach launch recipe', () => {
   it('points the native TUI at the owned gateway and isolated home', () => {
     const launch = buildHermesAttachLaunch({
+      executable: 'hermes',
       cwd: '/work',
       hermesHome: '/tmp/hermes-home',
       gatewayUrl: 'ws://127.0.0.1:9/api/ws',

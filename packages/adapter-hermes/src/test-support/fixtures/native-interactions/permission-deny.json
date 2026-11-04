@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "scenario": "permission-deny",
+  "startedAt": "2026-11-04T07:11:50.935Z",
+  "completedAt": "2026-11-04T07:12:01.143Z",
+  "platform": "darwin-arm64",
+  "nodeVersion": "22.22.0",
+  "artifactSha256": "sha256:6627b61d399a3e1a0d677f17faa10af0f84c5610ab00c7288b66d88b38e965df",
+  "scope": "selected native gateway frames observed beside an attached TUI; not a promotion receipt",
+  "frames": [
+    {
+      "jsonrpc": "2.0",
+      "method": "event",
+      "params": {
+        "type": "tool.start",
+        "session_id": "b12784b4",
+        "payload": {
+          "tool_id": "call_live_interaction",
+          "name": "terminal",
+          "context": "rm -rf '/private/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-he...",
+          "args": {
+            "command": "rm -rf '<redacted:root>/workspace/approval-scratch'"
+          }
+        },
+        "seq": 8
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": "srq-294d67752906",
+      "method": "approval",
+      "params": {
+        "session_id": "b12784b4",
+        "command": "rm -rf '<redacted:root>/workspace/approval-scratch'",
+        "pattern_key": "recursive delete",
+        "pattern_keys": ["recursive delete"],
+        "description": "recursive delete",
+        "allow_permanent": true,
+        "allow_session": true,
+        "request_id": "56546bd038154c77984578e5a39fe384",
+        "choices": ["once", "session", "always", "deny"]
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "method": "event",
+      "params": {
+        "type": "tool.complete",
+        "session_id": "b12784b4",
+        "payload": {
+          "tool_id": "call_live_interaction",
+          "name": "terminal",
+          "args": {
+            "command": "rm -rf '<redacted:root>/workspace/approval-scratch'"
+          },
+          "duration_s": 3.3106369972229004,
+          "result": {
+            "output": "",
+            "exit_code": -1,
+            "error": "BLOCKED: Command denied by user. The user has NOT consented to this action. Do NOT retry this command, do NOT rephrase it, and do NOT attempt the same outcome via a different command. Stop the current workflow and wait for the user to respond before taking any further destructive or irreversible action.",
+            "status": "blocked",
+            "user_summary": "You denied this command — it did not run."
+          }
+        },
+        "seq": 10
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "method": "event",
+      "params": {
+        "type": "message.complete",
+        "session_id": "b12784b4",
+        "payload": {
+          "text": "SURFACE_HERMES_TUI_OK",
+          "usage": {
+            "model": "puppeteer-hermes-live",
+            "input": 54,
+            "output": 14,
+            "reasoning": 0,
+            "prompt": 54,
+            "completion": 14,
+            "total": 68,
+            "calls": 2,
+            "context_used": 27,
+            "context_max": 256000,
+            "context_percent": 0,
+            "context_source": "provider_usage",
+            "context_estimated": false,
+            "compressions": 0,
+            "avg_latency_s": 0.2,
+            "avg_tps": 42.4,
+            "active_subagents": 0
+          },
+          "status": "complete",
+          "persisted_turn": {
+            "row_ids": [1, 2, 3, 4],
+            "complete": true,
+            "user_row_id": 1,
+            "final_assistant_row_id": 4
+          }
+        },
+        "seq": 17
+      }
+    }
+  ]
+}

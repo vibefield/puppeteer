@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -373,6 +374,89 @@ describe('HermesGatewayNormalizer', () => {
         event('request.cancel', { id: 'srq-00000000000a', method: 'clarify', reason: 'interrupted' }),
       ).events,
     ).toEqual([{ type: 'interaction:question-resolved', requestId: 'srq-00000000000a', outcome: 'cancelled' }]);
+  });
+
+  it.each([
+    ['permission-deny', 'interaction:permission-resolved', 'unknown'],
+    ['clarify-answer', 'interaction:question-resolved', 'answered'],
+    ['clarify-interrupt', 'interaction:question-resolved', 'cancelled'],
+  ])('replays the captured attached-TUI %s interaction exactly once', (scenario, type, outcome) => {
+    const capture = JSON.parse(
+      readFileSync(new URL(`../test-support/fixtures/native-interactions/${scenario}.json`, import.meta.url), 'utf8'),
+    ) as { frames: unknown[]; artifactSha256: string };
+    const identity = readFileSync(
+      new URL('../test-support/fixtures/native-interactions/installed-console.json', import.meta.url),
+    );
+    expect(capture.artifactSha256).toBe(`sha256:${createHash('sha256').update(identity).digest('hex')}`);
+    const normalizer = new HermesGatewayNormalizer();
+    const events = capture.frames.flatMap((frame) => normalizer.normalize(frame).events);
+    expect(events.filter((event) => event.type === type)).toEqual([expect.objectContaining({ type, outcome })]);
+  });
+
+  it.each([
+    [{ question: 'Which lane?', user_response: 'Alpha' }, 'answered'],
+    [{ question: 'Which lane?', user_response: '' }, 'cancelled'],
+    [{ responses: [{ user_response: 'Alpha' }, { user_response: ['Beta'] }] }, 'answered'],
+    [{ responses: [{ user_response: 'Alpha' }, { user_response: '' }], timed_out: true }, 'cancelled'],
+    [{ error: 'Failed to get user input' }, 'failed'],
+    [{ future_result: true }, 'superseded'],
+  ] as const)('settles native-TUI clarify from the correlated tool result %j', (result, outcome) => {
+    const normalizer = new HermesGatewayNormalizer();
+    normalizer.normalize(event('tool.start', { tool_id: 'call_live_interaction', name: 'clarify' }));
+    const request = serverRequest('srq-132e495e0384', 'clarify', {
+      question: 'Which lane?',
+      choices: ['Alpha', 'Beta'],
+    });
+    normalizer.normalize(request);
+    const completed = normalizer.normalize(
+      event('tool.complete', { tool_id: 'call_live_interaction', name: 'clarify', result }),
+    );
+    expect(completed.events.filter((item) => item.type === 'interaction:question-resolved')).toEqual([
+      { type: 'interaction:question-resolved', requestId: 'srq-132e495e0384', outcome },
+    ]);
+    expect(normalizer.normalize(request).events).toEqual([]);
+    expect(
+      normalizer
+        .normalize(event('message.complete', { text: 'done', status: 'complete' }))
+        .events.filter((item) => item.type === 'interaction:question-resolved'),
+    ).toEqual([]);
+  });
+
+  it('keeps cancellation authoritative when the interrupted clarify tool later finishes', () => {
+    const normalizer = new HermesGatewayNormalizer();
+    normalizer.normalize(event('tool.start', { tool_id: 'call_live_interaction', name: 'clarify' }));
+    normalizer.normalize(serverRequest('srq-e2eb57192efa', 'clarify', { question: 'Which lane?' }));
+    expect(
+      normalizer.normalize(
+        event('request.cancel', { id: 'srq-e2eb57192efa', method: 'clarify', reason: 'interrupted' }),
+      ).events,
+    ).toEqual([{ type: 'interaction:question-resolved', requestId: 'srq-e2eb57192efa', outcome: 'cancelled' }]);
+    expect(
+      normalizer
+        .normalize(
+          event('tool.complete', { tool_id: 'call_live_interaction', name: 'clarify', result: { user_response: '' } }),
+        )
+        .events.filter((item) => item.type === 'interaction:question-resolved'),
+    ).toEqual([]);
+  });
+
+  it('does not attribute an ambiguous question to an unrelated completed tool', () => {
+    const normalizer = new HermesGatewayNormalizer();
+    for (const tool_id of ['clarify-a', 'clarify-b'])
+      normalizer.normalize(event('tool.start', { tool_id, name: 'clarify' }));
+    normalizer.normalize(serverRequest('srq-00000000000f', 'clarify', { question: 'Which lane?' }));
+    expect(
+      normalizer
+        .normalize(
+          event('tool.complete', { tool_id: 'clarify-b', name: 'clarify', result: { user_response: 'Alpha' } }),
+        )
+        .events.filter((item) => item.type === 'interaction:question-resolved'),
+    ).toEqual([]);
+    expect(
+      normalizer
+        .normalize(event('message.complete', { text: 'done', status: 'complete' }))
+        .events.filter((item) => item.type === 'interaction:question-resolved'),
+    ).toEqual([{ type: 'interaction:question-resolved', requestId: 'srq-00000000000f', outcome: 'superseded' }]);
   });
 
   it('retains server requests it does not interpret as native events', () => {

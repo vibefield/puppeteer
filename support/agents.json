@@ -164,8 +164,7 @@
       "candidateVersion": "0.21.5",
       "status": "baseline-pending",
       "blockers": [
-        "The protected four-platform locked installed-console reconstruction and adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform.",
-        "Hermes 0.21.5 approval, clarify, and request.cancel delivery to the adapter's own non-advertising gateway connection beside a real attached native TUI is source-derived only; the census captured the approval frame through a single advertising client, so no run has yet shown interaction:permission-requested arriving through the adapter."
+        "The protected four-platform locked installed-console reconstruction and adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."
       ]
     },
     {
