@@ -26,7 +26,7 @@ interface HttpPersonaRunOptions {
 type AuthSpec = HttpServeDocument['$server']['auth'];
 
 /** The first declared password variable that is set wins, as the vendor's own env reader does. */
-function passwordFrom(auth: AuthSpec, env: Record<string, string | undefined>): string | undefined {
+export function passwordFrom(auth: AuthSpec, env: Record<string, string | undefined>): string | undefined {
   for (const name of auth.passwordEnv) {
     if (env[name] !== undefined) return env[name];
   }
@@ -37,8 +37,7 @@ function usernameFrom(auth: AuthSpec, env: Record<string, string | undefined>): 
   return (auth.usernameEnv === undefined ? undefined : env[auth.usernameEnv]) ?? auth.defaultUsername;
 }
 
-function authHeader(persona: Persona, env: Record<string, string | undefined>): Record<string, string> {
-  const auth = persona.httpServe!.$server.auth;
+function authHeader(auth: AuthSpec, env: Record<string, string | undefined>): Record<string, string> {
   const password = passwordFrom(auth, env);
   if (!password) return {};
   const username = usernameFrom(auth, env);
@@ -123,30 +122,52 @@ export function parseHttpAttach(attach: HttpServeAttach, argv: readonly string[]
   };
 }
 
-export async function runHttpPersonaServer(options: HttpPersonaRunOptions): Promise<number> {
-  const spec = options.persona.httpServe!.$server;
-  const hostname = flagValue(options.argv, [spec.hostnameFlag]) ?? spec.defaultHostname;
-  const rawPort = flagValue(options.argv, [spec.portFlag]);
+export interface HttpServeStart {
+  hostname: string;
+  port: number;
+  username: string;
+  password?: string;
+}
+
+/** Resolve the serve invocation's listen address and credentials from vendor argv and env. */
+export function resolveHttpServe(
+  spec: HttpServeDocument['$server'],
+  argv: readonly string[],
+  env: Record<string, string | undefined>,
+): HttpServeStart | { error: string } {
+  const hostname = flagValue(argv, [spec.hostnameFlag]) ?? spec.defaultHostname;
+  const rawPort = flagValue(argv, [spec.portFlag]);
   const port = rawPort === undefined ? spec.defaultPort : Number(rawPort);
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
-    process.stderr.write(`${spec.portFlag} must be an integer from 0 to 65535\n`);
+    return { error: `${spec.portFlag} must be an integer from 0 to 65535` };
+  }
+  const password = passwordFrom(spec.auth, env);
+  return { hostname, port, username: usernameFrom(spec.auth, env), ...(password === undefined ? {} : { password }) };
+}
+
+/** The vendor's machine-readable readiness line for a listening origin. */
+export function readinessLine(spec: HttpServeDocument['$server'], origin: string): string {
+  return spec.readiness.replaceAll('$origin', origin);
+}
+
+export async function runHttpPersonaServer(options: HttpPersonaRunOptions): Promise<number> {
+  const spec = options.persona.httpServe!.$server;
+  const start = resolveHttpServe(spec, options.argv, options.env);
+  if ('error' in start) {
+    process.stderr.write(`${start.error}\n`);
     return 2;
   }
-  const password = passwordFrom(spec.auth, options.env);
   const server = await createHttpPersonaServer({
     persona: options.persona,
     behavior: options.behavior,
-    hostname,
-    port,
+    ...start,
     env: options.env,
     cwd: options.cwd,
-    username: usernameFrom(spec.auth, options.env),
-    ...(password === undefined ? {} : { password }),
     log: options.log,
   });
   // This is the real vendor's machine-readable readiness line. Adapters wait
   // for it before opening SSE; nothing else is written to stdout in serve mode.
-  process.stdout.write(`${spec.readiness.replaceAll('$origin', server.origin)}\n`);
+  process.stdout.write(`${readinessLine(spec, server.origin)}\n`);
   let closing = false;
   const shutdown = async (code = 0): Promise<never> => {
     if (closing) await new Promise(() => {});
@@ -158,6 +179,35 @@ export async function runHttpPersonaServer(options: HttpPersonaRunOptions): Prom
   process.once('SIGINT', () => void shutdown());
   await new Promise(() => {});
   return 0;
+}
+
+/**
+ * The viewer's frames for a messages-route answer, yielded lazily so a
+ * malformed message throws after the ones before it have drawn. A bare
+ * `{info, parts}[]` draws as native update frames and any other shape throws,
+ * which reports a disconnect and retries; a declared `messageListKey` page
+ * draws each message whole.
+ */
+export function* hydrationFrames(
+  attach: HttpServeAttach,
+  sessionID: string,
+  body: unknown,
+): Generator<{ op: string; with: Record<string, unknown> }> {
+  const listKey = attach.messageListKey;
+  if (listKey !== undefined) {
+    const listed = body !== null && typeof body === 'object' ? (body as Record<string, unknown>)[listKey] : undefined;
+    if (!Array.isArray(listed)) throw new Error(`message hydration has no ${listKey} list`);
+    for (const message of listed as unknown[]) yield { op: 'message.hydrated', with: { sessionID, message } };
+    return;
+  }
+  const messages = body as Array<{
+    info: Record<string, unknown>;
+    parts: Record<string, unknown>[];
+  }>;
+  for (const message of messages) {
+    yield { op: 'message.updated', with: { sessionID, info: message.info } };
+    for (const part of message.parts) yield { op: 'message.part.updated', with: { sessionID, part } };
+  }
 }
 
 async function consumeSse(
@@ -193,30 +243,55 @@ async function consumeSse(
   }
 }
 
-export async function runHttpPersonaAttached(options: HttpPersonaRunOptions): Promise<number> {
-  const document = options.persona.httpServe!;
+/** Every request the attached viewer makes, resolved from the document, argv, and env. */
+export interface HttpAttachPlan {
+  sessionID: string;
+  directory?: string | undefined;
+  headers: Record<string, string>;
+  url(action: HttpServeRoute['action']): URL;
+  prompt(text: string, messageId: string): { method: string; url: URL; body: unknown };
+}
+
+export function planHttpAttach(
+  document: HttpServeDocument,
+  argv: readonly string[],
+  env: Record<string, string | undefined>,
+): HttpAttachPlan | { error: string } {
   const spec = document.$server;
   const attach = spec.attach;
   const via = attach.command ?? attach.serverFlag!;
-  const { origin, sessionID, directory } = parseHttpAttach(attach, options.argv);
-  if (!origin) {
-    process.stderr.write(`${via} requires a server URL\n`);
-    return 2;
-  }
+  const { origin, sessionID, directory } = parseHttpAttach(attach, argv);
+  if (!origin) return { error: `${via} requires a server URL` };
   try {
     new URL(origin);
   } catch {
-    process.stderr.write(`${via} requires a valid server URL\n`);
-    return 2;
+    return { error: `${via} requires a valid server URL` };
   }
-  if (!sessionID) {
-    process.stderr.write(`${attach.sessionFlag[0]} requires a session id\n`);
-    return 2;
-  }
-  const envelope = createSseEnvelope(spec.envelope);
+  if (!sessionID) return { error: `${attach.sessionFlag[0]} requires a session id` };
   const url = (action: HttpServeRoute['action']): URL =>
     scopedUrl(origin, routePath(routeFor(document, action), { sessionID }), spec.directoryQuery, directory);
-  const headers = { Accept: 'application/json', ...authHeader(options.persona, options.env) };
+  return {
+    sessionID,
+    directory,
+    headers: { Accept: 'application/json', ...authHeader(spec.auth, env) },
+    url,
+    prompt: (text, messageId) => ({
+      method: routeFor(document, 'session.prompt').method,
+      url: url('session.prompt'),
+      body: promptBody(attach.promptBody, { $text: text, $messageId: messageId }),
+    }),
+  };
+}
+
+export async function runHttpPersonaAttached(options: HttpPersonaRunOptions): Promise<number> {
+  const spec = options.persona.httpServe!.$server;
+  const plan = planHttpAttach(options.persona.httpServe!, options.argv, options.env);
+  if ('error' in plan) {
+    process.stderr.write(`${plan.error}\n`);
+    return 2;
+  }
+  const { sessionID, headers, url } = plan;
+  const envelope = createSseEnvelope(spec.envelope);
   const screen = await createPresentation({
     vendor: options.persona.vendor,
     version: options.persona.version,
@@ -256,19 +331,10 @@ export async function runHttpPersonaAttached(options: HttpPersonaRunOptions): Pr
     if (!sessionResponse.ok) throw new Error(`session hydration returned HTTP ${sessionResponse.status}`);
     if (!messagesResponse.ok) throw new Error(`message hydration returned HTTP ${messagesResponse.status}`);
     const session = (await sessionResponse.json()) as Record<string, unknown>;
-    const messages = (await messagesResponse.json()) as unknown;
+    const body = (await messagesResponse.json()) as unknown;
     screen.frame({ at: new Date().toISOString(), op: 'session.hydrated', with: session });
-    // Presentation only: an `{info, parts}` message draws as its native
-    // update frames; any other message shape draws whole.
-    for (const message of Array.isArray(messages) ? (messages as Record<string, unknown>[]) : []) {
-      if (message?.info === undefined || !Array.isArray(message.parts)) {
-        screen.frame({ at: new Date().toISOString(), op: 'message.hydrated', with: { sessionID, message } });
-        continue;
-      }
-      screen.frame({ at: new Date().toISOString(), op: 'message.updated', with: { sessionID, info: message.info } });
-      for (const part of message.parts as Record<string, unknown>[]) {
-        screen.frame({ at: new Date().toISOString(), op: 'message.part.updated', with: { sessionID, part } });
-      }
+    for (const frame of hydrationFrames(spec.attach, sessionID, body)) {
+      screen.frame({ at: new Date().toISOString(), ...frame });
     }
   };
 
@@ -294,16 +360,11 @@ export async function runHttpPersonaAttached(options: HttpPersonaRunOptions): Pr
     interactive: screen.interactive,
     staged: (text) => screen.staged(text),
     submit: (text) => {
-      const prompt = routeFor(document, 'session.prompt');
-      void fetch(url('session.prompt'), {
+      const prompt = plan.prompt(text, `msg_${crypto.randomUUID().replaceAll('-', '')}`);
+      void fetch(prompt.url, {
         method: prompt.method,
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          promptBody(attach.promptBody, {
-            $text: text,
-            $messageId: `msg_${crypto.randomUUID().replaceAll('-', '')}`,
-          }),
-        ),
+        body: JSON.stringify(prompt.body),
         signal: abort.signal,
       })
         .then((response) => {

@@ -76,17 +76,41 @@ export interface HttpServeRoute {
 }
 
 /**
- * How one SSE frame carries an event. OpenCode 1.x frames `{id,type,properties}`;
- * 2.x frames `{id,created,type,data}` and leaves the clock off its connect frame.
- * Key order on the wire follows this record: id, clock, type, payload.
+ * How one SSE frame carries an event. OpenCode 1.x frames `{id,type,properties}`.
+ * 2.x (probe 2026-11-04) frames `{id,created,type,location?,data,durable?}`:
+ * `location` is `{directory}` and is absent on some types, `durable` is
+ * `{aggregateID,seq,version}` on the durable `session.*` types only, and the
+ * connect frame is `{id,type,data}`. Key order on the wire follows that list.
  */
 export interface HttpServeEnvelope {
   /** Record key holding the event payload. */
   payloadKey: string;
+  /**
+   * Whether a reader also accepts the payload as an encoded JSON string (2.x
+   * declares `V2EventEncoded` that way, though its wire carries an object).
+   * Absent means object only, as 1.x.
+   */
+  encodedPayload?: boolean;
   /** Optional wall-clock (epoch ms) key stamped on every frame except the connect frame. */
   clockKey?: string;
   /** Type of the frame every stream opens with. */
   connectedType: string;
+  /** Sibling `{directory}` scope between type and payload; stamped when the directory is known. */
+  location?: {
+    key: string;
+    /** Types the vendor sends without a location. */
+    omitTypes: string[];
+  };
+  /**
+   * Sibling `{aggregateID, seq, version}` after the payload on the listed types.
+   * `seq` counts from 0 per session and advances whether or not a client is
+   * connected, so a reconnecting reader sees the gap the vendor would leave.
+   */
+  durable?: {
+    key: string;
+    version: number;
+    types: string[];
+  };
 }
 
 /**
@@ -104,6 +128,12 @@ export interface HttpServeAttach {
   valueFlags: string[];
   /** Prompt body template; whole-string `$text` and `$messageId` are substituted. */
   promptBody: Record<string, unknown>;
+  /**
+   * Key of the message array when the messages route pages its answer (2.x
+   * `{data, cursor}`); each message then draws whole. Absent, the route answers
+   * a bare `{info, parts}[]` drawn as native update frames.
+   */
+  messageListKey?: string;
 }
 
 export interface HttpServeDocument {

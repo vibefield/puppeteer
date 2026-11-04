@@ -26,21 +26,48 @@ export interface SseRecord {
   [key: string]: unknown;
 }
 
+/** The per-aggregate cursor a durable frame carries. */
+export interface SseDurable {
+  aggregateID: string;
+  seq: number;
+  version: number;
+}
+
 /** A native event without its carrier: what stores and blockers reason about. */
 export interface SseEvent {
   type: string;
   payload: Record<string, unknown>;
+  /** Present only when the envelope declares `durable` and the frame carries a well-formed cursor. */
+  durable?: SseDurable;
+}
+
+/** What the store knows about a frame's scope; the envelope decides which of it reaches the wire. */
+export interface SseScope {
+  directory?: string | undefined;
+  aggregateID?: string | undefined;
+  /** Assigned by the store, which owns the per-aggregate counter. */
+  seq?: number | undefined;
 }
 
 export interface SseEnvelopeCodec {
   readonly spec: HttpServeEnvelope;
-  /** Frame a payload; key order is id, clock, type, payload. */
-  wrap(type: string, payload: Record<string, unknown>): SseRecord;
-  /** The stream-opening frame, which carries no clock. */
+  /** Frame a payload; key order is id, clock, type, location, payload, durable. */
+  wrap(type: string, payload: Record<string, unknown>, scope?: SseScope): SseRecord;
+  /** The stream-opening frame, which carries no clock, location, or cursor. */
   connected(): SseRecord;
-  /** The payload of a carrier; an encoded JSON string is decoded. `undefined` when it is not an object. */
+  /** Whether frames of this type carry a durable cursor, so the store must assign a `seq`. */
+  isDurable(type: string): boolean;
+  /**
+   * The payload of a carrier, or `undefined` when it is not an object. An
+   * encoded JSON string is decoded only when the envelope declares `encodedPayload`.
+   */
   payloadOf(record: Record<string, unknown>): Record<string, unknown> | undefined;
-  /** Narrow a parsed frame to a carrier with an object payload. */
+  /**
+   * Narrow a parsed event-stream frame to a carrier with an object payload.
+   * Frames without an `id` are refused: every event-stream frame carries one
+   * on both lines (2.x's id-less `log.synced` belongs to the separate session
+   * log stream, which has no payload key at all).
+   */
   read(value: unknown): SseEvent | undefined;
 }
 
@@ -51,11 +78,20 @@ function eventId(): string {
   return `evt_${crypto.randomUUID().replaceAll('-', '')}`;
 }
 
+function durableOf(value: unknown): SseDurable | undefined {
+  if (!isObject(value)) return undefined;
+  const { aggregateID, seq, version } = value;
+  if (typeof aggregateID !== 'string' || !Number.isInteger(seq) || !Number.isInteger(version)) return undefined;
+  return { aggregateID, seq: seq as number, version: version as number };
+}
+
 export function createSseEnvelope(spec: HttpServeEnvelope): SseEnvelopeCodec {
+  const durableTypes = new Set(spec.durable?.types ?? []);
+  const locationless = new Set(spec.location?.omitTypes ?? []);
   const payloadOf = (record: Record<string, unknown>): Record<string, unknown> | undefined => {
     const raw = record[spec.payloadKey];
     if (isObject(raw)) return raw;
-    if (typeof raw !== 'string') return undefined;
+    if (spec.encodedPayload !== true || typeof raw !== 'string') return undefined;
     try {
       const decoded = JSON.parse(raw) as unknown;
       return isObject(decoded) ? decoded : undefined;
@@ -65,22 +101,38 @@ export function createSseEnvelope(spec: HttpServeEnvelope): SseEnvelopeCodec {
   };
   return {
     spec,
-    wrap(type, payload) {
+    wrap(type, payload, scope = {}) {
+      const location =
+        spec.location !== undefined && scope.directory !== undefined && !locationless.has(type)
+          ? { [spec.location.key]: { directory: scope.directory } }
+          : {};
+      const durable =
+        spec.durable !== undefined &&
+        durableTypes.has(type) &&
+        scope.aggregateID !== undefined &&
+        scope.seq !== undefined
+          ? { [spec.durable.key]: { aggregateID: scope.aggregateID, seq: scope.seq, version: spec.durable.version } }
+          : {};
       return {
         id: eventId(),
         ...(spec.clockKey === undefined ? {} : { [spec.clockKey]: Date.now() }),
         type,
+        ...location,
         [spec.payloadKey]: payload,
+        ...durable,
       };
     },
     connected() {
       return { id: eventId(), type: spec.connectedType, [spec.payloadKey]: {} };
     },
+    isDurable: (type) => durableTypes.has(type),
     payloadOf,
     read(value) {
       if (!isObject(value) || typeof value.id !== 'string' || typeof value.type !== 'string') return undefined;
       const payload = payloadOf(value);
-      return payload === undefined ? undefined : { type: value.type, payload };
+      if (payload === undefined) return undefined;
+      const durable = spec.durable === undefined ? undefined : durableOf(value[spec.durable.key]);
+      return durable === undefined ? { type: value.type, payload } : { type: value.type, payload, durable };
     },
   };
 }

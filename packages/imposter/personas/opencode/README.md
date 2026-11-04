@@ -15,8 +15,8 @@ second release line is a data change rather than an engine fork:
 | `auth.passwordEnv` | `OPENCODE_SERVER_PASSWORD` | one name or an ordered list; the first set variable wins |
 | `auth.usernameEnv` | `OPENCODE_SERVER_USERNAME` | optional; without it the username is `defaultUsername` |
 | `auth.realm`, `auth.unauthorizedBody` | `opencode`, `{name,data:{message}}` | the 401 challenge and body |
-| `envelope` | `payloadKey: properties` | SSE carrier key; optional `clockKey` stamps every frame but the connect frame |
-| `attach` | `command: attach`, `--session`, `--dir` | the viewer invocation: a subcommand `command`, or a root `serverFlag` whose directory is the first positional; `promptBody` is the submit template (`$text`, `$messageId`) |
+| `envelope` | `payloadKey: properties` | SSE carrier key; optional `clockKey` stamps every frame but the connect frame; optional `location` (`{directory}` between type and payload, minus `omitTypes`) and `durable` (`{aggregateID,seq,version}` after the payload on the listed `types`, per-session `seq` from 0, spent even when no reader is connected and kept across restarts); `encodedPayload: true` also reads a JSON-string payload. 1.x declares none of these. |
+| `attach` | `command: attach`, `--session`, `--dir` | the viewer invocation: a subcommand `command`, or a root `serverFlag` whose directory is the first positional; `promptBody` is the submit template (`$text`, `$messageId`); optional `messageListKey` reads a paged messages answer and draws each message whole |
 
 The viewer reaches the server through the routes whose actions are
 `session.get`, `session.messages`, `event.subscribe` and `session.prompt`, so

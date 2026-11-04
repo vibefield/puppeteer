@@ -24,6 +24,7 @@ import {
   type HttpSseServer,
   type SseEvent,
   type SseRecord,
+  type SseScope,
 } from './channels/http-sse.ts';
 import { createImposterSession, type BehaviorDocument, type ImposterSession } from './session.ts';
 
@@ -39,6 +40,8 @@ interface StoredSession {
   permissions: Record<string, unknown>[];
   questions: Record<string, unknown>[];
   diff: Record<string, unknown>[];
+  /** Next durable `seq`; present only once an envelope with `durable` has framed one. */
+  seq?: number;
 }
 
 interface StoredDocument {
@@ -113,7 +116,8 @@ function loadStored(path: string): StoredDocument {
         Array.isArray(entry.messages) &&
         Array.isArray(entry.permissions) &&
         Array.isArray(entry.questions) &&
-        Array.isArray(entry.diff)
+        Array.isArray(entry.diff) &&
+        (entry.seq === undefined || (Number.isInteger(entry.seq) && (entry.seq as number) >= 0))
       );
     });
     return { version: 1, sessions };
@@ -216,6 +220,21 @@ export async function createHttpPersonaServer(options: HttpPersonaServerOptions)
     hub.publish(record, directory);
   };
 
+  // Only an envelope with sibling keys needs a scope; 1.x frames stay {id,type,properties}.
+  const framesScope =
+    document.$server.envelope.location !== undefined || document.$server.envelope.durable !== undefined;
+  const scopeOf = (type: string, sessionID: string): SseScope => {
+    const scope: SseScope = { directory: directoryFor(sessionID), aggregateID: sessionID };
+    const stored = sessions.get(sessionID);
+    if (!stored || !envelope.isDurable(type)) return scope;
+    // Spent at framing time and persisted, so a restart resumes the sequence
+    // and an event nobody received still leaves its gap.
+    const seq = stored.seq ?? 0;
+    stored.seq = seq + 1;
+    persist();
+    return { ...scope, seq };
+  };
+
   const configureRuntime = (runtime: ImposterSession, stored: StoredSession): void => {
     const info = stored.info;
     runtime.bindings.$sessionTitle = info.title;
@@ -246,6 +265,7 @@ export async function createHttpPersonaServer(options: HttpPersonaServerOptions)
       behavior: options.behavior,
       sse: {
         publish: (record) => publish(record, sessionID),
+        ...(framesScope ? { scope: (type: string) => scopeOf(type, sessionID) } : {}),
         request: (record) => {
           const requestID = envelope.payloadOf(record)?.id;
           if (typeof requestID !== 'string' || requestID.length === 0) {

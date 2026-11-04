@@ -24,6 +24,7 @@ import {
   type OpBinding,
   type OpChannel,
   type HttpServeDocument,
+  type HttpServeEnvelope,
   type HttpServeRoute,
   type OpsDocument,
   type Persona,
@@ -642,10 +643,47 @@ function parseHttpServeDocument(path: string, value: unknown): HttpServeDocument
   if (/["\\\r\n]/.test(realm))
     throw new Error(`imposter: ${path} $server.auth.realm must not contain quotes or newlines`);
   const envelope = requireRecord(path, server.envelope, '$server.envelope');
-  rejectUnknownFields(path, envelope, ['payloadKey', 'clockKey', 'connectedType']);
+  rejectUnknownFields(path, envelope, [
+    'payloadKey',
+    'encodedPayload',
+    'clockKey',
+    'connectedType',
+    'location',
+    'durable',
+  ]);
   const payloadKey = requireString(path, envelope, 'payloadKey');
+  if (envelope.encodedPayload !== undefined && typeof envelope.encodedPayload !== 'boolean') {
+    throw new Error(`imposter: ${path} $server.envelope.encodedPayload must be a boolean`);
+  }
   const clockKey = optionalString(path, envelope, 'clockKey');
-  const envelopeKeys = ['id', 'type', payloadKey, ...(clockKey === undefined ? [] : [clockKey])];
+  let location: HttpServeEnvelope['location'];
+  if (envelope.location !== undefined) {
+    const raw = requireRecord(path, envelope.location, '$server.envelope.location');
+    rejectUnknownFields(path, raw, ['key', 'omitTypes']);
+    location = {
+      key: requireString(path, raw, 'key'),
+      omitTypes: raw.omitTypes === undefined ? [] : stringList(path, raw.omitTypes, 'omitTypes', 128),
+    };
+  }
+  let durable: HttpServeEnvelope['durable'];
+  if (envelope.durable !== undefined) {
+    const raw = requireRecord(path, envelope.durable, '$server.envelope.durable');
+    rejectUnknownFields(path, raw, ['key', 'version', 'types']);
+    if (!Number.isInteger(raw.version) || (raw.version as number) < 0) {
+      throw new Error(`imposter: ${path} $server.envelope.durable.version must be a non-negative integer`);
+    }
+    const types = stringList(path, raw.types, 'types', 128);
+    if (types.length === 0) throw new Error(`imposter: ${path} $server.envelope.durable.types must not be empty`);
+    durable = { key: requireString(path, raw, 'key'), version: raw.version as number, types };
+  }
+  const envelopeKeys = [
+    'id',
+    'type',
+    payloadKey,
+    ...(clockKey === undefined ? [] : [clockKey]),
+    ...(location === undefined ? [] : [location.key]),
+    ...(durable === undefined ? [] : [durable.key]),
+  ];
   if (new Set(envelopeKeys).size !== envelopeKeys.length) {
     throw new Error(`imposter: ${path} $server.envelope keys must be distinct from each other and from id/type`);
   }
@@ -657,6 +695,7 @@ function parseHttpServeDocument(path: string, value: unknown): HttpServeDocument
     'directoryFlag',
     'valueFlags',
     'promptBody',
+    'messageListKey',
   ]);
   const attachCommand = optionalString(path, attach, 'command');
   const serverFlag = optionalString(path, attach, 'serverFlag');
@@ -664,6 +703,7 @@ function parseHttpServeDocument(path: string, value: unknown): HttpServeDocument
     throw new Error(`imposter: ${path} $server.attach must declare exactly one of "command" or "serverFlag"`);
   }
   const directoryFlag = optionalString(path, attach, 'directoryFlag');
+  const messageListKey = optionalString(path, attach, 'messageListKey');
   const promptBody = requireRecord(path, attach.promptBody, '$server.attach.promptBody');
   const readiness = requireString(path, server, 'readiness');
   if (!readiness.includes('$origin')) throw new Error(`imposter: ${path} $server.readiness must contain $origin`);
@@ -717,8 +757,11 @@ function parseHttpServeDocument(path: string, value: unknown): HttpServeDocument
       },
       envelope: {
         payloadKey,
+        ...(envelope.encodedPayload === true ? { encodedPayload: true } : {}),
         ...(clockKey === undefined ? {} : { clockKey }),
         connectedType: requireString(path, envelope, 'connectedType'),
+        ...(location === undefined ? {} : { location }),
+        ...(durable === undefined ? {} : { durable }),
       },
       attach: {
         ...(attachCommand === undefined ? {} : { command: attachCommand }),
@@ -727,6 +770,7 @@ function parseHttpServeDocument(path: string, value: unknown): HttpServeDocument
         ...(directoryFlag === undefined ? {} : { directoryFlag }),
         valueFlags: attach.valueFlags === undefined ? [] : stringList(path, attach.valueFlags, 'valueFlags'),
         promptBody,
+        ...(messageListKey === undefined ? {} : { messageListKey }),
       },
     },
     routes,
