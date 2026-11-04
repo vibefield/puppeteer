@@ -166,14 +166,21 @@ Residual items the fixers recorded but could not close in a container:
   The protected native-TUI/resume lane is now implemented. Its local official-release proof and all 103 Pi tests pass. It checks native output, normalized completion, durable journal observation and same-session replay with exactly one loopback provider request. The workflow verifies the complete release bundle before and after this test; four-platform rehearsal and owner-approved protected promotion passed; receipt `b404d178` is integrated by `c2f4a6e3`.
 - **Antigravity 1.4.12:** see its findings section and ledger blocker. Branch `adapt/antigravity-1.4.12` (local,
   unpushed) has the migration short of staging. Descriptors were extracted earlier. Rosetta branch
-  `groundtruth/antigravity-1.4.12` (`a3a7bd1`, `1477a5d`, `e5f1111`, unmerged) pins and sandboxes the farm, captures
-  four darwin-arm64 scenarios and adds raw types and goldens. Puppeteer imports them as the captures-only set
-  `captures/antigravity@1.4.12` (`1ac06f5c`). The adapter reads both journal shapes: a GENERIC command result joins the
-  oldest outstanding command, `CommandLine` and JSON-encoded arguments are decoded, planner token counts stay out of
-  the live ledger (RFC 008), no CHECKPOINT is needed, and the monitor contract becomes `antigravity-transcript@1.4.12`
-  once the journal proves that shape. 1.1.x replay is byte-for-byte unchanged. Consuming GENERIC regenerated the
-  adapter map (same ground-truth digest). Open: only exit code 0 is captured. Staging waits for the 1.1.20
-  promotion; the findings section lists its exact steps.
+  `groundtruth/antigravity-1.4.12` (`a3a7bd1`, `20b0b20`, `de73a6a`, `f879d9c`, unmerged, unpushed) pins and
+  sandboxes the farm, captures four darwin-arm64 print-mode scenarios (binary fixtures redacted, opaque
+  `implicit/*.pb` blobs withheld as name-and-size inventory; history rewritten so no commit holds the unredacted
+  databases), adds raw types and goldens, and joins GENERIC results only in a proven 1.4.12 journal. Its upstream is
+  configured as `origin/main`: push it only by explicit refspec. Puppeteer imports the journals as the captures-only
+  set `captures/antigravity@1.4.12`, whose `import.json` records the Rosetta commit and source-journal digests. The
+  adapter reads both journal shapes: a GENERIC command result joins the oldest outstanding command of the latest
+  planner step, `CommandLine` and JSON-encoded arguments are decoded, planner token counts stay out of the live ledger
+  (RFC 008), no CHECKPOINT is needed, and the monitor contract becomes `antigravity-transcript@1.4.12` once the
+  journal proves that shape. 1.1.x replay is byte-for-byte unchanged. Consuming GENERIC regenerated the adapter map
+  (same ground-truth digest). Open: only exit code 0 is captured (Puppeteer reads a non-zero DONE step as completed,
+  Rosetta as failed); no native-TUI 1.4.12 journal is captured. Staging waits for the 1.1.20 promotion; the findings
+  section lists its exact steps. After that promotion lands, re-redact Rosetta's 1.1.20 fixtures: their conversation
+  databases (basic-chat, resume, tool-use) still hold operator `/var/folders` paths in protobuf BLOB columns, on
+  Rosetta main already.
 - **Copilot 1.0.105:** all four native executable probes and immutable report assembly passed in
   [run 41786233830](https://github.com/vibefield/puppeteer/actions/runs/41786233830). That run exposed a replay
   bug: it validated the outer journal envelope as the nested `data` payload. Replay now uses the declared payload

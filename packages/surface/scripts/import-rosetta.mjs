@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Import immutable Rosetta evidence without making normal builds depend on Rosetta. */
 
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
@@ -57,6 +58,7 @@ function importCaptureSet(vendor, config, sourceRoot, vendorRoot, version, limit
   if (!existsSync(fixtureRoot)) throw new Error(`Rosetta has no ${vendor} fixtures for ${version}: ${fixtureRoot}`);
   const rules = rosettaPrivacyRules(vendor);
   const scenarios = [];
+  const journals = [];
   let recordCount = 0;
   for (const scenarioEntry of readdirSync(fixtureRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -70,6 +72,8 @@ function importCaptureSet(vendor, config, sourceRoot, vendorRoot, version, limit
     for (const [index, source] of sources.entries()) {
       const name = sources.length === 1 ? 'events.jsonl' : `events-${String(index + 1).padStart(2, '0')}.jsonl`;
       recordCount += sanitizeJsonl(source, join(captureRoot, scenarioEntry.name, name), rules);
+      // The source path names native conversation ids, so only its digest is kept.
+      journals.push({ capture: `${scenarioEntry.name}/${name}`, sourceSha256: sha256(source) });
     }
   }
   if (recordCount === 0) {
@@ -105,7 +109,20 @@ function importCaptureSet(vendor, config, sourceRoot, vendorRoot, version, limit
       'All native object keys, containers, primitive types, and record ordering are retained; sensitive scalar values are redacted in place.',
     ],
   });
-  return { scenarios: scenarios.length, records: recordCount };
+  return { scenarios: scenarios.length, records: recordCount, journals };
+}
+
+/** The Rosetta commit, and whether the vendor's ground-truth tree matched it. Undefined outside a Git checkout. */
+function rosettaRevision(rosettaRoot, sourceRoot) {
+  try {
+    const git = (...args) => execFileSync('git', ['-C', rosettaRoot, ...args], { encoding: 'utf8' }).trim();
+    return {
+      commit: git('rev-parse', 'HEAD'),
+      sourceTreeClean: git('status', '--porcelain', '--', relative(rosettaRoot, sourceRoot)) === '',
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -125,9 +142,26 @@ export function importRosettaCaptures(vendor, version, options = {}) {
   const canonical = JSON.parse(readFileSync(canonicalPath, 'utf8'));
   if (canonical.agent !== vendor) throw new Error(`Rosetta identity is ${canonical.agent}, expected ${vendor}`);
   const vendorRoot = join(packageRoot, 'vendors', vendor);
-  const result = importCaptureSet(vendor, config, sourceRoot, vendorRoot, version, [
+  const { journals, ...result } = importCaptureSet(vendor, config, sourceRoot, vendorRoot, version, [
     `Captures-only import: only the ${config.primaryStream} append-only journal is copied from each Rosetta ${version} scenario. The active canonical stays ${vendor}@${config.version}; this set backs adapter compatibility and is not folded into the model.`,
   ]);
+  // No reference directory is written for a captures-only set, so its provenance lives beside the captures.
+  const fixtureSource = canonical.sources?.find(
+    (source) => source.agent_version === version && source.evidence === 'fixture',
+  );
+  writeJson(join(vendorRoot, 'captures', `${vendor}@${version}`, 'import.json'), {
+    format: 'puppeteer-rosetta-captures-import/1',
+    vendor,
+    vendorVersion: version,
+    importer: relative(repositoryRoot, fileURLToPath(import.meta.url)).replaceAll('\\', '/'),
+    source: {
+      project: 'rosetta',
+      ...rosettaRevision(rosettaRoot, sourceRoot),
+      canonicalSha256: sha256(canonicalPath),
+      ...(fixtureSource?.sha256 ? { fixtureSourceSha256: fixtureSource.sha256 } : {}),
+      journals,
+    },
+  });
   return { vendor, version, ...result };
 }
 

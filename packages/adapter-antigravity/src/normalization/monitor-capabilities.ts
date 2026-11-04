@@ -97,8 +97,8 @@ const replaced: Partial<Record<ObservationCapability['family'], Omit<Observation
     source: 'antigravity-transcript-jsonl',
     limitations: [
       'Planner content is the strongest observed turn-completion boundary; the transcript has no explicit turn-end record.',
-      'Command results are GENERIC steps without exit_code. One joins only the oldest outstanding call, and only when that call is a command; other tools stay unresolved until the next prompt.',
-      'Only exit code 0 has been captured; a failed command is detected from step status or error only.',
+      'Command results are GENERIC steps without exit_code. One joins only the oldest outstanding call of the latest planner step, and only when that call is a command; other tools stay unresolved unless a typed result arrives.',
+      'Only exit code 0 has been captured; a failed command is detected from step status or error only, so a non-zero exit written as a DONE step reads as completed.',
     ],
   },
   usage: {
@@ -125,7 +125,9 @@ const replaced: Partial<Record<ObservationCapability['family'], Omit<Observation
     actorScope: 'session',
     latency: 'historical',
     source: 'none-in-antigravity-transcript',
-    limitations: ['1.4.12 journals write no CHECKPOINT, and no compaction record was observed.'],
+    limitations: [
+      'The captured 1.4.12 print-mode journals write no CHECKPOINT, and no compaction record was observed; native TUI journals are not yet captured.',
+    ],
   },
 };
 /** 1.4.12 journal claims; every family 1.4.12 did not change keeps its 1.1.20 claim. */

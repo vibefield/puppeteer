@@ -22,9 +22,11 @@ import { antigravityWorkspaceOperation } from './workspace.js';
 export class AntigravityTranscriptNormalizer {
   private currentTurnId: string | undefined;
   private readonly pending = new Map<string, AntigravityToolFact[]>();
-  // Every requested tool in request order, for 1.4.12's GENERIC results. A
-  // GENERIC step names no tool, so it joins only the oldest outstanding call,
-  // and only when that call is a command (the captured link).
+  // The latest planner step's requested tools in request order, for 1.4.12's
+  // GENERIC results. A GENERIC step names no tool, so it joins only the oldest
+  // outstanding call, and only when that call is a command (the captured
+  // link). The writer records a step's results before the next planner step or
+  // prompt, so either one closes the window.
   private readonly outstanding: AntigravityToolFact[] = [];
   private shape: AntigravityJournalShape | undefined;
   /** The journal shape proven so far; undefined until a record proves 1.4.12. */
@@ -71,9 +73,12 @@ export class AntigravityTranscriptNormalizer {
       const events: AgentEvent[] = [];
       const shape = antigravityJournalShape(body);
       if (shape) this.shape = shape;
+      // Calls an earlier planner step left unanswered keep their typed queues
+      // but can no longer receive a GENERIC result.
+      if (this.shape === '1.4.12') this.outstanding.length = 0;
       if (Array.isArray(body.tool_calls)) {
         for (const [index, value] of body.tool_calls.entries()) {
-          const fact = antigravityToolFact(step, index, turnId, value, shape === '1.4.12');
+          const fact = antigravityToolFact(step, index, turnId, value, this.shape === '1.4.12');
           if (!fact) continue;
           this.outstanding.push(fact);
           if (fact.expectedType) {

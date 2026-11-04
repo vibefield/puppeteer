@@ -188,6 +188,30 @@ describe('Antigravity 1.4.12 raw transcript shapes (from Rosetta fixtures)', () 
     expect(request.events[0]).toMatchObject({ input: DECODED, presentation: { detail: 'echo rosetta-mock' } });
   });
 
+  it('decodes a later planner step by the shape the journal already proved', () => {
+    const normalizer = new AntigravityTranscriptNormalizer();
+    normalizer.normalize(USER(0));
+    normalizer.normalize({ ...RAW_PLANNER, content: 'proved' });
+    const request = normalizer.normalize({
+      type: 'PLANNER_RESPONSE',
+      step_index: 2,
+      tool_calls: [{ name: 'view_file', args: { AbsolutePath: '"/a"' } }],
+    });
+    expect(request.events[0]).toMatchObject({ input: { AbsolutePath: '/a' }, presentation: { detail: '/a' } });
+  });
+
+  it('keeps real-typed string arguments that happen to parse as JSON', () => {
+    const normalizer = new AntigravityTranscriptNormalizer();
+    normalizer.normalize(USER(0));
+    for (const CommandLine of ['true', '42']) {
+      const request = normalizer.normalize({
+        ...RAW_PLANNER,
+        tool_calls: [{ name: 'run_command', args: { CommandLine } }],
+      });
+      expect(request.events[0]).toMatchObject({ input: { CommandLine }, presentation: { detail: CommandLine } });
+    }
+  });
+
   it('proves the shape from CommandLine even without planner token counts', () => {
     const normalizer = new AntigravityTranscriptNormalizer();
     normalizer.normalize(USER(0));
@@ -238,6 +262,34 @@ describe('Antigravity 1.4.12 GENERIC correlation boundaries (constructed)', () =
     const result = normalizer.normalize(RAW_GENERIC);
     expect(result.disposition).toBe('retained-native');
     expect(result.events).toEqual([{ type: 'adapter:native-event', adapter: 'antigravity', nativeType: 'GENERIC' }]);
+  });
+
+  it('joins a later planner step command after an earlier call got no typed result', () => {
+    const normalizer = start([{ name: 'write_to_file', args: { TargetFile: '"/a"' } }]);
+    expect(normalizer.normalize(RAW_GENERIC).disposition).toBe('retained-native');
+    normalizer.normalize({
+      ...RAW_PLANNER,
+      step_index: 3,
+      tool_calls: [{ name: 'run_command', args: { CommandLine: '"ls"' } }],
+    });
+    expect(normalizer.normalize({ ...RAW_GENERIC, step_index: 4 }).events[0]).toMatchObject({
+      type: 'tool:completed',
+      toolCallId: 'step:3:tool:0',
+    });
+  });
+
+  it('closes the GENERIC window at the next planner step', () => {
+    const normalizer = start([command]);
+    normalizer.normalize({ ...RAW_PLANNER, step_index: 2, content: 'answered without a result step' });
+    expect(normalizer.normalize({ ...RAW_GENERIC, step_index: 3 }).disposition).toBe('retained-native');
+  });
+
+  it('reads a non-zero exit written as a DONE step as completed (declared limitation)', () => {
+    const failed = { ...RAW_GENERIC, content: RAW_GENERIC.content.replace('code 0.', 'code 2.') };
+    expect(start([command]).normalize(failed).events[0]).toMatchObject({
+      type: 'tool:completed',
+      toolCallId: 'step:1:tool:0',
+    });
   });
 
   it('drops calls left pending when the next prompt arrives', () => {

@@ -31,10 +31,21 @@ function presentation(tool: string, input: unknown, complete = false): ToolPrese
     antigravityString(body?.path);
   return { kind, title: `${complete ? 'Used' : 'Using'} ${tool}`, ...(detail ? { detail } : {}) };
 }
+// Arguments whose native value is always a string. In the encoded form each
+// is a quoted JSON string.
+const STRING_ARGUMENTS = new Set([
+  'CommandLine',
+  'commandLine',
+  'AbsolutePath',
+  'DirectoryPath',
+  'path',
+  'toolSummary',
+]);
 // 1.4.12 writes every tool argument in transcript.jsonl as a JSON-encoded
 // string ("\"echo x\"", "5000"); transcript_full.jsonl keeps the real types.
-// Decode only when every value is a string that parses, so real-typed
-// arguments and plain strings pass through untouched.
+// Decode only when every value is a string that parses, at least one decodes
+// to a string, and no string-typed argument decodes to anything else. Real-typed
+// arguments, plain strings, and a real `CommandLine: 'true'` pass through.
 function decodeEncodedArgs(args: unknown): unknown {
   const body = antigravityRecord(args);
   if (!body) return args;
@@ -47,8 +58,9 @@ function decodeEncodedArgs(args: unknown): unknown {
     } catch {
       return args;
     }
+    if (STRING_ARGUMENTS.has(key) && typeof decoded[key] !== 'string') return args;
   }
-  return decoded;
+  return Object.values(decoded).some((value) => typeof value === 'string') ? decoded : args;
 }
 export function antigravityToolFact(
   step: string,
