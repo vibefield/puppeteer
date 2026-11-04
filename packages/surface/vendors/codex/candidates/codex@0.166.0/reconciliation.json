@@ -4,14 +4,10 @@
   "vendorVersion": "0.166.0",
   "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
   "currentVersion": "0.164.0",
-  "classification": "unsafe-or-unknown",
+  "classification": "adaptation-required",
   "detectorStatus": "candidate",
-  "artifactStatus": "incomplete",
-  "missingPlatforms": [
-    "darwin-arm64",
-    "darwin-x64",
-    "windows-x64"
-  ],
+  "artifactStatus": "complete",
+  "missingPlatforms": [],
   "replay": {
     "status": "passed",
     "frames": 247,
@@ -55,5 +51,5 @@
     "detectionChanged": false,
     "baselineMissing": false
   },
-  "recommendation": "quarantine the candidate and do not change support metadata"
+  "recommendation": "prepare a draft report; update adapter/persona semantics under human review"
 }

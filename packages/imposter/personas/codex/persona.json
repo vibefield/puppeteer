@@ -4,9 +4,10 @@
     "package": "@vibefield/puppeteer-surface",
     "path": "vendors/codex"
   },
-  "shimNames": ["codex"],
+  "shimNames": [
+    "codex"
+  ],
   "envelope": {},
-
   "bindings": {
     "$threadId": "$uuid:thread",
     "$threadCwd": "$cwd",
@@ -25,12 +26,20 @@
       "excludeSlashTmp": false
     }
   },
-
   "nativeStore": {
-    "sessionPath": ["threads", "$threadId"],
+    "sessionPath": [
+      "threads",
+      "$threadId"
+    ],
     "updatesFile": "notifications.jsonl",
     "mirrorJsonRpc": true
   },
-
-  "boot": [{ "op": "session.start" }, { "op": "session.ready" }]
+  "boot": [
+    {
+      "op": "session.start"
+    },
+    {
+      "op": "session.ready"
+    }
+  ]
 }
