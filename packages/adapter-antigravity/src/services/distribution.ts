@@ -103,8 +103,10 @@ export function classifyAntigravityCandidate(candidate: InstallCandidate): Class
 function autoUpdateState(env: NodeJS.ProcessEnv): AutoUpdateState {
   const value = env[ANTIGRAVITY_DISABLE_AUTO_UPDATE_VARIABLE];
   if (value === undefined) return 'unknown';
-  const normalized = value.trim().toLowerCase();
-  return normalized === '' || normalized === '0' || normalized === 'false' ? 'enabled' : 'disabled';
+  // Upstream compares the literal value: '1' still launches the updater. Do not trim or case-fold
+  // an unverified spelling into a claim that passive probes cannot replace the executable.
+  if (value === 'true') return 'disabled';
+  return ['', '0', 'false', '1'].includes(value) ? 'enabled' : 'unknown';
 }
 
 function errorMessage(error: unknown): string {

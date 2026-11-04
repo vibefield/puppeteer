@@ -223,7 +223,7 @@ describe('Antigravity account usage', () => {
       ['-p', '/credits', '--output-format', 'json'],
     ]);
     expect(scripted.calls[0]?.file).toBe('/opt/agy');
-    expect(scripted.calls[0]?.env.AGY_CLI_DISABLE_AUTO_UPDATE).toBe('1');
+    expect(scripted.calls[0]?.env.AGY_CLI_DISABLE_AUTO_UPDATE).toBe('true');
     expect(scripted.calls[0]?.env.AGY_CLI_HIDE_ACCOUNT_INFO).toBeUndefined();
   });
 

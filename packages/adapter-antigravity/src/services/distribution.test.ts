@@ -103,7 +103,7 @@ describe('Antigravity inspect', () => {
   it('reads the documented auto-update kill switch from the environment', async () => {
     const exec = async () => ({ stdout: versionOutput, stderr: '' });
     await expect(
-      createAntigravityDistributionService({ exec, env: { AGY_CLI_DISABLE_AUTO_UPDATE: '1' } }).inspect(
+      createAntigravityDistributionService({ exec, env: { AGY_CLI_DISABLE_AUTO_UPDATE: 'true' } }).inspect(
         candidate({ realPath: '/home/tester/.local/bin/agy' }),
       ),
     ).resolves.toMatchObject({ autoUpdate: 'disabled' });
@@ -112,6 +112,21 @@ describe('Antigravity inspect', () => {
         candidate({ realPath: '/home/tester/.local/bin/agy' }),
       ),
     ).resolves.toMatchObject({ autoUpdate: 'enabled' });
+  });
+
+  it.each([
+    ['1', 'enabled'],
+    ['true ', 'unknown'],
+    [' true', 'unknown'],
+    ['TRUE', 'unknown'],
+    ['yes', 'unknown'],
+  ])('does not claim auto-updates are disabled for %j', async (value, autoUpdate) => {
+    const exec = async () => ({ stdout: versionOutput, stderr: '' });
+    await expect(
+      createAntigravityDistributionService({ exec, env: { AGY_CLI_DISABLE_AUTO_UPDATE: value } }).inspect(
+        candidate({ realPath: '/home/tester/.local/bin/agy' }),
+      ),
+    ).resolves.toMatchObject({ autoUpdate });
   });
 
   it('records a failed probe as a warning instead of throwing', async () => {

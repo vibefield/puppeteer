@@ -344,7 +344,7 @@ function printTimeoutFlag(timeoutMs: number): string {
 }
 
 function usageEnv(base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...base, [DISABLE_AUTO_UPDATE]: '1', NO_COLOR: '1' };
+  const env: NodeJS.ProcessEnv = { ...base, [DISABLE_AUTO_UPDATE]: 'true', NO_COLOR: '1' };
   delete env[HIDE_ACCOUNT_INFO];
   delete env.FORCE_COLOR;
   return env;

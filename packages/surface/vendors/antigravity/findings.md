@@ -99,6 +99,24 @@ fixture, Rosetta raw-type and adapter migration work is still outstanding. The
 active canonical model remains 1.1.20.
 
 
+## Auto-update suppression correction — 2026-11-04
+
+The kill switch requires the lowercase literal `AGY_CLI_DISABLE_AUTO_UPDATE=true`.
+`1` does not disable the updater. The [official troubleshooting guide](https://antigravity.google/docs/cli-troubleshooting?hl=en)
+documents `true`; [upstream issue 1046](https://github.com/google-antigravity/antigravity-cli/issues/1046)
+records the same failure on 1.2.6. A disposable probe here had replaced its
+previously downloaded 1.1.20 executable with 1.5.0 while using `1`, so that probe
+was stopped and is not version-bound runtime evidence.
+
+The official 1.1.20 darwin-arm64 executable was reacquired with SHA-256
+`b454577f8531fcdf985c3cc2f9012904edfb4b0664e0edb9e237f6f345734e53`.
+With `true`, its startup log identifies 1.1.20 and explicitly reports that
+updates are disabled; the executable digest remains unchanged. Account usage,
+model discovery and the authorized census now use this spelling. Distribution
+inspection no longer reports `1` or unprobed alternate spellings as disabled.
+The census also rechecks its pinned executable digest before and after each
+invocation. Existing captures that used `1` do not establish update suppression.
+
 ## Historical survey: 1.1.12
 
 Status: Stage 0 complete. Stage 1 authorized print-mode survey in progress on

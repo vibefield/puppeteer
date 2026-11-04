@@ -33,7 +33,7 @@ export function createAntigravityModelService(options: NativeModelProbeOptions =
           ...(options.env ?? process.env),
           ...(options.home ? { HOME: options.home } : {}),
           NO_COLOR: '1',
-          AGY_CLI_DISABLE_AUTO_UPDATE: '1',
+          AGY_CLI_DISABLE_AUTO_UPDATE: 'true',
         },
         context.profile ? profiles.bindingEnvironment(context.profile) : undefined,
         ANTIGRAVITY_PROFILE_ROOT_VARIABLE,
