@@ -204,8 +204,8 @@
       "candidateVersion": "1.5.0",
       "status": "baseline-pending",
       "blockers": [
-        "Canonical Rosetta-derived ground truth, the native-TUI adapter, Imposter persona, local conformance, and the reproducible four-platform acquisition policy are complete; the protected matching-platform real-native-TUI/resume lane and its artifact-bound receipts are not yet implemented or completed.",
-        "Pi 1.5.0 now has complete GitHub release-bundle identities on all four platforms. All seven controlled scenarios were recaptured on the exact linux-x64 release under Docker network isolation on 2026-11-04; runtime claims bind to that manifest and the original Rosetta writer/schema claims retain their fixture-corpus provenance. The native-TUI/resume promotion proof remains unimplemented."
+        "The protected four-platform native-TUI/resume lane is implemented. The local official-release proof passes, including journal replay of the same session, but matching-platform workflow verification and protected promotion are still pending.",
+        "Pi 1.5.0 has complete GitHub release-bundle identities on all four platforms. All seven controlled scenarios were recaptured on the exact linux-x64 release under Docker network isolation; runtime claims bind to that manifest and the original Rosetta writer/schema claims retain their fixture-corpus provenance."
       ]
     }
   ]

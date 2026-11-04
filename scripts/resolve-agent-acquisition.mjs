@@ -16,7 +16,11 @@ export function resolveAgentAcquisition(config, { vendor, platform, sourceRefere
     const spec = config.acquisition.artifacts?.[platform];
     if (spec?.bundle) {
       validateReleaseBundlePolicy(spec.bundle, spec.format);
-      return { artifactKind: 'release-bundle', outputName: 'release-bundle.json' };
+      return {
+        artifactKind: 'release-bundle',
+        outputName: 'release-bundle.json',
+        executablePath: `release/${spec.bundle.entry}`,
+      };
     }
     return {
       artifactKind: 'standalone-executable',

@@ -9,7 +9,7 @@ const workflow = readFileSync(resolve(root, '.github/workflows/agent-surface-pro
 const adaptation = readFileSync(resolve(root, '.github/workflows/agent-adaptation.yml'), 'utf8');
 const live = readFileSync(resolve(root, '.github/workflows/agent-live.yml'), 'utf8');
 const adaptationVendorChoices = /options: \[antigravity, claude, codex, copilot, grok, hermes, kimi, opencode, pi\]/;
-const promotionVendorChoices = /options: \[claude, codex, grok, hermes, kimi, opencode\]/;
+const promotionVendorChoices = /options: \[claude, codex, grok, hermes, kimi, opencode, pi\]/;
 const protectedLiveTests = Object.fromEntries(
   Object.entries({
     claude: 'native-tui.live.test.ts',
@@ -18,6 +18,7 @@ const protectedLiveTests = Object.fromEntries(
     hermes: 'driver.live.test.ts',
     kimi: 'driver.live.test.ts',
     opencode: 'opencode.live.test.ts',
+    pi: 'driver.live.test.ts',
   }).map(([vendor, file]) => [
     vendor,
     readFileSync(resolve(root, 'packages', `adapter-${vendor}`, 'src', file), 'utf8'),
@@ -221,7 +222,7 @@ test('the live lanes run on fresh GitHub-hosted runners that nothing later trust
     pinnedReal,
     /--version-output-file "\.agent-adaptation\/live-artifacts\/\$\{\{ matrix\.platform \}\}\/version\.txt"/,
   );
-  for (const vendor of ['claude', 'codex', 'grok', 'hermes', 'opencode', 'kimi']) {
+  for (const vendor of ['claude', 'codex', 'grok', 'hermes', 'opencode', 'kimi', 'pi']) {
     assert.ok(pinnedReal.includes(`@vibefield/puppeteer-adapter-${vendor} test --testTimeout=15000`), vendor);
   }
   // The acquisition is read again after a human approval, so it is kept as long as the verification.
@@ -373,7 +374,7 @@ test('every protected provider writes its artifact-bound receipt from an execute
   for (const [vendor, source] of Object.entries(protectedLiveTests)) {
     assert.match(source, /attestLiveAdapter/);
     assert.match(source, new RegExp(`vendor: '${vendor}'`));
-    assert.match(source, vendor === 'hermes' ? /artifact: promotionArtifact/ : /artifact: executable/);
+    assert.match(source, ['hermes', 'pi'].includes(vendor) ? /artifact: promotionArtifact/ : /artifact: executable/);
   }
 });
 
@@ -438,4 +439,24 @@ test('source-built Hermes is reconstructed generically before its protected nati
     protectedLiveTests.hermes,
     /host\.output\(resumed!\.runtimeSessionId\)\.includes\(HERMES_LIVE_RESPONSE_MARKER\)/,
   );
+});
+
+test('Pi preserves and verifies the complete release bundle around its native-TUI and journal resume proof', () => {
+  const { acquire, 'pinned-real': pinnedReal } = jobs;
+  for (const source of [acquire, step(pinnedReal, 'Probe the exact version again on the live runner')]) {
+    assert.match(source, /artifactKind == 'release-bundle'/);
+    assert.match(source, /scripts\/probe-agent-artifact\.mjs/);
+  }
+  const after = step(pinnedReal, 'Revalidate the complete release bundle after the live test');
+  assert.match(after, /scripts\/probe-agent-artifact\.mjs/);
+  assert.ok(pinnedReal.indexOf('Revalidate the complete release bundle') > pinnedReal.indexOf('Pi pinned-real'));
+  assert.ok(
+    pinnedReal.indexOf('Revalidate the complete release bundle') <
+      pinnedReal.indexOf('node scripts/write-platform-verification.mjs'),
+  );
+  assert.match(pinnedReal, /PUPPETEER_PI_BIN:.*steps\.policy\.outputs\.executablePath/);
+  assert.match(protectedLiveTests.pi, /testId: 'pi:native-tui-journal'/);
+  assert.match(protectedLiveTests.pi, /resume: sessionId/);
+  assert.match(protectedLiveTests.pi, /replay && source === 'native-log'/);
+  assert.match(protectedLiveTests.pi, /expect\(provider\.requests\)\.toHaveLength\(1\)/);
 });

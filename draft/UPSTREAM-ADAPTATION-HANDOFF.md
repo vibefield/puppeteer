@@ -165,7 +165,7 @@ Residual items the fixers recorded but could not close in a container:
   [run 41784334179](https://github.com/vibefield/puppeteer/actions/runs/41784334179). All seven scenarios were
   recaptured on the exact Linux release under Docker `--network none`: 62 records, eight journal files.
   Runtime claims now bind to the acquired release; Rosetta schema references retain their original provenance.
-  The native-TUI promotion lane remains absent.
+  The protected native-TUI/resume lane is now implemented. Its local official-release proof and all 103 Pi tests pass. It checks native output, normalized completion, durable journal observation and same-session replay with exactly one loopback provider request. The workflow verifies the complete release bundle before and after this test; four-platform rehearsal and protected promotion remain pending.
 - **Antigravity 1.4.12:** see its findings section and ledger blocker. It needs a writer document from the binary's
   protobuf descriptors, Rosetta raw types and goldens, and adapter tool-result matching that no longer relies on
   `RUN_COMMAND`/`exit_code`, because results are now `GENERIC` steps.
@@ -175,8 +175,7 @@ Residual items the fixers recorded but could not close in a container:
   path and still checks the complete envelope. All nine vendors' committed captures now have replay tests.
   The corrected acquisition and analysis completed successfully in
   [run 41787728386](https://github.com/vibefield/puppeteer/actions/runs/41787728386).
-- **Copilot, Pi and Antigravity** have no protected promotion lane: `agent-surface-promotion.yml` offers only claude,
-  codex, grok, hermes, kimi and opencode. This blocker predates this work.
+- **Copilot and Antigravity** still have no protected promotion lane. Pi now joins Claude, Codex, Grok, Hermes, Kimi and OpenCode in the protected workflow.
 
 ### 4. Promotion
 

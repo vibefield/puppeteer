@@ -50,6 +50,7 @@ test('release acquisition retains companion bytes and binds the complete bundle 
   assert.deepEqual(resolveAgentAcquisition(config, identity), {
     artifactKind: 'release-bundle',
     outputName: 'release-bundle.json',
+    executablePath: 'release/fake.exe',
   });
   const bytes = archive(root, {
     'fake/fake.exe': 'not executed',
