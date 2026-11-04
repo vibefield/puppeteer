@@ -12,6 +12,13 @@
  * On macOS Claude looks credentials up through `security(1)` found on PATH. The
  * disposable PATH starts with a stub that answers every lookup "not found", so
  * a census never reads, writes, or prompts for the owner's login keychain.
+ *
+ * An empty environment still does not prove the artifact holds no credential
+ * (findings.md, 2.1.311), so network reach is closed too: the model endpoint
+ * and every HTTP(S) proxy variable default to a refusing loopback port, and
+ * only loopback bypasses the proxy. Lanes that run a census-owned server
+ * replace those defaults with their loopback model and the egress recorder
+ * (census/egress-guard.mjs).
  */
 import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -53,14 +60,41 @@ export function createIsolatedRoot(prefix = 'pcc-') {
  * artifact still sent an Authorization header (findings.md, 2.1.311), so the
  * only safe default is an endpoint nothing can listen on. Port 0 refuses every
  * connection, so a request fails with ECONNREFUSED and its headers reach no
- * listener. Lanes with a loopback model override it.
+ * listener. Lanes with a loopback model override it. It redirects only the
+ * model endpoint, not the hard-coded account and OAuth endpoints; those are
+ * the proxy's job (below).
  */
 export const FAIL_CLOSED_BASE_URL = 'http://127.0.0.1:0';
+
+/**
+ * Fail-closed proxy for traffic no base URL controls, such as the artifact's
+ * hard-coded account and OAuth endpoints. Like the base URL it refuses every
+ * connection; asynchronous lanes replace it with the egress recorder.
+ */
+export const FAIL_CLOSED_PROXY_URL = 'http://127.0.0.1:0';
+
+/** Hosts that bypass the proxy: the census's own loopback model and hook sink. */
+export const LOOPBACK_NO_PROXY = '127.0.0.1,localhost,::1';
+
+/** Proxy variables (both spellings) that route every non-loopback request to `proxyUrl`. */
+export function egressEnvironment(proxyUrl = FAIL_CLOSED_PROXY_URL) {
+  return {
+    HTTPS_PROXY: proxyUrl,
+    HTTP_PROXY: proxyUrl,
+    ALL_PROXY: proxyUrl,
+    https_proxy: proxyUrl,
+    http_proxy: proxyUrl,
+    all_proxy: proxyUrl,
+    NO_PROXY: LOOPBACK_NO_PROXY,
+    no_proxy: LOOPBACK_NO_PROXY,
+  };
+}
 
 /** A complete environment for one artifact process; `extra` may add census-owned variables only. */
 export function isolatedEnvironment(layout, extra = {}) {
   return {
     ANTHROPIC_BASE_URL: FAIL_CLOSED_BASE_URL,
+    ...egressEnvironment(),
     PATH: [layout.bin, dirname(process.execPath), '/usr/bin', '/bin', '/usr/sbin', '/sbin'].join(delimiter),
     HOME: layout.home,
     USERPROFILE: layout.home,

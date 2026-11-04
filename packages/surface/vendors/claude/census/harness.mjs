@@ -18,7 +18,11 @@
  *   loopback model (census/interactive-lane.mjs), followed by a resume.
  *
  * No lane borrows the owner's settings, plugins, hooks, transcripts, keychain,
- * or tokens, and no lane makes a credentialed or billed model call.
+ * or tokens. Two checks fail the run instead of trusting that: every lane's
+ * HTTP(S) proxy is the census egress recorder (census/egress-guard.mjs), and a
+ * lane that attempts any non-loopback destination fails; the headless lane's
+ * model endpoint is a loopback recorder, and any request reaching it means the
+ * artifact found a credential the disposable environment does not hold.
  */
 import { randomUUID } from 'node:crypto';
 import { spawnSync, spawn } from 'node:child_process';
@@ -26,7 +30,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HOOK_TOKEN_VAR, hookSettings, projectOrder, startHookSink, writeForwarder } from './hook-sink.mjs';
-import { createIsolatedRoot, isolatedEnvironment, removeIsolatedRoot } from './isolation.mjs';
+import { assertNoEgress, startEgressRecorder } from './egress-guard.mjs';
+import { createIsolatedRoot, egressEnvironment, isolatedEnvironment, removeIsolatedRoot } from './isolation.mjs';
 import { LOOPBACK_AUTH_TOKEN, LOOPBACK_MODEL, startLoopbackModel } from './loopback-model.mjs';
 
 const vendorRoot = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -205,12 +210,22 @@ function prepareWorkspace(layout) {
   writeFileSync(join(layout.workspace, 'CLAUDE.md'), 'Surface census fixture. Do not modify files.\n', 'utf8');
 }
 
-async function runOfflineLanes({ artifact, sink, outputRoot, lanes }) {
+/**
+ * The headless lane is credential-less only if the artifact sends nothing. Its
+ * model endpoint is a loopback recorder rather than a real API, so a request
+ * proves a host credential outside the disposable environment; the run fails
+ * and nothing it wrote may be sanitized.
+ */
+const HEADLESS_TRIPWIRE = { status: 401, type: 'authentication_error', message: 'census headless tripwire' };
+
+async function runOfflineLanes({ artifact, sink, egress, outputRoot, lanes }) {
   const layout = createIsolatedRoot();
   prepareWorkspace(layout);
   try {
     for (const mode of ['init', 'headless'].filter((lane) => lanes.includes(lane))) {
       sink.mode = mode;
+      egress.lane = mode;
+      const tripwire = mode === 'headless' ? await startLoopbackModel({ errorReply: HEADLESS_TRIPWIRE }) : undefined;
       const settingsPath = join(layout.root, `${mode}.settings.json`);
       writeFileSync(settingsPath, `${JSON.stringify(settingsFor(sink, layout), null, 2)}\n`, { mode: 0o600 });
       const common = commonArgs(settingsPath, mode);
@@ -231,24 +246,39 @@ async function runOfflineLanes({ artifact, sink, outputRoot, lanes }) {
               ...common,
               'Reply with exactly SURFACE_CENSUS_OK and do not use tools.',
             ];
-      await runClaudeAsync({
-        artifact,
-        args,
-        layout,
-        logPath: join(outputRoot, `${mode}.log`),
-        extraEnvironment: { [HOOK_TOKEN_VAR]: sink.token },
-      });
+      try {
+        await runClaudeAsync({
+          artifact,
+          args,
+          layout,
+          logPath: join(outputRoot, `${mode}.log`),
+          extraEnvironment: {
+            ...egressEnvironment(egress.url),
+            ...(tripwire ? { ANTHROPIC_BASE_URL: tripwire.baseUrl } : {}),
+            [HOOK_TOKEN_VAR]: sink.token,
+          },
+        });
+      } finally {
+        await tripwire?.close();
+      }
+      assertNoEgress(egress, mode);
+      if (tripwire && tripwire.requests.length > 0) {
+        throw new Error(
+          `Claude census refused: the credential-less headless lane sent ${tripwire.requests.length} model request(s), so the artifact holds a credential outside the disposable environment; discard this run and use a host where it holds none`,
+        );
+      }
     }
   } finally {
     removeIsolatedRoot(layout);
   }
 }
 
-async function runApiErrorLane({ artifact, sink, outputRoot }) {
+async function runApiErrorLane({ artifact, sink, egress, outputRoot }) {
   const summary = [];
   for (const errorReply of CLAUDE_API_ERROR_CASES) {
     const mode = `api-error-${errorReply.status}`;
     sink.mode = mode;
+    egress.lane = mode;
     const layout = createIsolatedRoot();
     prepareWorkspace(layout);
     const model = await startLoopbackModel({ errorReply });
@@ -260,6 +290,7 @@ async function runApiErrorLane({ artifact, sink, outputRoot }) {
         layout,
         logPath: join(outputRoot, `${mode}.log`),
         extraEnvironment: {
+          ...egressEnvironment(egress.url),
           ANTHROPIC_BASE_URL: model.baseUrl,
           ANTHROPIC_AUTH_TOKEN: LOOPBACK_AUTH_TOKEN,
           ANTHROPIC_API_KEY: '',
@@ -294,6 +325,7 @@ async function runApiErrorLane({ artifact, sink, outputRoot }) {
       await model.close();
       removeIsolatedRoot(layout);
     }
+    assertNoEgress(egress, mode);
   }
   writeFileSync(join(outputRoot, 'api-error.summary.log'), `${JSON.stringify(summary, null, 2)}\n`, { mode: 0o600 });
   return summary;
@@ -312,18 +344,27 @@ export async function runClaudeCensus({ artifact, expectedVersion, outputRoot, a
   }
   mkdirSync(outputRoot, { recursive: true, mode: 0o700 });
 
-  const sink = await startHookSink({ outputRoot, auxRoot });
+  const egress = await startEgressRecorder();
   let apiErrors = [];
-  try {
-    await runOfflineLanes({ artifact, sink, outputRoot, lanes });
-    if (lanes.includes('api-error')) apiErrors = await runApiErrorLane({ artifact, sink, outputRoot });
-  } finally {
-    await sink.close();
-  }
   let interactive;
-  if (lanes.includes('interactive')) {
-    const { runInteractiveLanes } = await import('./interactive-lane.mjs');
-    interactive = await runInteractiveLanes({ artifact, outputRoot, auxRoot, events: CLAUDE_HOOK_EVENTS });
+  let sink;
+  try {
+    sink = await startHookSink({ outputRoot, auxRoot });
+    try {
+      await runOfflineLanes({ artifact, sink, egress, outputRoot, lanes });
+      if (lanes.includes('api-error')) apiErrors = await runApiErrorLane({ artifact, sink, egress, outputRoot });
+    } finally {
+      await sink.close();
+    }
+    if (lanes.includes('interactive')) {
+      const { runInteractiveLanes } = await import('./interactive-lane.mjs');
+      interactive = await runInteractiveLanes({ artifact, outputRoot, auxRoot, events: CLAUDE_HOOK_EVENTS, egress });
+    }
+    assertNoEgress(egress);
+  } finally {
+    await egress.close();
+    // Destinations only (loopback included), kept even when a lane failed, so a review can restate the egress claim.
+    writeFileSync(join(outputRoot, 'egress.log'), `${JSON.stringify(egress.attempts, null, 1)}\n`, { mode: 0o600 });
   }
   writeFileSync(
     join(outputRoot, 'ordering.json'),

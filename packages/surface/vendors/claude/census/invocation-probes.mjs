@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /**
  * Invocation-grammar probes for an exact Claude Code artifact, each in its own
- * disposable environment (census/isolation.mjs) with no credential.
+ * disposable environment (census/isolation.mjs). The environment holds no
+ * credential, but that does not prove the artifact finds none (findings.md,
+ * 2.1.311); the probes run synchronously, so egress is closed by the refusing
+ * fail-closed model endpoint and proxy rather than recorded.
  *
  * - Parse probes are session-free: `claude <flags under test> mcp --help`.
  *   "mcp help" means the flags parsed and left `mcp` the first operand; "root

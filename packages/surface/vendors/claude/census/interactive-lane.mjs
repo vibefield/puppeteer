@@ -29,7 +29,8 @@ import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HOOK_TOKEN_VAR, hookSettings, startHookSink, writeForwarder } from './hook-sink.mjs';
-import { createIsolatedRoot, isolatedEnvironment, removeIsolatedRoot } from './isolation.mjs';
+import { assertNoEgress, startEgressRecorder } from './egress-guard.mjs';
+import { createIsolatedRoot, egressEnvironment, isolatedEnvironment, removeIsolatedRoot } from './isolation.mjs';
 import { LOOPBACK_AUTH_TOKEN, LOOPBACK_MODEL, startLoopbackModel } from './loopback-model.mjs';
 
 const censusRoot = dirname(fileURLToPath(import.meta.url));
@@ -279,9 +280,11 @@ function newShape() {
  * `<outputRoot>/{interactive,resume}/<Event>.jsonl`; value-free projections in
  * `<outputRoot>/{transcript-shape,statusline-shape}.json`; diagnostics,
  * transcripts, and raw status payloads in `auxRoot`. The arrival order is
- * returned for the harness's combined ordering projection.
+ * returned for the harness's combined ordering projection. Both sessions use
+ * the harness's egress recorder (`egress`; a private one when absent), and the
+ * lane fails if either attempted a non-loopback destination.
  */
-export async function runInteractiveLanes({ artifact, outputRoot, auxRoot, events }) {
+export async function runInteractiveLanes({ artifact, outputRoot, auxRoot, events, egress: sharedEgress }) {
   const pty = loadNodePty();
   mkdirSync(outputRoot, { recursive: true, mode: 0o700 });
   mkdirSync(auxRoot, { recursive: true, mode: 0o700 });
@@ -291,6 +294,7 @@ export async function runInteractiveLanes({ artifact, outputRoot, auxRoot, event
   const sink = await startHookSink({ outputRoot, auxRoot });
   const { order } = sink;
   const model = await startLoopbackModel({ plan: scriptedPlan(workspace) });
+  const egress = sharedEgress ?? (await startEgressRecorder());
 
   writeFileSync(join(workspace, 'CLAUDE.md'), 'Surface census fixture. Do not modify files.\n');
   writeFileSync(join(workspace, 'watched.txt'), 'initial\n');
@@ -337,6 +341,7 @@ export async function runInteractiveLanes({ artifact, outputRoot, auxRoot, event
     { mode: 0o600 },
   );
   const baseEnvironment = isolatedEnvironment(layout, {
+    ...egressEnvironment(egress.url),
     ANTHROPIC_BASE_URL: model.baseUrl,
     ANTHROPIC_AUTH_TOKEN: LOOPBACK_AUTH_TOKEN,
     ANTHROPIC_API_KEY: '',
@@ -362,6 +367,7 @@ export async function runInteractiveLanes({ artifact, outputRoot, auxRoot, event
   const sessions = [];
   const spawnClaude = (mode, args, environment) => {
     sink.mode = mode;
+    egress.lane = mode;
     laneLog(`spawn ${mode}: ${args.map((argument) => argument.replaceAll(root, '<root>')).join(' ')}`);
     const terminal = pty.spawn(artifact, args, {
       name: 'xterm-256color',
@@ -510,7 +516,9 @@ export async function runInteractiveLanes({ artifact, outputRoot, auxRoot, event
     }
     await model.close();
     await sink.close();
+    if (!sharedEgress) await egress.close();
   }
+  for (const mode of ['interactive', 'resume']) assertNoEgress(egress, mode);
 
   const hooksSeen = order.filter((entry) => entry.channel === 'hook');
   const statusPaths = (channel) => {
