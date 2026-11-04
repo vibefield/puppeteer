@@ -1,4 +1,6 @@
 /** Real attached-TUI interactions: semantic assertions use gateway envelopes only. */
+import { execFileSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -149,7 +151,17 @@ describe.runIf(live)('Hermes interactions beside the real native TUI (live)', ()
           await session?.dispose();
           await host.dispose();
           await provider.close();
-          rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
+          try {
+            rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
+          } catch (error) {
+            console.error('HERMES CLEANUP FILES', readdirSync(root, { recursive: true }));
+            try {
+              console.error(execFileSync('lsof', ['+D', root], { encoding: 'utf8' }));
+            } catch (diagnostic) {
+              console.error((diagnostic as { stdout?: string }).stdout);
+            }
+            throw error;
+          }
         }
       },
       120_000,
