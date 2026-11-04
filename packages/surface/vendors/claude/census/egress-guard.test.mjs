@@ -80,6 +80,7 @@ describe('isolated environment egress defaults', () => {
     const layout = createIsolatedRoot();
     try {
       const environment = isolatedEnvironment(layout);
+      expect(environment.CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL).toBe('1');
       expect(environment.ANTHROPIC_BASE_URL).toBe(FAIL_CLOSED_BASE_URL);
       for (const name of PROXY_VARIABLES) expect(environment[name]).toBe(FAIL_CLOSED_PROXY_URL);
       expect(environment.NO_PROXY).toBe('127.0.0.1,localhost,::1');

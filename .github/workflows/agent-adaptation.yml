@@ -184,7 +184,7 @@ jobs:
           sudo cp -a packages node_modules "$census_root/"
           sudo cp "$artifact" "$census_root/agent"
           sudo chown -R root:root "$census_root"
-          sudo --preserve-env=PATH node "$census_root/packages/surface/vendors/claude/census/harness.mjs" \
+          sudo "$(command -v node)" "$census_root/packages/surface/vendors/claude/census/harness.mjs" \
             --artifact "$census_root/agent" --version "$AGENT_VERSION" \
             --output "$census_root/raw" \
             --aux "$census_root/aux" \

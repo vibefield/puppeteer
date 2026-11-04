@@ -110,6 +110,9 @@ export function isolatedEnvironment(layout, extra = {}) {
     TERM: 'xterm-256color',
     CLAUDE_CONFIG_DIR: layout.configDir,
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+    // The pinned TUI bootstraps its official marketplace even with nonessential
+    // traffic disabled. A census must never install plugins from the network.
+    CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL: '1',
     CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
     DISABLE_AUTOUPDATER: '1',
     DISABLE_ERROR_REPORTING: '1',
