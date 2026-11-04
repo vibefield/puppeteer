@@ -30,7 +30,8 @@ export interface StartHermesGatewayHostOptions {
   startupTimeoutMs?: number | undefined;
 }
 
-async function terminateChild(child: ChildProcess, timeoutMs = 2_000): Promise<void> {
+// Native shutdown budgets up to five seconds for durable flushes, then stops turns and slash workers.
+async function terminateChild(child: ChildProcess, timeoutMs = 10_000): Promise<void> {
   if (child.exitCode !== null || child.signalCode) return;
   const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
   try {

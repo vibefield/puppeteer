@@ -7,7 +7,7 @@
 
 import { execFile, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { request as httpRequest } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -137,6 +137,14 @@ const STAND_IN: Record<string, string> = {
     'def _load_cfg():',
     '    return {}',
     '_methods = {"wake.start": lambda rid, params: _ok(rid, {"started": True})}',
+    'import atexit, os, time',
+    'from pathlib import Path',
+    'def _shutdown_sessions():',
+    '    time.sleep(float(os.environ.get("SHUTDOWN_DELAY_SECONDS", "0")))',
+    '    home = Path(os.environ["HERMES_HOME"])',
+    '    home.mkdir(parents=True, exist_ok=True)',
+    '    (home / ("shutdown-" + str(os.getpid()))).write_text("native sessions closed")',
+    'atexit.register(_shutdown_sessions)',
   ].join('\n'),
   'tui_gateway/ws.py': [
     'import json',
@@ -188,12 +196,12 @@ function upgradeStatus(url: string, headers: Record<string, string> = {}): Promi
 describe.skipIf(!servesWebSockets)('Hermes gateway host (the real script, a stand-in tui_gateway)', () => {
   let scratch: string;
 
-  const start = () =>
+  const start = (shutdownDelay = '0') =>
     startHermesGatewayHost({
       python: hostPython,
       hermesHome: join(scratch, 'home'),
       cwd: scratch,
-      env: { PYTHONPATH: join(scratch, 'stand-in') },
+      env: { PYTHONPATH: join(scratch, 'stand-in'), SHUTDOWN_DELAY_SECONDS: shutdownDelay },
     });
 
   beforeAll(async () => {
@@ -225,6 +233,16 @@ describe.skipIf(!servesWebSockets)('Hermes gateway host (the real script, a stan
       await Promise.all([host.close(), other.close()]);
     }
   }, 60_000);
+
+  it('runs native session shutdown before the gateway process exits on SIGTERM', async () => {
+    const host = await start('2.1');
+    try {
+      expect(await upgradeStatus(authorizedGatewayUrl(host.url, host.token))).toBe(101);
+    } finally {
+      await host.close();
+    }
+    expect(await readFile(join(scratch, 'home', `shutdown-${host.pid}`), 'utf8')).toBe('native sessions closed');
+  }, 20_000);
 
   it("serves the adapter's own client", async () => {
     const host = await start();

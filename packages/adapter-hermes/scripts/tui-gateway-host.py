@@ -9,6 +9,8 @@ two clients of the launch that started it: each presents the launch's bearer,
 and none sends an Origin.
 """
 
+import asyncio
+from contextlib import asynccontextmanager
 import hmac
 import json
 import socket
@@ -154,7 +156,19 @@ def main() -> None:
     short_circuit_disabled_wake_start()
     enable_session_event_fanout()
 
-    app = FastAPI()
+    @asynccontextmanager
+    async def lifespan(app):
+        try:
+            yield
+        finally:
+            # uvicorn re-raises SIGTERM after graceful shutdown, bypassing Python atexit.
+            # Close native sessions (including detached slash workers) before that signal.
+            from tui_gateway import server as native_server
+            shutdown = getattr(native_server, "_shutdown_sessions", None)
+            if callable(shutdown):
+                await asyncio.to_thread(shutdown)
+
+    app = FastAPI(lifespan=lifespan)
 
     @app.websocket("/api/ws")
     async def websocket_endpoint(websocket: WebSocket) -> None:
