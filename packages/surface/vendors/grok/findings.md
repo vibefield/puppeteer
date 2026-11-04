@@ -443,8 +443,8 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
 Deferred design-level work, each with its evidence:
 
 - **Platforms:** only darwin-arm64 is captured. darwin-x64, linux-x64, and windows-x64 (named-pipe leader,
-  `leader.lock` readiness) need `surface:download` plus a census per platform. The protected four-platform
-  lane has since passed (run 40240209372).
+  `leader.lock` readiness) need `surface:download` plus a census per platform. Promotion run 40240209372
+  acquired those artifacts and passed the protected four-platform lane; the censuses are still missing.
 - **Deferred approvals, residual edges.** If the viewer exits while a request is pending and the binding
   stays alive, nothing answers it until the turn is cancelled or the binding is disposed (disposal
   releases it). A subagent child's request is keyed by its own sessionId and settles from that session's
@@ -575,9 +575,9 @@ TMPDIR=<short dir> GROK_LIVE=1 PUPPETEER_GROK_BIN=<grok@1.0.70> \
 
 ## Promotion status
 
-This is an executable baseline candidate, not a promoted support baseline. Its ASM v3 claims, exact
-darwin-arm64 digest, and pre-normalization replay are machine-checked against type-preserving 1.0.70
-captures under an explicit binary-only evidence policy. Promotion is still blocked on the darwin-x64,
-linux-x64, and windows-x64 artifacts and censuses, and on the protected four-platform
-adapter-through-native-TUI lane. Protected promotion run 40240209372 later cleared both; `support/agents.json`
-records 1.0.70 as `verified`.
+1.0.70 is `verified` in `support/agents.json`. Protected promotion run 40240209372 acquired the
+darwin-x64, linux-x64, and windows-x64 artifacts (their digests are in the ledger) and passed the
+protected four-platform adapter-through-native-TUI lane. Its ASM v3 claims, exact darwin-arm64 digest, and
+pre-normalization replay are machine-checked against type-preserving 1.0.70 captures under an explicit
+binary-only evidence policy. Surface censuses on the other three platforms remain a follow-up (see Known
+gaps).

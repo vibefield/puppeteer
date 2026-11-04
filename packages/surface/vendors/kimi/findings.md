@@ -12,7 +12,7 @@ This candidate replaces the 0.34.0 candidate (darwin-arm64, commit
 reference, and model remain under their versioned directories as frozen history;
 `groundtruth.json` now folds the 2.4.1 model.
 
-This is a partial Surface census, not a promoted baseline. The committed
+This is a partial Surface census; promotion is recorded under Promotion status. The committed
 fixtures are allowlisted, sanitized projections of gitignored raw captures.
 
 ## Method
