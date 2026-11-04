@@ -178,11 +178,18 @@ jobs:
         run: |
           artifact="$PWD/.agent-adaptation/census-artifact/linux-x64/agent"
           chmod +x "$artifact"
-          sudo --preserve-env=PATH node packages/surface/vendors/claude/census/harness.mjs \
-            --artifact "$artifact" --version "$AGENT_VERSION" \
-            --output "$PWD/.agent-adaptation/census-raw" \
-            --aux "$PWD/.agent-adaptation/census-aux" \
+          # Namespace root cannot traverse runner-owned private directories. Stage only
+          # the harness/dependencies and artifact in a disposable root-owned tree.
+          census_root=$(sudo mktemp -d /tmp/claude-census.XXXXXX)
+          sudo cp -a packages node_modules "$census_root/"
+          sudo cp "$artifact" "$census_root/agent"
+          sudo chown -R root:root "$census_root"
+          sudo --preserve-env=PATH node "$census_root/packages/surface/vendors/claude/census/harness.mjs" \
+            --artifact "$census_root/agent" --version "$AGENT_VERSION" \
+            --output "$census_root/raw" \
+            --aux "$census_root/aux" \
             --lanes init,headless,api-error,interactive --sandbox netns
+          sudo cp -a "$census_root/raw" .agent-adaptation/census-raw
           sudo chown -R "$(id -u):$(id -g)" .agent-adaptation/census-raw
       - name: Sanitize and audit before uploading any evidence
         run: |

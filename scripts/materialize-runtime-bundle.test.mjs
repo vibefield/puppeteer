@@ -33,7 +33,7 @@ function fixture() {
 
 function runner(projectRoot, calls, { mutate = false } = {}) {
   return (_command, args, options) => {
-    calls.push({ args, label: options.label });
+    calls.push({ command: _command, args, label: options.label });
     if (options.label === 'Node identity probe') return 'v22.22.0\n';
     if (options.label === 'npm identity probe') return '10.9.4\n';
     if (options.label === 'Node executable probe') return `${process.execPath}\n`;
@@ -62,7 +62,9 @@ test('runtime materialization uses a locked script-free install and emits only t
   });
 
   const install = calls.find((call) => call.label === 'locked npm workspace install');
-  assert.deepEqual(install.args.slice(0, 3), ['ci', '--workspace', 'ui-tui']);
+  assert.equal(install.command, process.execPath);
+  assert.match(install.args[0], /npm-cli\.js$/);
+  assert.deepEqual(install.args.slice(1, 4), ['ci', '--workspace', 'ui-tui']);
   assert.ok(install.args.includes('--ignore-scripts'));
   assert.equal(manifest.materialization.lifecycleScripts, false);
   assert.equal(manifest.artifact.entry, 'runtime/dist/entry.js');

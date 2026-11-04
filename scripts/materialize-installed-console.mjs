@@ -126,7 +126,7 @@ function run(commandName, args, options = {}) {
   return result.stdout;
 }
 
-function isolatedEnvironment(workRoot, names, environment = process.env) {
+export function isolatedEnvironment(workRoot, names, environment = process.env) {
   const inherited = [
     'PATH',
     'SystemRoot',
@@ -152,6 +152,10 @@ function isolatedEnvironment(workRoot, names, environment = process.env) {
   value.NO_COLOR = '1';
   value.PYTHONDONTWRITEBYTECODE = '1';
   value.UV_NO_ENV_FILE = '1';
+  // Source-built Python dependencies may use the installed Rust toolchain.
+  // Retain its location, while Cargo's config and credentials stay in the disposable home.
+  const rustupHome = environment.RUSTUP_HOME ?? (environment.HOME && join(environment.HOME, '.rustup'));
+  if (rustupHome && existsSync(rustupHome)) value.RUSTUP_HOME = rustupHome;
   for (const name of names) value[name] = home;
   return value;
 }

@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { isolatedEnvironment } from './materialize-installed-console.mjs';
 import {
   createInstalledConsoleManifest,
   normalizeInstalledVersionOutput,
@@ -18,6 +19,24 @@ import {
 
 const digest = (character) => `sha256:${character.repeat(64)}`;
 const sha256 = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
+
+test('source builds retain Rust toolchains without inheriting Cargo credentials or the caller home', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'puppeteer-build-env-'));
+  const callerHome = join(directory, 'caller');
+  const rustupHome = join(callerHome, '.rustup');
+  mkdirSync(rustupHome, { recursive: true });
+  const environment = isolatedEnvironment(join(directory, 'work'), ['HERMES_HOME'], {
+    HOME: callerHome,
+    PATH: '/toolchain/bin',
+    CARGO_HOME: join(callerHome, '.cargo'),
+    CARGO_REGISTRY_TOKEN: 'must-not-be-inherited',
+  });
+  assert.equal(environment.RUSTUP_HOME, rustupHome);
+  assert.notEqual(environment.HOME, callerHome);
+  assert.equal(environment.HERMES_HOME, environment.HOME);
+  assert.equal(environment.CARGO_HOME, undefined);
+  assert.equal(environment.CARGO_REGISTRY_TOKEN, undefined);
+});
 
 const policy = {
   strategy: 'python-uv-lock',

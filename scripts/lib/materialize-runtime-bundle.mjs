@@ -11,6 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
+import { packageManagerInvocation } from '../package-manager.mjs';
 import {
   createNodeRuntimeBundleManifest,
   inventoryRuntimeBundle,
@@ -78,7 +79,6 @@ function exactVersion(run, command, args, expected, label, options = {}) {
 export function materializeNodeRuntimeBundle({ projectRoot, artifactRoot, policy, node, npm, environment, run }) {
   validateNodeRuntimeBundlePolicy(policy);
   exactVersion(run, node, ['--version'], `v${policy.nodeVersion}`, 'Node identity probe', { env: environment });
-  exactVersion(run, npm, ['--version'], policy.npmVersion, 'npm identity probe', { env: environment });
 
   const nodeExecutableOutput = run(node, ['-p', 'process.execPath'], {
     env: environment,
@@ -88,6 +88,20 @@ export function materializeNodeRuntimeBundle({ projectRoot, artifactRoot, policy
   if (!nodeExecutableOutput || !existsSync(nodeExecutable) || !statSync(nodeExecutable).isFile()) {
     throw new Error('Node executable probe did not resolve a regular file');
   }
+  // npm.cmd is not an executable on Windows. Resolve the CLI beside the exact
+  // Node binary, keeping every argument out of a command shell.
+  const npmInvocation =
+    npm === 'npm' ? packageManagerInvocation('npm', environment, nodeExecutable) : { command: npm, prefixArgs: [] };
+  exactVersion(
+    run,
+    npmInvocation.command,
+    [...npmInvocation.prefixArgs, '--version'],
+    policy.npmVersion,
+    'npm identity probe',
+    {
+      env: environment,
+    },
+  );
 
   const identity = Object.fromEntries(
     ['packageFile', 'lockFile', 'workspacePackageFile', 'buildFile'].map((field) => {
@@ -118,8 +132,9 @@ export function materializeNodeRuntimeBundle({ projectRoot, artifactRoot, policy
     NPM_CONFIG_UPDATE_NOTIFIER: 'false',
   };
   run(
-    npm,
+    npmInvocation.command,
     [
+      ...npmInvocation.prefixArgs,
       'ci',
       '--workspace',
       policy.workspace,
