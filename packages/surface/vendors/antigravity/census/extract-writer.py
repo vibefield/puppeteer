@@ -131,7 +131,7 @@ def extract(binary, version):
     document = {
         'format': 'rosetta-groundtruth/1', 'agent': 'antigravity',
         'agent_version': version, 'writer_version': version, 'evidence': 'writer',
-        'generator': f'Antigravity {version} darwin-arm64 embedded FileDescriptorProto extraction; schema only, no payloads; see extraction.json',
+        'generator': f'Antigravity {version} embedded FileDescriptorProto extraction; schema only, no payloads; see extraction.json and artifact.json',
         'data_root': '~/.gemini/antigravity-cli',
         'streams': [{
             'id': 'conversation-db', 'glob': 'conversations/*.db*',

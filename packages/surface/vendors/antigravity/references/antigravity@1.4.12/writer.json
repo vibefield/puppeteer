@@ -4,7 +4,7 @@
   "agent_version": "1.4.12",
   "writer_version": "1.4.12",
   "evidence": "writer",
-  "generator": "Antigravity 1.4.12 darwin-arm64 embedded FileDescriptorProto extraction; schema only, no payloads; see extraction.json",
+  "generator": "Antigravity 1.4.12 embedded FileDescriptorProto extraction; schema only, no payloads; see extraction.json and artifact.json",
   "data_root": "~/.gemini/antigravity-cli",
   "streams": [
     {
