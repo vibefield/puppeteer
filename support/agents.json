@@ -187,12 +187,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-opencode",
       "persona": "opencode",
       "groundTruth": "packages/surface/vendors/opencode/groundtruth.json",
-      "candidateVersion": "1.19.5",
-      "status": "baseline-pending",
-      "blockers": [
-        "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform.",
-        "OpenCode 2.x (@opencode/cli, tags v2.0.0-v2.2.5) is a separate protocol family: no `attach`, a `/api/*` HttpApi with sequenced v2 events, and different npm packages. The github-stable detector reports it because v2 releases are non-prerelease, while acquisition covers only the 1.x opencode-<platform> packages; draft/OPENCODE-2-MIGRATION-PLAN.md records the unstarted migration."
-      ]
+      "status": "verified",
+      "currentVersion": "1.19.5",
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "56b06c59d4b68c2d72715f7539036d04c1c576ca",
+        "groundTruth": "packages/surface/vendors/opencode/groundtruth.json",
+        "vendorVersion": "1.19.5",
+        "evidenceDigest": "2268943c23113db9be8f379df6ddad368c4ed98b6ac300c7af74caac7d5fca75",
+        "replayDigest": "ac9a87f333b3c85ad3083653f523d9e7859c3d3261ebf8a3a84337bc63802280",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/claude/opencode-1.19.5-promotion",
+        "runId": "41794896986",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:feaafead8cd563af0c2dcb386b0757e4355e327ebb6bd1aaad5440fe2f83596c"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:4b15c8aab1844936e9e1d1327213355d94c820de8c7084fad88d3812a067d3d0"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:7df4e4136301f16589b0f30bf91a61380fca5f8ef22dd36570f5ebe1d4ec802c"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:d7b473388cb62555970e400ce54cdfb6d6573608beea6f8fdf382cd1a698a3fa"
+          }
+        ]
+      },
+      "introducedInPuppeteer": "0.3.3"
     },
     {
       "id": "pi",

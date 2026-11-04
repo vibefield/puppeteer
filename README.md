@@ -31,7 +31,7 @@ specifications versus historical material.
 [![Grok Build: verified 1.0.70](https://img.shields.io/badge/Grok_Build-verified_1.0.70-blue)](packages/surface/vendors/grok/groundtruth.json)
 [![Hermes Agent: baseline pending 0.21.5](https://img.shields.io/badge/Hermes_Agent-baseline_pending_0.21.5-lightgrey)](packages/surface/vendors/hermes/groundtruth.json)
 [![Kimi Code: baseline pending 2.4.1](https://img.shields.io/badge/Kimi_Code-baseline_pending_2.4.1-lightgrey)](packages/surface/vendors/kimi/groundtruth.json)
-[![OpenCode: baseline pending 1.19.5](https://img.shields.io/badge/OpenCode-baseline_pending_1.19.5-lightgrey)](packages/surface/vendors/opencode/groundtruth.json)
+[![OpenCode: verified 1.19.5](https://img.shields.io/badge/OpenCode-verified_1.19.5-blue)](packages/surface/vendors/opencode/groundtruth.json)
 [![Pi: baseline pending 1.5.0](https://img.shields.io/badge/Pi-baseline_pending_1.5.0-lightgrey)](packages/surface/vendors/pi/groundtruth.json)
 <!-- agent-support:end -->
 
