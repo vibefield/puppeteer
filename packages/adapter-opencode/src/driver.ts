@@ -10,6 +10,7 @@ import {
 } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { startOpenCodeBackend, type OpenCodeBackend } from './launch/backend.js';
+import { withoutOpenCodeServerPasswords } from './launch/credentials.js';
 import {
   OpenCodeClient,
   type OpenCodeModelSelection,
@@ -379,8 +380,9 @@ export async function prepareOpenCodeTuiSession(
     publishRuntime({ type: 'session:ready' }, { type: 'opencode-adapter-ready', origin: backend.origin });
 
     const sessionID = sessionInfo.id;
+    // The TUI carries this backend's password alone: a password in the caller's env is not Puppeteer's to forward.
     const launchEnvironment: Record<string, string> = {
-      ...options.env,
+      ...withoutOpenCodeServerPasswords(options.env),
       OPENCODE_SERVER_USERNAME: backend.username,
       OPENCODE_SERVER_PASSWORD: backend.password,
     };

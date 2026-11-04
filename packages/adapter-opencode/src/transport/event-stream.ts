@@ -3,10 +3,52 @@
 import type { OpenCodeClient } from './client.js';
 import { loopbackFetch } from './loopback-fetch.js';
 
+/** A per-aggregate ordering stamp an envelope may carry (`durable: {aggregateID, seq, version}`). */
+export interface OpenCodeSseDurable {
+  aggregateID: string;
+  seq: number;
+  version: number;
+}
+
 export interface OpenCodeSseRecord {
   id: string;
   type: string;
+  /** The event's payload, read from the envelope's payload key whatever that key is named on the wire. */
   properties: Record<string, unknown>;
+  /** Present only when the envelope names a durable key and the record carries one. */
+  durable?: OpenCodeSseDurable;
+}
+
+/**
+ * Where a record keeps its payload and ordering. 1.x is `{id, type, properties}` with `properties` an object; a
+ * line whose schema declares an encoded-string payload but sends an object sets `encodedPayload` to accept both.
+ */
+export interface OpenCodeSseEnvelope {
+  readonly payloadKey: string;
+  /** Also accept the payload as a JSON string that decodes to an object. */
+  readonly encodedPayload: boolean;
+  /** The key of an optional per-aggregate `{aggregateID, seq, version}` stamp; absent: never read. */
+  readonly durableKey?: string | undefined;
+}
+
+/** OpenCode 1.x: `{id, type, properties}`, `properties` an object, no ordering stamp. */
+export const OPENCODE_1_SSE_ENVELOPE: OpenCodeSseEnvelope = Object.freeze({
+  payloadKey: 'properties',
+  encodedPayload: false,
+});
+
+/**
+ * A per-aggregate `seq` that skipped ahead of the last one this stream saw. The stream has no replay cursor, so the
+ * records in between are lost to it; the consumer rehydrates the aggregate over REST.
+ */
+export interface OpenCodeSseSequenceGap {
+  aggregateID: string;
+  /** The seq that should have come next. */
+  expected: number;
+  received: number;
+  /** True when the gap spans a reconnect, false when records went missing inside one connection. */
+  acrossReconnect: boolean;
+  record: OpenCodeSseRecord;
 }
 
 export interface OpenCodeEventStreamOptions {
@@ -18,34 +60,68 @@ export interface OpenCodeEventStreamOptions {
   reconnectDelayMs?: number | undefined;
   maxEventBytes?: number | undefined;
   fetchImpl?: typeof fetch | undefined;
+  /** Envelope shape. Default: {@link OPENCODE_1_SSE_ENVELOPE}. */
+  envelope?: OpenCodeSseEnvelope | undefined;
+  /** Subscription path on the client's origin. Default: `/event`. */
+  path?: string | undefined;
+  /** Event types to subscribe to, each sent as one repeated `types` query parameter. Default: none (every type). */
+  types?: readonly string[] | undefined;
+  /**
+   * Awaited before the record that revealed the gap is delivered, so the consumer can rehydrate first. Needs an
+   * envelope with a `durableKey`. Duplicate or older seqs are delivered without a call.
+   */
+  onSequenceGap?: ((gap: OpenCodeSseSequenceGap) => void | Promise<void>) | undefined;
 }
 
 const DEFAULT_MAX_EVENT_BYTES = 1024 * 1024;
+/** Aggregates whose last seq is remembered; the oldest is forgotten first, which can only hide a gap, never invent one. */
+const MAX_TRACKED_AGGREGATES = 4096;
 
 function asError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-function parseRecord(data: string): OpenCodeSseRecord {
-  const parsed = JSON.parse(data) as unknown;
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('OpenCode SSE data must be an object');
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseDurable(value: unknown): OpenCodeSseDurable {
+  if (
+    !isObject(value) ||
+    typeof value.aggregateID !== 'string' ||
+    value.aggregateID.length === 0 ||
+    typeof value.seq !== 'number' ||
+    !Number.isSafeInteger(value.seq) ||
+    value.seq < 0 ||
+    typeof value.version !== 'number' ||
+    !Number.isFinite(value.version)
+  ) {
+    throw new Error('OpenCode SSE record durable stamp must be {aggregateID, seq, version}');
   }
-  const record = parsed as Record<string, unknown>;
-  if (typeof record.id !== 'string' || record.id.length === 0) {
+  return { aggregateID: value.aggregateID, seq: value.seq, version: value.version };
+}
+
+/** With the 1.x envelope this is exactly the verified 1.x parse: the same checks, messages and record shape. */
+export function parseOpenCodeSseRecord(
+  data: string,
+  envelope: OpenCodeSseEnvelope = OPENCODE_1_SSE_ENVELOPE,
+): OpenCodeSseRecord {
+  const parsed = JSON.parse(data) as unknown;
+  if (!isObject(parsed)) throw new Error('OpenCode SSE data must be an object');
+  if (typeof parsed.id !== 'string' || parsed.id.length === 0) {
     throw new Error('OpenCode SSE record has no non-empty id');
   }
-  if (typeof record.type !== 'string' || record.type.length === 0) {
+  if (typeof parsed.type !== 'string' || parsed.type.length === 0) {
     throw new Error('OpenCode SSE record has no non-empty type');
   }
-  if (record.properties === null || typeof record.properties !== 'object' || Array.isArray(record.properties)) {
-    throw new Error('OpenCode SSE record properties must be an object');
-  }
-  return {
-    id: record.id,
-    type: record.type,
-    properties: record.properties as Record<string, unknown>,
-  };
+  let payload = parsed[envelope.payloadKey];
+  if (envelope.encodedPayload && typeof payload === 'string') payload = JSON.parse(payload) as unknown;
+  if (!isObject(payload)) throw new Error(`OpenCode SSE record ${envelope.payloadKey} must be an object`);
+  const durable =
+    envelope.durableKey !== undefined && parsed[envelope.durableKey] !== undefined
+      ? parseDurable(parsed[envelope.durableKey])
+      : undefined;
+  return { id: parsed.id, type: parsed.type, properties: payload, ...(durable ? { durable } : {}) };
 }
 
 /** Incremental decoder for SSE blocks; `data:` lines are joined per the SSE specification. */
@@ -98,11 +174,20 @@ export class OpenCodeEventStream {
   private opened = false;
   private reconnectTimer: NodeJS.Timeout | undefined;
   private wakeReconnect: (() => void) | undefined;
+  private readonly envelope: OpenCodeSseEnvelope;
+  /** Last seq per aggregate, across reconnects: a gap that spans one is the signal that matters most. */
+  private readonly lastSeq = new Map<string, number>();
+  /** Aggregates seen since the current connection opened. */
+  private readonly seenThisConnection = new Set<string>();
 
   constructor(private readonly options: OpenCodeEventStreamOptions) {
     this.fetchImpl = options.fetchImpl ?? loopbackFetch;
     this.reconnectDelayMs = options.reconnectDelayMs ?? 100;
     this.maxEventBytes = options.maxEventBytes ?? DEFAULT_MAX_EVENT_BYTES;
+    this.envelope = options.envelope ?? OPENCODE_1_SSE_ENVELOPE;
+    if (options.onSequenceGap && this.envelope.durableKey === undefined) {
+      throw new Error('OpenCode SSE sequence gaps need an envelope with a durable key');
+    }
   }
 
   start(): Promise<void> {
@@ -131,7 +216,8 @@ export class OpenCodeEventStream {
     while (!this.stopped) {
       this.controller = new AbortController();
       try {
-        const response = await this.fetchImpl(this.options.client.eventUrl(), {
+        const url = this.options.client.eventUrl({ path: this.options.path, types: this.options.types });
+        const response = await this.fetchImpl(url, {
           method: 'GET',
           headers: this.options.client.headers({ accept: 'text/event-stream' }),
           signal: this.controller.signal,
@@ -146,6 +232,7 @@ export class OpenCodeEventStream {
         if (!response.body) throw new Error('OpenCode SSE subscription returned no body');
 
         const reconnect = this.opened;
+        this.seenThisConnection.clear();
         await this.options.onOpen?.({ reconnect });
         if (!this.opened) {
           this.opened = true;
@@ -194,12 +281,32 @@ export class OpenCodeEventStream {
   private async deliver(data: string): Promise<void> {
     let record: OpenCodeSseRecord;
     try {
-      record = parseRecord(data);
+      record = parseOpenCodeSseRecord(data, this.envelope);
     } catch (error) {
       this.options.onMalformed?.(data, asError(error));
       return;
     }
+    if (record.durable && this.options.onSequenceGap) await this.checkSequence(record, record.durable);
     await this.options.onRecord(record);
+  }
+
+  private async checkSequence(record: OpenCodeSseRecord, durable: OpenCodeSseDurable): Promise<void> {
+    const { aggregateID, seq } = durable;
+    const last = this.lastSeq.get(aggregateID);
+    const acrossReconnect = !this.seenThisConnection.has(aggregateID);
+    this.seenThisConnection.add(aggregateID);
+    // A duplicate or an older seq says nothing about loss and must not move the mark back.
+    if (last !== undefined && seq <= last) return;
+    this.lastSeq.delete(aggregateID);
+    this.lastSeq.set(aggregateID, seq);
+    if (this.lastSeq.size > MAX_TRACKED_AGGREGATES) {
+      const oldest = this.lastSeq.keys().next().value;
+      if (oldest !== undefined) this.lastSeq.delete(oldest);
+    }
+    // The first seq an aggregate shows this stream is its starting point, not a gap: history before the
+    // subscription was never this stream's to deliver.
+    if (last === undefined || seq === last + 1) return;
+    await this.options.onSequenceGap?.({ aggregateID, expected: last + 1, received: seq, acrossReconnect, record });
   }
 
   private waitToReconnect(): Promise<void> {

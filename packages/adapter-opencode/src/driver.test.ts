@@ -49,7 +49,8 @@ describe('OpenCode native-TUI session composition', () => {
       cwd: fixture.cwd,
       host,
       executable: fixture.executable,
-      env: fixture.env,
+      // Passwords Puppeteer did not generate, under both names 1.x and 2.x read: neither may reach a child.
+      env: { ...fixture.env, OPENCODE_PASSWORD: 'caller-password', OPENCODE_SERVER_PASSWORD: 'caller-password' },
       promptConfirmationTimeoutMs: 2_000,
     });
     sessions.add(session);
@@ -69,6 +70,8 @@ describe('OpenCode native-TUI session composition', () => {
     ]);
     expect(launch?.args).not.toContain(launch?.env?.OPENCODE_SERVER_PASSWORD);
     expect(launch?.env?.OPENCODE_SERVER_PASSWORD).toBeTruthy();
+    expect(launch?.env?.OPENCODE_SERVER_PASSWORD).not.toBe('caller-password');
+    expect(launch?.env).not.toHaveProperty('OPENCODE_PASSWORD');
 
     const observed: AdapterEventCandidate[] = [];
     const candidates: AdapterEventCandidate[] = [];

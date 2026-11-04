@@ -2,7 +2,58 @@
 
 import { randomBytes } from 'node:crypto';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { OPENCODE_LAUNCH_FLAGS, resolveOpenCodeExecutable } from '../detection.js';
+import {
+  inspectOpenCodeVersion,
+  OPENCODE_LAUNCH_FLAGS,
+  resolveOpenCodeExecutable,
+  unsupportedOpenCodeLineMessage,
+} from '../detection.js';
+import { withoutOpenCodeServerPasswords } from './credentials.js';
+
+/**
+ * How one release line starts its server: the argv after the executable and the stdout line that announces the
+ * origin. The argv is `[...command, hostname, <host>, port, '0', ...additional]`.
+ */
+export interface OpenCodeBackendLaunchSpec {
+  /** The subcommand words that start the server, such as `['serve']`. */
+  readonly command: readonly string[];
+  readonly hostnameFlag: string;
+  readonly portFlag: string;
+  /** Flags appended after the port, such as `--pure`. */
+  readonly additional: readonly string[];
+  /** The text that precedes the origin on the readiness line. */
+  readonly readyPrefix: string;
+}
+
+/** OpenCode 1.x (Surface `opencode@1.19.5` detection): `serve --hostname <h> --port 0 --pure`. */
+export const OPENCODE_1_BACKEND_LAUNCH: OpenCodeBackendLaunchSpec = Object.freeze({
+  command: Object.freeze([OPENCODE_LAUNCH_FLAGS.serve]),
+  hostnameFlag: OPENCODE_LAUNCH_FLAGS.hostname,
+  portFlag: OPENCODE_LAUNCH_FLAGS.port,
+  additional: Object.freeze([OPENCODE_LAUNCH_FLAGS.pure]),
+  readyPrefix: 'opencode server listening on ',
+});
+
+/** The argv a launch spec composes for one hostname; the port is always `0`. */
+export function openCodeBackendArguments(spec: OpenCodeBackendLaunchSpec, hostname: string): string[] {
+  return [...spec.command, spec.hostnameFlag, hostname, spec.portFlag, '0', ...spec.additional];
+}
+
+/**
+ * The executable is OpenCode 2.x, which this adapter refuses. Raised only when a start failed before readiness and
+ * the executable's own `--version` then named the 2.x line, so a supported binary never pays for the check.
+ */
+export class OpenCodeUnsupportedReleaseLineError extends Error {
+  readonly code = 'OPENCODE_UNSUPPORTED_RELEASE_LINE';
+  readonly line = '2.x';
+  readonly version: string;
+
+  constructor(version: string, options?: ErrorOptions) {
+    super(unsupportedOpenCodeLineMessage(version), options);
+    this.name = 'OpenCodeUnsupportedReleaseLineError';
+    this.version = version;
+  }
+}
 
 export interface StartOpenCodeBackendOptions {
   cwd?: string | undefined;
@@ -14,6 +65,8 @@ export interface StartOpenCodeBackendOptions {
   hostname?: string | undefined;
   startupTimeoutMs?: number | undefined;
   shutdownTimeoutMs?: number | undefined;
+  /** How the server starts and announces readiness. Default: {@link OPENCODE_1_BACKEND_LAUNCH}. */
+  launch?: OpenCodeBackendLaunchSpec | undefined;
 }
 
 export interface OpenCodeBackend {
@@ -26,13 +79,19 @@ export interface OpenCodeBackend {
   dispose(): Promise<void>;
 }
 
-const READY_PREFIX = 'opencode server listening on ';
 const MAX_STARTUP_OUTPUT = 256 * 1024;
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
 
-function readinessOrigin(line: string, requestedHostname: string): string | undefined {
-  if (!line.startsWith(READY_PREFIX)) return undefined;
-  const candidate = line.slice(READY_PREFIX.length).trim();
+/** The 2.x check after a failed start is bounded so it never holds a failure much longer than the start did. */
+const RELEASE_LINE_CHECK_TIMEOUT_MS = 5_000;
+
+export function openCodeReadinessOrigin(
+  line: string,
+  requestedHostname: string,
+  readyPrefix: string = OPENCODE_1_BACKEND_LAUNCH.readyPrefix,
+): string | undefined {
+  if (!line.startsWith(readyPrefix)) return undefined;
+  const candidate = line.slice(readyPrefix.length).trim();
   let url: URL;
   try {
     url = new URL(candidate);
@@ -80,28 +139,25 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
   if (!LOOPBACK_HOSTS.has(hostname)) {
     throw new Error(`OpenCode backend must bind loopback, got ${hostname}`);
   }
+  const launch = options.launch ?? OPENCODE_1_BACKEND_LAUNCH;
   const username = 'opencode';
   const password = randomBytes(32).toString('base64url');
   // Node scripts (including the conformance fixture) cannot be spawned via
   // a shebang on Windows. Keep argv as an array and avoid a command shell.
   const nodeScript = /\.(?:mjs|cjs|js)$/i.test(executable);
+  // A password this start did not generate never reaches the server; only its own is set below.
+  const baseEnvironment = withoutOpenCodeServerPasswords({
+    ...(options.inheritEnvironment === false ? {} : process.env),
+    ...options.env,
+  });
   const child = spawn(
     nodeScript ? process.execPath : executable,
-    [
-      ...(nodeScript ? [executable] : []),
-      OPENCODE_LAUNCH_FLAGS.serve,
-      OPENCODE_LAUNCH_FLAGS.hostname,
-      hostname,
-      OPENCODE_LAUNCH_FLAGS.port,
-      '0',
-      OPENCODE_LAUNCH_FLAGS.pure,
-    ],
+    [...(nodeScript ? [executable] : []), ...openCodeBackendArguments(launch, hostname)],
     {
       cwd: options.cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
-        ...(options.inheritEnvironment === false ? {} : process.env),
-        ...options.env,
+        ...baseEnvironment,
         ...(nodeScript && process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
@@ -111,6 +167,8 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
 
   let startupOutput = '';
   let settled = false;
+  // Set when the start failed in a way a 2.x binary would cause: it exited or never announced readiness.
+  let checkReleaseLine = false;
   let timeout: NodeJS.Timeout | undefined;
   const startupTimeoutMs = options.startupTimeoutMs ?? 15_000;
 
@@ -137,7 +195,7 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
         const lines = startupOutput.split(/\r?\n/);
         startupOutput = lines.pop() ?? '';
         for (const line of lines) {
-          const readyOrigin = readinessOrigin(line.trim(), hostname);
+          const readyOrigin = openCodeReadinessOrigin(line.trim(), hostname, launch.readyPrefix);
           if (readyOrigin) {
             finish(undefined, readyOrigin);
             return;
@@ -151,6 +209,7 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
         );
       const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
         const detail = code === null ? `signal ${signal ?? 'unknown'}` : `exit ${code}`;
+        checkReleaseLine = true;
         finish(new Error(`OpenCode backend stopped before readiness (${detail})`));
       };
 
@@ -165,10 +224,10 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
         onAbort();
         return;
       }
-      timeout = setTimeout(
-        () => finish(new Error(`OpenCode backend did not become ready within ${startupTimeoutMs}ms`)),
-        startupTimeoutMs,
-      );
+      timeout = setTimeout(() => {
+        checkReleaseLine = true;
+        finish(new Error(`OpenCode backend did not become ready within ${startupTimeoutMs}ms`));
+      }, startupTimeoutMs);
       timeout.unref();
     });
 
@@ -188,6 +247,15 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
     };
   } catch (error) {
     await terminateChild(child, options.shutdownTimeoutMs ?? 2_000);
+    if (checkReleaseLine && !options.signal?.aborted) {
+      const reading = await inspectOpenCodeVersion(executable, {
+        env: baseEnvironment,
+        timeoutMs: RELEASE_LINE_CHECK_TIMEOUT_MS,
+      });
+      if (reading.status === 'unsupported-release-line') {
+        throw new OpenCodeUnsupportedReleaseLineError(reading.version, { cause: error });
+      }
+    }
     throw error;
   }
 }

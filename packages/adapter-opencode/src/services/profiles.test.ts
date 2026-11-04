@@ -18,8 +18,10 @@ import {
   openCodeConsoleOrgsFrom,
   openCodeDataHome,
   openCodeStoredCredentials,
+  openCodeStoreWarnings,
   openCodeVerificationClient,
   OPENCODE_PROFILE_ROOT_VARIABLE,
+  readOpenCodeStoreLine,
   type OpenCodeConsoleOrgsRequest,
 } from './profiles.js';
 
@@ -580,6 +582,83 @@ describe('OpenCode profile verification through a private serve', () => {
 
     expect((await verified(subject, profile({ dataRoot }))).signIns).toEqual([
       { service: CONSOLE, method: 'console', email: 'work@example.com' },
+    ]);
+  });
+});
+
+describe('OpenCode stores a 2.x binary has opened', () => {
+  /** A store with the given tables; `kv` rows as 2.2.5 writes them (`value` JSON text). */
+  function store(directory: string, tables: { kv?: Record<string, string>; sessionV2?: boolean }): string {
+    mkdirSync(directory, { recursive: true });
+    const path = join(directory, 'opencode.db');
+    const database = new DatabaseSync(path);
+    try {
+      database.exec('CREATE TABLE session (id text PRIMARY KEY)');
+      if (tables.kv) {
+        database.exec('CREATE TABLE kv (key text PRIMARY KEY, value text NOT NULL, time_updated integer)');
+        const insert = database.prepare('INSERT INTO kv (key, value) VALUES (?, ?)');
+        for (const [key, value] of Object.entries(tables.kv)) insert.run(key, value);
+      }
+      if (tables.sessionV2) database.exec('CREATE TABLE session_v2 (id text PRIMARY KEY)');
+    } finally {
+      database.close();
+    }
+    return path;
+  }
+
+  it('reads a store only 1.x has opened, a missing store, and an unreadable one as no warning', async () => {
+    const root = scratch();
+    expect(await readOpenCodeStoreLine(store(join(root, 'v1'), {}))).toEqual({ status: 'release-line-1' });
+    expect(await readOpenCodeStoreLine(join(root, 'none', 'opencode.db'))).toEqual({ status: 'absent' });
+    mkdirSync(join(root, 'bad'));
+    writeFileSync(join(root, 'bad', 'opencode.db'), 'not a database');
+    const unreadable = await readOpenCodeStoreLine(join(root, 'bad', 'opencode.db'));
+    expect(unreadable).toMatchObject({ status: 'unreadable' });
+    expect(openCodeStoreWarnings(unreadable)).toEqual([]);
+    // Another key in kv is never a mark.
+    expect(await readOpenCodeStoreLine(store(join(root, 'kv-only'), { kv: { other: SECRET } }))).toEqual({
+      status: 'release-line-1',
+    });
+  });
+
+  it("warns, derived, when the store records 2.x's one-time session copy", async () => {
+    const root = scratch();
+    const path = store(join(root, 'migrated'), {
+      kv: { 'migration.v1-v2': '{"phase":"completed"}', other: SECRET },
+      sessionV2: true,
+    });
+    const reading = await readOpenCodeStoreLine(path);
+    expect(reading).toEqual({
+      status: 'opened-by-release-line-2',
+      evidence: ['kv:migration.v1-v2', 'table:session_v2'],
+      migration: 'completed',
+    });
+    const [warning, ...rest] = openCodeStoreWarnings(reading);
+    expect(rest).toEqual([]);
+    expect(warning).toMatchObject({ code: 'store-opened-by-release-line-2', confidence: 'derived' });
+    expect(warning?.message).toContain('invisible to OpenCode 2');
+    expect(JSON.stringify(warning)).not.toContain(SECRET);
+
+    expect(
+      await readOpenCodeStoreLine(store(join(root, 'copying'), { kv: { 'migration.v1-v2': '{"phase":"sessions"}' } })),
+    ).toMatchObject({ migration: 'sessions' });
+  });
+
+  it('warns, inferred, when only the 2.x tables are present', async () => {
+    const root = scratch();
+    const reading = await readOpenCodeStoreLine(store(join(root, 'schema'), { kv: {}, sessionV2: true }));
+    expect(reading).toEqual({ status: 'opened-by-release-line-2', evidence: ['table:session_v2'] });
+    expect(openCodeStoreWarnings(reading)).toMatchObject([{ confidence: 'inferred', evidence: ['table:session_v2'] }]);
+  });
+
+  it("surfaces the warning for a profile's own root", async () => {
+    const root = scratch();
+    const dataRoot = join(root, 'profile');
+    const subject = createOpenCodeProfileService({ executable: 'opencode' });
+    await expect(subject.storeWarnings(profile({ dataRoot }))).resolves.toEqual([]);
+    store(join(dataRoot, 'data', 'opencode'), { kv: { 'migration.v1-v2': '{"phase":"completed"}' } });
+    await expect(subject.storeWarnings(profile({ dataRoot }))).resolves.toMatchObject([
+      { code: 'store-opened-by-release-line-2', confidence: 'derived', evidence: ['kv:migration.v1-v2'] },
     ]);
   });
 });

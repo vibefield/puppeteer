@@ -109,8 +109,14 @@ export class OpenCodeClient {
     this.fetchImpl = options.fetchImpl ?? loopbackFetch;
   }
 
-  eventUrl(): string {
-    return this.url('/event').href;
+  /**
+   * The event subscription URL: `/event` unless a path is given, scoped to the client's directory, with one
+   * repeated `types` parameter per requested type.
+   */
+  eventUrl(options: { path?: string | undefined; types?: readonly string[] | undefined } = {}): string {
+    const url = this.url(options.path ?? '/event');
+    for (const type of options.types ?? []) url.searchParams.append('types', type);
+    return url.href;
   }
 
   headers(extra?: ConstructorParameters<typeof Headers>[0]): Headers {

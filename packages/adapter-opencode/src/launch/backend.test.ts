@@ -2,7 +2,14 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { startOpenCodeBackend, type OpenCodeBackend } from './backend.js';
+import {
+  OPENCODE_1_BACKEND_LAUNCH,
+  openCodeBackendArguments,
+  openCodeReadinessOrigin,
+  OpenCodeUnsupportedReleaseLineError,
+  startOpenCodeBackend,
+  type OpenCodeBackend,
+} from './backend.js';
 import { OpenCodeClient } from '../transport/client.js';
 import { createOpenCodeImposterFixture } from '../test-support/imposter.js';
 
@@ -81,5 +88,119 @@ describe('OpenCode private backend', () => {
 
   it('refuses non-loopback exposure before spawning', async () => {
     await expect(startOpenCodeBackend({ hostname: '0.0.0.0' })).rejects.toThrow('must bind loopback');
+  });
+
+  /** A fake server that records its argv and password variables, then prints `ready` and stays up. */
+  function recordingServer(ready: string): { executable: string; record: string } {
+    const root = mkdtempSync(join(tmpdir(), 'opencode-backend-spec-'));
+    roots.add(root);
+    const executable = join(root, 'server.mjs');
+    const record = join(root, 'record.json');
+    writeFileSync(
+      executable,
+      `import {writeFileSync} from 'node:fs';
+       writeFileSync(${JSON.stringify(record)}, JSON.stringify({
+         argv: process.argv.slice(2),
+         password: process.env.OPENCODE_PASSWORD ?? null,
+         serverPassword: process.env.OPENCODE_SERVER_PASSWORD ?? null,
+         username: process.env.OPENCODE_SERVER_USERNAME ?? null,
+       }));
+       console.log(${JSON.stringify(ready)});
+       setInterval(() => {}, 1000);`,
+    );
+    return { executable, record };
+  }
+
+  it('keeps the 1.x argv and readiness line as the default launch', async () => {
+    expect(openCodeBackendArguments(OPENCODE_1_BACKEND_LAUNCH, '127.0.0.1')).toEqual([
+      'serve',
+      '--hostname',
+      '127.0.0.1',
+      '--port',
+      '0',
+      '--pure',
+    ]);
+    const server = recordingServer('opencode server listening on http://127.0.0.1:45678');
+    const backend = await startOpenCodeBackend({ executable: server.executable, startupTimeoutMs: 5_000 });
+    backends.add(backend);
+    expect(backend.origin).toBe('http://127.0.0.1:45678');
+    expect(JSON.parse(readFileSync(server.record, 'utf8')).argv).toEqual([
+      'serve',
+      '--hostname',
+      '127.0.0.1',
+      '--port',
+      '0',
+      '--pure',
+    ]);
+  });
+
+  it('takes the readiness prefix and flag set as inputs', async () => {
+    const launch = {
+      command: ['serve'],
+      hostnameFlag: '--hostname',
+      portFlag: '--port',
+      additional: [],
+      readyPrefix: 'server listening on ',
+    };
+    expect(
+      openCodeReadinessOrigin('server listening on http://127.0.0.1:4100', '127.0.0.1', 'server listening on '),
+    ).toBe('http://127.0.0.1:4100');
+    // The 1.x prefix is not a substring match of another line's readiness.
+    expect(openCodeReadinessOrigin('server listening on http://127.0.0.1:4100', '127.0.0.1')).toBeUndefined();
+    expect(openCodeReadinessOrigin('server listening on http://10.0.0.2:4100', '127.0.0.1', launch.readyPrefix)).toBe(
+      undefined,
+    );
+
+    const server = recordingServer('server listening on http://127.0.0.1:45679');
+    const backend = await startOpenCodeBackend({ executable: server.executable, launch, startupTimeoutMs: 5_000 });
+    backends.add(backend);
+    expect(backend.origin).toBe('http://127.0.0.1:45679');
+    expect(JSON.parse(readFileSync(server.record, 'utf8')).argv).toEqual([
+      'serve',
+      '--hostname',
+      '127.0.0.1',
+      '--port',
+      '0',
+    ]);
+  });
+
+  it('hands the server its own password only, never one it inherited or was given', async () => {
+    vi.stubEnv('OPENCODE_PASSWORD', 'inherited-password');
+    vi.stubEnv('OPENCODE_SERVER_PASSWORD', 'inherited-password');
+    const server = recordingServer('opencode server listening on http://127.0.0.1:45680');
+    const backend = await startOpenCodeBackend({
+      executable: server.executable,
+      env: { OPENCODE_PASSWORD: 'caller-password' },
+      startupTimeoutMs: 5_000,
+    });
+    backends.add(backend);
+    expect(JSON.parse(readFileSync(server.record, 'utf8'))).toMatchObject({
+      password: null,
+      serverPassword: backend.password,
+      username: 'opencode',
+    });
+  });
+
+  it('refuses an OpenCode 2.x executable with a typed error once its start fails', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'opencode-backend-v2-'));
+    roots.add(root);
+    const executable = join(root, 'opencode-v2.mjs');
+    // 2.2.5 prints `opencode v2.2.5`; its `serve` takes no `--pure`.
+    writeFileSync(
+      executable,
+      `if (process.argv[2] === '--version') console.log('opencode v2.2.5'); else process.exit(1);`,
+    );
+    const failure = await startOpenCodeBackend({ executable, startupTimeoutMs: 5_000 }).catch(
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(OpenCodeUnsupportedReleaseLineError);
+    expect(failure).toMatchObject({ code: 'OPENCODE_UNSUPPORTED_RELEASE_LINE', line: '2.x', version: '2.2.5' });
+
+    // A supported binary that fails keeps its own error.
+    const broken = join(root, 'broken-v1.mjs');
+    writeFileSync(broken, `if (process.argv[2] === '--version') console.log('1.19.5'); else process.exit(3);`);
+    await expect(startOpenCodeBackend({ executable: broken, startupTimeoutMs: 5_000 })).rejects.toThrow(
+      'stopped before readiness (exit 3)',
+    );
   });
 });
