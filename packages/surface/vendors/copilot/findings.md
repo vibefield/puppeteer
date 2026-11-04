@@ -24,37 +24,69 @@ The 1.0.105 corpus was farmed by Rosetta (commit
 `8ebdd48d2cd52586ee7c524b6a36261295ce4ead`, not yet landed upstream) from the
 npm `@github/copilot-linux-x64` executable on linux-x64, offline, against
 Rosetta's loopback BYOK mock model; the 1.0.80 corpus was farmed on
-darwin-arm64. From 1.0.85 the platform package is a single-file executable whose
-writer schema exists only after its first run unpacks the payload; Rosetta now
-reads it from that unpacked payload.
+darwin-arm64. Unlike the 1.0.80 package, the 1.0.105 platform package is a
+single-file executable whose writer schema exists only after its first run
+unpacks the payload; Rosetta now reads it from that unpacked payload. Rosetta's
+farm notes (commit `8ebdd48`) place that packaging change at 1.0.85, but no
+release between 1.0.80 and 1.0.105 was acquired or probed here.
 
-Rosetta's canonical inventory is cumulative across its pinned versions, so the
-imported reference and this model still list 1.0.80 writer/fixture shapes (for
-example the allow-all pair of `session.permissions_changed`) beside 1.0.105's.
-A field or event shown here is therefore proven for 1.0.80 or 1.0.105, not
-necessarily both.
+Rosetta's canonical inventory is cumulative across its pinned versions: the
+imported `rosetta-groundtruth.json` still sums the 1.0.80 darwin-arm64 fixtures
+and 2026-09-24 census with the 1.0.105 corpus. The model is version-scoped
+(`versionScopedSources`): every record's shape, occurrence count and evidence
+come from the digest-pinned 1.0.105 writer schema and fixture documents only.
+A record that only older releases wrote (for example `session.model_change`,
+the session-store `turns` table and `search_index*`) stays in the inventory as
+an unverified contract lead with zero 1.0.105 occurrences.
 
 - Writer schema: 53 → 80 persisted event types, none removed (fusion,
   permission-authorization, `session.usage_record`, `subagent.configured`, …).
 - `session.permissions_changed`: the 1.0.105 writer schema replaces the
-  allow-all pair with `mode`/`previousMode` (`manual | assisted | allow-all`),
-  yet the 1.0.105 captures still persist the allow-all pair. The adapter reads
-  `mode` first and keeps the pair.
-- `session.model_change` is no longer written at session start in these
-  scenarios; `session.start.selectedModel` carries the model and was already
-  consumed. The persona now mirrors that.
+  allow-all pair with `mode`/`previousMode`, yet the 1.0.105 captures still
+  persist the allow-all pair. Rosetta's derived writer document types `mode`
+  only as a string; the value set `manual | assisted | allow-all` is the
+  `PermissionMode` enum of the npm package's own
+  `schemas/session-events.schema.json` (1.0.105, vendored by Rosetta as
+  `groundtruth/copilot/sources/vendor/1.0.105.session-events.schema.json`,
+  sha256 `f360052b…2f66`), and the `--help` text names `assisted` as a
+  `/permissions` mode. No committed capture writes `mode`, so these values are
+  schema-declared, not observed. The adapter reads `mode` first and keeps the
+  pair; it labels `allow-all` as auto, `manual` as manual, `assisted` as its own
+  mode, and keeps any other value raw.
+- `session.model_change` (including the resume form with `previousModel`) is no
+  longer written in these scenarios, neither at session start nor after
+  `session.resume`; `session.start.selectedModel` and
+  `session.resume.selectedModel` carry the model, and the adapter already reads
+  both. The persona now mirrors that.
+- `system.message` is now written after the turn's `user.message` (whose id is
+  its `parentId`), where 1.0.80 wrote it before; it still carries the same
+  `interactionId` as that `user.message`. It gains
+  `metadata.variables.gitCommitTrailer`, and 1.0.105 no longer writes a fresh
+  `system.message` for the first turn after `session.resume`.
+- Dropped fields: `user.message` no longer writes `attachments` (always `[]` in
+  the 1.0.80 captures) and `tool.execution_start` no longer writes `rte`. The
+  adapter consumes neither, nor `system.message`, and the persona writes
+  neither field.
 - `session.usage_record` is persisted once per model request. Usage stays
   `unsupported` (durable transcript usage is excluded), so it is retained as a
   native event.
 - New optional fields: `user.message.messageId`/`turnId`,
   `assistant.message.originatingMessageId` (and no `outputTokens` in these
-  captures), `tool.execution_start.toolTitle`,
-  `tool.execution_complete.shellExecution`, and shutdown accounting snapshots.
+  captures), `assistant.message.toolRequests[].toolTitle`,
+  `tool.execution_start.toolTitle`, `tool.execution_complete.shellExecution`,
+  and shutdown accounting snapshots. `session.resume.sessionWasActive` was
+  already declared by the 1.0.80 writer schema but first appears in the 1.0.105
+  captures.
 - Invocation grammar (`--help`, 1.0.105): new `config`, `workflow` and
   `sandbox` commands and `--trust-folder`, `--disable-client-telemetry`,
   `--mcp-github-auth`, `--sync-session`, `--host-environment`,
   `--host-compute-id`; `--remote-export` and `--no-remote` are removed, while
-  `--remote` and `--no-remote-export` still parse but are unlisted.
+  `--remote` and `--no-remote-export` still parse but are unlisted. The strict
+  grammar reads `--sync-session[=<on|off>]` as require-equals (a following
+  command is never its value), passes `--host-environment` through as
+  `elsewhere` (a headless Mission Control environment, like `--acp`), and
+  classes the `workflow` group as `one-shot` from its help summary alone
+  ("Run dynamic workflows"); its subcommand help is not captured.
 
 ## Adapter boundary
 
