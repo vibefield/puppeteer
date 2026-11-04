@@ -38,7 +38,8 @@ export function decodePiModels(value: unknown): AgentModelChoice[] {
 export function createPiModelService(options: NativeModelProbeOptions = {}): AgentModelService {
   const profiles = createPiProfileService(options);
   return defineModelService({
-    // A resume is `--session <id>` with the launch's --provider, --model and --thinking (0.87.1 help).
+    // A resume is `--session <id>` with the launch's --model and --thinking, plus --provider, which only narrows where
+    // --model is looked up and requires it; a selection always supplies both (1.5.0 help).
     provider: { id: 'pi', label: 'Pi', discovery: 'prelaunch', resumeSelection: true },
     async discover(context) {
       const env = nativeModelEnvironment(
