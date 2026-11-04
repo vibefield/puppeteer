@@ -19,7 +19,7 @@
 
 import { randomBytes, randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
@@ -931,34 +931,86 @@ function routeCarrier(path) {
   };
 }
 
+const IDEMPOTENT_METHODS = new Set(['GET', 'HEAD']);
+const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
+
+/** One request on a connection of its own (`agent: false`), closed after the response and never retried. */
+function freshConnectionFetch(url, { method, headers = {}, body, signal }) {
+  const payload = body === undefined ? undefined : Buffer.from(body);
+  return new Promise((resolveResponse, reject) => {
+    const outgoing = httpRequest(
+      url,
+      {
+        method,
+        headers: { ...headers, ...(payload ? { 'content-length': String(payload.byteLength) } : {}) },
+        agent: false,
+        signal,
+      },
+      (incoming) => {
+        const chunks = [];
+        incoming.on('data', (chunk) => chunks.push(chunk));
+        incoming.on('error', reject);
+        incoming.on('end', () => {
+          const headerList = new Headers();
+          for (const [name, value] of Object.entries(incoming.headers)) {
+            for (const item of [value].flat()) if (item !== undefined) headerList.append(name, item);
+          }
+          const status = incoming.statusCode ?? 0;
+          const content = NULL_BODY_STATUSES.has(status) ? null : Buffer.concat(chunks);
+          resolveResponse(new Response(content, { status, headers: headerList }));
+        });
+      },
+    );
+    outgoing.on('error', (error) => reject(new TypeError('fetch failed', { cause: error })));
+    outgoing.end(payload);
+  });
+}
+
 /**
  * `serve --port 0` prefers 4096, so a restarted backend usually reappears at
  * the same origin. After an aborted SSE subscription to the stopped backend,
  * Node's per-origin fetch pool can fail the next request with ECONNRESET
- * before the new backend ever sees it. Retry only that pre-response failure.
+ * before the new backend ever sees it.
+ *
+ * A reset does not prove the backend never received the request, so only
+ * GET/HEAD (the SSE subscription, /doc, state reads) are re-sent, and every
+ * retried attempt is recorded in the HTTP trace as a `client-transport`
+ * record. Every other method goes out once on a connection of its own, which
+ * no stale pooled socket can fail; a failure there ends the scenario rather
+ * than risk a duplicate prompt, session, or reply in the evidence.
  */
-async function loopbackFetch(url, init) {
+async function loopbackFetch(url, init = {}, evidence = {}) {
+  const method = (init.method ?? 'GET').toUpperCase();
+  if (!IDEMPOTENT_METHODS.has(method)) return freshConnectionFetch(url, { ...init, method });
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await fetch(url, init);
     } catch (error) {
       const code = error?.cause?.code;
       const stale = code === 'ECONNRESET' || code === 'UND_ERR_SOCKET';
-      if (!stale || attempt >= 3 || init?.signal?.aborted) throw error;
+      if (!stale || attempt >= 3 || init.signal?.aborted) throw error;
+      evidence.trace?.push({
+        direction: 'client-transport',
+        retry: { method, ...routeCarrier(evidence.path ?? url.pathname), attempt, failure: code },
+      });
       await delay(250);
     }
   }
 }
 
 async function apiRequest(trace, baseURL, password, directory, method, path, body) {
-  const response = await loopbackFetch(instanceURL(baseURL, path, directory), {
-    method,
-    headers: {
-      authorization: authHeader(password),
-      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+  const response = await loopbackFetch(
+    instanceURL(baseURL, path, directory),
+    {
+      method,
+      headers: {
+        authorization: authHeader(password),
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+    { trace, path },
+  );
   const text = await response.text();
   let data;
   try {
@@ -1026,15 +1078,17 @@ async function waitForDurableIdle(trace, baseURL, password, directory, sessionID
   throw new Error(`timed out waiting for durable idle status for ${sessionID}`);
 }
 
-async function fetchOpenApi(baseURL, password) {
-  const response = await loopbackFetch(new URL('/doc', baseURL), {
-    headers: { authorization: authHeader(password) },
-  });
+async function fetchOpenApi(trace, baseURL, password) {
+  const response = await loopbackFetch(
+    new URL('/doc', baseURL),
+    { headers: { authorization: authHeader(password) } },
+    { trace, path: '/doc' },
+  );
   if (!response.ok) throw new Error(`GET /doc failed with ${response.status}`);
   return response.json();
 }
 
-function eventStream(baseURL, password, directory) {
+function eventStream(trace, baseURL, password, directory) {
   const events = [];
   const waiters = new Set();
   const abort = new AbortController();
@@ -1057,10 +1111,14 @@ function eventStream(baseURL, password, directory) {
 
   const running = (async () => {
     try {
-      const response = await loopbackFetch(instanceURL(baseURL, '/event', directory), {
-        headers: { accept: 'text/event-stream', authorization: authHeader(password) },
-        signal: abort.signal,
-      });
+      const response = await loopbackFetch(
+        instanceURL(baseURL, '/event', directory),
+        {
+          headers: { accept: 'text/event-stream', authorization: authHeader(password) },
+          signal: abort.signal,
+        },
+        { trace, path: '/event' },
+      );
       if (!response.ok || !response.body) {
         throw new Error(`GET /event failed with ${response.status}`);
       }
@@ -1164,7 +1222,7 @@ async function runScenario(name, options) {
   const capturedEvents = () => streamSegments.flatMap((segment) => segment.stream.events);
   const capturedLogs = () => backends.map((entry) => `=== ${entry.phase} ===\n${entry.backend.logs()}`).join('\n');
   const openEventStream = (phase, baseURL) => {
-    const next = eventStream(baseURL, password, workspace);
+    const next = eventStream(httpTrace, baseURL, password, workspace);
     streamSegments.push({ phase, stream: next });
     stream = next;
     return next;
@@ -1180,7 +1238,7 @@ async function runScenario(name, options) {
 
     opencode = await startOpenCode(options.artifact, workspace, environment);
     backends.push({ phase: 'initial-backend', backend: opencode });
-    const openapi = await fetchOpenApi(opencode.baseURL, password);
+    const openapi = await fetchOpenApi(httpTrace, opencode.baseURL, password);
     const initialStreamPhase = scenario.reconnect
       ? 'before-disconnect'
       : scenario.resume
