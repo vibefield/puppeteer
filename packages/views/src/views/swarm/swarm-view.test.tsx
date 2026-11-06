@@ -335,9 +335,8 @@ describe('a body leaving the field (DESIGN §6, the departure; M4: depart is not
     const { agents, show } = await mounted(undefined, fixtureTheme('light', { reducedMotion: true }));
     const id = agents[2]!.id;
     await show(agents.slice(0, 2));
-    // The change is drawn once where it stands, the body still whole…
-    expect(lastDrawn(id)).toEqual(expect.objectContaining({ scale: 1, opacity: 1 }));
-    // …then fades on frames of its own, at its size.
+    // The change asks for a still frame: on the next one it is drawn where it stands, at its size, its fade begun;
+    // then it fades on frames of its own.
     let previous = 1;
     for (let frame = 0; frame < inside(DEPARTURE_REDUCED_MS); frame += 1) {
       await frames(1);
@@ -364,7 +363,9 @@ describe('a body leaving the field (DESIGN §6, the departure; M4: depart is not
     expect(faded).toBeGreaterThan(0);
     expect(faded).toBeLessThan(1);
     await show(agents);
-    // Drawn where it stands, at its size, as faint as its fade had left it: never whole in one frame.
+    await frames(1);
+    // On the next frame, drawn where it stands, at its size, up from as faint as its fade had left it: never whole in
+    // one frame.
     expect(lastDrawn(id)?.scale).toBe(1);
     expect(lastDrawn(id)?.opacity).toBeLessThan(1);
     expect(drawn.frames.at(-1)?.bodies.filter((body) => body.model.id === id)).toHaveLength(1);
@@ -383,10 +384,12 @@ describe('a body leaving the field (DESIGN §6, the departure; M4: depart is not
     expect(drawn.frames.length).toBe(drawnThen);
   });
 
-  it('on a still stage (the host’s animations switch off) is gone at once, with no frame asked for', async () => {
+  it('on a still stage (the host’s animations switch off) is gone at once, with no fade asked for', async () => {
     const { agents, show } = await mounted(undefined, fixtureTheme('light', { animations: false }));
     const before = drawn.frames.length;
     await show(agents.slice(0, 2));
+    // The change's still frame, then the physics' answer to the body let go (its table and frame): one frame each.
+    await frames(2);
     expect(drawn.frames.length).toBeGreaterThan(before);
     expect(lastDrawn(agents[2]!.id)).toBeUndefined();
     expect(lastDrawn(agents[0]!.id)).toBeDefined();

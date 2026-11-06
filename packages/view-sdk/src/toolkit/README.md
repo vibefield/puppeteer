@@ -29,7 +29,7 @@ Two rules hold for everything here:
 | `mark-outline.ts` | A view's own mark, for its manifest (MV-D6): the host's bar FILLS `manifest.mark` in currentColor and never strokes it (ruled at MV-8: a stroked outline draws both edges). `strokeOutline(from, to)`, `strokesOutline(strokes)` and `ringOutline(cx, cy, r)` write the filled outline a monoline stroke paints on the bar's grid (`MARK_VIEW_BOX`, `MARK_STROKE` = 1.6, round caps) |
 | `marks-atlas.ts` | `MARKS_ATLAS_URL`, the swarm's SDF atlas as a data URL |
 | `canvas.ts` | `sizeCanvas` (device-pixel backing store, CSS-pixel element, writes only on change), `canvasRatio`, `watchDevicePixelRatio` |
-| `motion.ts` | `createMotionLoop(callback, { animations, reducedMotion, fps? })`, which requests no frame at all while animations are off or motion is reduced, and re-evaluates on `loop.update(input.theme)` |
+| `motion.ts` | `createMotionLoop(callback, { animations, reducedMotion, fps?, still? })`, which requests no frame at all while animations are off or motion is reduced, and re-evaluates on `loop.update(input.theme)`; stopped, `loop.requestStill()` asks for one still frame, merged with every request before it |
 | `keys.ts` | `keyLegend(key)`: how a declared key is printed, as the keyboard's legend (`↵`, `↘`) or its character. The host's bar prints a view's keys in its tooltip with it, and a view prints the key of one of its own controls on that control, under its glyph (MV-D8, M177 ruling 4) |
 
 ## Ported, with identical output
@@ -65,13 +65,23 @@ with no `project.seq`. The replica re-colours rows only when the key changes, an
 
 ```ts
 const loop = createMotionLoop((time, deltaMs) => draw(time, deltaMs), input.theme);
-// in update(input):
+// in update(input), and wherever else what the view shows changes (a worker's answer, focus):
 loop.update(input.theme); // starts or stops; keeps an fps given at creation
-if (!loop.running) draw(performance.now(), 0); // a stopped loop draws once per update
+loop.requestStill(); // stopped: one still frame, on the next frame; running: nothing, its next frame draws
 ```
 
 While either switch says no, the loop holds no `requestAnimationFrame` at all, which is the conformance rule
-(MV-W4: no loop when off).
+(MV-W4: no loop when off). A stopped view still draws every change it shows, through `requestStill`:
+- **One frame for a burst.** Requests merge until the still frame runs, so an update, the answer it starts and a
+  focus that lands before the frame are drawn once. The request has a handle of its own; `running` reports only the
+  loop.
+- **A fade asks again.** The request is cleared before the still draw, so a request made inside the draw asks for
+  the next frame: a reduced-motion fade is drawn frame by frame, and the view is still again the moment it stops
+  asking. One-shot requests are never a loop.
+- **What a still frame draws.** `callback(time, 0)`, unless the loop was made with `still` (read once, at creation)
+  for a view whose moving callback must not run with no time passed.
+- **Nothing while it runs, nothing once disposed.** A running loop's next frame draws anyway; a loop that starts,
+  and `dispose`, drop a still frame owed.
 
 ## Workers and bundlers (MV-D7)
 

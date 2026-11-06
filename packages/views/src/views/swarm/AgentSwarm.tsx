@@ -13,7 +13,6 @@ import {
 import type { AgentView, StageGeometry } from '@vibefield/puppeteer-view-sdk';
 import type { ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
 import {
-  animationFrameScheduler,
   approachRecede,
   createMotionLoop,
   everyReceded,
@@ -80,8 +79,10 @@ import { resolveSwarmTheme } from './swarm-theme.js';
 // last two states the physics published, and the visual radius follows the
 // physics radius on a critically damped spring — so the field looks the same
 // whether the physics steps at 15Hz or 120. Told to hold still (the host's
-// animations switch off, or motion reduced: MV-W4), the loop stops, the physics
-// pause with it, and the field is drawn once per change where it stands.
+// animations switch off, or motion reduced: MV-W4), the loop stops and the
+// physics pause with it. Each change the field shows then asks the loop for one
+// still frame (`requestStill`), drawn where it stands: a row, a frame the physics
+// publish, focus, the bloom, a birth and the host's answer to it.
 //
 // The crowd fits its field (SWF, `fit.ts`): one shared scale multiplies every
 // body's size, refitted when the rows, the field's size or the chrome change
@@ -296,9 +297,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   commandsRef.current = commands;
   /** Where the keyboard's focus stands, from the view's own focus events (MV-W2); the bloom asks. */
   const focusRef = useRef<BloomFocusPlace>('none');
+  /** The frame loop, which also draws a held field's still frames (`requestStill`). Set by the render effect. */
   const loopRef = useRef<MotionLoop | null>(null);
-  /** Draws the field once where it stands: what a stopped loop shows. Set by the render effect. */
-  const stillDrawRef = useRef<(() => void) | null>(null);
   /** Re-reads the motion switches into the loop and the physics. Set by the render effect. */
   const motionSyncRef = useRef<(() => void) | null>(null);
   /** Posts the physics' first world once the stage is measured. Set by the render effect. */
@@ -350,9 +350,14 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         seed: Math.random() * Math.PI * 2,
       };
       birthsRef.current = [...birthsRef.current, record];
-      // The host's answer starts the wait for its row; a refusal gives the birth up at once.
+      // Held still, the birth is drawn where it was let go.
+      loopRef.current?.requestStill();
+      // The host's answer starts the wait for its row; a refusal gives the birth up at once, and held still its
+      // gone-form (nothing) is drawn then, never at the next change.
       const settle = (patch: { answeredAt?: number; failedAt?: number }): void => {
-        if (birthsRef.current.includes(record)) record.birth = { ...record.birth, ...patch };
+        if (!birthsRef.current.includes(record)) return;
+        record.birth = { ...record.birth, ...patch };
+        loopRef.current?.requestStill();
       };
       answer.then(
         ({ opened }) => settle(opened ? { answeredAt: performance.now() } : { failedAt: performance.now() }),
@@ -451,7 +456,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       rendererRef.current = current;
       setFailure(undefined);
       commandsRef.current.report({ renderer: 'webgpu' });
-      stillDrawRef.current?.();
+      loopRef.current?.requestStill();
       void current.lost.then((info) => {
         if (!alive || rendererRef.current !== current) return;
         console.warn('[swarm] WebGPU device lost, rebuilding', info.message);
@@ -534,11 +539,11 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     if (refitted && initialisedRef.current) driverRef.current?.post({ type: 'updateAgents', agents: agentSpecs() });
   };
 
-  /** The field or its chrome moved: refit, and where the scale moved, remodel (and redraw a field held still). */
+  /** The field or its chrome moved: refit, and where the scale moved, remodel (held still, ask for a frame). */
   const refitIfMoved = (): void => {
     if (fitNow() === fitRef.current) return;
     refreshModels(performance.now(), true);
-    stillDrawRef.current?.();
+    loopRef.current?.requestStill();
   };
 
   /**
@@ -584,6 +589,9 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     const container = containerRef.current;
     if (!container) return;
 
+    // What the physics publish arrives after the change that asked for it (always, from a worker): held still, each
+    // table and each frame read asks for a still frame of its own. The inline physics answer inside the post, before
+    // the loop exists at the first world: the effects' own requests draw that.
     const applyTable = (event: Extract<SwarmPhysicsEvent, { type: 'idTable' }>): void => {
       tableRef.current = { generation: event.generation, ids: event.ids };
       const living = new Set(event.ids);
@@ -593,6 +601,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         visualsRef.current.delete(id);
         if (dragRef.current?.id === id) dragRef.current = undefined;
       }
+      loopRef.current?.requestStill();
     };
 
     let width = container.clientWidth;
@@ -608,7 +617,10 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         // READ, THEN RELEASE, and never the other way round: handing the buffer
         // back transfers it, which detaches this thread's view of it, and a
         // detached array reads as empty rather than throwing.
-        if (readSwarmFrame(frame, tableRef.current, statesRef.current)) frameAtRef.current = performance.now();
+        if (readSwarmFrame(frame, tableRef.current, statesRef.current)) {
+          frameAtRef.current = performance.now();
+          loopRef.current?.requestStill();
+        }
         driver.post({ type: 'releaseFrame', buffer: frame }, [frame.buffer]);
       },
       onDemote: (reason) => console.warn('[swarm] the physics run in this thread:', reason),
@@ -719,9 +731,9 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         departed = true;
       }
       if (departed) driver.post({ type: 'updateAgents', agents: agentSpecs() });
-      // Held still for reduced motion the loop draws nothing, so a fade (M6) asks for its own frames, only while a
-      // body is leaving: the field is still again the moment the last has gone (MV-W4).
-      if (departing.size > 0) fadeFrames();
+      // Held still for reduced motion the loop draws nothing, so a fade (M6) asks for one still frame after another,
+      // only while a body is leaving: the field is still again the moment the last has gone (MV-W4).
+      if (departing.size > 0) loop.requestStill();
       // A birth whose row has arrived: the row takes over where the birth stood.
       const takeovers = new Map<string, Birthing>();
       for (const record of birthsRef.current) {
@@ -807,7 +819,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         };
         (departure ? leavingBodies : bodies).push(body);
       }
-      if (fadingUp) fadeFrames();
+      if (fadingUp) loop.requestStill();
       bodies.sort((left, right) => {
         const rank = STATUS_RANK[left.model.appearance] - STATUS_RANK[right.model.appearance];
         if (rank !== 0) return rank;
@@ -898,7 +910,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     };
 
     // The toolkit's loop: the display's frames while motion is on, no frame at all while it is off (MV-W4). The
-    // physics pause with it and start again fresh, so the time held still is never stepped through.
+    // physics pause with it and start again fresh, so the time held still is never stepped through. Held still, a
+    // still frame is the loop's default, `render(time, 0)`: no time passes.
     const loop = createMotionLoop(render, switchesRef.current);
     loopRef.current = loop;
     let running = loop.running;
@@ -909,24 +922,9 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       running = loop.running;
       driver.post({ type: running ? 'resume' : 'pause' });
     };
-    const still = (): void => {
-      if (!loop.running) render(performance.now(), 0);
-    };
     motionSyncRef.current = () => {
       syncMotion();
-      still();
-    };
-    stillDrawRef.current = still;
-    // A departure's fade under reduced motion (M6) is drawn on frames of its own while the loop is stopped: one at a
-    // time, asked for by the render only while a body is leaving, so never a loop (MV-W4).
-    const fadeScheduler = animationFrameScheduler();
-    let fading: number | undefined;
-    const fadeFrames = (): void => {
-      if (fading !== undefined || loop.running) return;
-      fading = fadeScheduler.request((time) => {
-        fading = undefined;
-        if (!loop.running) render(time, 0);
-      });
+      loop.requestStill();
     };
 
     // Observer delivery follows rAF: draw now, so a resized backing store is never presented without its frame.
@@ -935,10 +933,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     resizeObserver?.observe(container);
 
     return () => {
-      if (fading !== undefined) fadeScheduler.cancel(fading);
       loop.dispose();
       loopRef.current = null;
-      stillDrawRef.current = null;
       motionSyncRef.current = null;
       initRef.current = null;
       resizeObserver?.disconnect();
@@ -1026,13 +1022,15 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   }, [stage]);
 
   // The host's animations switch and the reduced-motion preference start or stop the loop (and the physics with
-  // it); stopped, every change the field shows is drawn once where it stands.
+  // it); stopped, the field is drawn once where it stands.
   useEffect(() => {
     motionSyncRef.current?.();
   }, [theme.animations, theme.reducedMotion]);
+  // Held still, every input the field draws asks for one still frame, merged with any asked for before it: the rows,
+  // the palette, the parameters, the stage, the spawn menu, and the bloom (its veil, its clearings, its hub).
   useEffect(() => {
-    if (loopRef.current && !loopRef.current.running) stillDrawRef.current?.();
-  }, [agents, palette, swarm, stage, spawnMenu]);
+    loopRef.current?.requestStill();
+  }, [agents, palette, swarm, stage, spawnMenu, bloom.state]);
 
   const localPoint = (event: { clientX: number; clientY: number }): { x: number; y: number } | undefined => {
     const bounds = containerRef.current?.getBoundingClientRect();
@@ -1334,9 +1332,11 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
                 data-agent-bubble-receded={agent.receded ? 'true' : undefined}
                 onFocus={() => {
                   focusedIdRef.current = bodyId;
+                  loopRef.current?.requestStill();
                 }}
                 onBlur={() => {
                   if (focusedIdRef.current === bodyId) focusedIdRef.current = undefined;
+                  loopRef.current?.requestStill();
                 }}
                 onClick={() => commands.select(agent.id)}
               >
