@@ -437,6 +437,17 @@ recipe of the run it asked for, and nothing of any other run.
   its choosing elsewhere, then or later. A same-user writer can still write under the root.
   A refused path is said once, as `adapter:native-event` `transcript-path.refused`, and is never published.
   <!-- open until James rules rv-el7-limits (4): recorded at its lean, A, with the pin landed in code -->
+- **A hook endpoint the host holds is free while the host is down.** Claude's decision-capable hooks (`PreToolUse`,
+  `PermissionRequest`, `Stop`, `UserPromptSubmit`) post to a loopback port its settings fix for the process's life,
+  and Claude honours a decision any 2xx answer carries. The listener is the host's: through a restart, a replace or a
+  supersession the port is free, and a program of another local account that binds it in that window answers the
+  agent's decisions. A host that comes back to a held port is refused with `next: 'retry'` and the neutral code
+  `endpoint-held` (core `AgentAttachRefusedError`, carried as the failure's `error.refusal`): in its own replace
+  window the holder is its predecessor, which a retry outlasts; still held after its retries, the host says another
+  program holds the agent's hook connection, in its own words. Not measured: whether XNU lets another uid take the
+  port while the old listener's TIME_WAIT pcbs remain. The structural cure, a listener held by a plane that outlives
+  the agent, is not built here.
+  <!-- open until James rules rv-el7-limits (3): recorded at its lean, C (this limit and the endpoint-held code) -->
 
 ## 9. What a host does itself
 

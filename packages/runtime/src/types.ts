@@ -368,7 +368,11 @@ export interface AgentSessionFailure {
   error: {
     code: AgentSessionErrorCode;
     message: string;
-    /** With `AGENT_LAUNCH_REFUSED`: the adapter's own code for its refusal (`AgentLaunchRefusedError`). */
+    /**
+     * With `AGENT_LAUNCH_REFUSED`: the adapter's own code for its refusal (`AgentLaunchRefusedError`). With
+     * `ATTACH_FAILED` and a `next`: why, when the adapter named a neutral word core knows (`AgentAttachRefusalCode`,
+     * such as `endpoint-held`), for a host to state without the vendor's text.
+     */
     refusal?: { code: string };
     /**
      * With `ATTACH_FAILED`: what the adapter says the host does instead (`AgentAttachRefusedError`). Absent when the

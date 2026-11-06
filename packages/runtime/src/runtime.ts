@@ -23,6 +23,7 @@ import {
   ProfileProviderSchema,
   agentEventCategory,
   agentEventType,
+  AGENT_ATTACH_REFUSAL_CODES,
   isAgentAttachRefusedError,
   isAgentEventType,
   isAgentLaunchRefusedError,
@@ -3948,10 +3949,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
               error instanceof Error ? error.message : String(error)
             }`,
           );
-          // the adapter's word on what the host does instead, carried as it said it
-          return isAgentAttachRefusedError(error)
-            ? { ...failure, error: { ...failure.error, next: error.next } }
-            : failure;
+          // the adapter's word on what the host does instead, carried as it said it, and why, when that is a word
+          // this copy knows (a host states it without the vendor's text)
+          if (!isAgentAttachRefusedError(error)) return failure;
+          // Open until James rules rv-el7-limits (3): the `refusal` carry is built at its lean, C.
+          const why =
+            error.code !== undefined && AGENT_ATTACH_REFUSAL_CODES.includes(error.code) ? error.code : undefined;
+          return {
+            ...failure,
+            error: { ...failure.error, next: error.next, ...(why === undefined ? {} : { refusal: { code: why } }) },
+          };
         }
         if (session.sessionId !== request.sessionId || session.runtimeSessionId !== request.terminalSessionId) {
           await session.dispose({ release: true }).catch(report);

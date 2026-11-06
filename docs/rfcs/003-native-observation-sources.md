@@ -133,10 +133,12 @@ a turn boundary the user did not choose. Three additions make the bridge a stabl
 >   like a spawned one, also follows an in-pane `/resume` (a `SessionStart` with source `resume` straight after the
 >   observed session's `SessionEnd` with reason `resume`): one session selection serves both (adapter-claude
 >   `observation/session-selection.ts`). A `fork` start moves neither.
-> - **#66:** "a taken port fails before anything is adopted, so the host knows the ingress is lost and resumes
->   instead" no longer holds. A port another listener holds is refused with `next: 'retry'` (core
->   `AgentAttachRefusedError`), and the host's ladder retries it: in a host's replace or supersession window the
->   holder is its predecessor's bridge, which a retry outlasts. Any other bind failure is still a plain error.
+> - **#66, #110:** "a taken port fails before anything is adopted, so the host knows the ingress is lost and resumes
+>   instead" no longer holds. A port another listener holds is refused with `next: 'retry'` and the neutral code
+>   `endpoint-held` (core `AgentAttachRefusedError`, carried as the failure's `error.refusal`), and the host's ladder
+>   retries it: in a host's replace or supersession window the holder is its predecessor's bridge, which a retry
+>   outlasts; still held after the retries, another program holds the agent's hook connection (spawn-through-hosts.md
+>   §8). Any other bind failure is still a plain error.
 
 **Amended 2026-09-13 (PU-1b, after VibeField's AR-4 review).** _A release keeps what the process depends on._ The
 detach path disposes each binding with `{ release: true }` (`AdapterDisposeOptions`, core `binding.ts`): the Claude
