@@ -4,8 +4,13 @@ import {
   claude2308TranscriptText,
   type Claude2308Turn,
 } from '../../test-support/claude-transcript-fixtures.js';
-import { projectClaudeTranscriptAssistants, projectClaudeTranscriptOpenWork } from './conversation.js';
-import { decodeClaudeTranscript } from './wire.js';
+import type { SemanticObservationEvent } from '../semantic-provider.js';
+import {
+  ClaudeTranscriptProjection,
+  projectClaudeTranscriptAssistants,
+  projectClaudeTranscriptOpenWork,
+} from './conversation.js';
+import { decodeClaudeTranscript, transcriptRecordId } from './wire.js';
 
 /** Each projected reply's message id, mapped to the turn it is keyed to. */
 const turnIds = (text: string) =>
@@ -333,57 +338,90 @@ describe('Claude transcript assistant projection', () => {
       timestamp: at,
       message: { role: 'assistant', content: [{ type: 'text', text }] },
     });
-    /** Each projected reply's turn, walked with the turns an earlier read gave and the parents that have left. */
-    const keptTurnIds = (
+    /**
+     * Reads a history through one {@link ClaudeTranscriptProjection} as the transcript reader slides its window: the
+     * first `first` rows in one read, then one row per read, the window holding the last `maxRecords` rows. With
+     * `reset`, a last read takes the history's last `reset` rows whole with no delta, as a reader that read the file
+     * again does (new record objects). Returns what each read after the first published and, for every reply the last
+     * window holds, the turn the projection last gave it beside the unbounded walk's over the whole history.
+     */
+    const slide = (
       rows: readonly Record<string, unknown>[],
-      knownTurns: ReadonlyMap<string, string>,
-      departed?: ReadonlySet<string>,
+      options: { first: number; maxRecords: number; reset?: number },
     ) => {
-      const records = decodeClaudeTranscript(jsonl(rows));
-      const assistants = projectClaudeTranscriptAssistants(records, { knownTurns, departed });
-      return Object.fromEntries(
-        [...assistants.values()].map(({ event, turnId }) => [(event as { messageId: string }).messageId, turnId]),
+      const history = decodeClaudeTranscript(jsonl(rows));
+      const projection = new ClaudeTranscriptProjection('session-1');
+      const last = new Map<string, string | undefined>();
+      const read = (events: readonly SemanticObservationEvent[]) =>
+        events.map(({ event, turnId }) => {
+          const messageId = (event as { messageId: string }).messageId;
+          last.set(messageId, turnId);
+          return { messageId, turnId };
+        });
+      let held = history.slice(0, options.first).slice(-options.maxRecords);
+      read(projection.apply(held, undefined));
+      const published: { messageId: string; turnId: string | undefined }[] = [];
+      for (const record of history.slice(options.first)) {
+        const next = [...held, record].slice(-options.maxRecords);
+        const evicted = held.slice(0, held.length + 1 - next.length);
+        published.push(...read(projection.apply(next, { evicted, appended: [record] })));
+        held = next;
+      }
+      if (options.reset !== undefined) {
+        held = decodeClaudeTranscript(jsonl(rows)).slice(-options.reset);
+        published.push(...read(projection.apply(held, undefined)));
+      }
+      const keys = new Set(held.map((record) => transcriptRecordId(record)));
+      const unbounded = Object.fromEntries(
+        [...projectClaudeTranscriptAssistants(history)]
+          .filter(([key]) => keys.has(key))
+          .map(([key, { turnId }]) => [key, turnId]),
       );
+      const turns = Object.fromEntries(Object.keys(unbounded).map((key) => [key, last.get(key)]));
+      return { published, turns, unbounded };
     };
 
     it('a reply whose prompt left the window keeps its turn, and the replies after it follow', () => {
       const rows = [
+        prompt('prompt-0', null, 'Question'),
         { type: 'attachment', uuid: 'context', parentUuid: 'prompt-0', timestamp: at },
         reply('reply-1', 'context', 'First.'),
         reply('reply-2', 'reply-1', 'Second.'),
         reply('reply-3', 'reply-2', 'Third.'),
       ];
-      expect(turnIds(jsonl(rows))).toEqual({ 'reply-1': undefined, 'reply-2': undefined, 'reply-3': undefined });
-      expect(
-        keptTurnIds(
-          rows,
-          new Map([
-            ['reply-1', 'prompt-0'],
-            ['reply-2', 'prompt-0'],
-          ]),
-        ),
-      ).toEqual({ 'reply-1': 'prompt-0', 'reply-2': 'prompt-0', 'reply-3': 'prompt-0' });
+      // The window alone shows no prompt.
+      expect(turnIds(jsonl(rows.slice(1)))).toEqual({
+        'reply-1': undefined,
+        'reply-2': undefined,
+        'reply-3': undefined,
+      });
+      // Four rows held: reply-3 evicts the prompt, and a read that walks the window whole again re-keys nothing.
+      const { published, turns, unbounded } = slide(rows, { first: 4, maxRecords: 4, reset: 4 });
+      expect(published).toEqual([{ messageId: 'reply-3', turnId: 'prompt-0' }]);
+      expect(turns).toEqual({ 'reply-1': 'prompt-0', 'reply-2': 'prompt-0', 'reply-3': 'prompt-0' });
+      expect(turns).toEqual(unbounded);
     });
 
-    it('a reply whose parent left the window keeps its turn, though a later prompt now precedes it', () => {
-      // The reply's parent was flushed after it (teardown) and has since been evicted, so the reply is a root and
-      // file order puts it after a prompt it never answered.
+    it('a reply whose parent left the window while it waited on a row the window holds keeps its turn', () => {
+      // Teardown flushed the context before the hook row it hangs from. The context leaves the window while the hook is
+      // still held, and the unbounded walk passes it after the hook: the late reply answers prompt-1.
       const rows = [
-        prompt('prompt-1', 'earlier', 'Next question'),
-        reply('late-reply', 'evicted-parent', 'Late answer.'),
-        prompt('prompt-3', 'late-reply', 'Third question'),
-        reply('reply-4', 'prompt-3', 'Third answer.'),
+        prompt('prompt-1', null, 'First question'),
+        { type: 'attachment', uuid: 'context', parentUuid: 'hook', timestamp: at },
+        reply('late-reply', 'context', 'Late answer.'),
+        { type: 'attachment', uuid: 'hook', parentUuid: 'prompt-1', timestamp: at },
+        prompt('prompt-2', 'late-reply', 'Next question'),
+        reply('reply-2', 'prompt-2', 'Next answer.'),
       ];
-      expect(turnIds(jsonl(rows))).toEqual({ 'late-reply': 'prompt-1', 'reply-4': 'prompt-3' });
-      expect(keptTurnIds(rows, new Map([['late-reply', 'prompt-0']]), new Set(['evicted-parent']))).toEqual({
-        'late-reply': 'prompt-0',
-        'reply-4': 'prompt-3',
-      });
+      const { published, turns, unbounded } = slide(rows, { first: 3, maxRecords: 4, reset: 4 });
+      expect(published).toEqual([{ messageId: 'reply-2', turnId: 'prompt-2' }]);
+      expect(turns).toEqual({ 'late-reply': 'prompt-1', 'reply-2': 'prompt-2' });
+      expect(turns).toEqual(unbounded);
     });
 
     it('a reply whose parent has not arrived yet cuts nothing: the walk wins, for it and for the replies after it', () => {
-      // Teardown flushed two rows before their parents: prompt-2 before reply-2, and reply-4 before reply-3, which has
-      // not arrived. An earlier read, without reply-2, put reply-4 in the second turn; reply-2 answers the first.
+      // Teardown flushed two rows before their parents: prompt-2 before reply-2, and reply-4 before reply-3, which
+      // never arrives here. A read without reply-2 put reply-4 in the second turn; reply-2 answers the first.
       const rows = [
         prompt('prompt-1', null, 'First question'),
         reply('reply-1', 'prompt-1', 'One.'),
@@ -391,23 +429,90 @@ describe('Claude transcript assistant projection', () => {
         reply('reply-4', 'reply-3', 'Four.'),
         reply('reply-2', 'reply-1', 'Two.'),
       ];
-      const knownTurns = new Map([
-        ['reply-1', 'prompt-1'],
-        ['reply-4', 'prompt-2'],
+      // Nothing leaves the window, so the walk's word is the last: reply-4 now precedes prompt-2.
+      const { published, turns, unbounded } = slide(rows, { first: 2, maxRecords: 8 });
+      expect(published).toEqual([
+        { messageId: 'reply-4', turnId: 'prompt-2' },
+        { messageId: 'reply-4', turnId: 'prompt-1' },
+        { messageId: 'reply-2', turnId: 'prompt-1' },
       ]);
-      // Nothing has left the window, so the turns an earlier read gave change nothing the walk says.
-      expect(keptTurnIds(rows, knownTurns)).toEqual(turnIds(jsonl(rows)));
-      expect(keptTurnIds(rows, knownTurns)['reply-2']).toBe('prompt-1');
+      expect(turns['reply-2']).toBe('prompt-1');
+      expect(turns).toEqual(unbounded);
     });
 
     it('a reply flushed before its prompt still moves to that prompt when it arrives', () => {
-      // An earlier read, without the prompt, keyed the reply to the turn before it.
+      // The first read, without the prompt, keys the reply to the turn before it.
       const rows = [
         prompt('prompt-1', null, 'First question'),
         reply('early-reply', 'prompt-2', 'Second answer.'),
         prompt('prompt-2', 'prompt-1', 'Second question'),
       ];
-      expect(keptTurnIds(rows, new Map([['early-reply', 'prompt-1']]))).toEqual({ 'early-reply': 'prompt-2' });
+      const { published, turns } = slide(rows, { first: 2, maxRecords: 8 });
+      expect(published).toEqual([{ messageId: 'early-reply', turnId: 'prompt-2' }]);
+      expect(turns).toEqual({ 'early-reply': 'prompt-2' });
+    });
+
+    it('a late pair straddling the window head keys every reply as the unbounded walk does', () => {
+      // Teardown flushed prompt-3 before its parent reply-2, and reply-6 before its parent reply-5. When reply-5
+      // arrives the window (five rows) has evicted prompt-1, reply-1 and prompt-3: reply-2 answers prompt-1, and
+      // reply-4, reply-5 and reply-6 descend from reply-3, which answers prompt-3.
+      const rows = [
+        prompt('prompt-1', null, 'First question'),
+        reply('reply-1', 'prompt-1', 'One.'),
+        prompt('prompt-3', 'reply-2', 'Third question'),
+        reply('reply-3', 'prompt-3', 'Three.'),
+        reply('reply-2', 'reply-1', 'Two.'),
+        reply('reply-4', 'reply-3', 'Four.'),
+        reply('reply-6', 'reply-5', 'Six.'),
+        reply('reply-5', 'reply-4', 'Five.'),
+      ];
+      const { published, turns, unbounded } = slide(rows, { first: 2, maxRecords: 5 });
+      expect(published).toEqual([
+        { messageId: 'reply-3', turnId: 'prompt-3' },
+        { messageId: 'reply-2', turnId: 'prompt-1' },
+        { messageId: 'reply-4', turnId: 'prompt-3' },
+        { messageId: 'reply-6', turnId: 'prompt-3' },
+        { messageId: 'reply-5', turnId: 'prompt-3' },
+      ]);
+      expect(turns).toEqual(unbounded);
+    });
+
+    it("a row written again whose first row left the window adopts none of the first row's children", () => {
+      // reply-1 is written again after the next prompt. A read walks the window whole once prompt-1 and the first
+      // reply-1 have left it: reply-2 still hangs from the first reply-1, and the second takes the first one's turn.
+      const rows = [
+        prompt('prompt-1', null, 'First question'),
+        reply('reply-1', 'prompt-1', 'One.'),
+        reply('reply-2', 'reply-1', 'Two.'),
+        prompt('prompt-2', 'reply-2', 'Second question'),
+        reply('reply-1', 'prompt-1', 'One.'),
+      ];
+      const { published, turns, unbounded } = slide(rows, { first: 5, maxRecords: 5, reset: 3 });
+      expect(published).toEqual([]);
+      expect(turns).toEqual({ 'reply-1': 'prompt-1', 'reply-2': 'prompt-1' });
+      expect(turns).toEqual(unbounded);
+    });
+
+    it("a row written again takes its first row's turn and opens nothing, and its text is the last row's", () => {
+      // Nothing is cut: reply-1 is written again after the prompt that follows it, and still answers prompt-1.
+      const records = decodeClaudeTranscript(
+        jsonl([
+          prompt('prompt-1', null, 'First question'),
+          reply('reply-1', 'prompt-1', 'One.'),
+          prompt('prompt-2', 'reply-1', 'Second question'),
+          reply('reply-1', 'prompt-1', 'One, again.'),
+        ]),
+      );
+      expect([...projectClaudeTranscriptAssistants(records).values()].map(({ event }) => event)).toEqual([
+        {
+          type: 'conversation:assistant-message',
+          messageId: 'reply-1',
+          turnId: 'prompt-1',
+          text: 'One, again.',
+          final: true,
+          displayOnly: false,
+        },
+      ]);
     });
   });
 

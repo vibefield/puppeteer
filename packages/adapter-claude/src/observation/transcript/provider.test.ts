@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SemanticObservationEvent, SemanticObservationHandle } from '../semantic-provider.js';
-import { ClaudeTranscriptProjection } from './conversation.js';
+import { ClaudeTranscriptProjection, projectClaudeTranscriptAssistants } from './conversation.js';
 import { ClaudeTranscriptObservationProvider } from './provider.js';
 import * as jsonlReader from './services/jsonl-reader.js';
 import { decodeClaudeTranscript, type ClaudeTranscriptRecord } from './wire.js';
@@ -384,6 +384,313 @@ describe('ClaudeTranscriptObservationProvider', () => {
         { messageId: 'reply-2', turnId: 'prompt-1' },
         { messageId: 'reply-2', turnId: 'prompt-2' },
       ]);
+    });
+
+    describe("each reply the window holds is published in the unbounded walk's turn, whichever rows it holds", () => {
+      /** Every attach reads through a reader that holds `maxRecords` rows. */
+      const holding = (maxRecords: number) => {
+        const real = jsonlReader.createClaudeTranscriptReader;
+        vi.spyOn(jsonlReader, 'createClaudeTranscriptReader').mockImplementation((path) => real(path, { maxRecords }));
+      };
+      /** Attaches through a reader that holds `maxRecords` rows, then appends `rows` one per read. */
+      const oneByOne = async (maxRecords: number, initial: string, rows: readonly string[]) => {
+        holding(maxRecords);
+        const { path, handle, events } = await fixture(initial);
+        await handle.poll();
+        expect(events).toEqual([]);
+        for (const row of rows) {
+          appendFileSync(path, row);
+          await handle.poll();
+        }
+        return replies(events);
+      };
+
+      it('walks the window again after it evicts a late pair, and re-keys no reply it holds', async () => {
+        // Teardown flushes prompt-3 before its parent reply-2, and reply-6 before its parent reply-5. When reply-5
+        // arrives the window (five rows) has evicted prompt-1, reply-1 and prompt-3: reply-2 still answers prompt-1,
+        // and reply-4 and reply-6 still descend from reply-3, which answers prompt-3.
+        const initial = ask('prompt-1', null, 'First question') + answer('reply-1', 'prompt-1', 'One.');
+        const published = await oneByOne(5, initial, [
+          ask('prompt-3', 'reply-2', 'Third question'),
+          answer('reply-3', 'prompt-3', 'Three.'),
+          answer('reply-2', 'reply-1', 'Two.'),
+          answer('reply-4', 'reply-3', 'Four.'),
+          answer('reply-6', 'reply-5', 'Six.'),
+          answer('reply-5', 'reply-4', 'Five.'),
+        ]);
+        expect(published).toEqual([
+          { messageId: 'reply-3', turnId: 'prompt-3' },
+          { messageId: 'reply-2', turnId: 'prompt-1' },
+          { messageId: 'reply-4', turnId: 'prompt-3' },
+          { messageId: 'reply-6', turnId: 'prompt-3' },
+          { messageId: 'reply-5', turnId: 'prompt-3' },
+        ]);
+      });
+
+      it('keeps a long turn across a compaction once its prompt has left the window (I1a)', async () => {
+        // An auto-compaction mid-turn writes a root boundary. reply-3's arrival walks the window whole, and the window
+        // (five rows) holds no prompt by then: every reply below the boundary still answers prompt-1.
+        const initial = ask('prompt-1', null, 'First question') + answer('reply-1', 'prompt-1', 'One.');
+        const published = await oneByOne(5, initial, [
+          line({
+            type: 'system',
+            subtype: 'compact_boundary',
+            uuid: 'boundary',
+            parentUuid: null,
+            logicalParentUuid: 'reply-1',
+          }),
+          line({ type: 'user', uuid: 'summary', parentUuid: 'boundary', isCompactSummary: true }),
+          answer('reply-2', 'summary', 'Two.'),
+          answer('reply-4', 'reply-3', 'Four.'),
+          answer('reply-3', 'reply-2', 'Three.'),
+        ]);
+        expect(published).toEqual([
+          { messageId: 'reply-2', turnId: 'prompt-1' },
+          { messageId: 'reply-4', turnId: 'prompt-1' },
+          { messageId: 'reply-3', turnId: 'prompt-1' },
+        ]);
+      });
+
+      it('keys replies flushed before their parents to the turn they answer after its prompt left (I1b)', async () => {
+        // reply-3's and reply-5's arrivals each walk a window (four rows) that holds no prompt.
+        const published = await oneByOne(4, ask('prompt-1', null, 'First question'), [
+          answer('reply-1', 'prompt-1', 'One.'),
+          answer('reply-2', 'reply-1', 'Two.'),
+          answer('reply-4', 'reply-3', 'Four.'),
+          answer('reply-3', 'reply-2', 'Three.'),
+          answer('reply-6', 'reply-5', 'Six.'),
+          answer('reply-5', 'reply-4', 'Five.'),
+        ]);
+        expect(published).toEqual([
+          { messageId: 'reply-1', turnId: 'prompt-1' },
+          { messageId: 'reply-2', turnId: 'prompt-1' },
+          { messageId: 'reply-4', turnId: 'prompt-1' },
+          { messageId: 'reply-3', turnId: 'prompt-1' },
+          { messageId: 'reply-6', turnId: 'prompt-1' },
+          { messageId: 'reply-5', turnId: 'prompt-1' },
+        ]);
+      });
+
+      it('keys a reply written again as its first row was, in the read that evicts the first row (I3)', async () => {
+        // reply-1 is written again after prompt-2, in the read whose eviction takes its first row (three rows held):
+        // the key is published again, still under prompt-1, and reply-2 is not.
+        const published = await oneByOne(3, ask('prompt-1', null, 'First question'), [
+          answer('reply-1', 'prompt-1', 'One.'),
+          answer('reply-2', 'reply-1', 'Two.'),
+          ask('prompt-2', 'reply-2', 'Second question'),
+          answer('reply-1', 'prompt-1', 'One.'),
+        ]);
+        expect(published).toEqual([
+          { messageId: 'reply-1', turnId: 'prompt-1' },
+          { messageId: 'reply-2', turnId: 'prompt-1' },
+          { messageId: 'reply-1', turnId: 'prompt-1' },
+        ]);
+      });
+
+      it('starts a walk in the last prompt the unbounded walk passed, not the last one evicted (D1a)', async () => {
+        // Teardown flushes prompt-3 before its parent reply-2, so the walk passes prompt-2 first. prompt-3 leaves the
+        // window (five rows) at reply-6's read and prompt-2 at reply-5's: reply-8 still answers prompt-3.
+        const initial = ask('prompt-1', null, 'First question') + answer('reply-1', 'prompt-1', 'One.');
+        const published = await oneByOne(5, initial, [
+          ask('prompt-3', 'reply-2', 'Third question'),
+          ask('prompt-2', 'reply-1', 'Second question'),
+          answer('reply-2', 'prompt-2', 'Two.'),
+          answer('reply-4', 'reply-3', 'Four.'),
+          answer('reply-3', 'prompt-3', 'Three.'),
+          answer('reply-6', 'reply-5', 'Six.'),
+          answer('reply-5', 'reply-4', 'Five.'),
+          answer('reply-8', 'reply-7', 'Eight.'),
+        ]);
+        expect(published).toEqual([
+          { messageId: 'reply-2', turnId: 'prompt-2' },
+          { messageId: 'reply-4', turnId: 'prompt-3' },
+          { messageId: 'reply-3', turnId: 'prompt-3' },
+          { messageId: 'reply-6', turnId: 'prompt-3' },
+          { messageId: 'reply-5', turnId: 'prompt-3' },
+          { messageId: 'reply-8', turnId: 'prompt-3' },
+        ]);
+      });
+
+      it('passes a departed prompt after the held row it waited on, as the unbounded walk does (D1b)', async () => {
+        // prompt-3 waited on reply-2, so the unbounded walk passes it after reply-2. At reply-4's read prompt-3 has
+        // left the window (five rows) while reply-2 and prompt-2 are held: reply-4 and reply-7 still answer prompt-3.
+        const initial = ask('prompt-1', null, 'First question') + answer('reply-1', 'prompt-1', 'One.');
+        const published = await oneByOne(5, initial, [
+          ask('prompt-3', 'reply-2', 'Third question'),
+          ask('prompt-2', 'reply-1', 'Second question'),
+          answer('reply-2', 'prompt-2', 'Two.'),
+          answer('reply-3', 'prompt-3', 'Three.'),
+          answer('reply-5', 'reply-4', 'Five.'),
+          answer('reply-4', 'reply-3', 'Four.'),
+          answer('reply-7', 'reply-6', 'Seven.'),
+        ]);
+        expect(published).toEqual([
+          { messageId: 'reply-2', turnId: 'prompt-2' },
+          { messageId: 'reply-3', turnId: 'prompt-3' },
+          { messageId: 'reply-5', turnId: 'prompt-3' },
+          { messageId: 'reply-4', turnId: 'prompt-3' },
+          { messageId: 'reply-7', turnId: 'prompt-3' },
+        ]);
+      });
+
+      it('opens no turn again for a prompt written again, and its first row keeps its children (D4)', async () => {
+        // prompt-2 is written again after prompt-3: it re-opens nothing, so every later reply answers prompt-3, and
+        // once the first prompt-2 leaves the window (five rows) reply-2 and prompt-3 still hang from it.
+        const published = await oneByOne(5, ask('prompt-1', null, 'First question'), [
+          answer('reply-1', 'prompt-1', 'One.'),
+          ask('prompt-2', 'reply-1', 'Second question'),
+          answer('reply-2', 'prompt-2', 'Two.'),
+          ask('prompt-3', 'reply-2', 'Third question'),
+          ask('prompt-2', 'reply-1', 'Second question'),
+          answer('reply-4', 'reply-3', 'Four.'),
+          answer('reply-3', 'prompt-3', 'Three.'),
+          answer('reply-6', 'reply-5', 'Six.'),
+        ]);
+        expect(published).toEqual([
+          { messageId: 'reply-1', turnId: 'prompt-1' },
+          { messageId: 'reply-2', turnId: 'prompt-2' },
+          { messageId: 'reply-4', turnId: 'prompt-3' },
+          { messageId: 'reply-3', turnId: 'prompt-3' },
+          { messageId: 'reply-6', turnId: 'prompt-3' },
+        ]);
+      });
+
+      it('publishes what the unbounded walk says, read by read, over a seeded history of 200 reads', async () => {
+        holding(16);
+        // mulberry32 from a fixed seed: the same history on every run.
+        let seed = 0x5eed2026;
+        const random = () => {
+          seed = (seed + 0x6d2b79f5) | 0;
+          let mixed = Math.imul(seed ^ (seed >>> 15), seed | 1);
+          mixed = (mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61)) ^ mixed;
+          return ((mixed ^ (mixed >>> 14)) >>> 0) / 2 ** 32;
+        };
+        const says = (role: 'user' | 'assistant', text: string) => ({ role, content: [{ type: 'text', text }] });
+        const row = (fields: Record<string, unknown>) => ({ sessionId: 'session-1', timestamp: at, ...fields });
+        let serial = 0;
+        let tail: string | null = null;
+        let side: string | null = null;
+        let foreign: string | null = null;
+        /** The next rows in causal order: one row, or a compaction's boundary and its summary. */
+        const grow = (): Record<string, unknown>[] => {
+          serial += 1;
+          const uuid = `row-${serial}`;
+          const roll = random();
+          if (roll < 0.06) {
+            // An auto-compaction mid-turn: a root boundary, then its summary, which continues the turn.
+            tail = `${uuid}-summary`;
+            return [
+              row({ type: 'system', subtype: 'compact_boundary', uuid, parentUuid: null }),
+              row({ type: 'user', uuid: tail, parentUuid: uuid, isCompactSummary: true }),
+            ];
+          }
+          if (roll < 0.14) {
+            // A subagent's sidechain row: never a reply and never a prompt.
+            const sidechain = { type: 'assistant', uuid, parentUuid: side ?? tail, isSidechain: true };
+            side = uuid;
+            return [row({ ...sidechain, message: says('assistant', 'Side.') })];
+          }
+          if (roll < 0.22) {
+            // Another session's row in the same file: it fills the window and is never this session's.
+            const other = { type: 'assistant', uuid, parentUuid: foreign, message: says('assistant', 'Elsewhere.') };
+            foreign = uuid;
+            return [row({ ...other, sessionId: 'session-2' })];
+          }
+          const main = (fields: Record<string, unknown>) => {
+            const linked = row({ ...fields, uuid, parentUuid: tail });
+            tail = uuid;
+            return [linked];
+          };
+          if (roll < 0.3) return main({ type: 'user', turnOrigin: 'human', message: says('user', `Ask ${serial}`) });
+          if (roll < 0.36) return main({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result' }] } });
+          if (roll < 0.42) return main({ type: 'attachment' });
+          return main({ type: 'assistant', message: says('assistant', `Answer ${serial}`) });
+        };
+        const stream: Record<string, unknown>[] = [];
+        /**
+         * Writes a block of one to three causal steps newest first, as teardown flushes (a compaction is two rows, so a
+         * block holds at most four and a parent lands at most three rows after its child); then, now and then, one of
+         * the last three rows written again, its reply text sometimes changed.
+         */
+        const write = () => {
+          const size = random() < 0.3 ? 2 + Math.floor(random() * 2) : 1;
+          const block: Record<string, unknown>[] = [];
+          while (block.length < size) block.push(...grow());
+          stream.push(...block.reverse());
+          if (random() < 0.12) {
+            const again = { ...stream[stream.length - 1 - Math.floor(random() * Math.min(3, stream.length))] };
+            if (again.type === 'assistant' && random() < 0.5) again.message = says('assistant', 'Again.');
+            stream.push(again);
+          }
+        };
+        let appended = 0;
+        const take = (count: number) => {
+          while (stream.length < appended + count) write();
+          appended += count;
+          return stream.slice(appended - count, appended);
+        };
+        const encode = (rows: readonly Record<string, unknown>[]) =>
+          rows.map((value) => `${JSON.stringify(value)}\n`).join('');
+        type Said = { readonly turnId: string | undefined; readonly text: string };
+        /** The unbounded walk over every row of this session the file holds, by message key. */
+        const unbounded = () => {
+          const said = new Map<string, Said>();
+          const records = decodeClaudeTranscript(encode(stream.slice(0, appended)));
+          const session = records.filter(({ sessionId }) => sessionId === 'session-1');
+          for (const [key, { event, turnId }] of projectClaudeTranscriptAssistants(session)) {
+            said.set(key, { turnId, text: (event as { text: string }).text });
+          }
+          return said;
+        };
+        /** The message key a written row carries, when it is one of this session's replies. */
+        const keyOf = (value: Record<string, unknown>): string | undefined => {
+          const reply = value.type === 'assistant' && value.isSidechain !== true && value.sessionId === 'session-1';
+          return reply ? String(value.uuid) : undefined;
+        };
+
+        const { path, handle, events } = await fixture(encode(take(2)));
+        await handle.poll();
+        expect(events).toEqual([]);
+        let before = unbounded();
+        for (let read = 1; read <= 200; read += 1) {
+          const kept = appended;
+          appendFileSync(path, encode(take(1 + Math.floor(random() * 3))));
+          const from = events.length;
+          await handle.poll();
+          const after = unbounded();
+          // A key the window (sixteen rows) holds is published iff no row carrying it survives this read's evictions,
+          // or its turn or text in the unbounded walk changed.
+          const survivors = new Set(stream.slice(Math.max(0, appended - 16), kept).map(keyOf));
+          const expected: Record<string, Said> = {};
+          for (const key of new Set(stream.slice(Math.max(0, appended - 16), appended).map(keyOf))) {
+            if (key === undefined) continue;
+            const now = after.get(key)!;
+            const was = before.get(key);
+            const changed = was === undefined || was.turnId !== now.turnId || was.text !== now.text;
+            if (!survivors.has(key) || changed) expected[key] = now;
+          }
+          const published: Record<string, Said> = {};
+          for (const { event, turnId } of events.slice(from)) {
+            const { messageId, text } = event as { messageId: string; text: string };
+            published[messageId] = { turnId, text };
+          }
+          expect({ read, published }).toEqual({ read, published: expected });
+          before = after;
+        }
+
+        // The history holds every class the row is for.
+        const history = stream.slice(0, appended);
+        const firstAt = new Map<unknown, number>();
+        for (const [index, value] of history.entries()) if (!firstAt.has(value.uuid)) firstAt.set(value.uuid, index);
+        expect({
+          late: history.some((value, index) => (firstAt.get(value.parentUuid) ?? -1) > index),
+          again: history.some((value, index) => firstAt.get(value.uuid) !== index),
+          sidechain: history.some((value) => value.isSidechain === true),
+          foreign: history.some((value) => value.sessionId === 'session-2'),
+          compacted: history.some((value) => value.subtype === 'compact_boundary'),
+          evicted: appended > 16,
+        }).toEqual({ late: true, again: true, sidechain: true, foreign: true, compacted: true, evicted: true });
+      });
     });
   });
 
