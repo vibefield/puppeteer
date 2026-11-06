@@ -32,6 +32,7 @@ import type {
 } from './internal-types.js';
 import { boundMonitorCollection } from './bounds.js';
 import { DEFAULT_MONITOR_BURN_RATE_WINDOW_MS, projectMonitorUsageLedger } from './rate.js';
+import { actorOf, compareEntryPreference, planePriority, selectClaims, time } from './selection.js';
 
 export interface ProjectAgentMonitorOptions {
   previous?: AgentMonitorState;
@@ -42,22 +43,7 @@ export interface ProjectAgentMonitorOptions {
   unboundedCollections?: boolean;
 }
 
-const QUALITY_PRIORITY = {
-  exact: 6,
-  strong: 5,
-  derived: 4,
-  estimated: 3,
-  inferred: 2,
-  unknown: 1,
-} as const;
-
 const BLOCKER_PRIORITY = { failure: 0, question: 1, permission: 2 } as const;
-
-function time(value: string | undefined): number {
-  if (value === undefined) return Number.NEGATIVE_INFINITY;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
-}
 
 function latestTimestamp(values: Array<string | undefined>): string | undefined {
   return values
@@ -71,130 +57,17 @@ function earliestTimestamp(values: Array<string | undefined>): string | undefine
     .sort((a, b) => time(a) - time(b))[0];
 }
 
-function planePriority(entry: MonitorStoredEntry): number {
-  if (entry.family === 'environment') return entry.plane === 'workspace' ? 3 : entry.plane === 'runtime' ? 2 : 1;
-  if (entry.family === 'status' && entry.value.kind === 'run') return entry.plane === 'runtime' ? 3 : 2;
-  if (entry.family === 'mode') return entry.plane === 'runtime' ? 3 : entry.plane === 'semantic' ? 2 : 1;
-  return entry.plane === 'semantic' ? 3 : entry.plane === 'runtime' ? 2 : 1;
-}
-
-function compareEntryPreference(a: MonitorStoredEntry, b: MonitorStoredEntry): number {
-  const provisional = Number(!b.provisional) - Number(!a.provisional);
-  if (provisional !== 0) return provisional;
-  // Metrics and child state have complementary owners: provider
-  // samples give the first live boundary and semantic responses make it
-  // durable. Equal-quality claims therefore advance by evidence time instead
-  // of allowing an older plane to mask a newer transition.
-  if (
-    a.family === b.family &&
-    (['model', 'effort', 'context'].includes(a.family) || (a.value.kind === 'actor' && b.value.kind === 'actor'))
-  ) {
-    return (
-      QUALITY_PRIORITY[b.quality] - QUALITY_PRIORITY[a.quality] ||
-      time(b.effectiveAt ?? b.observedAt) - time(a.effectiveAt ?? a.observedAt) ||
-      planePriority(b) - planePriority(a) ||
-      b.storageKey.localeCompare(a.storageKey)
-    );
-  }
-  return (
-    planePriority(b) - planePriority(a) ||
-    QUALITY_PRIORITY[b.quality] - QUALITY_PRIORITY[a.quality] ||
-    time(b.effectiveAt ?? b.observedAt) - time(a.effectiveAt ?? a.observedAt) ||
-    b.storageKey.localeCompare(a.storageKey)
-  );
-}
-
 function allEntries(state: MonitorAccumulatorState): MonitorStoredEntry[] {
   return [...state.runtime.entries.values(), ...state.semantic.entries.values(), ...state.workspace.entries.values()];
 }
 
-function actorLocalSourceKey(entry: MonitorStoredEntry, actorRunKey: string): string {
-  try {
-    const encoded = JSON.parse(entry.key) as unknown;
-    if (
-      Array.isArray(encoded) &&
-      encoded.length === 2 &&
-      typeof encoded[0] === 'string' &&
-      encoded[1] === actorRunKey
-    ) {
-      return encoded[0];
-    }
-  } catch {
-    // Semantic producers use their own readable keys; only runtime actor keys
-    // are tuple-encoded by translateAgentEventEnvelope.
-  }
-  return entry.key;
-}
-
-function logicalEntryKey(entry: MonitorStoredEntry): string {
-  const actor = actorOf(entry.value)?.runKey ?? '';
-  switch (entry.value.kind) {
-    case 'run':
-      return JSON.stringify([entry.family, 'run']);
-    case 'interaction':
-      return JSON.stringify([entry.family, 'interaction', entry.value.interactionId, actor]);
-    case 'failure':
-      return JSON.stringify([entry.family, 'failure', entry.value.failureId, actor]);
-    case 'usage':
-      // One usage identity may gain better actor attribution on a later rail.
-      // Attribution is evidence, not part of the token observation identity.
-      return JSON.stringify([entry.family, entry.value.usageId]);
-    case 'context':
-      return JSON.stringify([entry.family, actor || 'root']);
-    case 'model':
-    case 'effort':
-      return JSON.stringify([entry.family, entry.value.intent, actor || 'root']);
-    case 'mode':
-      return JSON.stringify([entry.family, entry.value.modeKind, entry.value.intent ?? 'observed', actor || 'root']);
-    case 'actor':
-      return JSON.stringify([entry.family, 'actor', entry.value.actor.runKey]);
-    case 'activity':
-    case 'compaction':
-      return JSON.stringify([entry.family, actor ? actorLocalSourceKey(entry, actor) : entry.key, actor]);
-    case 'environment':
-      return JSON.stringify([entry.family, actor || 'root']);
-    case 'message':
-      return JSON.stringify([entry.family, 'message', actor || 'root']);
-  }
-}
-
 /** Select one current source-owned claim for every provider-neutral family/key identity. */
 function selectedEntries(state: MonitorAccumulatorState): MonitorStoredEntry[] {
-  const grouped = new Map<string, MonitorStoredEntry[]>();
-  for (const entry of allEntries(state)) {
-    const key = logicalEntryKey(entry);
-    const group = grouped.get(key);
-    if (group) group.push(entry);
-    else grouped.set(key, [entry]);
-  }
-  return [...grouped.values()]
-    .map((group) => group.sort(compareEntryPreference)[0]!)
-    .sort((a, b) => a.family.localeCompare(b.family) || a.key.localeCompare(b.key));
+  return selectClaims(allEntries(state));
 }
 
 function familyEntries(entries: readonly MonitorStoredEntry[], family: MonitorMetricFamily): MonitorStoredEntry[] {
   return entries.filter((entry) => entry.family === family);
-}
-
-function actorOf(value: MonitorFamilyValue): ActorRunRef | undefined {
-  switch (value.kind) {
-    case 'activity':
-    case 'interaction':
-    case 'failure':
-    case 'usage':
-    case 'context':
-    case 'model':
-    case 'effort':
-    case 'mode':
-    case 'environment':
-    case 'compaction':
-    case 'message':
-      return value.actor;
-    case 'actor':
-      return value.actor;
-    case 'run':
-      return undefined;
-  }
 }
 
 function maybeBound<T>(
