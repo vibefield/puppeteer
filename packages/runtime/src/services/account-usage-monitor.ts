@@ -23,7 +23,8 @@ export interface AccountUsageProfileRef {
 export interface AccountUsageMonitorOptions {
   providers: readonly AccountUsageProvider[];
   fetchUsage(providerId: string, profileId?: string): Promise<AccountUsageFetchResult>;
-  /** Registered accounts; absent means one unkeyed reading per provider. */
+  /** Registered accounts; once it has answered, a push naming any other is dropped. Absent means one unkeyed
+   * reading per provider. */
   listProfiles?(): Promise<readonly AccountUsageProfileRef[]>;
   publish(batch: AccountUsageBatch): void;
   /** Uniform polling override for tests or product-wide policy. */
@@ -47,7 +48,8 @@ export interface AccountUsageMonitor {
   snapshot(): Promise<AccountUsageBatch>;
   refresh(options?: AccountUsageRefreshOptions): Promise<AccountUsageBatch>;
   /** Apply a provider push update without decoding its native transport. A
-   * push merges into its row by metric id and never brings a poll forward. */
+   * push merges into its row by metric id and never brings a poll forward.
+   * A push no row owns is dropped, and the last batch is returned as it was. */
   ingest(providerId: string, result: AccountUsageFetchResult): AccountUsageBatch;
   /** Re-read the registry; `poll: false` only reconciles rows, allowing a caller
    * to follow with a refresh of selected accounts instead of fetching every new row. */
@@ -188,6 +190,8 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
   let latest: AccountUsageBatch | undefined;
   let inFlight: Promise<AccountUsageBatch> | undefined;
   let profilesInFlight: Promise<AccountUsageBatch> | undefined;
+  /** The registry has answered once: from then on its rows are the only accounts a push may name. */
+  let registryAnswered = false;
   let started = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const states = new Map<string, ProviderRefreshState>(
@@ -383,21 +387,27 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
   };
 
   /**
-   * A push carries the account it belongs to when the provider knows one.
-   * A monitor with no registry keeps one unkeyed reading per provider, so a
-   * push is that row's whatever account it names. Without an account, a
-   * provider tracking exactly one account is unambiguous; anything else
-   * registers its own row rather than overwriting another's.
+   * The row a push lands on, or none: the registry is the account authority,
+   * so a push no row owns is dropped, never a row of its own. A monitor with
+   * no registry keeps one unkeyed reading per provider, and a push is that
+   * row's whatever account it names. A push carries the account it belongs
+   * to when the provider knows one; before the registry first answers, an
+   * account with no row yet is kept under its bare id, and that answer names
+   * the row or removes it. Without an account, a provider tracking exactly
+   * one account is unambiguous.
    */
-  const ingestState = (provider: AccountUsageProvider, profileId: string | undefined): ProviderRefreshState => {
+  const ingestState = (
+    provider: AccountUsageProvider,
+    profileId: string | undefined,
+  ): ProviderRefreshState | undefined => {
     const exact = states.get(accountUsageEntryKey(provider.id, profileId));
     if (exact) return exact;
     if (!options.listProfiles) return addState(provider);
     if (profileId === undefined) {
       const owned = orderedStates().filter((state) => state.provider.id === provider.id);
-      if (owned.length === 1) return owned[0]!;
-      return addState(provider);
+      return owned.length === 1 ? owned[0] : undefined;
     }
+    if (registryAnswered) return undefined;
     return addState(provider, { id: profileId, provider: provider.id, label: profileId });
   };
 
@@ -409,6 +419,7 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
       options.onError?.(error instanceof Error ? error : new Error(String(error)));
       return latest ?? materializeBatch(now());
     }
+    registryAnswered = true;
     const wanted = new Set<string>();
     let added = false;
     for (const provider of providers) {
@@ -492,7 +503,9 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
       if (!provider) throw new Error(`unknown account usage provider: ${providerId}`);
       const completedAt = now();
       const profileId = result.status === 'available' ? result.snapshot.profileId : undefined;
-      applyPushed(ingestState(provider, profileId), result, completedAt.valueOf());
+      const state = ingestState(provider, profileId);
+      if (!state) return latest ?? materializeBatch(completedAt);
+      applyPushed(state, result, completedAt.valueOf());
       return materializeBatch(completedAt);
     },
     start() {

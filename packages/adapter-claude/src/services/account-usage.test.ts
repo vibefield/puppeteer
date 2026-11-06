@@ -456,11 +456,10 @@ describe('Claude account usage', () => {
     );
     expect(heard).toHaveBeenCalledOnce();
 
-    // No account (a root no registered account names) goes unstamped, as every reading did before: open until
-    // James rules rv-usage-tiles (4).
-    other.observeStatusLine(undefined, statusLine(15), '2026-07-23T18:00:45.000Z');
+    // The other instance's session is heard by its own listeners alone, under its own account.
+    other.observeStatusLine({ profileId: 'claude:native-default' }, statusLine(15), '2026-07-23T18:00:45.000Z');
     expect(elsewhere).toHaveBeenCalledOnce();
-    expect(elsewhere.mock.calls[0]![0].snapshot).not.toHaveProperty('profileId');
+    expect(elsewhere.mock.calls[0]![0].snapshot.profileId).toBe('claude:native-default');
     expect(heard).toHaveBeenCalledOnce();
 
     unsubscribe();

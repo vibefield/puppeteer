@@ -837,11 +837,11 @@ export interface ClaudeAccountUsageService extends AccountUsageService {
   subscribe(listener: (result: AccountUsageFetchResult) => void): () => void;
   /**
    * One session's status line, as received at `receivedAt`: its `rate_limits`, when present, reach this instance's
-   * listeners stamped with `account`, the registered account the session's root names. With no account (a root no
-   * registered account names, an imposter) the reading goes unstamped, as every reading did before. Open until
-   * James rules rv-usage-tiles (4): held at that behaviour; its lean (A) drops such a reading.
+   * listeners stamped with `account`, the registered account the session's root names. A session no registered
+   * account names (a typed root, an imposter) is bound to no account and so handed no sink: the registry is the
+   * account authority, and a reading no account owns is shown nowhere.
    */
-  observeStatusLine(account: { profileId: string } | undefined, payload: unknown, receivedAt: string): void;
+  observeStatusLine(account: { profileId: string }, payload: unknown, receivedAt: string): void;
 }
 
 /** Complete account-usage capability advertised by the Claude adapter, with push listeners of its own. */
@@ -859,9 +859,10 @@ export function createClaudeAccountUsageService(): ClaudeAccountUsageService {
     observeStatusLine(account, payload, receivedAt) {
       const reading = claudeAccountUsageFromStatusLine(payload, receivedAt);
       if (!reading) return;
-      const result: AccountUsageAvailable = account
-        ? { ...reading, snapshot: { ...reading.snapshot, profileId: account.profileId } }
-        : reading;
+      const result: AccountUsageAvailable = {
+        ...reading,
+        snapshot: { ...reading.snapshot, profileId: account.profileId },
+      };
       for (const listener of listeners) {
         try {
           listener(result);

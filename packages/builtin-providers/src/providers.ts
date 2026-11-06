@@ -372,21 +372,21 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     };
   };
   // One Claude usage service for the composition: each session's status line reaches its listeners, stamped with the
-  // registered account the session's root names (session-account.ts).
+  // registered account the session's root names (session-account.ts). A root no registered account names (a typed
+  // root, an imposter) is handed no sink: the registry is the account authority, so its quota is shown nowhere.
   const claudeAccountUsage = createClaudeAccountUsageService();
   const claudeAccountUsageSink = (
     cwd: string,
     profile: AgentProfile | undefined,
     launch: ClaudeProviderOptions | undefined,
-  ): ClaudeAccountUsageSink => {
+  ): ClaudeAccountUsageSink | undefined => {
     const account = sessionAccount({
       root: claudeConfigRoot({ cwd, configDir: launch?.configDir, env: launch?.env }),
       profile,
       profiles: services.claude.profiles,
       env: launch?.env,
     });
-    // A root no registered account names still reports, unstamped, as every session did before. Open until James
-    // rules rv-usage-tiles (4): held at that behaviour; its lean (A) passes such a session no sink.
+    if (!account) return undefined;
     return {
       observeStatusLine: (payload, receivedAt) => claudeAccountUsage.observeStatusLine(account, payload, receivedAt),
     };
