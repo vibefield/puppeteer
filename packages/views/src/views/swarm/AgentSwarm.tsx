@@ -16,8 +16,10 @@ import {
   approachRecede,
   createMotionLoop,
   everyReceded,
+  motionAllowed,
   recedeTarget,
   resolveCssColor,
+  themeMotion,
   type MotionLoop,
   type Rgba,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
@@ -88,10 +90,12 @@ import { resolveSwarmTheme } from './swarm-theme.js';
 // last two states the physics published, and the visual radius follows the
 // physics radius on a critically damped spring — so the field looks the same
 // whether the physics steps at 15Hz or 120. Told to hold still (the host's
-// animations switch off, or motion reduced: MV-W4), the loop stops and the
-// physics pause with it. Each change the field shows then asks the loop for one
-// still frame (`requestStill`), drawn where it stands: a row, a frame the physics
-// publish, focus, the bloom, a birth and the host's answer to it.
+// animations switch off, or motion reduced: MV-W4), or with its stage out of
+// sight (`theme.hidden`), the loop stops and the physics pause with it. Each
+// change the field shows then asks the loop for one still frame
+// (`requestStill`), drawn where it stands: a row, a frame the physics publish,
+// focus, the bloom, a birth and the host's answer to it. Out of sight even that
+// waits: the field is drawn once, where it stands, when it is shown.
 //
 // The crowd fits its field (SWF, `fit.ts`): one shared scale multiplies every
 // body's size, refitted when the rows, the field's size or the chrome change
@@ -251,8 +255,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   const { model, theme, stage, parameters, capabilities } = input;
   const palette = theme.tokens;
   const spawnMenu = capabilities.spawn;
-  /** Motion is the host's switch and the person's preference together (MV-W4): off, the field holds still. */
-  const motionOn = theme.animations && !theme.reducedMotion;
+  /** Motion: the host's switch, the person's preference and the stage in sight (MV-W4). Else the field holds still. */
+  const motionOn = motionAllowed(theme);
   const swarm = useMemo<SwarmParameters>(() => normalizeSwarmParameters(parameters), [parameters]);
   const agents = useMemo(() => drawnRows(model.agents), [model.agents]);
   /**
@@ -333,8 +337,9 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   stageRef.current = stage;
   const motionRef = useRef(motionOn);
   motionRef.current = motionOn;
-  const switchesRef = useRef({ animations: theme.animations, reducedMotion: theme.reducedMotion });
-  switchesRef.current = { animations: theme.animations, reducedMotion: theme.reducedMotion };
+  /** The theme's switches as the loop takes them, the stage out of sight among them. */
+  const switchesRef = useRef(themeMotion(theme));
+  switchesRef.current = themeMotion(theme);
   /** The ramp a bare terminal wears, for a birth's body. */
   const neutralRef = useRef(palette.neutral);
   neutralRef.current = palette.neutral;
@@ -962,9 +967,9 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       });
     };
 
-    // The toolkit's loop: the display's frames while motion is on, no frame at all while it is off (MV-W4). The
-    // physics pause with it and start again fresh, so the time held still is never stepped through. Held still, a
-    // still frame is the loop's default, `render(time, 0)`: no time passes.
+    // The toolkit's loop: the display's frames while motion is on, no frame at all while it is off or the stage is out
+    // of sight (MV-W4). The physics pause with it and start again fresh, so the time held still is never stepped
+    // through. Held still, a still frame is the loop's default, `render(time, 0)`: no time passes.
     const loop = createMotionLoop(render, switchesRef.current);
     loopRef.current = loop;
     let running = loop.running;
@@ -980,9 +985,13 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       loop.requestStill();
     };
 
-    // Observer delivery follows rAF: draw now, so a resized backing store is never presented without its frame.
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(() => render(performance.now(), 0));
+    // Observer delivery follows rAF: draw now, so a resized backing store is never presented without its frame. Out of
+    // sight nothing is presented: the frame is owed, and drawn when the stage is shown.
+    const resized = (): void => {
+      if (switchesRef.current.hidden) loop.requestStill();
+      else render(performance.now(), 0);
+    };
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(resized);
     resizeObserver?.observe(container);
 
     return () => {
@@ -1074,11 +1083,11 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     refitIfMoved();
   }, [stage]);
 
-  // The host's animations switch and the reduced-motion preference start or stop the loop (and the physics with
-  // it); stopped, the field is drawn once where it stands.
+  // The host's animations switch, the reduced-motion preference and the stage out of sight start or stop the loop
+  // (and the physics with it); stopped, the field is drawn once where it stands, and out of sight once it is shown.
   useEffect(() => {
     motionSyncRef.current?.();
-  }, [theme.animations, theme.reducedMotion]);
+  }, [theme.animations, theme.reducedMotion, theme.hidden]);
   // Held still, every input the field draws asks for one still frame, merged with any asked for before it: the rows,
   // the palette, the parameters, the stage, the spawn menu, and the bloom (its veil, its clearings, its hub).
   useEffect(() => {

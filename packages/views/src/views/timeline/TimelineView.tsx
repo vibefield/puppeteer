@@ -17,7 +17,9 @@ import {
   formatClock,
   formatWords,
   keyLegend,
+  motionAllowed,
   sizeCanvas,
+  themeMotion,
   type MotionLoop,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { pulseMap, pulsePastFor, pulseRowsFor, PULSE_GEOMETRY } from './pulse-map.js';
@@ -77,7 +79,9 @@ import { laneLabel, laneName, laneSubLine, OPENS_IN_HISTORY, readoutAt, recordSt
 // readouts — is drawn by one draw that repaints only what changed. With motion
 // it runs every frame (the toolkit's loop); still (animations off, or motion
 // reduced) no frame loop runs (MV-W4): the clock is information, so the view
-// draws once a second on a timer, and once when anything changes.
+// draws once a second on a timer, and once when anything changes, on the
+// loop's one still frame. Out of sight (`theme.hidden`) it keeps no time and
+// draws nothing; shown again, it draws once.
 
 const MAP_STRIP = 46;
 const AXIS = 22;
@@ -270,8 +274,9 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   // The record not whole (partial, unavailable): the backend's one sentence, said as it said it. Whole: no words.
   const recordWords = history !== undefined && history.state !== 'complete' ? history.detail : undefined;
   const settings = useMemo(() => normalizeTimelineParameters(parameters), [parameters]);
-  // The host's animations switch and the person's reduced-motion preference: either one stills the view.
-  const motion = theme.animations && !theme.reducedMotion;
+  // The host's animations switch, the person's reduced-motion preference and the stage out of sight: any one stills
+  // the view.
+  const motion = motionAllowed(theme);
   const rootRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const rowsRef = useRef<HTMLDivElement>(null);
@@ -358,7 +363,6 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   const barRef = useRef(bar);
   const drawRef = useRef<(time: number) => void>(() => undefined);
   const loopRef = useRef<MotionLoop | null>(null);
-  const frameRef = useRef(0);
 
   laneSetRef.current = laneSet;
   historyRef.current = history;
@@ -371,13 +375,12 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   commandsRef.current = commands;
   motionRef.current = motion;
 
-  /** One frame for a still view; with motion the loop's next frame draws anyway. */
+  /**
+   * One frame for a still view, the loop's still frame, merged with any asked for before it; with motion the loop's
+   * next frame draws anyway, and out of sight it is owed until the stage is shown.
+   */
   const requestDraw = useCallback((): void => {
-    if (loopRef.current?.running || frameRef.current !== 0) return;
-    frameRef.current = requestAnimationFrame((time) => {
-      frameRef.current = 0;
-      drawRef.current(time);
-    });
+    loopRef.current?.requestStill();
   }, []);
 
   /** The wakes repaint: the light moved, the scale was put. */
@@ -775,28 +778,26 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   }, [requestDraw]);
 
   // ───────────────────────────── when it draws
-  // With motion, every frame: the toolkit's loop asks for none while animations are off or motion is reduced.
+  // With motion, every frame: the toolkit's loop asks for none while animations are off, motion is reduced or the
+  // stage is out of sight. Stopped, it draws each change on one still frame (`requestDraw`).
   useEffect(() => {
-    const loop = createMotionLoop((time) => drawRef.current(time), {
-      animations: theme.animations,
-      reducedMotion: theme.reducedMotion,
-    });
+    const loop = createMotionLoop((time) => drawRef.current(time), themeMotion(theme));
     loopRef.current = loop;
     return () => {
       loop.dispose();
       loopRef.current = null;
-      if (frameRef.current !== 0) cancelAnimationFrame(frameRef.current);
-      frameRef.current = 0;
     };
     // the loop lives as long as the view; the switches reach it below
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Still, the clock keeps time once a second, on the second, from a timer rather than a frame loop.
+  // Still, the clock keeps time once a second, on the second, from a timer rather than a frame loop. Out of sight it
+  // keeps none and draws nothing; shown again, it draws once (the still frame owed, or the loop's next).
   useEffect(() => {
-    loopRef.current?.update({ animations: theme.animations, reducedMotion: theme.reducedMotion });
+    const switches = themeMotion(theme);
+    loopRef.current?.update(switches);
     requestDraw();
-    if (motion) return;
+    if (motion || switches.hidden) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const second = (): void => {
       timer = setTimeout(second, 1000 - (Date.now() % 1000));
@@ -804,7 +805,7 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
     };
     timer = setTimeout(second, 1000 - (Date.now() % 1000));
     return () => clearTimeout(timer);
-  }, [motion, theme.animations, theme.reducedMotion, requestDraw]);
+  }, [motion, theme.animations, theme.reducedMotion, theme.hidden, requestDraw]);
 
   // A new layout, width, tuning or history: every canvas and readout draws again, once.
   useEffect(() => {

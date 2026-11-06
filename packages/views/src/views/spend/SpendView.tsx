@@ -16,7 +16,9 @@ import {
   createMotionLoop,
   formatClock,
   keyLegend,
+  motionAllowed,
   sizeCanvas,
+  themeMotion,
   type MotionLoop,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { liftedFill, siblingIndex, siblingTone } from './spend-ink.js';
@@ -84,8 +86,10 @@ import {
 //
 // React lays out the DOM (the hero, the axes, the rows) from the view's state;
 // the canvas is painted after each render, and the toolkit's loop repaints it
-// only while a waiting head's wave moves. Still (animations off, or motion
-// reduced) no frame loop runs (MV-W4): nothing waves, eases or glides.
+// only while a waiting head's wave moves: with nothing waving it asks for no
+// frame. Still (animations off, or motion reduced) no frame loop runs (MV-W4):
+// nothing waves, eases or glides. Out of sight (`theme.hidden`) it rests: no
+// clock, no paint, no frame; the render that shows it again paints once, at now.
 
 /** A line within this many px of the pointer is the one pointed at; further, the click sets the moment. */
 const REACH_PX = 16;
@@ -255,14 +259,23 @@ interface Pointer {
 export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElement {
   const { model, parameters, theme, stage } = input;
   const settings = useMemo(() => normalizeSpendParameters(parameters), [parameters]);
-  // The host's animations switch and the person's reduced-motion preference: either one stills the view.
-  const motion = theme.animations && !theme.reducedMotion;
+  // The host's animations switch, the person's reduced-motion preference and the stage out of sight: any one stills
+  // the view. Out of sight it rests as well: no clock and no paint.
+  const motion = motionAllowed(theme);
+  const { hidden } = themeMotion(theme);
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** The root's own size once laid out; until then (and wherever nothing lays out) the stage's. */
   const [measured, setMeasured] = useState<Size | null>(null);
   const size = measured ?? stageBox(stage);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  // The clock rests out of sight (below). The render that shows the stage again takes the time first, so the one paint
+  // it makes is of now, never of the moment the stage left sight.
+  const [clockHidden, setClockHidden] = useState(hidden);
+  if (clockHidden !== hidden) {
+    setClockHidden(hidden);
+    if (!hidden) setNowMs(Date.now());
+  }
   const [pointer, setPointer] = useState<Pointer | null>(null);
   /** The moment a click set (SV-D18); it stays while the pointer crosses to the list, until the window passes it. */
   const [held, setHeld] = useState<number | null>(null);
@@ -471,6 +484,8 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     time: 0,
   };
   sceneRef.current = scene;
+  /** A head waves (a wait you owe, a reply unseen): the only thing on the chart that moves between renders. */
+  const moves = sceneMoves(scene);
 
   // The tag at the pointed line's head — what it spent in the window by then — the only label on the chart; a row
   // not yet started shows its start instead.
@@ -547,8 +562,9 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     [inks],
   );
 
-  // Every render repaints the canvas from its scene.
+  // Every render repaints the canvas from its scene, except out of sight: the render that shows the stage paints it.
   useLayoutEffect(() => {
+    if (hidden) return;
     paint(typeof performance === 'undefined' ? 0 : performance.now());
   });
 
@@ -563,45 +579,38 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     return () => cancelAnimationFrame(frame);
   }, [yShown, target.max, motion]);
 
-  // The clock: now moves about a pixel at a time; the wave repaints the canvas alone.
+  // The clock: now moves about a pixel at a time; the wave repaints the canvas alone. Out of sight it rests.
   const msPerPx = SPEND_WINDOW_MS / Math.max(1, g.x1 - g.x0);
   useEffect(() => {
+    if (hidden) return;
     const every = Math.min(1000, Math.max(250, msPerPx));
     const id = setInterval(() => setNowMs(Date.now()), every);
     return () => clearInterval(id);
-  }, [msPerPx]);
+  }, [msPerPx, hidden]);
 
   // A set moment the window has slid past lets go.
   useEffect(() => {
     if (held !== null && pinned === null) setHeld(null);
   }, [held, pinned]);
 
-  // The wave's loop: the toolkit's, which asks for no frame at all while animations are off or motion is reduced.
+  // The wave's loop: the toolkit's, at most 30 frames a second, which asks for no frame at all while animations are
+  // off, motion is reduced, the stage is out of sight or no head waves (`moving`).
   const paintRef = useRef(paint);
   paintRef.current = paint;
   const loopRef = useRef<MotionLoop | null>(null);
   useEffect(() => {
-    let last = 0;
-    const loop = createMotionLoop(
-      (time) => {
-        const current = sceneRef.current;
-        if (!current || !sceneMoves(current) || time - last < 33) return;
-        last = time;
-        paintRef.current(time);
-      },
-      { animations: theme.animations, reducedMotion: theme.reducedMotion },
-    );
+    const loop = createMotionLoop((time) => paintRef.current(time), { ...themeMotion(theme), fps: 30, moving: moves });
     loopRef.current = loop;
     return () => {
       loop.dispose();
       loopRef.current = null;
     };
-    // the loop lives as long as the view; the switches reach it below
+    // the loop lives as long as the view; the switches and the waves reach it below
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    loopRef.current?.update({ animations: theme.animations, reducedMotion: theme.reducedMotion });
-  }, [theme.animations, theme.reducedMotion]);
+    loopRef.current?.update({ ...themeMotion(theme), moving: moves });
+  }, [moves, theme.animations, theme.reducedMotion, theme.hidden]);
 
   // ───────────────────────────── acts
   const select = (id: string): void => {
