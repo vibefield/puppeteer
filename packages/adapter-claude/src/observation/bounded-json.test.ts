@@ -81,8 +81,8 @@ describe('createBoundedJsonBody', () => {
     };
     const result = read([Buffer.from(JSON.stringify(body))], { retainBytes: 1024, maxStringBytes: 64 });
     if (result.kind !== 'reduced') throw new Error(`expected a reduced body, read ${result.kind}`);
-    const kept = (result.body.tool_response as { structuredPatch: Array<{ lines: string[] }> }).structuredPatch[0]!
-      .lines;
+    const patch = result.body.tool_response as { structuredPatch: Array<{ lines: string[] }> };
+    const kept = patch.structuredPatch[0]!.lines;
     expect(kept.length).toBeGreaterThan(0);
     expect(kept.length).toBeLessThan(lines.length);
     expect(kept).toEqual(lines.slice(0, kept.length));

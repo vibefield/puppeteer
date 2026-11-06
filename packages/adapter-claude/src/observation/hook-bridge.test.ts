@@ -150,15 +150,25 @@ describe('createHookBridge', () => {
     expect(ok.status).toBe(200);
   });
 
-  it('kills oversized bodies at the socket and reports too-large', async () => {
-    const { bridge: b, events, errors } = await startBridge({ maxBodyBytes: 1024 });
-    const huge = JSON.stringify(
-      fakeClaudeHookPayload('Stop', { session_id: OWNED_SESSION, blob: 'x'.repeat(64 * 1024) }),
-    );
-    await post(b.endpoint(), b.token, huge).catch(() => undefined); // socket destroyed mid-request
-    await new Promise((r) => setTimeout(r, 50));
-    expect(events).toHaveLength(0);
-    expect(errors.some((e) => e.kind === 'too-large')).toBe(true);
+  it('keeps the OTLP route its refusal cap: a batch past 2 MiB is reset at the socket and reported', async () => {
+    let reportTooLarge!: (detail: string) => void;
+    const tooLarge = new Promise<string>((resolve) => (reportTooLarge = resolve));
+    const logs: NativeHookEnvelope[] = [];
+    bridge = createHookBridge({
+      allowSession: (id) => id === OWNED_SESSION,
+      onProtocolError: (kind, detail) => {
+        if (kind === 'too-large') reportTooLarge(detail);
+      },
+    });
+    bridge.onOtelLogs((event) => logs.push(event));
+    await bridge.start();
+    const batch = JSON.stringify({
+      resourceLogs: [{ scopeLogs: [{ logRecords: [{ body: { stringValue: 'x'.repeat(2 * 1024 * 1024) } }] }] }],
+    });
+
+    await post(bridge.otelLogsEndpoint(), bridge.token, batch).catch(() => undefined); // reset mid-request
+    expect(await tooLarge).toBe(`body exceeded ${2 * 1024 * 1024} bytes`);
+    expect(logs).toEqual([]);
   });
 
   it('answers a hook body past the budget 200 and fans it out reduced, the ids after the bulk intact', async () => {

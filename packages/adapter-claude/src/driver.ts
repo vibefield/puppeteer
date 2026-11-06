@@ -912,6 +912,24 @@ function createClaudeObservation(
         native: body,
       });
     }
+    // The bridge reduced a body larger than it keeps whole rather than lose it
+    // (bounded-json.ts): the events above read null where it elided, and this
+    // says so, carrying none of the body.
+    if (hookEnvelope.reduced) {
+      apply(
+        { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'hook-bridge.body-reduced' },
+        {
+          source: 'runtime',
+          timestamp: hookEnvelope.receivedAt,
+          providerVersion: normalized.providerVersion,
+          native: {
+            hookEventName,
+            receivedBytes: hookEnvelope.reduced.receivedBytes,
+            elided: hookEnvelope.reduced.elided,
+          },
+        },
+      );
+    }
     // Hooks fire near transcript appends — poke the semantic source instead
     // of waiting out its fallback interval.
     pollSemantic({
