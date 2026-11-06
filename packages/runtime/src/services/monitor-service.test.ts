@@ -85,22 +85,19 @@ function batch(
 
 /** `count` live canonical responses of ten tokens each, one usage identity apiece. */
 function responses(count: number): MonitorFamilyUpdate[] {
-  return Array.from(
-    { length: count },
-    (_, index): MonitorFamilyUpdate => ({
-      family: 'usage',
-      operation: 'upsert',
-      key: `usage-${index}`,
-      value: {
-        kind: 'usage',
-        origin: 'protocol',
-        usageId: `usage-${index}`,
-        boundary: 'response',
-        canonical: true,
-        deltaTokens: 10,
-      },
-    }),
-  );
+  return Array.from({ length: count }, (_, index): MonitorFamilyUpdate => ({
+    family: 'usage',
+    operation: 'upsert',
+    key: `usage-${index}`,
+    value: {
+      kind: 'usage',
+      origin: 'protocol',
+      usageId: `usage-${index}`,
+      boundary: 'response',
+      canonical: true,
+      deltaTokens: 10,
+    },
+  }));
 }
 
 function hub(

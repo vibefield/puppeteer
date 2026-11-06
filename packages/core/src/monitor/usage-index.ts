@@ -229,7 +229,11 @@ function rootActorUsage(rootEntries: readonly Timed[]): RootActorUsage {
     .filter(({ value }) => finiteNonNegative(value.cumulativeTokens) !== undefined)
     .at(-1);
   return {
-    stream: stream(contributions, rootEntries.filter(({ value }) => !value.canonical), rootEntries),
+    stream: stream(
+      contributions,
+      rootEntries.filter(({ value }) => !value.canonical),
+      rootEntries,
+    ),
     cumulativeTokens:
       contributions.length > 0
         ? contributions.reduce((total, { value }) => total + (totalContribution(value) ?? 0), 0)
@@ -402,7 +406,14 @@ export function buildUsageIndex(entries: readonly MonitorStoredEntry[]): Monitor
       const total = cumulative ? finiteNonNegative(cumulative.value.cumulativeTokens) : undefined;
       if (total !== undefined) actorTotals.set(actorRunKey, total);
     }
-    actors.set(actorRunKey, stream(contributions, actorEntries.filter(({ value }) => !value.canonical), actorEntries));
+    actors.set(
+      actorRunKey,
+      stream(
+        contributions,
+        actorEntries.filter(({ value }) => !value.canonical),
+        actorEntries,
+      ),
+    );
   }
 
   const actorAggregate = canonicalContributions.length === 0 && rootSamples.length === 0 && byActor.size > 0;

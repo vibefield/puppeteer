@@ -256,11 +256,7 @@ function projectEnvironment(
   return { ...(cwd ? { cwd } : {}), ...(git !== undefined ? { git } : {}), worktrees: boundedWorktrees.values };
 }
 
-function familySupport(
-  state: MonitorAccumulatorState,
-  evidence: MonitorFamilyEvidence,
-  family: MonitorMetricFamily,
-) {
+function familySupport(state: MonitorAccumulatorState, evidence: MonitorFamilyEvidence, family: MonitorMetricFamily) {
   const producers = [...state.semantic.producers.values()];
   const capabilities = producers
     .map((producer) => producer.capabilities.get(family))
@@ -394,8 +390,7 @@ export function projectAgentMonitorState(
     'conversation',
   ];
   for (const family of familyNames) {
-    const evidence =
-      family === 'usage' ? usageIndex.evidence : summarizeFamilyEvidence(familyEntries(entries, family));
+    const evidence = family === 'usage' ? usageIndex.evidence : summarizeFamilyEvidence(familyEntries(entries, family));
     const freshness = familySupport(accumulator, evidence, family);
     if (freshness) families[family] = freshness;
   }
