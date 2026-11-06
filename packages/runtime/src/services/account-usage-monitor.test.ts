@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AccountUsageFetchResult, AccountUsageProvider, AccountUsageSource } from '@vibefield/puppeteer-core';
+import type {
+  AccountUsageAvailable,
+  AccountUsageCredits,
+  AccountUsageFetchResult,
+  AccountUsageMetric,
+  AccountUsageMetricGroup,
+  AccountUsageProvider,
+  AccountUsageSource,
+} from '@vibefield/puppeteer-core';
 import {
   accountUsageEntryKey,
   createAccountUsageMonitor,
@@ -596,4 +604,173 @@ it('manual clicks respect the 30s guard even with a shorter product polling over
   // The automatic cadence remains independent of the manual-click guard.
   await monitor.refresh();
   expect(fetchUsage).toHaveBeenCalledTimes(2);
+});
+
+describe('a push is a reading of the meters it carries: merged by id, and never the poll’s clock', () => {
+  const T0 = Date.parse('2026-07-23T20:00:00.000Z');
+  const MINUTE = 60_000;
+  const at = (ms: number): string => new Date(ms).toISOString();
+  const SONNET: AccountUsageMetricGroup = { id: 'scope:sonnet', label: 'Sonnet only' };
+  const STATUS_LINE: AccountUsageSource = { kind: 'native-statusline', stability: 'documented' };
+  const meter = (id: string, usedPercent: number, group?: AccountUsageMetricGroup): AccountUsageMetric => ({
+    id,
+    label: id.toUpperCase(),
+    kind: 'window',
+    usedPercent,
+    ...(group ? { group } : {}),
+  });
+  const reading = (
+    fetchedAtMs: number,
+    metrics: AccountUsageMetric[],
+    extra: { credits?: AccountUsageCredits; source?: AccountUsageSource } = {},
+  ): AccountUsageFetchResult => ({
+    status: 'available',
+    snapshot: {
+      provider: 'push-agent',
+      fetchedAt: at(fetchedAtMs),
+      scope: 'subscription',
+      source: extra.source ?? { kind: 'oauth-endpoint', stability: 'experimental' },
+      metrics,
+      ...(extra.credits ? { credits: extra.credits } : {}),
+    },
+  });
+  /** The 30-minute push agent alone (its pushes defer a poll 30 minutes), on a clock the test moves. */
+  const monitorOn = (clock: { ms: number }, fetchUsage: () => Promise<AccountUsageFetchResult>) =>
+    createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      publish: () => undefined,
+      now: () => new Date(clock.ms),
+    });
+
+  it('a push that carries fewer meters than the last poll keeps the rest, each with its own age', async () => {
+    const clock = { ms: T0 };
+    const credits = { balance: '$12.00' };
+    const polled = [meter('5h', 10), meter('7d', 20), meter('sonnet-7d', 50, SONNET)];
+    const monitor = monitorOn(clock, async () => reading(T0, polled, { credits }));
+    await monitor.refresh();
+
+    clock.ms = T0 + MINUTE;
+    const pushed = reading(clock.ms, [meter('5h', 15), meter('7d', 25)], { source: STATUS_LINE });
+    const merged = monitor.ingest('push-agent', pushed).entries[0]!.result as AccountUsageAvailable;
+
+    expect(merged.snapshot.metrics.map((metric) => metric.id)).toEqual(['5h', '7d', 'sonnet-7d']);
+    expect(merged.snapshot.metrics[0]).toEqual(meter('5h', 15));
+    expect(merged.snapshot.metrics[2]).toEqual({ ...meter('sonnet-7d', 50, SONNET), fetchedAt: at(T0) });
+    expect(merged.snapshot).toMatchObject({ fetchedAt: at(T0 + MINUTE), source: STATUS_LINE, credits });
+  });
+
+  it.each([
+    { push: 'leaves out a meter of the poll', polled: ['5h', '7d', 'sonnet-7d'], pollsAt30: 1, pollsAt50: 0 },
+    { push: 'carries every meter of the poll', polled: ['5h', '7d'], pollsAt30: 0, pollsAt50: 1 },
+  ])('a push that $push defers the next poll only when it covers it', async ({ polled, pollsAt30, pollsAt50 }) => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () =>
+      reading(
+        clock.ms,
+        polled.map((id) => meter(id, 10)),
+      ),
+    );
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    fetchUsage.mockClear();
+
+    clock.ms = T0 + 20 * MINUTE;
+    monitor.ingest('push-agent', reading(clock.ms, [meter('5h', 15), meter('7d', 25)], { source: STATUS_LINE }));
+    clock.ms = T0 + 30 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(pollsAt30);
+    clock.ms = T0 + 50 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(pollsAt30 + pollsAt50);
+  });
+
+  it.each([
+    { push: 'covering', carried: ['5h', '7d'] },
+    { push: 'partial', carried: ['5h'] },
+  ])('no $push push brings a poll before Retry-After, nor lets a forced Refresh through it', async ({ carried }) => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    clock.ms = T0 + 30 * MINUTE;
+    fetchUsage.mockResolvedValueOnce({
+      status: 'unavailable',
+      provider: 'push-agent',
+      message: 'Please wait',
+      retryable: true,
+      code: 'rate-limited',
+      retryAt: at(T0 + 180 * MINUTE),
+    });
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+
+    clock.ms = T0 + 31 * MINUTE;
+    monitor.ingest(
+      'push-agent',
+      reading(
+        clock.ms,
+        carried.map((id) => meter(id, 30)),
+        { source: STATUS_LINE },
+      ),
+    );
+    clock.ms = T0 + 61 * MINUTE;
+    await monitor.refresh();
+    clock.ms = T0 + 62 * MINUTE;
+    await monitor.refresh({ force: true });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+
+    clock.ms = T0 + 180 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+  });
+
+  it('a partial push does not satisfy the manual guard: a forced Refresh is judged by the last poll', async () => {
+    const clock = { ms: T0 };
+    const polled = [meter('5h', 10), meter('7d', 20), meter('sonnet-7d', 50)];
+    const fetchUsage = vi.fn(async () => reading(clock.ms, polled));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+
+    clock.ms = T0 + 60_000;
+    monitor.ingest('push-agent', reading(clock.ms, [meter('5h', 15), meter('7d', 25)], { source: STATUS_LINE }));
+    clock.ms = T0 + 65_000;
+    await monitor.refresh({ force: true });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
+  it('a failed push shows beside the last reading and moves nothing of the poll', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+
+    clock.ms = T0 + MINUTE;
+    const failed = monitor.ingest('push-agent', {
+      status: 'unavailable',
+      provider: 'push-agent',
+      message: 'malformed push',
+      retryable: true,
+    });
+    expect(failed.entries[0]).toMatchObject({
+      stale: true,
+      result: { status: 'available' },
+      refreshFailure: { message: 'malformed push' },
+    });
+    clock.ms = T0 + 5 * MINUTE;
+    await monitor.refresh({ force: true });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
+  it('a push before the first poll does not postpone it', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    monitor.ingest('push-agent', reading(clock.ms, [meter('5h', 15), meter('7d', 25)], { source: STATUS_LINE }));
+
+    monitor.start();
+    await monitor.refresh();
+    monitor.stop();
+    expect(fetchUsage).toHaveBeenCalledOnce();
+  });
 });

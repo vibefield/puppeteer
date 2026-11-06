@@ -56,6 +56,23 @@ describe('account usage contracts', () => {
     expect(AccountUsageSnapshotSchema.safeParse(falseStandby).success).toBe(false);
   });
 
+  it('dates a meter a later, partial reading did not carry by when it was read', () => {
+    const snapshot = AccountUsageSnapshotSchema.parse({
+      provider: 'example',
+      fetchedAt: '2026-08-26T12:01:00.000Z',
+      scope: 'subscription',
+      source: { kind: 'native-statusline', stability: 'documented' },
+      metrics: [
+        { id: 'session', label: '5H', kind: 'window', usedPercent: 15 },
+        { id: 'scoped', label: 'SONNET 7D', kind: 'window', usedPercent: 50, fetchedAt: '2026-08-26T12:00:00.000Z' },
+      ],
+    });
+    expect(snapshot.metrics[0]!.fetchedAt).toBeUndefined();
+    expect(snapshot.metrics[1]!.fetchedAt).toBe('2026-08-26T12:00:00.000Z');
+    const misdated = { ...snapshot, metrics: [{ ...snapshot.metrics[1]!, fetchedAt: 'earlier' }] };
+    expect(AccountUsageSnapshotSchema.safeParse(misdated).success).toBe(false);
+  });
+
   it('rejects malformed timestamps and duplicate metric ids at the boundary', () => {
     const base = {
       provider: 'example',
