@@ -180,3 +180,19 @@ existing records are no longer only a silent baseline for an attach: Claude's fi
 and the tools still open as replay, and a question the agent waits on live, once (`partitionAttachBootstrap`), and the
 hook rail adopts those tools, so their PostToolUse closes them. A launch, a resume and a picker rebind keep the silent
 baseline: their process is not in the middle of what the record last shows.
+
+**Amended 2026-11-06 (RV #1, a packaged host's forwarders).** _The forwarders are one host-run entry with an
+append-only word protocol._ Claude's command-only hooks and both status lines relay through one self-contained module
+(`adapter-claude/src/launch/forwarder.ts`, Node's builtins only), dispatched by a versioned first argument:
+`claude.hook.v1 <endpoint> <token variable> <timeout ms>` and `claude.statusline.v1 [subagent]`; an unknown word is one
+line and exit 127. The words are a protocol across releases, since a host that updates in place under a running agent
+leaves that agent running the next build's entry; a shipped word keeps its arguments and meaning, and a change is a new
+word. _Which program runs it is the host's or the runner's, never assumed._ A host that is a Node single executable
+runs only its own sealed entry, so `process.execPath` is no Node for a script: it seals
+`@vibefield/puppeteer-builtin-providers/forwarder` and lends the program that runs it (`AgentHost.forwarderRuntime`),
+and the settings name `<command> <args...> <word> <word args...>` with nothing staged. Every other host lends none:
+the launch stages ONE `<id>.forwarder.mjs` (generated from the module, `generated/forwarder-source.ts`) and runs it
+with native-observation's `resolveScriptRunner`, the one authority for which Node runs a script (a real Node, a Node on
+`PATH` under Electron, else Electron as Node). A process with neither refuses the launch
+(`FORWARDER_RUNTIME_UNAVAILABLE`) before anything is written. A released run keeps that one staged file, as it kept the
+two it replaces.

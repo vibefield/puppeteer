@@ -1,5 +1,8 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createHookEmitter } from './hook.ts';
 
@@ -57,18 +60,46 @@ describe('createHookEmitter', () => {
     });
   });
 
-  it('delivers the repo curl-forwarder shape as a direct POST (no sh needed)', async () => {
-    const command = `sh -c 'curl -s -m 5 -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $PUPPETEER_HOOK_TOKEN" --data-binary @- ${endpoint}'`;
-    const emitter = createHookEmitter({
-      settings: { hooks: { SessionStart: [{ hooks: [{ type: 'command', command }] }] } },
-      env: { PUPPETEER_HOOK_TOKEN: 'sekrit' },
-    });
-    await emitter.emit('SessionStart', { session_id: 'abc', source: 'startup' });
-    expect(received).toHaveLength(1);
-    expect(received[0]!.headers).toMatchObject({ authorization: 'Bearer sekrit' });
-    // The forwarder string ends with a closing quote — the URL must be
-    // extracted without it (a real bridge routes strictly on the path).
-    expect(received[0]!.url).toBe('/hooks');
+  it('runs an exec-form command handler as Claude does: its own arguments, no shell, the payload on stdin', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'imposter-hook-exec-'));
+    try {
+      const script = join(dir, 'record.mjs');
+      const out = join(dir, 'recorded.json');
+      writeFileSync(
+        script,
+        "import { writeFileSync } from 'node:fs'; let input = ''; for await (const chunk of process.stdin) input += chunk; writeFileSync(process.argv[2], JSON.stringify({ argv: process.argv.slice(3), input }));",
+      );
+      const emitter = createHookEmitter({
+        settings: {
+          hooks: {
+            SessionStart: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: process.execPath,
+                    args: [script, out, 'a b', '$NOT_EXPANDED'],
+                    timeout: 5,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        env: {},
+      });
+      await emitter.emit('SessionStart', { session_id: 'abc', source: 'startup' });
+      const recorded = JSON.parse(readFileSync(out, 'utf8')) as { argv: string[]; input: string };
+      // Each argument arrives whole and unexpanded: no shell read the line.
+      expect(recorded.argv).toEqual(['a b', '$NOT_EXPANDED']);
+      expect(JSON.parse(recorded.input)).toEqual({
+        session_id: 'abc',
+        source: 'startup',
+        hook_event_name: 'SessionStart',
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('drops unwired events without throwing', async () => {

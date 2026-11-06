@@ -11,8 +11,9 @@
  * (passive) is the default model-switch rail.
  *
  * Transport split follows the hybrid bridge (DESIGN §16.4): http events POST
- * straight to the loopback bridge; command-only events run a generated Node
- * forwarder that relays stdin JSON to the same bridge on every platform.
+ * straight to the loopback bridge; command-only events run the forwarder
+ * (launch/forwarder.ts, its `claude.hook.v1` word) in Claude's exec form, which
+ * relays stdin JSON to the same bridge on every platform.
  *
  * SECURITY (DESIGN §16.5, §23): settings land on disk, so the token VALUE is
  * never written here. Only the `$<VAR>` reference goes in, resolved at hook
@@ -21,6 +22,7 @@
 
 import { defaultHookEvents, supportedHookEvents, type HookEventSpec } from '../generated/registry.js';
 import type { ClaudeStatusLineConfig } from '../observation/status-channel.js';
+import { CLAUDE_HOOK_FORWARDER_WORD } from './forwarder.js';
 
 export interface HttpHookHandler {
   type: 'http';
@@ -32,7 +34,7 @@ export interface HttpHookHandler {
 
 export interface CommandHookHandler {
   type: 'command';
-  /** Absolute Node executable; `args` makes this Claude's shell-free exec form. */
+  /** The forwarder's program; `args` makes this Claude's shell-free exec form. */
   command: string;
   args: string[];
   timeout: number;
@@ -57,10 +59,11 @@ export interface GenerateHookSettingsOptions {
   endpoint: string;
   /** Env var NAME holding the bearer token; only `$<name>` is written. */
   tokenEnvVar: string;
-  /** Per-session, generated Node command-hook forwarder. */
-  commandForwarderPath: string;
-  /** Absolute Node executable used for shell-free command hooks; defaults to this process's executable. */
-  commandExecutable?: string | undefined;
+  /**
+   * The forwarder every command hook runs, as the program and the arguments its word follows: a host's lent
+   * runtime, or this process's script runner and the staged forwarder's path.
+   */
+  forwarder: { command: string; args: readonly string[] };
   /** Native matcher values. A FileChanged matcher also opts that event in. */
   matchers?: Readonly<Record<string, string>> | undefined;
   /**
@@ -74,25 +77,6 @@ export interface GenerateHookSettingsOptions {
   subagentStatusLine?: ClaudeStatusLineConfig | undefined;
 }
 
-export const CLAUDE_HOOK_FORWARDER_SOURCE = `const [endpoint, tokenEnvVar, timeoutText] = process.argv.slice(2);
-let input = '';
-process.stdin.setEncoding('utf8');
-for await (const chunk of process.stdin) input += chunk;
-const token = process.env[tokenEnvVar];
-if (!endpoint || !tokenEnvVar || !token) process.exit(2);
-try {
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: \`Bearer \${token}\` },
-    body: input,
-    signal: AbortSignal.timeout(Number(timeoutText)),
-  });
-  if (!response.ok) process.exitCode = 1;
-} catch {
-  process.exitCode = 1;
-}
-`;
-
 function handlerFor(spec: HookEventSpec, options: GenerateHookSettingsOptions): HookHandler {
   if (spec.transport === 'http') {
     return {
@@ -105,8 +89,14 @@ function handlerFor(spec: HookEventSpec, options: GenerateHookSettingsOptions): 
   }
   return {
     type: 'command',
-    command: options.commandExecutable ?? process.execPath,
-    args: [options.commandForwarderPath, options.endpoint, options.tokenEnvVar, String(spec.timeoutSec * 1000)],
+    command: options.forwarder.command,
+    args: [
+      ...options.forwarder.args,
+      CLAUDE_HOOK_FORWARDER_WORD,
+      options.endpoint,
+      options.tokenEnvVar,
+      String(spec.timeoutSec * 1000),
+    ],
     timeout: spec.timeoutSec,
   };
 }

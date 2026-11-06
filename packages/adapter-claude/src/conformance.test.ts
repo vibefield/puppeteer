@@ -92,7 +92,9 @@ async function claudeHarness(resume?: string): Promise<ClaudeConformanceHarness>
     closeObservationRail: () => closeObservationRail(),
     assertNoOrphans: async () => {
       if (existsSync(prepared!.settingsPath)) throw new Error('Claude generated settings survived dispose()');
-      if (existsSync(prepared!.hookForwarderPath)) throw new Error('Claude hook forwarder survived dispose()');
+      if (prepared!.forwarderPath !== undefined && existsSync(prepared!.forwarderPath)) {
+        throw new Error('Claude forwarder survived dispose()');
+      }
       let bridgeReachable = false;
       try {
         await fetch(endpoint, { method: 'POST' });

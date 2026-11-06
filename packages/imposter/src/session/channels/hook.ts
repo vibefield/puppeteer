@@ -2,6 +2,11 @@
  * Hook channel — claude's `type:"http"` and `type:"command"` handlers, read
  * from the generated settings file the adapter hands the vendor.
  *
+ * A command handler runs as Claude runs it: with `args`, its exec form (the
+ * program and its arguments, no shell); without, one shell command line. The
+ * payload rides stdin either way, so the adapter's own forwarder runs here
+ * exactly as it runs under the real vendor.
+ *
  * Delivery failures are logged, never thrown: a hook the bridge rejects (or a
  * forwarder that can't spawn) must not kill the imposted process — the real
  * vendor's hooks fail the same soft way (docs/archive/IMPOSTER.md §7.3 item 6).
@@ -37,17 +42,6 @@ function resolveEnvRefs(value: string, env: Record<string, string | undefined>, 
     allowed.has(name) ? (env[name] ?? match) : match,
   );
 }
-
-/**
- * The repo's own generated curl forwarder (settings.ts `curlForwarder`) is
- * recognized by shape and delivered as a direct POST with identical headers
- * and body. The observable contract at the bridge is byte-identical, but the
- * shortcut works where `sh` is absent (Windows dev machines); unrecognized
- * command handlers still run through the platform shell with the payload on
- * stdin (docs/archive/IMPOSTER.md §7.3 item 4).
- */
-const FORWARDER_SHAPE =
-  /curl -s -m (\d+) -X POST -H "Content-Type: application\/json" -H "Authorization: Bearer \$([A-Z_][A-Z0-9_]*)" --data-binary @- ([^\s']+)/;
 
 const DEFAULT_TIMEOUT_SEC = 5;
 const MAX_TIMEOUT_SEC = 300;
@@ -86,18 +80,8 @@ async function deliver(
     return;
   }
   if (handler.type === 'command' && typeof handler.command === 'string') {
-    const forwarder = handler.command.match(FORWARDER_SHAPE);
-    if (forwarder) {
-      const [, timeout, tokenVar, url] = forwarder;
-      const res = await fetch(url!, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${env[tokenVar!] ?? ''}` },
-        body,
-        signal: AbortSignal.timeout(Number(timeout) * 1000),
-      });
-      if (res.status !== 200) log(`forwarded hook POST -> ${res.status}`);
-      return;
-    }
+    const command = handler.command;
+    const args = Array.isArray(handler.args) ? handler.args.map(String) : undefined;
     await new Promise<void>((resolve) => {
       let settled = false;
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -107,7 +91,9 @@ async function deliver(
         if (timer) clearTimeout(timer);
         resolve();
       };
-      const child = spawn(handler.command as string, { shell: true, stdio: ['pipe', 'ignore', 'ignore'] });
+      const child = args
+        ? spawn(command, args, { shell: false, stdio: ['pipe', 'ignore', 'ignore'] })
+        : spawn(command, { shell: true, stdio: ['pipe', 'ignore', 'ignore'] });
       const timeoutSec = handlerTimeoutSec(handler);
       timer = setTimeout(() => {
         log(`command hook timed out after ${timeoutSec}s`);

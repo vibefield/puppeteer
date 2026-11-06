@@ -12,6 +12,11 @@ export const TurnCompletedEventSchema = z.strictObject({
   type: z.literal('turn:completed'),
   turnId: z.string().trim().min(1).optional(),
   stopReason: z.string().trim().min(1).optional(),
+  /**
+   * How the turn ended: it finished, or the person interrupted it. Omitted reads as completed. An interrupt is not a
+   * failure (that is turn:failed); the provider's own word for it stays in stopReason.
+   */
+  outcome: z.enum(['completed', 'interrupted']).optional(),
   /** Provider-authoritative final assistant text when supplied at the boundary. */
   lastAssistantMessage: z.string().optional(),
 });

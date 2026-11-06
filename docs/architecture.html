@@ -2374,7 +2374,11 @@ interface AgentProviderLaunchService {
               service owns PTYs, focus, resize, accepted human input, and process lifecycle. An optional
               <span class="mono">helperEnvironment(env)</span> composes the environment for a helper the adapter spawns
               itself (Codex's app-server, Grok's leader and controller, OpenCode's <span class="mono">serve</span>) by
-              the same policy as the agent's terminal; without it a helper inherits the host process's own.
+              the same policy as the agent's terminal; without it a helper inherits the host process's own. An optional
+              <span class="mono">forwarderRuntime</span> names the program that runs the builtin forwarder entry
+              (<span class="mono">@vibefield/puppeteer-builtin-providers/forwarder</span>) in the agent's process tree; a
+              Node single executable must lend it, since its own executable runs no script. Without it the adapter stages
+              its forwarder and runs it with native-observation's script runner, or refuses the launch where there is none.
             </div>
 
             <div class="callout">

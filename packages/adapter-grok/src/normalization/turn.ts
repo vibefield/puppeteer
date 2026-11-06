@@ -71,7 +71,13 @@ export class GrokTurnNormalizer {
   }
 
   completionEvent(promptId: string, stopReason: string | undefined, lastAssistantMessage: string | undefined) {
-    return { type: 'turn:completed' as const, turnId: promptId, stopReason, lastAssistantMessage };
+    return {
+      type: 'turn:completed' as const,
+      turnId: promptId,
+      stopReason,
+      ...(stopReason === 'cancelled' ? { outcome: 'interrupted' as const } : {}),
+      lastAssistantMessage,
+    };
   }
 
   materializePendingUser(promptId: string): GrokObservedEvent[] {

@@ -191,6 +191,41 @@ describe('createAcpSession', () => {
     }
   });
 
+  it('ends a cancelled prompt as an interrupted turn and keeps the native stop reason', async () => {
+    for (const stopReason of ['end_turn', 'cancelled'] as const) {
+      const connector: AcpConnector = (toClient) => {
+        const agent = {
+          async initialize() {
+            return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: {} };
+          },
+          async newSession() {
+            return { sessionId: SID };
+          },
+          async prompt() {
+            return { stopReason };
+          },
+          async cancel() {},
+        };
+        toClient(agent as unknown as Agent);
+        return { agent: agent as unknown as Agent, onClose() {}, close() {} };
+      };
+      const session = await createAcpSession({ cwd: '/x', connector });
+      const events: AdapterEventCandidate[] = [];
+      const off = session.events.onCandidate((candidate) => events.push(candidate));
+      try {
+        await driveTurn(session, 'stop when asked');
+        expect(events.flatMap(({ event }) => (event.type === 'turn:completed' ? [event] : []))).toEqual([
+          stopReason === 'cancelled'
+            ? { type: 'turn:completed', turnId: 'acp-turn-1', stopReason, outcome: 'interrupted' }
+            : { type: 'turn:completed', turnId: 'acp-turn-1', stopReason },
+        ]);
+      } finally {
+        off();
+        await session.dispose();
+      }
+    }
+  });
+
   it('surfaces thought presence, retains the raw payload, and closes reasoning before the answer', async () => {
     const session = await createAcpSession({
       cwd: '/x',

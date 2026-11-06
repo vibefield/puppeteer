@@ -85,11 +85,9 @@ describe.runIf(live)('Hermes interactions beside the real native TUI (live)', ()
               await host.automateTerminal(session.runtimeSessionId, { kind: 'text', text: permission ? '\x1b' : '\r' }),
             ).toMatchObject({ accepted: true });
           }
+          // Every scenario ends its turn: the person's interrupt included, which is no failure.
           await waitFor(
-            () =>
-              projection!.envelopes.some(
-                ({ event }) => event.type === (scenario === 'clarify-interrupt' ? 'turn:failed' : 'turn:completed'),
-              ),
+            () => projection!.envelopes.some(({ event }) => event.type === 'turn:completed'),
             'turn completion after interaction',
           );
           const resolved = permission ? 'interaction:permission-resolved' : 'interaction:question-resolved';
@@ -99,6 +97,9 @@ describe.runIf(live)('Hermes interactions beside the real native TUI (live)', ()
           if (scenario === 'clarify-interrupt') {
             expect(settled[0]?.nativeEvent).toMatchObject({ method: 'event', params: { type: 'request.cancel' } });
             expect(settled[0]?.event).toMatchObject({ outcome: 'cancelled' });
+            const ended = projection.envelopes.find(({ event }) => event.type === 'turn:completed');
+            expect(ended?.event).toMatchObject({ outcome: 'interrupted' });
+            expect(projection.envelopes.some(({ event }) => event.type === 'turn:failed')).toBe(false);
           } else if (!permission) {
             expect(settled[0]?.event).toMatchObject({ outcome: 'answered' });
             expect(settled[0]?.nativeEvent).toMatchObject({

@@ -29,6 +29,7 @@ import {
   type AgentEvent,
   type AgentEventConfidence,
   type AgentAdapterBinding,
+  type AgentForwarderRuntime,
   type BoundIngress,
   type HostIngress,
   type ObservationLevel,
@@ -46,6 +47,7 @@ import {
   ClaudeRootModelGate,
   type ClaudeHookDiagnostic,
   type ClaudeHookPayload,
+  type NormalizedHook,
 } from './normalization/index.js';
 import {
   prepareClaudeSession,
@@ -173,6 +175,11 @@ export interface CreateClaudeSessionOptions extends AgentRunBriefing {
    * outlives its own process can re-attach (`attachClaudeTuiSession`).
    */
   ingress?: HostIngress | undefined;
+  /**
+   * The program the host lends to run the builtin forwarder entry (core `AgentHost.forwarderRuntime`): the command
+   * hooks and status lines run it, and nothing is staged. Absent = this process's script runner runs a staged copy.
+   */
+  forwarderRuntime?: AgentForwarderRuntime | undefined;
   /** Injectable bridge factory for deterministic transport-failure tests. */
   hookBridgeFactory?: ((options: HookBridgeOptions) => HookBridge) | undefined;
   /**
@@ -360,6 +367,7 @@ export async function prepareClaudeTuiSession(
       home: options.home,
       readsNoSettingsFiles: options.readsNoSettingsFiles,
       refuseHooksOff: options.refuseHooksOff,
+      forwarderRuntime: options.forwarderRuntime,
       endpoint: bridge.endpoint(),
       ...(otelUsageEnabled ? { otelLogsEndpoint: bridge.otelLogsEndpoint() } : {}),
       statusLineEndpoint: bridge.statusLineEndpoint(),
@@ -595,6 +603,26 @@ function createClaudeObservation(
     events.publish(event, meta);
   }
 
+  /**
+   * What a normalized result settled for actors other than its own (a subagent's request a session's end closes,
+   * say) publishes first, each closure under the actor that asked, with the publication its own events take.
+   */
+  function applySettled(
+    settled: NormalizedHook['settled'],
+    publication: (event: AgentEvent) => ClaudeEventPublication,
+  ): void {
+    for (const closures of settled ?? []) {
+      for (const event of closures.events) {
+        apply(event, {
+          ...publication(event),
+          promptId: closures.promptId,
+          agentId: closures.agentId,
+          agentType: closures.agentType,
+        });
+      }
+    }
+  }
+
   function publishConfiguredIntent(): void {
     if (configuredIntentPublished) return;
     configuredIntentPublished = true;
@@ -658,6 +686,13 @@ function createClaudeObservation(
       const decision = normalizeClaudeOtelToolDecision(record);
       const decided = decision ? normalizer.resolvePermissionDecision(decision.toolUseId, decision.outcome) : undefined;
       if (decision && decided) {
+        applySettled(decided.settled, () => ({
+          source: 'native-telemetry',
+          timestamp: decision.timestamp,
+          providerVersion: record.providerVersion ?? options.providerVersion,
+          confidence: 'authoritative',
+          native: record,
+        }));
         for (const event of decided.events) {
           apply(event, {
             source: 'native-telemetry',
@@ -775,19 +810,19 @@ function createClaudeObservation(
         // a tool the attach found open was announced by no hook: the hook rail adopts it, so its PostToolUse (and
         // the answer to its question) closes what the bootstrap opened
         if (semantic.openAtAttach && semantic.event.type === 'tool:requested') {
-          const superseded = normalizer.adoptOpenTool({
+          const adopted = normalizer.adoptOpenTool({
             toolCallId: semantic.event.toolCallId,
             toolName: semantic.event.tool,
             input: semantic.event.input,
             promptId: semantic.promptId,
           });
-          for (const event of superseded) {
-            apply(event, {
-              source: 'runtime',
-              timestamp: semantic.timestamp,
-              providerVersion: options.providerVersion,
-            });
-          }
+          const publication = (): ClaudeEventPublication => ({
+            source: 'runtime',
+            timestamp: semantic.timestamp,
+            providerVersion: options.providerVersion,
+          });
+          applySettled(adopted.settled, publication);
+          for (const event of adopted.events) apply(event, publication());
         }
         apply(semantic.event, {
           source: 'native-transcript',
@@ -881,6 +916,13 @@ function createClaudeObservation(
         monitorEvidence.observeNativeAgent(normalized.agentId, normalized.agentType);
       }
     }
+    applySettled(normalized.settled, (event) => ({
+      source: 'native-hook',
+      timestamp: hookEnvelope.receivedAt,
+      providerVersion: normalized.providerVersion,
+      confidence: hookEventConfidence(hookEventName, event, body),
+      native: body,
+    }));
     for (const event of normalized.events) {
       if (
         event.type === 'model:updated' &&
@@ -904,6 +946,24 @@ function createClaudeObservation(
         confidence: hookEventConfidence(hookEventName, event, body),
         native: body,
       });
+    }
+    // The bridge reduced a body larger than it keeps whole rather than lose it
+    // (bounded-json.ts): the events above read null where it elided, and this
+    // says so, carrying none of the body.
+    if (hookEnvelope.reduced) {
+      apply(
+        { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'hook-bridge.body-reduced' },
+        {
+          source: 'runtime',
+          timestamp: hookEnvelope.receivedAt,
+          providerVersion: normalized.providerVersion,
+          native: {
+            hookEventName,
+            receivedBytes: hookEnvelope.reduced.receivedBytes,
+            elided: hookEnvelope.reduced.elided,
+          },
+        },
+      );
     }
     // Hooks fire near transcript appends — poke the semantic source instead
     // of waiting out its fallback interval.
@@ -1158,6 +1218,7 @@ export async function createClaudeSession(options: CreateClaudeSessionOptions): 
     transcriptPollIntervalMs: options.transcriptPollIntervalMs,
     onDiagnostic: options.onDiagnostic,
     ingress: options.ingress,
+    forwarderRuntime: options.forwarderRuntime,
     hookBridgeFactory: options.hookBridgeFactory,
     hookRailFaultInjection: options.hookRailFaultInjection,
     semanticProviderFactory: options.semanticProviderFactory,

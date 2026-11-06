@@ -5,7 +5,10 @@
  * Rules enforced here, per §16.6:
  * - binds loopback only, ephemeral port by default
  * - authenticates every request (bearer token, constant-time compare)
- * - limits request body size; applies a hard socket timeout
+ * - bounds what it retains; an authenticated hook or status body is reduced,
+ *   never refused (past `maxBodyBytes`, bounded-json.ts); an OTLP batch keeps
+ *   its refusal cap
+ * - applies a hard request timeout
  * - acknowledges observational events IMMEDIATELY (Claude's hook timeout is
  *   seconds — nothing downstream of the 200 may block the agent)
  * - parses JSON safely; malformed events are logged to the sink, never thrown
@@ -20,11 +23,17 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { createBoundedJsonBody, parseJsonObject, type BodyReduction, type BoundedJsonResult } from './bounded-json.js';
 
 export interface NativeHookEnvelope {
   requestId: string;
   receivedAt: string;
   body: Record<string, unknown>;
+  /**
+   * Set when the body arrived larger than the bridge keeps whole: `body` is the
+   * reduced one (elided values read null) and this says what was lost.
+   */
+  reduced?: BodyReduction | undefined;
 }
 
 export type NativeStatusLineEnvelope = NativeHookEnvelope;
@@ -49,8 +58,12 @@ export interface HookBridgeOptions {
   ) => HookBridgeSessionVerdict;
   port?: number | undefined;
   token?: string | undefined;
+  /**
+   * A hook or status body up to this many bytes is kept whole (default
+   * 256 KiB); a larger one is reduced to about this many, never refused.
+   */
   maxBodyBytes?: number | undefined;
-  /** OTLP batches can be larger than hooks; defaults to 2 MiB. */
+  /** An OTLP batch past this many bytes is reset at the socket ('too-large'); defaults to 2 MiB. */
   maxOtlpBodyBytes?: number | undefined;
   onProtocolError?:
     ((kind: 'auth' | 'too-large' | 'malformed' | 'unknown-session', detail: string) => void) | undefined;
@@ -167,35 +180,12 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
       return;
     }
 
-    const chunks: Buffer[] = [];
-    let size = 0;
-    let overflowed = false;
-    const bodyLimit = requestKind === 'otel-logs' ? maxOtlpBody : maxBody;
-
-    req.on('data', (chunk: Buffer) => {
-      size += chunk.length;
-      if (size > bodyLimit) {
-        overflowed = true;
-        req.destroy();
+    const answer = (read: BoundedJsonResult): void => {
+      if (read.kind === 'malformed') {
+        reject(res, 400, 'malformed', read.message);
         return;
       }
-      chunks.push(chunk);
-    });
-
-    req.on('close', () => {
-      if (overflowed) options.onProtocolError?.('too-large', `body exceeded ${bodyLimit} bytes`);
-    });
-
-    req.on('end', () => {
-      let body: Record<string, unknown>;
-      try {
-        const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-        if (typeof parsed !== 'object' || parsed === null) throw new Error('not an object');
-        body = parsed as Record<string, unknown>;
-      } catch (err) {
-        reject(res, 400, 'malformed', err instanceof Error ? err.message : String(err));
-        return;
-      }
+      const body = read.body;
 
       if (requestKind !== 'otel-logs') {
         const sessionId = body.session_id;
@@ -221,6 +211,7 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
         requestId: randomUUID(),
         receivedAt: new Date().toISOString(),
         body,
+        ...(read.kind === 'reduced' ? { reduced: read.reduced } : {}),
       };
       for (const listener of targetListeners) {
         try {
@@ -229,7 +220,35 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
           // A misbehaving consumer must not affect the agent-facing endpoint.
         }
       }
-    });
+    };
+
+    if (requestKind === 'otel-logs') {
+      // An OTLP batch keeps its refusal cap: past it the socket is reset.
+      const chunks: Buffer[] = [];
+      let size = 0;
+      let overflowed = false;
+      req.on('data', (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > maxOtlpBody) {
+          overflowed = true;
+          req.destroy();
+          return;
+        }
+        chunks.push(chunk);
+      });
+      req.on('close', () => {
+        if (overflowed) options.onProtocolError?.('too-large', `body exceeded ${maxOtlpBody} bytes`);
+      });
+      req.on('end', () => answer(parseJsonObject(Buffer.concat(chunks))));
+      return;
+    }
+
+    // Authentication was read from the headers before any body byte, so only a
+    // token holder (the run's own process tree) streams this far; the body is
+    // never refused for its size, only reduced.
+    const collector = createBoundedJsonBody({ retainBytes: maxBody });
+    req.on('data', (chunk: Buffer) => collector.push(chunk));
+    req.on('end', () => answer(collector.end()));
   }
 
   return {
@@ -252,7 +271,8 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
           listening = false;
           if (wasListening) reportUnavailable('hook bridge listener closed unexpectedly');
         });
-        // Hooks are tiny POSTs; anything lingering is a stuck client.
+        // A post must arrive whole within this: the one bound on how long a
+        // token holder may stream, and a stuck client's end.
         server.requestTimeout = 10_000;
         server.listen(options.port ?? 0, HOST, () => {
           const address = server!.address();

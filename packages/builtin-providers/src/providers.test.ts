@@ -733,6 +733,20 @@ describe('createBuiltinProviders launch options', () => {
     );
   });
 
+  it('lends the host’s forwarder runtime to both Claude launch paths', async () => {
+    const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+      (provider) => provider.descriptor.id === 'claude',
+    )!;
+    // A single-executable host lends the program that runs the builtin forwarder entry in the agent's tree.
+    const forwarderRuntime = { command: '/opt/Host/host-executable', args: ['--host-role=agent-forwarder'] };
+    const lending: AgentHost = { ...host, forwarderRuntime };
+
+    await claude.createSession({ cwd: '/work/repo', host: lending });
+    expect(adapters.createClaudeSession).toHaveBeenLastCalledWith(expect.objectContaining({ forwarderRuntime }));
+    await claude.prepareSession!({ cwd: '/work/repo', host: lending });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(expect.objectContaining({ forwarderRuntime }));
+  });
+
   it('does not spawn Claude when capability preflight fails', async () => {
     const claude = createBuiltinProviders({ executables: { claude: '/old/claude' } }).find(
       (provider) => provider.descriptor.id === 'claude',
