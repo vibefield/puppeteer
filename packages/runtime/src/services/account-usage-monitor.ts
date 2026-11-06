@@ -110,6 +110,20 @@ function mergePush(
   return { status: 'available', snapshot };
 }
 
+/**
+ * The earliest reset a reading names strictly after `afterMs`, when its
+ * windows stop describing the account. A window the provider still reports
+ * as passed adds no read: the next poll is the retry.
+ */
+function nextResetAfter(snapshot: AccountUsageSnapshot, afterMs: number): number {
+  let earliest = Number.POSITIVE_INFINITY;
+  for (const metric of snapshot.metrics) {
+    const resetMs = metric.resetsAt ? Date.parse(metric.resetsAt) : Number.NaN;
+    if (resetMs > afterMs && resetMs < earliest) earliest = resetMs;
+  }
+  return earliest;
+}
+
 /** A push stands in for the last poll only when it carries every meter that poll did, and its credits if any. */
 function covers(push: AccountUsageAvailable, polled: AccountUsageAvailable | undefined): boolean {
   if (!polled) return false;
@@ -246,7 +260,11 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
       : { provider, ...identify(state), result };
   };
 
-  /** A poll is the whole reading: it replaces the row's, pushes merged in included, and sets the poll's clock. */
+  /**
+   * A poll is the whole reading: it replaces the row's, pushes merged in
+   * included, and sets the poll's clock. The next read is due at the poll
+   * interval, or at the reading's earliest reset when that comes first.
+   */
   const applyPolled = (state: ProviderRefreshState, result: AccountUsageFetchResult, completedAtMs: number): void => {
     const provider = state.provider;
     state.lastCompletedAtMs = completedAtMs;
@@ -255,7 +273,10 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
       state.lastPolled = result;
       state.entry = { provider, ...identify(state), result };
       state.consecutiveFailures = 0;
-      state.nextRefreshAtMs = completedAtMs + refreshMsByProvider.get(provider.id)!;
+      state.nextRefreshAtMs = Math.min(
+        completedAtMs + refreshMsByProvider.get(provider.id)!,
+        nextResetAfter(result.snapshot, completedAtMs),
+      );
       return;
     }
 
@@ -269,8 +290,9 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
    * metric id and never moves the poll's clock (its cadence, its failure
    * backoff and Retry-After, the manual guard), save that a push carrying
    * every meter the last poll did stands in for that poll and may defer the
-   * next one, never bring it forward. A failed push shows beside the row's
-   * reading and moves nothing.
+   * next one (by the push interval, or to the merged reading's earliest reset
+   * when that comes first), never bring it forward. A failed push shows
+   * beside the row's reading and moves nothing.
    */
   const applyPushed = (state: ProviderRefreshState, result: AccountUsageFetchResult, completedAtMs: number): void => {
     const provider = state.provider;
@@ -284,7 +306,8 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
     if (!covers(result, state.lastPolled)) return;
     state.lastCompletedAtMs = completedAtMs;
     const deferMs = provider.refresh.pushUpdatePollIntervalMs ?? refreshMsByProvider.get(provider.id)!;
-    state.nextRefreshAtMs = Math.max(state.nextRefreshAtMs, completedAtMs + deferMs);
+    const deferredToMs = Math.min(completedAtMs + deferMs, nextResetAfter(merged.snapshot, completedAtMs));
+    state.nextRefreshAtMs = Math.max(state.nextRefreshAtMs, deferredToMs);
   };
 
   const refresh = (requestOptions: AccountUsageRefreshOptions = {}): Promise<AccountUsageBatch> => {

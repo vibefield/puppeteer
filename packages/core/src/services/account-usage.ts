@@ -147,8 +147,8 @@ export const AccountUsageProviderSchema = z.strictObject({
   refresh: z.strictObject({
     pollIntervalMs: PositiveSafeIntegerSchema,
     /**
-     * The least delay before the next poll after a push that carries every meter the last poll did; defaults to
-     * `pollIntervalMs`. A push never brings a poll forward.
+     * The delay before the next poll after a push that carries every meter the last poll did, or less when the
+     * reading names a reset sooner; defaults to `pollIntervalMs`. A push never brings a poll forward.
      */
     pushUpdatePollIntervalMs: PositiveSafeIntegerSchema.optional(),
   }),

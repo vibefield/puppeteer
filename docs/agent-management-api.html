@@ -2878,12 +2878,14 @@ interface AccountUsageBatch {
 }</code></pre>
             <p>
               The account usage monitor schedules reads per provider/profile, coalesces refreshes, merges each push
-              into its row by metric ID, and applies retry/backoff policy. A push never moves the poll’s clock: it
-              never brings a poll forward, never shortens a failure’s backoff or Retry-After, and counts toward the
-              manual refresh guard only when it covers the last poll, which it may then defer. A failed refresh can
-              retain the last successful result with <code>stale: true</code> and <code>refreshFailure</code>; the
-              renderer can show both the last known quota and current refresh health. Profile defaults are app policy
-              and do not change existing processes.
+              into its row by metric ID, and applies retry/backoff policy. A successful read is next due after the
+              provider’s poll interval, or at the earliest reset its reading names when that comes first, so a window
+              is read again when it resets. A push never moves the poll’s clock: it never brings a poll forward, never
+              shortens a failure’s backoff or Retry-After, and counts toward the manual refresh guard only when it
+              covers the last poll, which it may then defer, no further than that reading’s earliest reset. A failed
+              refresh can retain the last successful result with <code>stale: true</code> and
+              <code>refreshFailure</code>; the renderer can show both the last known quota and current refresh health.
+              Profile defaults are app policy and do not change existing processes.
             </p>
           </section>
           <section id="usage-history">
