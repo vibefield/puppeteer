@@ -140,8 +140,8 @@ export interface EndedLaneView extends MonitorEndedRow {
 
 /**
  * The record's past (capability `history`). The host builds it once per snapshot and keeps the SAME object while a
- * re-read brings nothing new (a changed `readAt` alone is nothing new), so a view that keys on it redraws only for a
- * past that moved.
+ * re-read brings nothing new (a moved window or `readAt` alone is nothing new), so a view that keys on it redraws
+ * only for a past that moved.
  */
 export interface MonitorHistory extends Omit<MonitorPastSnapshot, 'ended'> {
   readonly ended: readonly EndedLaneView[];
