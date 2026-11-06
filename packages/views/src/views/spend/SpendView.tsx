@@ -52,6 +52,7 @@ import {
   fitWords,
   heroCaption,
   money,
+  NARROW_HERO,
   NOT_RECORDED,
   perHour,
   printedBurn,
@@ -59,6 +60,7 @@ import {
   spendStateAt,
   stateWords,
   waits,
+  type HeroRoom,
   type SpendGlyph,
   type SpendName,
   type SpendState,
@@ -108,7 +110,10 @@ export interface Geometry {
   width: number;
   height: number;
   compact: boolean;
-  /** Too narrow for the hero's whole caption: it keeps the number, the burn and who the total leaves out. */
+  /**
+   * Too narrow for the hero's whole caption: it keeps the number, the burn and who the total leaves out, cut to the
+   * room beside them (`heroRoom`).
+   */
   narrow: boolean;
   /** The plot. */
   x0: number;
@@ -181,6 +186,19 @@ function canvasMeasure(within: Element): TextMeasure | undefined {
     ctx.font = font;
     return ctx.measureText(text).width;
   };
+}
+
+/**
+ * The room a narrow hero leaves its caption. Its one line runs from the plot's left edge to the list's column, less
+ * the list's inset, and the number and the burn come first, each measured in its face as spend.css sets it at narrow
+ * (the sheet's sizes are the authority; these follow it): the number light at 20 px, the burn 550 at 13 px, the
+ * caption's words 400 at 12 px. The canvas leaves out the number's tracking and the tabular figures, as the rows' fit
+ * leaves out theirs.
+ */
+function heroRoom(g: Geometry, figure: string, rate: string, font: string, measure: TextMeasure): HeroRoom {
+  const { figureFace, gapPx, rateFace, capGapPx, wordsFace, listInsetPx } = NARROW_HERO;
+  const before = measure(figure, `${figureFace} ${font}`) + gapPx + measure(rate, `${rateFace} ${font}`) + capGapPx;
+  return { width: g.lx0 - listInsetPx - g.x0 - before, measure: (text) => measure(text, `${wordsFace} ${font}`) };
 }
 
 // The glyphs (DESIGN §13 Instrument construction: 24 box, one 2-unit stroke, round caps).
@@ -396,12 +414,18 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     }
     perMinute += row.burn ?? 0;
   }
+  const heroFigure = `~${money(spent)}${partial ? '+' : ''}`;
   const heroRate =
     tCross !== null ? `by ${formatClock(tCross)} · ${perHour(perMinute)} then` : `${perHour(perMinute)} now`;
   // Its caption: what the figure is, and who it leaves out, the unpriced that had started by the moment (one not yet
-  // running is not missing). A narrow stage keeps only who; with nobody left out it has no caption.
+  // running is not missing). A narrow stage keeps only who, cut to the room the number and the burn leave it; with
+  // nobody left out it has no caption.
   const missing = unpriced.filter((row) => row.bornMs <= tView);
-  const heroWhat = heroCaption({ missing, names, narrow: g.narrow });
+  const heroWhat = heroCaption({
+    missing,
+    names,
+    narrow: g.narrow ? heroRoom(g, heroFigure, heroRate, font, measure) : undefined,
+  });
 
   // The header: how many had started by the moment, and what the money column means.
   const all = rows.length + unpricedRows.length;
@@ -894,7 +918,7 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
         className={`vf-monitor-spend-hero${g.compact || g.narrow ? ' is-compact' : ''}${g.narrow ? ' is-narrow' : ''}`}
         style={{ left: g.x0 }}
       >
-        <span className="vf-monitor-spend-big">{`~${money(spent)}${partial ? '+' : ''}`}</span>
+        <span className="vf-monitor-spend-big">{heroFigure}</span>
         <span className="vf-monitor-spend-cap">
           <b>{heroRate}</b>
           {heroWhat === undefined ? null : <i>{heroWhat}</i>}
