@@ -21,7 +21,7 @@ import {
 import { WORKER_READY } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { BLOOM_SCENARIOS } from './bloom/scenarios.js';
 import { DEPARTURE_MS, DEPARTURE_REDUCED_MS } from './departure.js';
-import type { SwarmFrame } from './gpu/swarm-renderer.js';
+import { RENDERER_UNBUILT, type SwarmFrame } from './gpu/swarm-renderer.js';
 import { SWARM_MANIFEST, swarmMonitorView } from './index.js';
 import { createSwarmPhysicsHost } from './physics/host.js';
 import type { SwarmPhysicsCommand } from './physics/protocol.js';
@@ -31,25 +31,29 @@ import type { SwarmPhysicsCommand } from './physics/protocol.js';
 // no other test or golden witnesses: the view's own properties under their L18 names (M59.4), what it reports in place
 // of the DOM a host used to read, the bloom's keys held while it is open (MV-D8), a body leaving the field as the
 // renderer is asked to draw it (DESIGN §6, the departure), a field held still drawing each change it shows (MV-W4),
-// its physics in a worker whose answers come after the change that asked for them, and the hidden list and the
-// tooltip saying the rows of the update that hands them over.
+// its physics in a worker whose answers come after the change that asked for them, the hidden list and the tooltip
+// saying the rows of the update that hands them over, and a renderer that fails to build saying so on the stage.
 
-/** What the stub renderer was asked to draw, oldest first. */
-const drawn = vi.hoisted(() => ({ frames: [] as SwarmFrame[] }));
+/** What the stub renderer was asked to draw, oldest first; and whether it builds (`reject`: its build throws). */
+const drawn = vi.hoisted(() => ({ frames: [] as SwarmFrame[], renderer: 'ok' as 'ok' | 'reject' }));
 
 vi.mock('./gpu/swarm-renderer.js', async (original) => ({
   ...(await original<object>()),
-  createSwarmRenderer: async () => ({
-    ok: true,
-    renderer: {
-      render: (frame: SwarmFrame) => {
-        drawn.frames.push(frame);
+  createSwarmRenderer: async () => {
+    // A build that throws all the same: what the view meets when anything escapes the renderer's typed answers.
+    if (drawn.renderer === 'reject') throw new Error('the stub GPU will not build');
+    return {
+      ok: true,
+      renderer: {
+        render: (frame: SwarmFrame) => {
+          drawn.frames.push(frame);
+        },
+        resize: () => {},
+        destroy: () => {},
+        lost: new Promise(() => {}),
       },
-      resize: () => {},
-      destroy: () => {},
-      lost: new Promise(() => {}),
-    },
-  }),
+    };
+  },
 }));
 
 const theme = fixtureTheme('light');
@@ -73,6 +77,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  drawn.renderer = 'ok';
 });
 
 /** Drives `count` animation frames, 16ms apart. */
@@ -195,6 +200,22 @@ describe('the swarm mounted', () => {
     const { counting } = await mounted();
     expect(counting.reports).toContainEqual({ renderer: 'webgpu' });
     expect(counting.reports).toContainEqual({ physics: 'inline' });
+  });
+
+  it('says a renderer that fails to build on its stage, in the renderer’s own words, and reports it unavailable', async () => {
+    drawn.renderer = 'reject';
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { root, counting } = await mounted();
+    const status = root.querySelector('[role="status"]');
+    expect(status?.querySelector('span')?.textContent).toBe('WEBGPU UNAVAILABLE');
+    expect(counting.reports).toContainEqual({ renderer: 'unavailable' });
+    expect(counting.reports).not.toContainEqual({ renderer: 'webgpu' });
+    expect(status?.querySelector('small')?.textContent).toBe(RENDERER_UNBUILT);
+    // The cause itself is for the console.
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining('[swarm]'),
+      expect.objectContaining({ message: 'the stub GPU will not build' }),
+    );
   });
 
   it('opens the bloom from the keys door, holds the keys while it is open, and commits the chosen desktop (MV-D8)', async () => {
