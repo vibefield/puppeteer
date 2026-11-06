@@ -287,6 +287,61 @@ describe('AgentMonitorService', () => {
     monitor.remove();
   });
 
+  it('projects the full state once per coalesce window, however many deltas stream into it', () => {
+    const project = vi.spyOn(monitorProjection, 'projectAgentMonitorState');
+    const { clock, hub: monitor } = hub();
+    monitor.updateRun('running', { alive: true });
+    project.mockClear();
+    for (let index = 0; index < 50; index++) {
+      monitor.acceptAgentEvent(
+        envelope({ type: 'conversation:assistant-message', text: `Working ${index}`, final: false }, index + 1),
+      );
+    }
+    clock.advance(100);
+    expect(project).toHaveBeenCalledTimes(1);
+    expect(monitor.current().status).toBe('working');
+    monitor.remove();
+  });
+
+  it('neither flushes nor projects for session metadata that did not change', () => {
+    const project = vi.spyOn(monitorProjection, 'projectAgentMonitorState');
+    const { clock, hub: monitor } = hub();
+    const metadata = {
+      executionMode: 'native-tui',
+      observationLevel: 'native-log',
+      terminalSessionId: 'terminal-1',
+    } as const;
+    monitor.updateSessionMetadata(metadata);
+    clock.advance(100);
+    expect(monitor.current().freshness.level).toBe('native-log');
+    project.mockClear();
+    for (let index = 0; index < 1_000; index++) monitor.updateSessionMetadata(metadata);
+    clock.advance(100);
+    expect(project).not.toHaveBeenCalled();
+    monitor.remove();
+  });
+
+  it('flushes a permission request at once, its urgency read from the transitions view', () => {
+    const { hub: monitor } = hub();
+    monitor.updateRun('running', { alive: true });
+    monitor.acceptAgentEvent(
+      envelope(
+        {
+          type: 'interaction:permission-requested',
+          requestId: 'permission-1',
+          tool: 'Bash',
+          presentation: 'native-tui',
+        },
+        1,
+      ),
+    );
+    expect(monitor.current()).toMatchObject({
+      status: 'blocked',
+      blockers: [{ id: 'permission-1', kind: 'permission' }],
+    });
+    monitor.remove();
+  });
+
   it('publishes deeply immutable monitor snapshots', () => {
     const { hub: monitor } = hub();
     const snapshot = monitor.current();
