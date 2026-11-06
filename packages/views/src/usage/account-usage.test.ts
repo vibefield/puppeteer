@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AccountUsageFetchResult, AccountUsageProvider } from '@vibefield/puppeteer-core';
+import type { AccountUsageFailure, AccountUsageFetchResult, AccountUsageProvider } from '@vibefield/puppeteer-core';
 import type { AccountUsageEntry, AccountUsageMetricGroup, AccountUsageMetricKind } from '@vibefield/puppeteer-core';
 import { accountUsageView, accountUsageViews, formatUsageAge, formatUsageReset, usageTiles } from './account-usage.js';
 
@@ -132,6 +132,42 @@ describe('account usage display model', () => {
       badgeTitle: 'Retrying in 47m',
       metrics: [{ label: 'NOW', value: '25%' }],
     });
+  });
+
+  it('lets a refused sign-in name a kept reading, and says a failed read is retrying over its metrics', () => {
+    const kept = (refreshFailure: AccountUsageFailure): AccountUsageEntry => ({
+      provider: PROVIDER,
+      stale: true,
+      result: {
+        status: 'available',
+        snapshot: {
+          provider: PROVIDER.id,
+          fetchedAt: '2026-07-23T19:55:00.000Z',
+          scope: 'subscription',
+          source: { kind: 'native-protocol', stability: 'documented' },
+          metrics: [{ id: 'opaque', label: 'NOW', kind: 'window', usedPercent: 25 }],
+        },
+      },
+      refreshFailure,
+    });
+
+    const signedOut = accountUsageView(
+      kept({ status: 'unauthenticated', provider: PROVIDER.id, message: 'private credential path', retryable: false }),
+      NOW,
+    );
+    expect(signedOut).toMatchObject({ state: 'unauthenticated', statusText: 'SIGN IN REQUIRED', metrics: [] });
+    expect(JSON.stringify(signedOut)).not.toContain('private');
+
+    const retrying = accountUsageView(
+      kept({ status: 'unavailable', provider: PROVIDER.id, message: 'private HTTP 503 body', retryable: true }),
+      NOW,
+    );
+    expect(retrying).toMatchObject({
+      state: 'available',
+      badgeText: 'RETRYING',
+      metrics: [{ label: 'NOW', value: '25%' }],
+    });
+    expect(JSON.stringify(retrying)).not.toContain('private');
   });
 
   it('keeps an untouched standby allowance out of the panel, so it never takes one of the three rows', () => {
@@ -335,6 +371,65 @@ describe('the usage column', () => {
     expect(tiles[3]?.note).toMatch(/Sign in/);
     expect(tiles[3]?.foot).toEqual({ lead: 'CHECKED', strong: '0s AGO' });
     expect(tiles.map((tile) => tile.aria)).not.toContainEqual(expect.stringContaining('native detail'));
+  });
+
+  it('a kept reading under a refused sign-in is the sign-in tile, never AVAILABLE', () => {
+    const signedOut = available('claude', [{ label: '5H', used: 42 }], {
+      stale: true,
+      refreshFailure: { status: 'unauthenticated', provider: 'claude', message: 'native detail', retryable: false },
+    });
+    const tiles = usageTiles(
+      {
+        refreshedAt: at('2026-07-23T20:00:00.000Z'),
+        entries: [signedOut, available('codex', [{ label: '5H', used: 10 }])],
+      },
+      NOW,
+    );
+    expect(tiles.map((tile) => [tile.key, tile.state])).toEqual([
+      ['codex', 'available'],
+      ['claude', 'unauthenticated'],
+    ]);
+    const tile = tiles[1];
+    expect(tile).toMatchObject({
+      state: 'unauthenticated',
+      hot: false,
+      rings: [],
+      windows: [],
+      figure: 'SIGN IN',
+      figureFaint: true,
+      stateText: 'SIGN IN REQUIRED',
+      foot: { lead: 'CHECKED', strong: '0s AGO' },
+      aria: 'CLAUDE, sign in required',
+    });
+    expect(tile?.note).toMatch(/Sign in/);
+    expect(JSON.stringify(tile)).not.toContain('native detail');
+  });
+
+  it('a kept reading under a failed read keeps its numbers and says it is retrying', () => {
+    const retrying = available('claude', [{ label: '5H', used: 42 }], {
+      stale: true,
+      refreshFailure: { status: 'unavailable', provider: 'claude', message: 'native detail', retryable: true },
+    });
+    const tiles = usageTiles(
+      {
+        refreshedAt: at('2026-07-23T20:00:00.000Z'),
+        entries: [available('codex', [{ label: '5H', used: 10 }]), retrying],
+      },
+      NOW,
+    );
+    expect(tiles.map((tile) => tile.key)).toEqual(['claude', 'codex']);
+    const tile = tiles[0];
+    expect(tile).toMatchObject({
+      state: 'available',
+      hot: false,
+      figure: '42%',
+      figureFaint: false,
+      stateText: 'RETRYING',
+      foot: { lead: 'FETCHED', strong: '12s AGO', count: '1 WINDOW' },
+      aria: 'CLAUDE, 5H 42%, retrying',
+    });
+    expect(tile?.rings.map(({ label }) => label)).toEqual(['5H']);
+    expect(JSON.stringify(tile)).not.toContain('native detail');
   });
 
   it('keeps named model windows out of an absent base-account short-window ring', () => {

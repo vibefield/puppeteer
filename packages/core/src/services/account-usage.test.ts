@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  accountUsageFailurePasses,
   accountUsageMetricInPlay,
   AccountUsageFetchResultSchema,
   AccountUsageProviderSchema,
   AccountUsageSnapshotSchema,
+  type AccountUsageFailure,
   type AccountUsageMetric,
   type AccountUsageMetricGroup,
 } from './account-usage.js';
@@ -159,5 +161,26 @@ describe('accountUsageMetricInPlay', () => {
     const model = meter('SPARK 7D', 0, SPARK);
     expect(accountUsageMetricInPlay(plan, [plan, model])).toBe(true);
     expect(accountUsageMetricInPlay(model, [plan, model])).toBe(true);
+  });
+});
+
+describe('accountUsageFailurePasses', () => {
+  const failure = (status: AccountUsageFailure['status'], code?: 'rate-limited'): AccountUsageFailure => ({
+    status,
+    provider: 'example',
+    message: 'private detail',
+    retryable: status === 'unavailable',
+    ...(code ? { code } : {}),
+  });
+
+  it('passes a read that failed or was rate limited, which says nothing of the account', () => {
+    expect(accountUsageFailurePasses(failure('unavailable'))).toBe(true);
+    expect(accountUsageFailurePasses(failure('unavailable', 'rate-limited'))).toBe(true);
+    expect(accountUsageFailurePasses(failure('unauthenticated', 'rate-limited'))).toBe(true);
+  });
+
+  it('never passes a failure that names the account: a refused sign-in, or limits it does not expose', () => {
+    expect(accountUsageFailurePasses(failure('unauthenticated'))).toBe(false);
+    expect(accountUsageFailurePasses(failure('unsupported'))).toBe(false);
   });
 });
