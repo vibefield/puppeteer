@@ -93,7 +93,8 @@ A view owns its worker. `createWorkerDriver` carries VibeField's swarm driver se
   their latest post. Gestures are not replayed.
 - **An honest mode.** `observeMode` reports `worker` or `inline`, and the view passes it to
   `commands.report({ physics })`.
-- **No rebuild.** A proven worker that dies later is reported through `onError`, never rebuilt.
+- **No rebuild.** An error a proven worker did not catch is reported through `onError`, never rebuilt: the worker
+  keeps running and takes the commands that follow, and the mode stays `worker`.
 - **Its own end.** In the worker, `serveWorker` answers through `end.post` and ends the thread with `end.close()`,
   so a view's worker never names the global object (MV-W2 reads an alias of it as a reach, MV-8b).
 

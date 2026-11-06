@@ -49,6 +49,7 @@ import { fitScale } from './fit.js';
 import {
   createSwarmRenderer,
   MAX_CLEARINGS,
+  RENDERER_UNBUILT,
   type RenderBody,
   type SwarmRenderer,
   type SwarmTheme,
@@ -485,6 +486,11 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     if (!canvas) return;
     let alive = true;
     let current: SwarmRenderer | undefined;
+    /** The stage's failure face, and the same said to the host. */
+    const unavailable = (reason: string): void => {
+      setFailure(reason);
+      commandsRef.current.report({ renderer: 'unavailable' });
+    };
     const start = async (): Promise<void> => {
       const result = await createSwarmRenderer(canvas);
       if (!alive) {
@@ -492,8 +498,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         return;
       }
       if (!result.ok) {
-        setFailure(result.reason);
-        commandsRef.current.report({ renderer: 'unavailable' });
+        unavailable(result.reason);
         return;
       }
       current = result.renderer;
@@ -505,10 +510,18 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         if (!alive || rendererRef.current !== current) return;
         console.warn('[swarm] WebGPU device lost, rebuilding', info.message);
         rendererRef.current = undefined;
-        void start();
+        build();
       });
     };
-    void start();
+    // The renderer answers every failure it can meet with a reason. One that escapes it all the same (a programmer
+    // error) is still the renderer not built, said in its words: never a blank stage.
+    const build = (): void => {
+      start().catch((error: unknown) => {
+        console.error('[swarm] the renderer could not be built:', error);
+        if (alive) unavailable(RENDERER_UNBUILT);
+      });
+    };
+    build();
     return () => {
       alive = false;
       rendererRef.current = undefined;
