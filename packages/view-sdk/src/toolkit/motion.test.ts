@@ -137,3 +137,115 @@ describe('the motion loop', () => {
     expect(loop.running).toBe(false);
   });
 });
+
+describe('a still frame, asked for while the loop is stopped', () => {
+  it('draws once on the next frame however many ask, and never counts as running', () => {
+    const frames = fakeFrames(0);
+    const moving: number[] = [];
+    const stills: number[] = [];
+    const loop = createMotionLoop(
+      (time) => moving.push(time),
+      { animations: true, reducedMotion: true, still: (time) => stills.push(time) },
+      frames.scheduler,
+    );
+    loop.requestStill();
+    loop.requestStill();
+    expect(frames.requests).toBe(1);
+    expect(loop.running).toBe(false);
+    expect(stills).toEqual([]);
+    frames.frame(16);
+    expect(stills).toEqual([16]);
+    expect(moving).toEqual([]);
+    expect(frames.scheduled).toBe(0);
+    frames.frame(32);
+    expect(stills).toEqual([16]);
+  });
+
+  it('draws with the callback and no time passed when it is given no still of its own', () => {
+    const frames = fakeFrames(0);
+    const calls: [number, number][] = [];
+    const loop = createMotionLoop(
+      (time, delta) => calls.push([time, delta]),
+      { animations: false, reducedMotion: false },
+      frames.scheduler,
+    );
+    loop.requestStill();
+    frames.frame(16);
+    expect(calls).toEqual([[16, 0]]);
+  });
+
+  it('asks for one more frame when the still draw asks again: a fade drawn frame by frame, then nothing', () => {
+    const frames = fakeFrames(0);
+    const stills: number[] = [];
+    const loop = createMotionLoop(
+      () => {},
+      {
+        animations: true,
+        reducedMotion: true,
+        still: (time) => {
+          stills.push(time);
+          if (stills.length < 3) loop.requestStill();
+        },
+      },
+      frames.scheduler,
+    );
+    loop.requestStill();
+    for (let time = 16; time <= 96; time += 16) frames.frame(time);
+    expect(stills).toEqual([16, 32, 48]);
+    expect(frames.requests).toBe(3);
+    expect(frames.scheduled).toBe(0);
+  });
+
+  it('asks for nothing while the loop runs, and a loop that starts drops the still it owed', () => {
+    const frames = fakeFrames(0);
+    const stills: number[] = [];
+    const loop = createMotionLoop(
+      () => {},
+      { animations: true, reducedMotion: false, still: (time) => stills.push(time) },
+      frames.scheduler,
+    );
+    // The loop's own frame and no other: its next frame draws anyway.
+    loop.requestStill();
+    expect(frames.requests).toBe(1);
+    loop.update({ reducedMotion: true });
+    loop.requestStill();
+    expect(frames.scheduled).toBe(1);
+    loop.update({ reducedMotion: false });
+    expect(frames.scheduled).toBe(1);
+    frames.frame(16);
+    expect(stills).toEqual([]);
+  });
+
+  it('draws no still in a frame the loop has started in: the loop draws it', () => {
+    const frames = fakeFrames(0);
+    const stills: number[] = [];
+    const loop = createMotionLoop(
+      () => {},
+      { animations: true, reducedMotion: true, still: (time) => stills.push(time) },
+      frames.scheduler,
+    );
+    // Earlier in the same frame, something starts the loop after the still was already due.
+    frames.scheduler.request(() => loop.update({ reducedMotion: false }));
+    loop.requestStill();
+    frames.frame(16);
+    expect(stills).toEqual([]);
+    expect(loop.running).toBe(true);
+  });
+
+  it('asks for nothing once disposed, and disposing drops the still it owed', () => {
+    const frames = fakeFrames(0);
+    const stills: number[] = [];
+    const loop = createMotionLoop(
+      () => {},
+      { animations: false, reducedMotion: false, still: (time) => stills.push(time) },
+      frames.scheduler,
+    );
+    loop.requestStill();
+    loop.dispose();
+    expect(frames.scheduled).toBe(0);
+    loop.requestStill();
+    expect(frames.requests).toBe(1);
+    frames.frame(16);
+    expect(stills).toEqual([]);
+  });
+});

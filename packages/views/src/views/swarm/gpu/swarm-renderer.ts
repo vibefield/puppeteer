@@ -137,6 +137,13 @@ export interface SwarmRenderer {
 
 export type SwarmRendererResult = { ok: true; renderer: SwarmRenderer } | { ok: false; reason: string };
 
+/**
+ * What the stage says under WEBGPU UNAVAILABLE when the renderer could not be built: a device refused, a shader the
+ * driver would not compile, a pipeline it would not validate. A sentence for a person, in the voice of the reasons
+ * beside it; the GPU's own message, line numbers and all, goes to the console. The one home of these words.
+ */
+export const RENDERER_UNBUILT = "The swarm's renderer could not be built on this GPU";
+
 const F_HOLLOW = 1;
 const F_RUNNING = 2;
 const F_GLOW = 8;
@@ -272,28 +279,63 @@ function withAlpha(colour: Rgba, alpha: number): Rgba {
   return [colour[0], colour[1], colour[2], alpha];
 }
 
+/**
+ * Builds the swarm's renderer, or says why it cannot. Past the checks the platform answers plainly (no WebGPU, no
+ * adapter, no context), every failure is an operational one — a device refused, a canvas that throws for its context,
+ * a shader the driver will not compile, a pipeline it will not validate — and is answered as one: RENDERER_UNBUILT,
+ * never a rejection.
+ */
 export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<SwarmRendererResult> {
   if (typeof navigator === 'undefined' || !navigator.gpu)
     return { ok: false, reason: 'WebGPU is not available in this window' };
-  const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
-  if (!adapter) return { ok: false, reason: 'No WebGPU adapter on this GPU' };
-  // The canvas is the window, or in the lab a whole document: ask for the
-  // adapter's real texture limit instead of the 8192 default.
-  const device = await adapter.requestDevice({
-    label: 'godview swarm',
-    requiredLimits: { maxTextureDimension2D: adapter.limits.maxTextureDimension2D },
-  });
-  const context = canvas.getContext('webgpu');
-  if (!context) {
-    device.destroy();
-    return { ok: false, reason: 'The canvas has no WebGPU context' };
+  let device: GPUDevice;
+  try {
+    const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+    if (!adapter) return { ok: false, reason: 'No WebGPU adapter on this GPU' };
+    // The canvas is the window, or in the lab a whole document: ask for the
+    // adapter's real texture limit instead of the 8192 default.
+    device = await adapter.requestDevice({
+      label: 'godview swarm',
+      requiredLimits: { maxTextureDimension2D: adapter.limits.maxTextureDimension2D },
+    });
+  } catch (error) {
+    console.warn('[swarm] no WebGPU device:', error);
+    return { ok: false, reason: RENDERER_UNBUILT };
   }
-  const format = navigator.gpu.getPreferredCanvasFormat();
-  context.configure({ device, format, alphaMode: 'premultiplied' });
-  device.addEventListener('uncapturederror', (event) => {
-    console.error('[swarm] WebGPU error', (event as GPUUncapturedErrorEvent).error.message);
-  });
+  // The context once this build configured it: a failure unconfigures what the build configured, and nothing else.
+  let configured: GPUCanvasContext | undefined;
+  try {
+    // Inside the try, as the device exists: a canvas whose control went to an OffscreenCanvas throws here.
+    const context = canvas.getContext('webgpu');
+    if (!context) {
+      device.destroy();
+      return { ok: false, reason: 'The canvas has no WebGPU context' };
+    }
+    const format = navigator.gpu.getPreferredCanvasFormat();
+    context.configure({ device, format, alphaMode: 'premultiplied' });
+    configured = context;
+    device.addEventListener('uncapturederror', (event) => {
+      console.error('[swarm] WebGPU error', (event as GPUUncapturedErrorEvent).error.message);
+    });
+    return { ok: true, renderer: await buildRenderer(canvas, device, context, format) };
+  } catch (error) {
+    console.warn('[swarm] the renderer could not be built:', error);
+    // A build that fails lets go of what it made: the canvas's configuration, then the device. (A built renderer's
+    // destroy() leaves the context configured, as another renderer of this canvas may hold it; a failure here is
+    // the shaders' or the driver's, and every build for this canvas meets it alike.)
+    configured?.unconfigure();
+    device.destroy();
+    return { ok: false, reason: RENDERER_UNBUILT };
+  }
+}
 
+/** Everything the renderer holds, on a device the canvas is configured with. A throw is createSwarmRenderer's. */
+async function buildRenderer(
+  canvas: HTMLCanvasElement,
+  device: GPUDevice,
+  context: GPUCanvasContext,
+  format: GPUTextureFormat,
+): Promise<SwarmRenderer> {
   const [fieldModule, shadowModule, bodyModule, glowModule, textModule, eraseModule, hubModule] = await Promise.all([
     compile(device, 'swarm field', fieldShader),
     compile(device, 'swarm shadow', shadowShader),
@@ -930,5 +972,5 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       device.destroy();
     },
   };
-  return { ok: true, renderer };
+  return renderer;
 }

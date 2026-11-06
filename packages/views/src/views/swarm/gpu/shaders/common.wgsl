@@ -17,7 +17,7 @@ struct Clearing {
 const MAX_CLEARINGS: u32 = 4u;
 
 struct Frame {
-  // width, height (CSS px), device pixel ratio, time (s; frozen when motion is off)
+  // width, height (CSS px), device pixel ratio, time (s, wrapped at 42; frozen when motion is off)
   viewport: vec4f,
   // body fill opacity, motion (0/1), grid pitch (px), the veil (0..1: the grid
   // is drawn at 1 − veil while the spawn bloom is open)
@@ -37,7 +37,7 @@ struct Frame {
   holdShape: vec4f,
   // the state glow's shape: where it begins, where it is full, its strength, unused
   glowBand: vec4f,
-  // and its motion: crests across the radius, crests a second, trough depth, unused
+  // and its motion: crests across the radius, their phase (turns, 0..1), trough depth, unused
   glowWave: vec4f,
   // the spawn bloom's clearings: how many of `clearings` are set; y/z/w unused
   clearing: vec4f,

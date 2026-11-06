@@ -29,7 +29,7 @@ Two rules hold for everything here:
 | `mark-outline.ts` | A view's own mark, for its manifest (MV-D6): the host's bar FILLS `manifest.mark` in currentColor and never strokes it (ruled at MV-8: a stroked outline draws both edges). `strokeOutline(from, to)`, `strokesOutline(strokes)` and `ringOutline(cx, cy, r)` write the filled outline a monoline stroke paints on the bar's grid (`MARK_VIEW_BOX`, `MARK_STROKE` = 1.6, round caps) |
 | `marks-atlas.ts` | `MARKS_ATLAS_URL`, the swarm's SDF atlas as a data URL |
 | `canvas.ts` | `sizeCanvas` (device-pixel backing store, CSS-pixel element, writes only on change), `canvasRatio`, `watchDevicePixelRatio` |
-| `motion.ts` | `createMotionLoop(callback, { animations, reducedMotion, fps? })`, which requests no frame at all while animations are off or motion is reduced, and re-evaluates on `loop.update(input.theme)` |
+| `motion.ts` | `createMotionLoop(callback, { animations, reducedMotion, fps?, still? })`, which requests no frame at all while animations are off or motion is reduced, and re-evaluates on `loop.update(input.theme)`; stopped, `loop.requestStill()` asks for one still frame, merged with every request before it |
 | `keys.ts` | `keyLegend(key)`: how a declared key is printed, as the keyboard's legend (`↵`, `↘`) or its character. The host's bar prints a view's keys in its tooltip with it, and a view prints the key of one of its own controls on that control, under its glyph (MV-D8, M177 ruling 4) |
 
 ## Ported, with identical output
@@ -51,8 +51,10 @@ The ports keep a few differences in their signatures, so a ported view prints ex
   themselves (`AgentIcon`, `ProfileGlyph`) are not in the toolkit, because it is framework-free: since MV-4 they are
   `@vibefield/puppeteer-view-sdk/react`'s (M6), drawn from these marks, and the views' copies are gone.
 - `sizeCanvas` follows the timeline: it rounds the CSS size and the backing size, and writes the backing size only
-  when it changes. The rain floored its backing size and wrote it on every resize. Pass `{ pixels: 'floor' }` to
-  keep the rain's pixels; with integer `clientWidth` and an integer ratio the two agree anyway.
+  when it changes. The rain floored its backing size and wrote it on every measure, every publish included, which
+  cleared its field each time (corrected 2026-11-06: this said "on every resize"). It now sizes through `sizeCanvas`
+  with `{ pixels: 'floor' }`, which keeps its pixels, so a publish clears nothing; with integer `clientWidth` and an
+  integer ratio the two roundings agree anyway.
 
 ## Colour and the replica (L7)
 
@@ -65,13 +67,23 @@ with no `project.seq`. The replica re-colours rows only when the key changes, an
 
 ```ts
 const loop = createMotionLoop((time, deltaMs) => draw(time, deltaMs), input.theme);
-// in update(input):
+// in update(input), and wherever else what the view shows changes (a worker's answer, focus):
 loop.update(input.theme); // starts or stops; keeps an fps given at creation
-if (!loop.running) draw(performance.now(), 0); // a stopped loop draws once per update
+loop.requestStill(); // stopped: one still frame, on the next frame; running: nothing, its next frame draws
 ```
 
 While either switch says no, the loop holds no `requestAnimationFrame` at all, which is the conformance rule
-(MV-W4: no loop when off).
+(MV-W4: no loop when off). A stopped view still draws every change it shows, through `requestStill`:
+- **One frame for a burst.** Requests merge until the still frame runs, so an update, the answer it starts and a
+  focus that lands before the frame are drawn once. The request has a handle of its own; `running` reports only the
+  loop.
+- **A fade asks again.** The request is cleared before the still draw, so a request made inside the draw asks for
+  the next frame: a reduced-motion fade is drawn frame by frame, and the view is still again the moment it stops
+  asking. One-shot requests are never a loop.
+- **What a still frame draws.** `callback(time, 0)`, unless the loop was made with `still` (read once, at creation)
+  for a view whose moving callback must not run with no time passed.
+- **Nothing while it runs, nothing once disposed.** A running loop's next frame draws anyway; a loop that starts,
+  and `dispose`, drop a still frame owed.
 
 ## Workers and bundlers (MV-D7)
 
@@ -83,7 +95,8 @@ A view owns its worker. `createWorkerDriver` carries VibeField's swarm driver se
   their latest post. Gestures are not replayed.
 - **An honest mode.** `observeMode` reports `worker` or `inline`, and the view passes it to
   `commands.report({ physics })`.
-- **No rebuild.** A proven worker that dies later is reported through `onError`, never rebuilt.
+- **No rebuild.** An error a proven worker did not catch is reported through `onError`, never rebuilt: the worker
+  keeps running and takes the commands that follow, and the mode stays `worker`.
 - **Its own end.** In the worker, `serveWorker` answers through `end.post` and ends the thread with `end.close()`,
   so a view's worker never names the global object (MV-W2 reads an alias of it as a reach, MV-8b).
 
