@@ -12,6 +12,7 @@ import {
   DEFAULT_MONITOR_BURN_RATE_WINDOW_MS,
   nextUsageRateBoundaryMs,
   projectAgentMonitorState,
+  projectMonitorTransitions,
   reduceMonitorAccumulator,
   translateAgentEventEnvelope,
   liveUsageOrigin,
@@ -19,6 +20,7 @@ import {
   type MonitorAccumulatorInput,
   type MonitorAccumulatorState,
   type MonitorFamilyUpdate,
+  type MonitorTransitions,
   type RuntimeMonitorInput,
   type RuntimeMonitorObservationBatch,
   type WorkspaceMonitorObservation,
@@ -55,19 +57,20 @@ type UnscopedWorkspaceMonitorObservation =
   | Omit<Extract<WorkspaceMonitorObservation, { operation: 'provenance' }>, 'runtimeRunId' | 'runtimeEpoch'>
   | Omit<Extract<WorkspaceMonitorObservation, { operation: 'retract' }>, 'runtimeRunId' | 'runtimeEpoch'>;
 
-function sameBlockers(left: AgentMonitorState, right: AgentMonitorState): boolean {
-  return JSON.stringify(left.blockers) === JSON.stringify(right.blockers);
+function sameBlockers(left: AgentMonitorState['blockers'], right: AgentMonitorState['blockers']): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
+/** The published state against the accumulator's transitions view, whose blockers are bounded as published. */
 function isUrgentTransition(
   previous: AgentMonitorState,
-  next: AgentMonitorState,
+  next: MonitorTransitions,
   input: MonitorAccumulatorInput,
 ): boolean {
   return (
     previous.alive !== next.alive ||
-    !sameBlockers(previous, next) ||
-    previous.session.nativeSessionId !== next.session.nativeSessionId ||
+    !sameBlockers(previous.blockers, next.blockers) ||
+    previous.session.nativeSessionId !== next.nativeSessionId ||
     (input.kind === 'semantic' && input.readiness !== undefined)
   );
 }
@@ -204,6 +207,14 @@ export class AgentMonitorService
     terminalSessionId: string;
   }): void {
     if (this.closed || this.frozen) return;
+    // An unchanged rail changes nothing a projection reads, so it neither replaces the accumulator nor flushes.
+    if (
+      metadata.executionMode === this.accumulator.executionMode &&
+      metadata.observationLevel === this.accumulator.observationLevel &&
+      metadata.terminalSessionId === this.accumulator.terminalSessionId
+    ) {
+      return;
+    }
     this.accumulator = {
       ...this.accumulator,
       executionMode: metadata.executionMode,
@@ -428,14 +439,10 @@ export class AgentMonitorService
       return true;
     }
 
-    const candidate = freezeMonitorState(
-      projectAgentMonitorState(this.accumulator, {
-        previous: this.published,
-        asOf: this.options.clock.now().toISOString(),
-        burnRateWindowMs: this.burnRateWindowMs,
-      }),
-    );
-    if (forceUrgent || isUrgentTransition(this.published, candidate, input)) this.flush();
+    // Urgency reads the transitions view, usually a memo hit (the reducer's notifications derived it); only a flush
+    // projects the full state.
+    const transitions = projectMonitorTransitions(this.accumulator);
+    if (forceUrgent || isUrgentTransition(this.published, transitions, input)) this.flush();
     else this.scheduleFlush();
     return true;
   }
