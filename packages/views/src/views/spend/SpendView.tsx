@@ -50,6 +50,7 @@ import {
   axisMoney,
   est,
   fitWords,
+  heroCaption,
   money,
   NOT_RECORDED,
   perHour,
@@ -107,7 +108,7 @@ export interface Geometry {
   width: number;
   height: number;
   compact: boolean;
-  /** Too narrow for the hero's caption: it keeps the number and the burn. */
+  /** Too narrow for the hero's whole caption: it keeps the number, the burn and who the total leaves out. */
   narrow: boolean;
   /** The plot. */
   x0: number;
@@ -395,16 +396,12 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     }
     perMinute += row.burn ?? 0;
   }
-  const missing = unpriced.filter((row) => row.bornMs <= tView);
-  const leftOut =
-    missing.length === 1
-      ? ` · not counting ${names.get(missing[0]!.id)!.one}`
-      : missing.length > 1
-        ? ` · not counting ${missing.length} agents with no price`
-        : '';
   const heroRate =
     tCross !== null ? `by ${formatClock(tCross)} · ${perHour(perMinute)} then` : `${perHour(perMinute)} now`;
-  const heroWhat = `since each agent started, at API prices${leftOut}`;
+  // Its caption: what the figure is, and who it leaves out, the unpriced that had started by the moment (one not yet
+  // running is not missing). A narrow stage keeps only who; with nobody left out it has no caption.
+  const missing = unpriced.filter((row) => row.bornMs <= tView);
+  const heroWhat = heroCaption({ missing, names, narrow: g.narrow });
 
   // The header: how many had started by the moment, and what the money column means.
   const all = rows.length + unpricedRows.length;
@@ -900,7 +897,7 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
         <span className="vf-monitor-spend-big">{`~${money(spent)}${partial ? '+' : ''}`}</span>
         <span className="vf-monitor-spend-cap">
           <b>{heroRate}</b>
-          <i>{heroWhat}</i>
+          {heroWhat === undefined ? null : <i>{heroWhat}</i>}
         </span>
       </div>
       {pinned !== null ? (

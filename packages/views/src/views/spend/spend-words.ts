@@ -2,8 +2,8 @@ import type { AgentView } from '@vibefield/puppeteer-view-sdk';
 import { detailLine, formatClock, formatShort, formatUsd, projectName } from '@vibefield/puppeteer-view-sdk/toolkit';
 
 // What the spend view says in words: money as the swarm prints it (`~$1.84`,
-// `+` when partial, `—` unpriced), the burn by the hour, each row's name and
-// the line under it, and its state at a moment. Lengths are short (`11m`, `1h 02m`), never
+// `+` when partial, `—` unpriced), the burn by the hour, the hero's caption, each
+// row's name and the line under it, and its state at a moment. Lengths are short (`11m`, `1h 02m`), never
 // m:ss, which beside a time axis would read as a clock time (review must-fix 5).
 // Ported from the prototype's `SV.fmt`, `names()`, `fitWords()` and `stateOf()`;
 // the facts are the row's (MV-7), the formats the toolkit's.
@@ -94,6 +94,34 @@ export function spendNames(agents: readonly AgentView[]): Map<string, SpendName>
     out.set(agent.id, { name: project, one, task, model: modelOf(agent) });
   }
   return out;
+}
+
+/** What the hero's figure is: an estimate at API prices, never a bill. */
+const HERO_WHAT = 'since each agent started, at API prices';
+
+/** What the hero's caption is made of. */
+export interface HeroCaptionFacts {
+  /** The agents no price reaches that had started by the moment: one not yet running is not missing. */
+  readonly missing: readonly { readonly id: string }[];
+  readonly names: ReadonlyMap<string, SpendName>;
+  /** Too narrow for the whole caption (the view's `Geometry.narrow`). */
+  readonly narrow: boolean;
+}
+
+/**
+ * The caption beside the hero's total and burn: what the figure is, then who it leaves out, the one by name, several
+ * by how many (SV review must-fix 3: the `+` says the figure is a floor, these words who it does not count, SV-D5). A
+ * narrow stage keeps only who it leaves out, several in the rows' own "no price", and says nothing when nobody is.
+ */
+export function heroCaption({ missing, names, narrow }: HeroCaptionFacts): string | undefined {
+  if (missing.length === 0) return narrow ? undefined : HERO_WHAT;
+  const leftOut =
+    missing.length === 1
+      ? `not counting ${names.get(missing[0]!.id)!.one}`
+      : narrow
+        ? `${missing.length} with no price`
+        : `not counting ${missing.length} agents with no price`;
+  return narrow ? leftOut : `${HERO_WHAT} · ${leftOut}`;
 }
 
 /** Text fitted to a width at a word boundary, so a cut never lands mid-word. */

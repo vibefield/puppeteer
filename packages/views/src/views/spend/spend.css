@@ -115,10 +115,6 @@
   font-size: 20px;
 }
 
-.mv-spend .vf-monitor-spend-hero.is-narrow .vf-monitor-spend-cap i {
-  display: none;
-}
-
 /* The chart's caption at the plot's top-left, where every line starts at $0 (the prototype's `.sv-colcap`): the
    lines are what each agent spent in the window, never the totals the list prints. */
 .mv-spend .vf-monitor-spend-colcap {
