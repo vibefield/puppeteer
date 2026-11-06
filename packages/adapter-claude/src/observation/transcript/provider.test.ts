@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SemanticObservationEvent, SemanticObservationHandle } from '../semantic-provider.js';
+import { ClaudeTranscriptProjection } from './conversation.js';
 import { ClaudeTranscriptObservationProvider } from './provider.js';
 import * as jsonlReader from './services/jsonl-reader.js';
 import { decodeClaudeTranscript, type ClaudeTranscriptRecord } from './wire.js';
@@ -326,6 +327,64 @@ describe('ClaudeTranscriptObservationProvider', () => {
         replay: undefined,
       },
     ]);
+  });
+
+  describe('the projection extends its walk by the rows a read appends', () => {
+    const at = '2026-10-25T02:00:00.000Z';
+    const line = (row: Record<string, unknown>) =>
+      JSON.stringify({ sessionId: 'session-1', timestamp: at, ...row }) + '\n';
+    const ask = (uuid: string, parentUuid: string | null, text: string) =>
+      line({ type: 'user', uuid, parentUuid, turnOrigin: 'human', message: { role: 'user', content: text } });
+    const answer = (uuid: string, parentUuid: string, text: string) =>
+      line({ type: 'assistant', uuid, parentUuid, message: { role: 'assistant', content: [{ type: 'text', text }] } });
+    const replies = (events: readonly SemanticObservationEvent[]) =>
+      events.map(({ event, turnId }) => ({ messageId: (event as { messageId?: string }).messageId, turnId }));
+
+    it('walks the window once, at the first read: appends extend it and an eviction re-projects nothing', async () => {
+      const reproject = vi.spyOn(ClaudeTranscriptProjection.prototype, 'reproject');
+      const real = jsonlReader.createClaudeTranscriptReader;
+      vi.spyOn(jsonlReader, 'createClaudeTranscriptReader').mockImplementation((path) => real(path, { maxRecords: 4 }));
+      const { path, handle, events } = await fixture(
+        ask('prompt-1', null, 'First question') +
+          answer('reply-1', 'prompt-1', 'One.') +
+          answer('reply-2', 'reply-1', 'Two.'),
+      );
+      await handle.poll();
+      expect(reproject).toHaveBeenCalledTimes(1);
+
+      appendFileSync(path, answer('reply-3', 'reply-2', 'Three.'));
+      await handle.poll();
+      // The window holds four rows, so this append evicts the first prompt and its first reply.
+      appendFileSync(path, ask('prompt-2', 'reply-3', 'Second question') + answer('reply-4', 'prompt-2', 'Four.'));
+      await handle.poll();
+
+      expect(replies(events)).toEqual([
+        { messageId: 'reply-3', turnId: 'prompt-1' },
+        { messageId: 'reply-4', turnId: 'prompt-2' },
+      ]);
+      expect(reproject).toHaveBeenCalledTimes(1);
+    });
+
+    it('walks the window again when a parent is flushed one read after its child, and re-keys the child', async () => {
+      const reproject = vi.spyOn(ClaudeTranscriptProjection.prototype, 'reproject');
+      const { path, handle, events } = await fixture(
+        ask('prompt-1', null, 'First question') + answer('reply-1', 'prompt-1', 'One.'),
+      );
+      await handle.poll();
+
+      // Teardown flushes the second turn's reply before its prompt.
+      appendFileSync(path, answer('reply-2', 'prompt-2', 'Two.'));
+      await handle.poll();
+      expect(reproject).toHaveBeenCalledTimes(1);
+      appendFileSync(path, ask('prompt-2', 'reply-1', 'Second question'));
+      await handle.poll();
+
+      expect(reproject).toHaveBeenCalledTimes(2);
+      expect(replies(events)).toEqual([
+        { messageId: 'reply-2', turnId: 'prompt-1' },
+        { messageId: 'reply-2', turnId: 'prompt-2' },
+      ]);
+    });
   });
 
   it('ignores transcript models and usage during attachment and later changes', async () => {
