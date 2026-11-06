@@ -24,6 +24,7 @@ import { preflightClaudeLaunch } from './detection.js';
 
 import { randomUUID } from 'node:crypto';
 import {
+  AgentAttachRefusedError,
   type AgentEvent,
   type AgentEventConfidence,
   type AgentAdapterBinding,
@@ -1142,8 +1143,12 @@ function createClaudeObservation(
 
 /**
  * Bind to a running Claude Code process (see {@link AttachClaudeTuiSessionOptions}).
- * Fails — before anything is adopted — when the pinned port cannot be bound:
- * the host then knows the ingress is lost and resumes the continuation instead.
+ * Fails — before anything is adopted — when the pinned port cannot be bound.
+ * A port another listener holds is refused with next `retry`
+ * ({@link AgentAttachRefusedError}): in a host's replace or supersession window
+ * it is the predecessor's bridge, which a retry outlasts; past the host's
+ * retries, another program holds the agent's hook connection. Any other bind
+ * failure is a plain error, with no step the host can take.
  */
 export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOptions): Promise<ClaudeSession> {
   if (!Number.isInteger(options.ingress.port) || options.ingress.port <= 0 || options.ingress.token.length === 0) {
@@ -1159,7 +1164,18 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
     token: options.ingress.token,
     allowSession: (id, kind, body) => selection.verdict(id, kind, body),
   });
-  await bridge.start();
+  try {
+    await bridge.start();
+  } catch (error) {
+    // The words name the class, never the port or the bearer.
+    if ((error as NodeJS.ErrnoException | null)?.code === 'EADDRINUSE') {
+      throw new AgentAttachRefusedError(
+        'retry',
+        'the hook port this session was launched against is held by another listener',
+      );
+    }
+    throw error;
+  }
   try {
     const observation = createClaudeObservation(
       { ...options, ingress: undefined, attached: true },
