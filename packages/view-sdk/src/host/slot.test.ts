@@ -321,6 +321,39 @@ describe('createViewSlot', () => {
   });
 });
 
+describe('a stage out of sight (`theme.hidden`), the one change that never waits for a frame', () => {
+  it('reaches the view at once, with what else was waiting, and so does the stage coming back: a hidden page runs no frame', () => {
+    const { frames, replica, recording, slot } = setup();
+    replica.apply({ upsert: [agentViewFixture({ id: 'agent-90', createdAt: 1 })] });
+    slot.setInput({ theme: fixtureTheme('dark', { hidden: true }) });
+    expect(recording.updates).toBe(1);
+    expect(recording.lastInput!.theme.hidden).toBe(true);
+    // The model that was waiting for the frame rides the same update; the frame finds nothing left to deliver.
+    expect(recording.lastInput!.model).toBe(replica.getSnapshot().model);
+    frames.step();
+    expect(recording.updates).toBe(1);
+    slot.setInput({ theme: fixtureTheme('dark') });
+    expect(recording.updates).toBe(2);
+    expect(recording.lastInput!.theme).toBe(fixtureTheme('dark'));
+  });
+
+  it('keeps every other change of the theme for the next frame', () => {
+    const { frames, recording, slot } = setup();
+    slot.setInput({ theme: fixtureTheme('dark', { animations: false }) });
+    expect(recording.updates).toBe(0);
+    frames.step();
+    expect(recording.updates).toBe(1);
+    expect(recording.lastInput!.theme.animations).toBe(false);
+  });
+
+  it('reads an absent hidden as false: a theme that only spells it out is no news', () => {
+    const { frames, recording, slot } = setup();
+    slot.setInput({ theme: fixtureTheme('dark', { hidden: false }) });
+    frames.step(2);
+    expect(recording.updates).toBe(0);
+  });
+});
+
 describe('openEnded, the optional fourth command (TV-8)', () => {
   it('hands a view none when the host has none: absent, never a no-op in its place', () => {
     const { recording } = setup();

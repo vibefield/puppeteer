@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createMotionLoop, type FrameScheduler } from './motion.js';
+import { createMotionLoop, motionAllowed, themeMotion, type FrameScheduler } from './motion.js';
 
 /** Frames on demand: `frame(t)` runs whatever is scheduled at timestamp `t`. */
 function fakeFrames(startAt = 0) {
@@ -247,5 +247,136 @@ describe('a still frame, asked for while the loop is stopped', () => {
     expect(frames.requests).toBe(1);
     frames.frame(16);
     expect(stills).toEqual([]);
+  });
+});
+
+describe('a stage out of sight (`hidden`)', () => {
+  it('requests no frame at all, and stops a loop that ran', () => {
+    const frames = fakeFrames(0);
+    const calls: number[] = [];
+    const hidden = createMotionLoop(
+      (time) => calls.push(time),
+      { animations: true, reducedMotion: false, hidden: true },
+      frames.scheduler,
+    );
+    expect(hidden.running).toBe(false);
+    expect(frames.requests).toBe(0);
+    const shown = createMotionLoop(
+      (time) => calls.push(time),
+      { animations: true, reducedMotion: false },
+      frames.scheduler,
+    );
+    frames.frame(16);
+    shown.update({ hidden: true });
+    expect(shown.running).toBe(false);
+    expect(frames.scheduled).toBe(0);
+    frames.frame(32);
+    expect(calls).toEqual([16]);
+  });
+
+  it('draws no still frame while out of sight, and owes one: drawn once when the stage is shown', () => {
+    const frames = fakeFrames(0);
+    const stills: number[] = [];
+    const loop = createMotionLoop(
+      () => {},
+      { animations: false, reducedMotion: false, hidden: true, still: (time) => stills.push(time) },
+      frames.scheduler,
+    );
+    loop.requestStill();
+    loop.requestStill();
+    expect(frames.requests).toBe(0);
+    frames.frame(16);
+    expect(stills).toEqual([]);
+    loop.update({ hidden: false });
+    expect(frames.scheduled).toBe(1);
+    frames.frame(32);
+    expect(stills).toEqual([32]);
+    frames.frame(48);
+    expect(stills).toEqual([32]);
+  });
+
+  it('keeps a still asked for before the stage left sight owed, never drawn out of sight', () => {
+    const frames = fakeFrames(0);
+    const stills: number[] = [];
+    const loop = createMotionLoop(
+      () => {},
+      { animations: false, reducedMotion: false, still: (time) => stills.push(time) },
+      frames.scheduler,
+    );
+    loop.requestStill();
+    loop.update({ hidden: true });
+    expect(frames.scheduled).toBe(0);
+    frames.frame(16);
+    expect(stills).toEqual([]);
+    loop.update({ hidden: false });
+    frames.frame(32);
+    expect(stills).toEqual([32]);
+  });
+
+  it('shown with motion on, the loop draws: the still owed is dropped', () => {
+    const frames = fakeFrames(0);
+    const moving: number[] = [];
+    const stills: number[] = [];
+    const loop = createMotionLoop(
+      (time) => moving.push(time),
+      { animations: true, reducedMotion: false, hidden: true, still: (time) => stills.push(time) },
+      frames.scheduler,
+    );
+    loop.requestStill();
+    loop.update({ hidden: false });
+    expect(loop.running).toBe(true);
+    expect(frames.scheduled).toBe(1);
+    frames.frame(16);
+    expect(moving).toEqual([16]);
+    expect(stills).toEqual([]);
+  });
+
+  it('takes the theme through themeMotion, which reads an absent hidden as false: a host that drops the key shows the stage', () => {
+    expect(themeMotion({ animations: true, reducedMotion: false })).toEqual({
+      animations: true,
+      reducedMotion: false,
+      hidden: false,
+    });
+    const frames = fakeFrames(0);
+    const loop = createMotionLoop(
+      () => {},
+      themeMotion({ animations: true, reducedMotion: false, hidden: true }),
+      frames.scheduler,
+    );
+    expect(loop.running).toBe(false);
+    // Straight in, a theme without the key changes only the keys it has: the loop would stay out of sight.
+    loop.update({ animations: true, reducedMotion: false });
+    expect(loop.running).toBe(false);
+    loop.update(themeMotion({ animations: true, reducedMotion: false }));
+    expect(loop.running).toBe(true);
+  });
+
+  it('allows motion only while animations are on, motion is not reduced and the stage is in sight', () => {
+    expect(motionAllowed({ animations: true, reducedMotion: false })).toBe(true);
+    expect(motionAllowed({ animations: true, reducedMotion: false, hidden: false })).toBe(true);
+    expect(motionAllowed({ animations: true, reducedMotion: false, hidden: true })).toBe(false);
+    expect(motionAllowed({ animations: false, reducedMotion: false })).toBe(false);
+    expect(motionAllowed({ animations: true, reducedMotion: true })).toBe(false);
+  });
+});
+
+describe("the view's own demand (`moving`)", () => {
+  it('asks for no frame while nothing in the view moves, whatever the theme allows, and runs again when it does', () => {
+    const frames = fakeFrames(0);
+    const calls: number[] = [];
+    const loop = createMotionLoop(
+      (time) => calls.push(time),
+      { animations: true, reducedMotion: false, moving: false },
+      frames.scheduler,
+    );
+    expect(loop.running).toBe(false);
+    expect(frames.requests).toBe(0);
+    loop.update({ moving: true });
+    expect(loop.running).toBe(true);
+    frames.frame(16);
+    expect(calls).toEqual([16]);
+    loop.update({ moving: false });
+    expect(loop.running).toBe(false);
+    expect(frames.scheduled).toBe(0);
   });
 });
