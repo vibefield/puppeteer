@@ -1945,11 +1945,17 @@ unsubscribe();</code></pre>
                       ><span class="badge category-turn">turn</span>
                     </summary>
                     <div class="event-body">
-                      <p>The response cycle completed successfully; final assistant text may be carried directly.</p>
+                      <p>
+                        A user turn ended: it finished, or the person interrupted it. <span class="mono">outcome</span>
+                        says which; omitted reads as completed. An interrupt is not a failure, so it clears the turn
+                        like a completion and raises no failure blocker. The provider's own word for the ending stays
+                        in <span class="mono">stopReason</span>; final assistant text may be carried directly.
+                      </p>
                       <pre><code>interface TurnCompletedEvent {
   type: 'turn:completed';
   turnId?: string;
   stopReason?: string;
+  outcome?: 'completed' | 'interrupted';
   lastAssistantMessage?: string;
 }</code></pre>
                       <div class="projection-row">

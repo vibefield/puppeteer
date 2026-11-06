@@ -260,6 +260,52 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(projection.state.lastAssistantMessage).toBe('done!');
   });
 
+  it('closes a tool whose PostToolUse outgrows the bridge, and says the body was reduced', async () => {
+    const { projection, events, hook } = await startSession();
+    await hook('SessionStart', { source: 'startup' });
+    await hook('UserPromptSubmit', { prompt: 'edit the big file', prompt_id: 'p-big' });
+    const edit = { file_path: '/tmp/big.ts', old_string: 'a', new_string: 'b' };
+    await hook('PreToolUse', { prompt_id: 'p-big', tool_name: 'Edit', tool_input: edit, tool_use_id: 'toolu_big' });
+    expect(projection.state.tools.size).toBe(1);
+
+    // Claude posts the whole tool_response: an Edit's originalFile alone outgrows the bridge's 256 KiB
+    await hook('PostToolUse', {
+      prompt_id: 'p-big',
+      tool_name: 'Edit',
+      tool_input: edit,
+      tool_response: {
+        filePath: '/tmp/big.ts',
+        oldString: 'a',
+        newString: 'b',
+        originalFile: 'x'.repeat(300_000),
+        structuredPatch: [],
+        userModified: false,
+        replaceAll: false,
+      },
+      tool_use_id: 'toolu_big',
+      duration_ms: 4,
+    });
+
+    expect(projection.state.tools.size).toBe(0);
+    expect(projection.state.counters.toolsCompleted).toBe(1);
+    expect(events.find(({ event }) => event.type === 'tool:completed')?.event).toMatchObject({
+      toolCallId: 'toolu_big',
+      output: { filePath: '/tmp/big.ts', originalFile: null },
+    });
+    expect(
+      events.find(({ event }) => event.type === 'workspace:file-operation' && event.phase === 'applied')?.event,
+    ).toMatchObject({ toolCallId: 'toolu_big', changes: [expect.objectContaining({ path: '/tmp/big.ts' })] });
+    const reduced = events.filter(
+      ({ event }) => event.type === 'adapter:native-event' && event.nativeType === 'hook-bridge.body-reduced',
+    );
+    expect(reduced).toHaveLength(1);
+    expect(reduced[0]).toMatchObject({
+      source: 'runtime',
+      nativeEvent: { hookEventName: 'PostToolUse', receivedBytes: expect.any(Number), elided: 1 },
+    });
+    expect((reduced[0]!.nativeEvent as { receivedBytes: number }).receivedBytes).toBeGreaterThan(300_000);
+  });
+
   it('retains malformed known hooks and reports diagnostics without interrupting the bridge', async () => {
     const diagnostics: ClaudeHookDiagnostic[] = [];
     const { projection, prepared, events, hook } = await startSession({
@@ -694,7 +740,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       expect((await receipt).status).toBe('confirmed');
     });
 
-    it('closes the request at the person’s reject; a decision that closes nothing stays native', async () => {
+    it('closes the request and its call at the person’s reject; a decision closing nothing stays native', async () => {
       const { projection, events, hook, decide, resolved } = await startDecidingSession();
       await hook('SessionStart', {});
       await hook('UserPromptSubmit', { prompt: 'risky', prompt_id: 'p-risky' });
@@ -721,9 +767,74 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'denied' },
         }),
       ]);
+      // The rejected call never runs and no hook will say so: the decision closes it, as the actor that asked.
+      const failed = () => events.filter(({ event }) => event.type === 'tool:failed');
+      expect(failed()).toEqual([
+        expect.objectContaining({
+          source: 'native-telemetry',
+          promptId: 'p-risky',
+          event: expect.objectContaining({
+            type: 'tool:failed',
+            toolCallId: 'toolu_risky',
+            error: 'permission denied',
+          }),
+        }),
+      ]);
+      expect(failed()[0]?.agentId).toBeUndefined();
+      expect(projection.state.tools.size).toBe(0);
 
       await hook('Stop', { prompt_id: 'p-risky', last_assistant_message: 'Not run.' });
       expect(resolved()).toHaveLength(1);
+      expect(failed()).toHaveLength(1);
+
+      // A subagent's request outlives the main thread's Stop. The session's end closes it, published as the
+      // subagent that asked (SessionEnd's own actor is the main thread), before the session exits.
+      const worker = {
+        prompt_id: 'p-risky',
+        agent_id: 'worker-1',
+        agent_type: 'general-purpose',
+        tool_name: 'Bash',
+        tool_input: { command: 'rm y' },
+      };
+      await hook('PreToolUse', { ...worker, tool_use_id: 'toolu_worker' });
+      await hook('PermissionRequest', worker);
+      // The session's own state counts no subagent's request (core's state skips every envelope an agent or actor
+      // owns), so the worker's request is read where the driver publishes it: under the subagent, tied to its call.
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          agentId: 'worker-1',
+          event: expect.objectContaining({ type: 'interaction:permission-requested', toolCallId: 'toolu_worker' }),
+        }),
+      );
+      await hook('SessionEnd', { reason: 'other' });
+
+      const exited = events.findIndex(({ event }) => event.type === 'session:exited');
+      expect(exited).toBeGreaterThan(-1);
+      const closures = events
+        .map((envelope, index) => ({ envelope, index }))
+        .filter(
+          ({ envelope }) =>
+            envelope.agentId === 'worker-1' &&
+            (envelope.event.type === 'interaction:permission-resolved' || envelope.event.type === 'tool:failed'),
+        );
+      expect(closures.map(({ envelope }) => envelope)).toEqual([
+        expect.objectContaining({
+          source: 'native-hook',
+          agentType: 'general-purpose',
+          event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'dismissed' },
+        }),
+        expect.objectContaining({
+          source: 'native-hook',
+          agentType: 'general-purpose',
+          event: expect.objectContaining({
+            type: 'tool:failed',
+            toolCallId: 'toolu_worker',
+            error: 'permission dismissed',
+          }),
+        }),
+      ]);
+      expect(closures.every(({ index }) => index < exited)).toBe(true);
+      expect(events[exited]?.agentId).toBeUndefined();
     });
 
     it('settles at PostToolUse when no decision arrived, and a late decision closes nothing twice', async () => {
@@ -1945,12 +2056,12 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     const sessionId = launched.sessionId;
 
     // The host RELEASES (stable ingress): its bridge goes, the process and
-    // everything it reads stay — the staged settings and the hook forwarder in
+    // everything it reads stay — the staged settings and the forwarder in
     // particular, which the running process execs on every hook. A plain
     // dispose is the close that removes them.
     await launched.dispose({ release: true });
     expect(existsSync(prepared!.settingsPath)).toBe(true);
-    expect(existsSync(prepared!.hookForwarderPath)).toBe(true);
+    expect(existsSync(prepared!.forwarderPath!)).toBe(true);
     const configDir = mkdtempSync(join(tmpdir(), 'driver-attach-root-'));
     const project = join(configDir, 'projects', '-tmp');
     mkdirSync(project, { recursive: true });

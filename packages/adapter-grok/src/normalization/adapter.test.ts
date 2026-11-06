@@ -116,3 +116,21 @@ describe('Grok extension provenance and confidence', () => {
     ]);
   });
 });
+
+describe('Grok turn endings', () => {
+  it('ends a cancelled turn as interrupted and keeps the native stop reason', () => {
+    const normalizer = new GrokUpdateNormalizer();
+    // The 1.0.70 viewer-session capture ends a turn the person stopped with stop_reason `cancelled`.
+    const records = [
+      durable('_x.ai/session/update', { sessionUpdate: 'turn_completed', stop_reason: 'end_turn' }, 'prompt-1'),
+      durable('_x.ai/session/update', { sessionUpdate: 'turn_completed', stop_reason: 'cancelled' }, 'prompt-2'),
+    ];
+    const ends = records
+      .flatMap((record) => normalizer.normalize(record))
+      .flatMap(({ event }) => (event.type === 'turn:completed' ? [event] : []));
+    expect(ends).toEqual([
+      { type: 'turn:completed', turnId: 'prompt-1', stopReason: 'end_turn' },
+      { type: 'turn:completed', turnId: 'prompt-2', stopReason: 'cancelled', outcome: 'interrupted' },
+    ]);
+  });
+});

@@ -65,6 +65,7 @@ export class AcpPromptService {
             type: 'turn:completed',
             turnId,
             stopReason: response.stopReason,
+            ...(response.stopReason === 'cancelled' ? { outcome: 'interrupted' as const } : {}),
             lastAssistantMessage: this.assistantText || undefined,
           },
           'native-hook',

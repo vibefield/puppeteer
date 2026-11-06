@@ -1,6 +1,7 @@
 # Spawn-Through for Terminal Hosts
 
-**Status:** Current host guide, 2026-09-27 (PU-17; PU-9a: what an invocation is, and strict)
+**Status:** Current host guide, 2026-09-27 (PU-17; PU-9a: what an invocation is, and strict; 2026-11-06: the forwarder
+runtime a single executable lends, §9)
 
 **Audience:** Developers of an application that owns terminals — a desktop app, a daemon — and wants a command a
 person types in one of them to start as a managed Puppeteer session
@@ -444,6 +445,39 @@ await build({
 });
 ```
 
+**Lend the forwarder runtime when you are a single executable.** An agent runs some of its hooks and its status
+lines as commands (Claude: `SessionStart`, `Setup` and both status lines), and each one relays to the adapter's
+loopback ingress through a forwarder. An adapter stages that forwarder as a script and runs it with its own process's
+script runner (`resolveScriptRunner`, `@vibefield/puppeteer-native-observation`): the host's Node, or under Electron a
+Node on `PATH` and only then the Electron binary with `ELECTRON_RUN_AS_NODE=1`. A Node single executable has no
+runner: its `process.execPath` runs only its own sealed entry, so it never runs a forwarder itself. Such a host
+bundles the builtin forwarder entry into itself, the way it bundles the shim, and lends the program that runs it as
+`AgentHost.forwarderRuntime`:
+
+```ts
+await build({
+  stdin: { contents: "import '@vibefield/puppeteer-builtin-providers/forwarder';", resolveDir: hostRoot },
+  outfile: join(dist, 'agent-forwarder.cjs'),
+  bundle: true,
+  platform: 'node',
+  format: 'cjs',
+  target: 'node22',
+});
+
+const agentHost: AgentHost = {
+  spawnTerminal,
+  automateTerminal,
+  // Your executable in a role that runs the sealed entry above, and nothing it is handed.
+  forwarderRuntime: { command: process.execPath, args: ['<your forwarder role>'] },
+};
+```
+
+Every command hook and status line then runs `<command> <args...> <word> <word args...>` and nothing is staged. The
+words (`claude.hook.v1`, `claude.statusline.v1`) are a protocol across releases: an agent launched by one build of
+your host runs the entry the next build ships once you update in place, so they are append-only, and a role argument
+you ship must be kept. A host that lends nothing and has no runner gets the adapter's refusal at launch
+(`FORWARDER_RUNTIME_UNAVAILABLE`), never a session it cannot observe.
+
 **Compose it.** A sketch of the whole host side:
 
 ```ts
@@ -522,6 +556,8 @@ The duties, one by one:
   end to end a median of 13.1 s against 0.77 s (n=8) at load 229–282. The cause was not found, and no number was
   taken on an idle host. A host pins the Node it found at startup: if that Node is uninstalled while the host runs,
   the launchers fail until the host chooses again.
+- **Lend a forwarder runtime** when your process is a Node single executable (above). A host on Node or Electron lends
+  none: the adapter's script runner runs its staged forwarder.
 - **Resolve the real executables** before writing the table, and decide the names; a name the table lacks is never
   intercepted by the gateway.
 - **Resolve terminals from your own evidence** (Godview matches the shell's pid to the request's `parentPid`, then its

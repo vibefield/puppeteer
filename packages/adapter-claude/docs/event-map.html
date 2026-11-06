@@ -607,7 +607,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
 <p><code>PostToolUse</code> hooks fire after a tool has already executed successfully. The input includes both <code>tool_input</code>, the arguments sent to the tool, and <code>tool_response</code>, the result it returned. The exact schema for both depends on the tool.</p>
 <p>``<code>json {   "session_id": "abc123",   "transcript_path": "/Users/.../.claude/projects/.../00893aaf-19fa-41d2-8238-13269b9b3ca0.jsonl",   "cwd": "/Users/...",   "permission_mode": "default",   "hook_event_name": "PostToolUse",   "tool_name": "Write",   "tool_input": {     "file_path": "/path/to/file.txt",     "content": "file content"   },   "tool_response": {     "filePath": "/path/to/file.txt",     "success": true   },   "tool_use_id": "toolu_01ABC123...",   "duration_ms": 12 } </code>`<code></p>
 <table class="def-table"><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody><tr><td class="m"></code>duration_ms`</td><td>Optional. Tool execution time in milliseconds. Excludes time spent in permission prompts and PreToolUse hooks</td></tr></tbody></table>
-    <p class="hook-usage"><strong>Puppeteer:</strong> We register this hook and fold it into SessionRuntimeState.</p>
+    <p class="hook-usage"><strong>Puppeteer:</strong> We register this hook and fold it into SessionRuntimeState. Its body carries the whole <code>tool_response</code>, which nothing bounds (an Edit's <code>originalFile</code>, a Write's content, an image Read's base64), and it is the only event that closes its tool, so the bridge never refuses one for its size: past 256 KiB it is reduced (strings over 4 KiB read null, and once the reduced body reaches 256 KiB only top-level scalars such as <code>tool_use_id</code> are added to it) and one <code>adapter:native-event</code> <code>hook-bridge.body-reduced</code> names the hook, the bytes received and how many values were elided.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="hook-PostToolUseFailure">
@@ -1117,7 +1117,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
                 <tr><td class="m">MessageDisplay</td><td class="m">http</td><td class="m">conversation:assistant-message (streamed)</td><td>lastAssistantMessage; no visual status</td></tr>
                 <tr><td class="m">PreToolUse</td><td class="m">http</td><td class="m">tool:requested · interaction:permission-resolved (if match)</td><td>tools += requested</td></tr>
                 <tr><td class="m">PermissionRequest</td><td class="m">http</td><td class="m">interaction:permission-requested</td><td>waiting; synthetic request id (FIFO)</td></tr>
-                <tr><td class="m">PostToolUse</td><td class="m">http</td><td class="m">tool:completed</td><td>tools −=</td></tr>
+                <tr><td class="m">PostToolUse</td><td class="m">http</td><td class="m">tool:completed</td><td>tools −=; a body past 256 KiB arrives reduced, never refused (the PostToolUse card says how)</td></tr>
                 <tr><td class="m">PostToolUseFailure</td><td class="m">http</td><td class="m">tool:failed</td><td>tools −=</td></tr>
                 <tr><td class="m">Stop</td><td class="m">http</td><td class="m">turn:completed</td><td>ready; clears activeTurn</td></tr>
                 <tr><td class="m">SubagentStart / Stop</td><td class="m">http</td><td class="m">delegation:subagent-started / delegation:subagent-stopped</td><td>subagents ±=; not read by classifyAgentStatus</td></tr>

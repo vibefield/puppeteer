@@ -2312,7 +2312,11 @@ type MonitorObservationPhase = 'bootstrap' | 'live' | 'correction' | 'resync';</
             <div class="cards">
               <article class="card">
                 <h3>Ordinary change</h3>
-                <p>Coalesced for 100 ms by default, so bursts produce fewer full-state publications.</p>
+                <p>
+                  Coalesced for 100 ms by default. An accepted input derives only the transitions view (status,
+                  blockers, compaction, environment, liveness, native session); the full state is projected once per
+                  window, its usage read from an index rebuilt only when usage changes.
+                </p>
               </article>
               <article class="card">
                 <h3>Urgent change</h3>
@@ -2334,8 +2338,8 @@ type MonitorObservationPhase = 'bootstrap' | 'live' | 'correction' | 'resync';</
               <article class="card">
                 <h3>Transition notice</h3>
                 <p>
-                  Derived from unbounded before/after projections; bootstrap, correction, resync, and replacement stay
-                  silent.
+                  Derived from the before/after transitions views, never full projections; bootstrap, correction,
+                  resync, and replacement stay silent.
                 </p>
               </article>
               <article class="card">
@@ -2963,7 +2967,8 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
                 <strong>blocked</strong>
                 <p>
                   At least one pending permission/question or active failure, with no child currently working. Failure
-                  outranks question, then permission.
+                  outranks question, then permission. A dead run is blocked by its failures only; nobody can answer its
+                  permission or question.
                 </p>
               </article>
               <article class="status-card freshness">
@@ -2974,6 +2979,11 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
                 </p>
               </article>
             </div>
+            <p>
+              A turn ends one of two ways. <span class="mono">turn:completed</span> says it finished, or that the person
+              interrupted it (<span class="mono">outcome: 'interrupted'</span>); either way the turn's activity retracts
+              and no failure is raised. Only <span class="mono">turn:failed</span> raises a failure blocker.
+            </p>
 
             <h3>Bounded public collections</h3>
             <div class="table-wrap">

@@ -1,4 +1,5 @@
 import { AgentLaunchRefusedError } from '@vibefield/puppeteer-core';
+import { ownScriptRunnerFacts, resolveScriptRunner } from '@vibefield/puppeteer-native-observation';
 /**
  * Claude executable detection and capability probe (DESIGN §10, §16.2 steps
  * 1–3). Capability-probe, don't assume: we read `claude --version` and
@@ -12,6 +13,9 @@ import { AgentLaunchRefusedError } from '@vibefield/puppeteer-core';
  */
 
 import { execFile } from 'node:child_process';
+import { constants } from 'node:fs';
+import { access, realpath, stat } from 'node:fs/promises';
+import { delimiter, extname, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { CLAUDE_BRIEFING_FLAGS } from './launch/briefing.js';
 import { CLAUDE_DETECTION_SURFACE } from './generated/detection-surface.js';
@@ -126,16 +130,19 @@ const execFileAsync = promisify(execFile);
 const SCRIPT_EXECUTABLE = /\.(mjs|cjs|js|ts)$/;
 
 export const defaultClaudeExec: ClaudeExec = async (file, args) => {
-  // Adapter/Imposter development commonly supplies a JavaScript entry point.
-  // Match launch preparation by running scripts under Node; Electron resolves
-  // `node` from PATH rather than accidentally entering Electron-as-Node.
-  const isScript = SCRIPT_EXECUTABLE.test(file);
-  const command = isScript ? (process.versions.electron ? 'node' : process.execPath) : file;
-  const commandArgs = isScript ? [file, ...args] : args;
+  // Adapter/Imposter development commonly supplies a JavaScript entry point. It runs under this process's script
+  // runner, as launch preparation runs it; where there is none (a single executable) the probe fails, never runs
+  // the script as that executable.
+  const script = SCRIPT_EXECUTABLE.test(file);
+  const runner = script ? resolveScriptRunner(ownScriptRunnerFacts()) : undefined;
+  if (script && runner === undefined) throw new Error(`no program in this process can run the script ${file}`);
+  const command = runner ? runner.command : file;
+  const commandArgs = runner ? [...runner.args, file, ...args] : args;
   const { stdout } = await execFileAsync(command, commandArgs, {
     timeout: 10_000,
     maxBuffer: 1024 * 1024,
     encoding: 'utf8',
+    ...(runner?.env ? { env: { ...process.env, ...runner.env } } : {}),
   });
   return { stdout };
 };
@@ -165,9 +172,75 @@ export function resolveClaudeExecutable(explicit?: string, environment: NodeJS.P
   return explicit ?? environment[surface.envVar] ?? surface.executables[0] ?? 'claude';
 }
 
+/**
+ * What the launch preflight keys a detection by: the file that runs for `executable` (the one `execFile` finds, or a
+ * script's own file), as it is now. undefined when no such file can be read, and then nothing is kept for it.
+ */
+export type ClaudeExecutableIdentify = (executable: string) => Promise<string | undefined>;
+
+/**
+ * The files `execFile` tries for `executable`, in order, with no shell: libuv's lookup over the PATH of the child's
+ * environment (the default exec passes this process's).
+ * - POSIX (execvp): a name with a slash is that file; otherwise each PATH entry, an empty one being the working
+ *   directory. With no PATH libuv falls back to a built-in default, which no identity guesses at.
+ * - Windows (src/win/process.c search_path): PATHEXT is NOT read. A name with an extension is tried as given, then
+ *   `.com` and `.exe` are appended. A bare name is looked for in the working directory first (unless
+ *   NoDefaultCurrentDirectoryInExePath is set), then in each PATH entry, unquoted, empty entries skipped.
+ */
+function executableCandidates(executable: string, environment: NodeJS.ProcessEnv): string[] {
+  if (process.platform !== 'win32') {
+    if (executable.includes('/')) return [resolve(executable)];
+    return (environment.PATH?.split(delimiter) ?? []).map((directory) => resolve(directory, executable));
+  }
+  const names = [...(extname(executable).length > 1 ? [executable] : []), `${executable}.com`, `${executable}.exe`];
+  if (/[\\/:]/.test(executable)) return names.map((name) => resolve(name));
+  const directories = (environment.PATH ?? '')
+    .split(delimiter)
+    .map((directory) => directory.replace(/^["']|["']$/g, ''))
+    .filter((directory) => directory.length > 0);
+  if (environment.NoDefaultCurrentDirectoryInExePath === undefined) directories.unshift('');
+  return directories.flatMap((directory) => names.map((name) => resolve(directory, name)));
+}
+
+/**
+ * The default identity: the real path of the file the lookup runs, with the stat fields an in-place update moves (the
+ * native installer re-points its launcher symlink at a new version; npm rewrites the package's entry). The first
+ * candidate that is a file this process may execute is the one run: execvp passes over the rest, and on Windows `X_OK`
+ * reads as existence, which is libuv's own test. A script is never exec'd: the default exec runs it as
+ * `<runner> <script>`, and the runner opens the name as a path from the working directory, so it is that one file,
+ * executable or not.
+ */
+export async function identifyClaudeExecutable(
+  executable: string,
+  environment: NodeJS.ProcessEnv = process.env,
+): Promise<string | undefined> {
+  const script = SCRIPT_EXECUTABLE.test(executable);
+  for (const candidate of script ? [resolve(executable)] : executableCandidates(executable, environment)) {
+    try {
+      const real = await realpath(candidate);
+      const file = await stat(real);
+      if (!file.isFile()) continue;
+      if (!script) await access(real, constants.X_OK);
+      return [real, file.mtimeMs, file.size, file.ino].join('\0');
+    } catch {
+      // Not a file the lookup would run; the next candidate decides.
+    }
+  }
+  return undefined;
+}
+
+interface ClaudeProbe {
+  detection: ClaudeDetection;
+  /** A version was parsed and help was read: only such a detection is a fact about the file. */
+  complete: boolean;
+}
+
 export async function detectClaude(options: DetectClaudeOptions = {}): Promise<ClaudeDetection> {
-  const exec = options.exec ?? defaultClaudeExec;
   const executable = resolveClaudeExecutable(options.executable);
+  return (await probeClaude(executable, options.exec ?? defaultClaudeExec)).detection;
+}
+
+async function probeClaude(executable: string, exec: ClaudeExec): Promise<ClaudeProbe> {
   const warnings: string[] = [];
 
   let version: string | undefined;
@@ -215,7 +288,10 @@ export async function detectClaude(options: DetectClaudeOptions = {}): Promise<C
     }
   }
 
-  return { executable, version, flags: supported, warnings };
+  return {
+    detection: { executable, version, flags: supported, warnings },
+    complete: version !== undefined && help.trim() !== '',
+  };
 }
 
 export function requiredClaudeLaunchCapabilities(requirements: ClaudeLaunchRequirements): ClaudeLaunchCapability[] {
@@ -254,22 +330,49 @@ export function assertClaudeLaunchCapabilities(
 
 export type ClaudeLaunchPreflight = (options: PreflightClaudeLaunchOptions) => Promise<ClaudeDetection>;
 
+export interface ClaudeLaunchPreflightOptions {
+  /** The executable's identity, the one key a detection is kept by; default {@link identifyClaudeExecutable}. */
+  identify?: ClaudeExecutableIdentify | undefined;
+}
+
 /**
- * Build a process-lifetime preflight. Detection is cached per resolved executable,
- * while each launch still checks only the flags its concrete recipe will use.
+ * Build a process-lifetime preflight. Each launch checks only the flags its concrete recipe will use, against a probe
+ * kept only while it stands for the file that will run:
+ * - Keyed by the executable's identity, so an in-place update (agents.update, the vendor's own updater) probes again.
+ *   There is no invalidate verb: the identity is the one invalidation authority. An executable with no identity is
+ *   probed at every launch.
+ * - Only a complete probe is kept. One that failed (a timeout, Gatekeeper, a reinstall half done) is an observation,
+ *   not a fact about the file: launches already waiting share it, it is dropped once it settles, and the next launch
+ *   probes again.
+ * - One entry per executable name: a new identity replaces the old, so what is held is what is installed now.
  */
-export function createClaudeLaunchPreflight(exec: ClaudeExec = defaultClaudeExec): ClaudeLaunchPreflight {
-  const detections = new Map<string, Promise<ClaudeDetection>>();
+export function createClaudeLaunchPreflight(
+  exec: ClaudeExec = defaultClaudeExec,
+  { identify = identifyClaudeExecutable }: ClaudeLaunchPreflightOptions = {},
+): ClaudeLaunchPreflight {
+  const probes = new Map<string, { key: string; probe: Promise<ClaudeProbe> }>();
+  const probeFor = (executable: string, key: string | undefined): Promise<ClaudeProbe> => {
+    if (key === undefined) {
+      probes.delete(executable);
+      return probeClaude(executable, exec);
+    }
+    const held = probes.get(executable);
+    if (held !== undefined && held.key === key) return held.probe;
+    const entry = { key, probe: probeClaude(executable, exec) };
+    probes.set(executable, entry);
+    const forget = (): void => {
+      if (probes.get(executable) === entry) probes.delete(executable);
+    };
+    void entry.probe.then(({ complete }) => {
+      if (!complete) forget();
+    }, forget);
+    return entry.probe;
+  };
   return async (options) => {
     const executable = resolveClaudeExecutable(options.executable);
-    let detection = detections.get(executable);
-    if (!detection) {
-      detection = detectClaude({ executable, exec });
-      detections.set(executable, detection);
-    }
-    const resolved = await detection;
-    assertClaudeLaunchCapabilities(resolved, options);
-    return resolved;
+    const { detection } = await probeFor(executable, await identify(executable));
+    assertClaudeLaunchCapabilities(detection, options);
+    return detection;
   };
 }
 

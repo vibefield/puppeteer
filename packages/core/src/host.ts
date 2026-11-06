@@ -56,6 +56,25 @@ export interface AgentHost {
    * host's secrets. Absent = the adapter merges its variables over its own process environment.
    */
   helperEnvironment?(env: Record<string, string>): Record<string, string>;
+  /**
+   * The program that runs the builtin forwarder entry (`@vibefield/puppeteer-builtin-providers/forwarder`) in the
+   * agent's process tree, as `<command> <args...> <word> <word args...>`: the hooks and status lines an agent can
+   * only run as commands relay through it to the adapter's loopback ingress. A single-executable host must lend it,
+   * having sealed that entry into itself: such an executable runs only its own entry, never a script an adapter
+   * stages. Absent = the adapter stages its forwarder and runs it with this process's script runner (a real Node,
+   * or Electron's), and refuses the launch where there is none.
+   */
+  forwarderRuntime?: AgentForwarderRuntime | undefined;
+}
+
+/**
+ * A program a host lends to run the builtin forwarder entry ({@link AgentHost.forwarderRuntime}). The words that
+ * follow `args` are the adapters' own protocol, append-only across releases: an agent launched by one build runs the
+ * entry a later build ships once its host has updated in place.
+ */
+export interface AgentForwarderRuntime {
+  command: string;
+  args: readonly string[];
 }
 
 /**
