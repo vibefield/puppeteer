@@ -4,7 +4,9 @@ import type {
   AccountUsageEntry,
   AccountUsageFailure,
   AccountUsageFetchResult,
+  AccountUsageMetric,
   AccountUsageProvider,
+  AccountUsageSnapshot,
 } from '@vibefield/puppeteer-core';
 
 const MAX_BACKOFF_MS = 30 * 60_000;
@@ -33,7 +35,8 @@ export interface AccountUsageMonitorOptions {
 
 export interface AccountUsageRefreshOptions {
   /** Bypass the normal polling interval, but never a failure's backoff or Retry-After.
-   * Successful readings are reused for at least 30 seconds, including pushed readings. */
+   * Successful readings are reused for at least 30 seconds: a poll's, or a push
+   * that carries every meter the last poll did. */
   force?: boolean;
   /** Only ask these registered accounts; the returned batch still contains every row. */
   profileIds?: readonly string[];
@@ -42,7 +45,8 @@ export interface AccountUsageRefreshOptions {
 export interface AccountUsageMonitor {
   snapshot(): Promise<AccountUsageBatch>;
   refresh(options?: AccountUsageRefreshOptions): Promise<AccountUsageBatch>;
-  /** Apply a provider push update without decoding its native transport. */
+  /** Apply a provider push update without decoding its native transport. A
+   * push merges into its row by metric id and never brings a poll forward. */
   ingest(providerId: string, result: AccountUsageFetchResult): AccountUsageBatch;
   /** Re-read the registry; `poll: false` only reconciles rows, allowing a caller
    * to follow with a refresh of selected accounts instead of fetching every new row. */
@@ -68,11 +72,62 @@ function unavailable(provider: AccountUsageProvider): AccountUsageFetchResult {
   };
 }
 
+/**
+ * A push is a reading of the meters it carries. Over the row's reading, each
+ * meter it carries replaces the one with its id, in that reading's order; a
+ * meter it does not carry stays, dated by the reading it came from when that
+ * is older than the push; a meter only the push carries follows, in the
+ * push's order. The rest of the snapshot is the push's, the credits too when
+ * it carries them, and the account is the row's. With no reading yet, the
+ * push is the reading.
+ */
+function mergePush(
+  base: AccountUsageAvailable | undefined,
+  push: AccountUsageAvailable,
+  profileId: string | undefined,
+): AccountUsageAvailable {
+  if (!base) return push;
+  const pushed = new Map(push.snapshot.metrics.map((metric) => [metric.id, metric]));
+  const pushedAtMs = Date.parse(push.snapshot.fetchedAt);
+  const metrics = base.snapshot.metrics.map((metric): AccountUsageMetric => {
+    const fresh = pushed.get(metric.id);
+    if (fresh) return fresh;
+    const readAt = metric.fetchedAt ?? base.snapshot.fetchedAt;
+    return Date.parse(readAt) < pushedAtMs ? { ...metric, fetchedAt: readAt } : metric;
+  });
+  const kept = new Set(base.snapshot.metrics.map((metric) => metric.id));
+  metrics.push(...push.snapshot.metrics.filter((metric) => !kept.has(metric.id)));
+  const credits = push.snapshot.credits ?? base.snapshot.credits;
+  const snapshot: AccountUsageSnapshot = {
+    provider: push.snapshot.provider,
+    fetchedAt: push.snapshot.fetchedAt,
+    scope: push.snapshot.scope,
+    source: push.snapshot.source,
+    metrics,
+    ...(credits ? { credits } : {}),
+    ...(profileId === undefined ? {} : { profileId }),
+  };
+  return { status: 'available', snapshot };
+}
+
+/** A push stands in for the last poll only when it carries every meter that poll did, and its credits if any. */
+function covers(push: AccountUsageAvailable, polled: AccountUsageAvailable | undefined): boolean {
+  if (!polled) return false;
+  const carried = new Set(push.snapshot.metrics.map((metric) => metric.id));
+  return (
+    polled.snapshot.metrics.every((metric) => carried.has(metric.id)) &&
+    (polled.snapshot.credits === undefined || push.snapshot.credits !== undefined)
+  );
+}
+
 interface ProviderRefreshState {
   provider: AccountUsageProvider;
   profile?: AccountUsageProfileRef;
   entry?: AccountUsageEntry;
+  /** The row's reading: the last poll's, with every push since merged into it. */
   lastAvailable?: AccountUsageAvailable;
+  /** The last successful poll, what a push must carry all of before it may defer the next one. */
+  lastPolled?: AccountUsageAvailable;
   nextRefreshAtMs: number;
   consecutiveFailures: number;
   lastCompletedAtMs?: number;
@@ -183,30 +238,53 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
     return batch;
   };
 
-  const applyResult = (
-    state: ProviderRefreshState,
-    result: AccountUsageFetchResult,
-    completedAtMs: number,
-    pushed: boolean,
-  ): void => {
+  /** A failure keeps the row's last good reading beside it (`stale`), or is the row's result when there is none. */
+  const failureEntry = (state: ProviderRefreshState, result: AccountUsageFailure): AccountUsageEntry => {
+    const provider = state.provider;
+    return state.lastAvailable
+      ? { provider, ...identify(state), result: state.lastAvailable, stale: true, refreshFailure: result }
+      : { provider, ...identify(state), result };
+  };
+
+  /** A poll is the whole reading: it replaces the row's, pushes merged in included, and sets the poll's clock. */
+  const applyPolled = (state: ProviderRefreshState, result: AccountUsageFetchResult, completedAtMs: number): void => {
     const provider = state.provider;
     state.lastCompletedAtMs = completedAtMs;
     if (result.status === 'available') {
       state.lastAvailable = result;
+      state.lastPolled = result;
       state.entry = { provider, ...identify(state), result };
       state.consecutiveFailures = 0;
-      const nextPollMs = pushed
-        ? (provider.refresh.pushUpdatePollIntervalMs ?? refreshMsByProvider.get(provider.id)!)
-        : refreshMsByProvider.get(provider.id)!;
-      state.nextRefreshAtMs = completedAtMs + nextPollMs;
+      state.nextRefreshAtMs = completedAtMs + refreshMsByProvider.get(provider.id)!;
       return;
     }
 
-    state.entry = state.lastAvailable
-      ? { provider, ...identify(state), result: state.lastAvailable, stale: true, refreshFailure: result }
-      : { provider, ...identify(state), result };
+    state.entry = failureEntry(state, result);
     state.nextRefreshAtMs = nextRefreshAt(provider, result, state, completedAtMs);
     state.consecutiveFailures += 1;
+  };
+
+  /**
+   * A push is a reading of the meters it carries: it merges into the row by
+   * metric id and never moves the poll's clock (its cadence, its failure
+   * backoff and Retry-After, the manual guard), save that a push carrying
+   * every meter the last poll did stands in for that poll and may defer the
+   * next one, never bring it forward. A failed push shows beside the row's
+   * reading and moves nothing.
+   */
+  const applyPushed = (state: ProviderRefreshState, result: AccountUsageFetchResult, completedAtMs: number): void => {
+    const provider = state.provider;
+    if (result.status !== 'available') {
+      state.entry = failureEntry(state, result);
+      return;
+    }
+    const merged = mergePush(state.lastAvailable, result, state.profile?.id);
+    state.lastAvailable = merged;
+    state.entry = { provider, ...identify(state), result: merged };
+    if (!covers(result, state.lastPolled)) return;
+    state.lastCompletedAtMs = completedAtMs;
+    const deferMs = provider.refresh.pushUpdatePollIntervalMs ?? refreshMsByProvider.get(provider.id)!;
+    state.nextRefreshAtMs = Math.max(state.nextRefreshAtMs, completedAtMs + deferMs);
   };
 
   const refresh = (requestOptions: AccountUsageRefreshOptions = {}): Promise<AccountUsageBatch> => {
@@ -243,7 +321,7 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
     ).then((results): AccountUsageBatch => {
       const completedAt = now();
       const completedAtMs = completedAt.valueOf();
-      for (const [state, result] of results) applyResult(state, result, completedAtMs, false);
+      for (const [state, result] of results) applyPolled(state, result, completedAtMs);
       return materializeBatch(completedAt);
     });
     inFlight = request;
@@ -344,6 +422,7 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
         // A login can switch accounts. Never retain the previous account's
         // meters, even when a server refusal still prevents another reading.
         delete state.lastAvailable;
+        delete state.lastPolled;
         if (
           failure &&
           (failure.status !== 'unauthenticated' || failure.code === 'rate-limited' || retryAt > now().valueOf())
@@ -367,7 +446,7 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
       if (!provider) throw new Error(`unknown account usage provider: ${providerId}`);
       const completedAt = now();
       const profileId = result.status === 'available' ? result.snapshot.profileId : undefined;
-      applyResult(ingestState(provider, profileId), result, completedAt.valueOf(), true);
+      applyPushed(ingestState(provider, profileId), result, completedAt.valueOf());
       return materializeBatch(completedAt);
     },
     start() {

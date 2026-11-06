@@ -2359,6 +2359,7 @@ interface AccountUsageMetric {
   startsAt?: string;
   resetsAt?: string;
   group?: AccountUsageMetricGroup;
+  fetchedAt?: string;
 }
 
 interface AccountUsageCredits {
@@ -2446,7 +2447,12 @@ interface AccountUsageProvider {
                     <td>Polling and push</td>
                     <td>
                       Use pollIntervalMs and optional pushUpdatePollIntervalMs as provider recommendations. The
-                      application owns scheduling, caching and display policy. Honor retryAt when provided.
+                      application owns scheduling, caching and display policy. Honor retryAt when provided. A push is a
+                      reading of the meters it carries: merge it into the last reading by metric ID rather than
+                      replacing it. pushUpdatePollIntervalMs only defers a poll the push covers (it carries every meter,
+                      and the credits, the last poll had); a push never brings a poll forward. A meter a later, partial
+                      reading did not carry keeps its own <code>fetchedAt</code>, present only when earlier than its
+                      snapshot’s.
                     </td>
                   </tr>
                   <tr>
@@ -2871,10 +2877,13 @@ interface AccountUsageBatch {
   entries: AccountUsageEntry[];
 }</code></pre>
             <p>
-              The account usage monitor schedules reads per provider/profile, coalesces refreshes, incorporates pushes,
-              and applies retry/backoff policy. A failed refresh can retain the last successful result with
-              <code>stale: true</code> and <code>refreshFailure</code>; the renderer can show both the last known quota
-              and current refresh health. Profile defaults are app policy and do not change existing processes.
+              The account usage monitor schedules reads per provider/profile, coalesces refreshes, merges each push
+              into its row by metric ID, and applies retry/backoff policy. A push never moves the poll’s clock: it
+              never brings a poll forward, never shortens a failure’s backoff or Retry-After, and counts toward the
+              manual refresh guard only when it covers the last poll, which it may then defer. A failed refresh can
+              retain the last successful result with <code>stale: true</code> and <code>refreshFailure</code>; the
+              renderer can show both the last known quota and current refresh health. Profile defaults are app policy
+              and do not change existing processes.
             </p>
           </section>
           <section id="usage-history">

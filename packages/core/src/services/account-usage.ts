@@ -68,6 +68,11 @@ export const AccountUsageMetricSchema = z.strictObject({
   resetsAt: TimestampSchema.optional(),
   /** Absent for the plan's own meters; `label` stays unique across groups. */
   group: AccountUsageMetricGroupSchema.optional(),
+  /**
+   * When this meter was read, present only when earlier than its snapshot's `fetchedAt`: a meter a later, partial
+   * reading (a push) did not carry, kept from the reading that did.
+   */
+  fetchedAt: TimestampSchema.optional(),
 });
 export type AccountUsageMetric = z.infer<typeof AccountUsageMetricSchema>;
 
@@ -93,7 +98,10 @@ export const AccountUsageSnapshotSchema = z
     source: AccountUsageSourceSchema,
     /** Adapter-ranked metrics. Generic consumers preserve this order. */
     metrics: z.array(AccountUsageMetricSchema),
-    /** Account-wide credits that are not represented by a percentage meter. */
+    /**
+     * Account-wide credits that are not represented by a percentage meter. A push that does not carry them keeps the
+     * last reading's, which have no age of their own.
+     */
     credits: AccountUsageCreditsSchema.optional(),
     /** Present when the snapshot was read for one registered profile rather than the native default. */
     profileId: AgentProfileIdSchema.optional(),
@@ -138,7 +146,10 @@ export const AccountUsageProviderSchema = z.strictObject({
   ...AgentProviderDescriptorSchema.shape,
   refresh: z.strictObject({
     pollIntervalMs: PositiveSafeIntegerSchema,
-    /** Poll delay after a push update; defaults to `pollIntervalMs`. */
+    /**
+     * The least delay before the next poll after a push that carries every meter the last poll did; defaults to
+     * `pollIntervalMs`. A push never brings a poll forward.
+     */
     pushUpdatePollIntervalMs: PositiveSafeIntegerSchema.optional(),
   }),
 });
