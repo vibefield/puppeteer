@@ -426,6 +426,28 @@ recipe of the run it asked for, and nothing of any other run.
   rewrites it can make a strict shim wait and refuse, or let an agent run unmanaged — which it could do anyway, by
   running the real executable. The shim runs `ps` with its own directory taken off PATH, so no launcher stands in
   for it.
+- **A run's hook bearer speaks for its agent, and so does every process the agent starts.** Claude reads the bearer
+  from its own environment, which its tools inherit. Any of them can post an authenticated hook, a `SessionStart`
+  with source `clear` under a new id among them: the observer follows that rotation and refuses the real session's
+  hooks (403) for the run's life. A holder already has the agent's authority (it can post hooks under the real id,
+  rewrite the agent's settings or stop it), so this is a recorded limit, not a defended one. What a hook can make the
+  observer read is bounded: Claude's transcript rail follows only
+  `<config root>/projects/<one folder>/<selected id>.jsonl` (adapter-claude `observation/session-selection.ts`), and
+  by the root's own name for it when the hook reaches it through a link, so a forged hook cannot point it at a file of
+  its choosing elsewhere, then or later. A same-user writer can still write under the root.
+  A refused path is said once, as `adapter:native-event` `transcript-path.refused`, and is never published.
+  <!-- rv-el7-limits (4), ruled at its lean, A (James, 2026-11-06): recorded, with the pin landed in code -->
+- **A hook endpoint the host holds is free while the host is down.** Claude's decision-capable hooks (`PreToolUse`,
+  `PermissionRequest`, `Stop`, `UserPromptSubmit`) post to a loopback port its settings fix for the process's life,
+  and Claude honours a decision any 2xx answer carries. The listener is the host's: through a restart, a replace or a
+  supersession the port is free, and a program of another local account that binds it in that window answers the
+  agent's decisions. A host that comes back to a held port is refused with `next: 'retry'` and the neutral code
+  `endpoint-held` (core `AgentAttachRefusedError`, carried as the failure's `error.refusal`): in its own replace
+  window the holder is its predecessor, which a retry outlasts; still held after its retries, the host says another
+  program holds the agent's hook connection, in its own words. Not measured: whether XNU lets another uid take the
+  port while the old listener's TIME_WAIT pcbs remain. The structural cure, a listener held by a plane that outlives
+  the agent, is not built here.
+  <!-- rv-el7-limits (3), ruled at its lean, C (James, 2026-11-06): this limit and the endpoint-held code -->
 
 ## 9. What a host does itself
 
@@ -575,6 +597,18 @@ The duties, one by one:
   shim falls back to the real executable in that pid, unmanaged, or exits when strict — then answer `ack`.
 - **Survive your own restart**: persist what `onAdopted` gave you with `processStartedAt(processId)`, and re-attach only
   a pid whose start time still matches — a reused pid is not your agent.
+- **Name a staging root** (`createAgentRuntime({ staging: { root } })`, an absolute directory you keep across your
+  restarts, outside the system temp directory). An adapter writes the files a launch needs into a directory — Claude's
+  settings, its staged forwarder and its briefing files — and the agent reads some of them again for as long as it
+  runs: Claude execs its forwarder on every command hook. Under the system temp directory §3's cleaner fact holds for
+  them too, so an agent that runs for days loses them under it. With a root, the runtime makes each run's directory,
+  `<root>/<runtimeRunId>` (0700), just before the adapter launches or prepares the run, and removes it when the run is
+  marked terminal: an exit, a plain `dispose`, a failed launch, a cancelled or expired preparation. It keeps it on
+  `dispose({ detach: true })`, and an attached run's directory goes when that run ends. After a restart, once you have
+  attached what you kept, call `runtime.sweepStaging({ keep })` with every run your own records still hold live, read
+  from those records: it removes everything else under the root, an agent that died while you were down included, and
+  always keeps the runs and preparations the runtime itself holds. Without a root, adapters stage in the system temp
+  directory, which serves only runs that end within the cleaner's three days.
 
 ### Background cache prewarming
 

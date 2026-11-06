@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, readdir, rm } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
-import { resolve as resolvePath } from 'node:path';
+import { isAbsolute, join, resolve as resolvePath } from 'node:path';
 import {
   AccountUsageFetchResultSchema,
   AccountUsageProviderSchema,
@@ -23,6 +24,7 @@ import {
   ProfileProviderSchema,
   agentEventCategory,
   agentEventType,
+  AGENT_ATTACH_REFUSAL_CODES,
   isAgentAttachRefusedError,
   isAgentEventType,
   isAgentLaunchRefusedError,
@@ -257,6 +259,8 @@ interface ManagedRun {
   terminalOutcome?: CreationRequestTerminalOutcome | undefined;
   result?: CreateAgentSessionResult | PrepareAgentSessionResult | undefined;
   monitor?: AgentMonitorService | undefined;
+  /** The run's staging directory while the run stands: made for its launch, or an attached run's, found by its id. */
+  stagingDir?: string | undefined;
 }
 
 interface TerminalFailureEntry {
@@ -535,6 +539,14 @@ function providerError(
   };
 }
 
+/**
+ * A run id names its staging directory only as one plain path segment. The runtime mints its own ids, but an attached
+ * or restored run's is the host's, and a removal is recursive: `..` would name the root's parent.
+ */
+function isStagingSegment(runtimeRunId: string): boolean {
+  return runtimeRunId !== '' && runtimeRunId !== '.' && runtimeRunId !== '..' && !/[/\\\0]/u.test(runtimeRunId);
+}
+
 function runInfo(run: ManagedRun): RuntimeRunInfo {
   return {
     ...identityFields(run.identity),
@@ -706,6 +718,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   if (!Number.isSafeInteger(terminalFailureCapacity) || terminalFailureCapacity <= 0) {
     throw new Error('terminalFailureCapacity must be a positive safe integer');
   }
+  // A relative root would move with the host's working directory.
+  if (options.staging !== undefined && !isAbsolute(options.staging.root)) {
+    throw new Error('staging.root must be an absolute path');
+  }
+  const stagingRoot = options.staging === undefined ? undefined : resolvePath(options.staging.root);
   let disposed = false;
 
   const report = (err: unknown): void => options.onError?.(err instanceof Error ? err : new Error(String(err)));
@@ -1488,6 +1505,38 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       : preparationFailure(code as PreparationFailure['error']['code'], message, run, terminalOutcome);
   }
 
+  /** Where a run's launch files live: `<root>/<runtimeRunId>`, when the host named a root and the id is one segment. */
+  function stagingDirFor(runtimeRunId: string): string | undefined {
+    return stagingRoot === undefined || !isStagingSegment(runtimeRunId) ? undefined : join(stagingRoot, runtimeRunId);
+  }
+
+  /**
+   * Make a launching run's staging directory, 0700 and empty (the root made 0700 when absent), once the run and its
+   * workspace exist and just before its provider is asked; undefined when the host named no root.
+   */
+  async function openStaging(run: ManagedRun): Promise<string | undefined> {
+    if (stagingRoot === undefined) return undefined;
+    const dir = stagingDirFor(run.identity.runtimeRunId);
+    // the runtime mints a launching run's id itself
+    if (dir === undefined) throw new Error(`run id cannot name a staging directory: ${run.identity.runtimeRunId}`);
+    await mkdir(stagingRoot, { recursive: true, mode: 0o700 });
+    // never one that already exists: a directory handed over is the run's alone, and empty
+    await mkdir(dir, { mode: 0o700 });
+    run.stagingDir = dir;
+    return dir;
+  }
+
+  /**
+   * A run marked terminal is over, and its launch files go with it. A detach marks nothing, so a released run keeps
+   * them. The binding's own dispose may still be removing the files it wrote inside; both removals are forced.
+   */
+  async function closeStaging(run: ManagedRun): Promise<void> {
+    const dir = run.stagingDir;
+    if (dir === undefined) return;
+    run.stagingDir = undefined;
+    await rm(dir, { recursive: true, force: true }).catch(report);
+  }
+
   async function markRunTerminal(
     run: ManagedRun,
     outcome: CreationRequestTerminalOutcome,
@@ -1529,6 +1578,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         report(error);
       }
     }
+    // after the durable mark: a host's sweep keeps what its records still hold live
+    await closeStaging(run);
     if (outcome.kind === 'failed' && !retention.deferFailureRetention) retainTerminalFailure(run);
   }
 
@@ -3267,7 +3318,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         try {
           providerOptions.agentOptions = await selectedModelOptions(provider, request, lease.workspace.root, profile);
           captureContinuationState(provider, providerOptions, run);
-          session = await provider.createSession(providerOptions);
+          const stagingDir = await openStaging(run);
+          session = await provider.createSession({
+            ...providerOptions,
+            ...(stagingDir === undefined ? {} : { stagingDir }),
+          });
         } catch (error) {
           report(error);
           const failure = providerError(error, request.agent, `agent session creation failed: ${request.agent}`);
@@ -3412,7 +3467,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         try {
           providerOptions.agentOptions = await selectedModelOptions(provider, request, lease.workspace.root, profile);
           captureContinuationState(provider, providerOptions, run);
-          prepared = await provider.prepareSession(providerOptions);
+          const stagingDir = await openStaging(run);
+          prepared = await provider.prepareSession({
+            ...providerOptions,
+            ...(stagingDir === undefined ? {} : { stagingDir }),
+          });
         } catch (error) {
           report(error);
           const failure = providerError(error, request.agent, `agent session preparation failed: ${request.agent}`);
@@ -3721,6 +3780,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
       const provider = providers.get(restore.agent);
       const kept = continuation !== undefined && continuation.success ? continuation.data : undefined;
+      // the launch files are where the run's launch staged them, found by its id, and go at this run's end
+      const stagingDir = stagingDirFor(restore.runtimeRunId);
       const run: ManagedRun = {
         identity: { ...identity, runtimeEpoch: restoredClaim.claim.runtimeEpoch },
         operation: restoredClaim.claim.operation,
@@ -3730,6 +3791,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         // lost them, so the next continuation (and a resume of it) is the launch's, not `native` with no state
         ...(kept?.state === undefined ? {} : { continuationState: kept.state }),
         ...(kept === undefined ? {} : { launchImplementation: kept.implementation }),
+        ...(stagingDir === undefined ? {} : { stagingDir }),
       };
       if (current?.monitor) removeRunMonitor(current);
       runs.set(run.identity.runtimeRunId, run);
@@ -3948,10 +4010,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
               error instanceof Error ? error.message : String(error)
             }`,
           );
-          // the adapter's word on what the host does instead, carried as it said it
-          return isAgentAttachRefusedError(error)
-            ? { ...failure, error: { ...failure.error, next: error.next } }
-            : failure;
+          // the adapter's word on what the host does instead, carried as it said it, and why, when that is a word
+          // this copy knows (a host states it without the vendor's text)
+          if (!isAgentAttachRefusedError(error)) return failure;
+          // rv-el7-limits (3), ruled at its lean, C (James, 2026-11-06): the `refusal` carry.
+          const why =
+            error.code !== undefined && AGENT_ATTACH_REFUSAL_CODES.includes(error.code) ? error.code : undefined;
+          return {
+            ...failure,
+            error: { ...failure.error, next: error.next, ...(why === undefined ? {} : { refusal: { code: why } }) },
+          };
         }
         if (session.sessionId !== request.sessionId || session.runtimeSessionId !== request.terminalSessionId) {
           await session.dispose({ release: true }).catch(report);
@@ -4017,6 +4085,30 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     },
 
     cancelPrepared,
+
+    async sweepStaging(sweep) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      if (stagingRoot === undefined) return;
+      const keep = new Set<string>(sweep.keep);
+      let entries: string[];
+      try {
+        entries = await readdir(stagingRoot);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') report(error);
+        return;
+      }
+      // This runtime's own runs are read after the listing: a run whose directory was listed was allocated before
+      // it was made, so it is here unless it has ended, and a run that ended removed its own.
+      const ownLive = (entry: string): boolean => {
+        const run = runs.get(entry);
+        return run !== undefined && run.status !== 'terminal';
+      };
+      await Promise.all(
+        entries
+          .filter((entry) => !keep.has(entry) && !ownLive(entry))
+          .map((entry) => rm(join(stagingRoot, entry), { recursive: true, force: true }).catch(report)),
+      );
+    },
 
     runtimeRunInfo: (id) => {
       const run = runs.get(id);
