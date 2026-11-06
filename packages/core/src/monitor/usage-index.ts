@@ -572,3 +572,34 @@ export function usageIndexOf(state: MonitorAccumulatorState): MonitorUsageIndex 
   }
   return index;
 }
+
+const rateTimes = new WeakMap<ReadonlyMap<string, MonitorStoredEntry>, number[]>();
+
+/**
+ * When the burn rate next moves without new evidence: the first stored rate-eligible claim whose window still ends
+ * after `nowMs`, at its time plus the window and one millisecond; undefined when none is left. Every stored claim
+ * counts, selected or not, as the runtime's scan counted them; their times are sorted once per ledger.
+ */
+export function nextUsageRateBoundaryMs(
+  state: MonitorAccumulatorState,
+  nowMs: number,
+  windowMs: number,
+): number | undefined {
+  let times = rateTimes.get(state.usage.entries);
+  if (!times) {
+    times = [...state.usage.entries.values()]
+      .filter((entry) => entry.rateEligible)
+      .map(timeOf)
+      .filter((time) => Number.isFinite(time))
+      .sort((a, b) => a - b);
+    rateTimes.set(state.usage.entries, times);
+  }
+  let low = 0;
+  let high = times.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (times[middle]! + windowMs + 1 > nowMs) high = middle;
+    else low = middle + 1;
+  }
+  return low < times.length ? times[low]! + windowMs + 1 : undefined;
+}

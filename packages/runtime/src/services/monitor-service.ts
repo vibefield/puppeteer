@@ -10,6 +10,7 @@ import type {
 import {
   createMonitorAccumulatorState,
   DEFAULT_MONITOR_BURN_RATE_WINDOW_MS,
+  nextUsageRateBoundaryMs,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
   translateAgentEventEnvelope,
@@ -528,13 +529,9 @@ export class AgentMonitorService
     this.rateTask?.cancel();
     this.rateTask = undefined;
     const nowMs = this.options.clock.now().getTime();
-    let nextBoundary = Infinity;
-    for (const entry of this.accumulator.usage.entries.values()) {
-      if (!entry.rateEligible) continue;
-      const boundary = Date.parse(entry.rateAt ?? entry.effectiveAt ?? entry.observedAt) + this.burnRateWindowMs + 1;
-      if (boundary > nowMs && boundary < nextBoundary) nextBoundary = boundary;
-    }
-    if (!Number.isFinite(nextBoundary)) return;
+    // The ledger's rate-eligible times are sorted once per ledger in core; a flush only searches them.
+    const nextBoundary = nextUsageRateBoundaryMs(this.accumulator, nowMs, this.burnRateWindowMs);
+    if (nextBoundary === undefined) return;
     this.rateTask = this.options.clock.schedule(nextBoundary - nowMs, () => {
       this.rateTask = undefined;
       this.flush();
