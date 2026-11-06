@@ -33,6 +33,7 @@ import type {
   MonitorRunStatusObservation,
   MonitorSemanticProducerState,
   MonitorStoredEntry,
+  MonitorUsageSlice,
   RuntimeMonitorInput,
   RuntimeMonitorObservationBatch,
   SourceWatermark,
@@ -58,7 +59,14 @@ interface StoredEntryContext {
 
 interface AppliedUpdates {
   entries: Map<string, MonitorStoredEntry>;
+  usage: MonitorUsageSlice;
   compactionStarts: number;
+}
+
+/** One input's copy of the usage slice, made on its first usage update that applies. */
+interface UsageLedgerDraft {
+  entries: Map<string, MonitorStoredEntry>;
+  byOwnerUsageId: Map<string, ReadonlySet<string>>;
 }
 
 export interface TranslateAgentEventOptions {
@@ -128,7 +136,7 @@ function storedEntry(
   const rateAt = preserveRateBoundary
     ? (existing?.rateAt ?? existing?.effectiveAt ?? existing?.observedAt)
     : (context.effectiveAt ?? context.observedAt);
-  return {
+  const entry: MonitorStoredEntry = {
     storageKey: storageKey(context, family, key),
     plane: context.plane,
     ownerId: context.ownerId,
@@ -150,6 +158,9 @@ function storedEntry(
       : context.phase === 'live' && value.kind === 'usage',
     ...(rateAt ? { rateAt } : {}),
   };
+  const at = Date.parse(entry.rateAt ?? entry.effectiveAt ?? entry.observedAt);
+  entry.timeMs = Number.isFinite(at) ? at : Number.NEGATIVE_INFINITY;
+  return entry;
 }
 
 function ownedBy(entry: MonitorStoredEntry, context: StoredEntryContext, family: MonitorMetricFamily): boolean {
@@ -162,12 +173,67 @@ function ownedBy(entry: MonitorStoredEntry, context: StoredEntryContext, family:
   );
 }
 
+function usageIdentity(plane: MonitorEvidencePlane, ownerId: string, usageId: string): string {
+  return JSON.stringify([plane, ownerId, usageId]);
+}
+
+function identityOf(entry: MonitorStoredEntry): string {
+  return usageIdentity(entry.plane, entry.ownerId, entry.value.kind === 'usage' ? entry.value.usageId : '');
+}
+
+function draftUsage(usage: MonitorUsageSlice): UsageLedgerDraft {
+  return { entries: new Map(usage.entries), byOwnerUsageId: new Map(usage.byOwnerUsageId) };
+}
+
+function unindexUsage(draft: UsageLedgerDraft, entry: MonitorStoredEntry): void {
+  const identity = identityOf(entry);
+  const keys = draft.byOwnerUsageId.get(identity);
+  if (!keys?.has(entry.storageKey)) return;
+  if (keys.size === 1) {
+    draft.byOwnerUsageId.delete(identity);
+    return;
+  }
+  const remaining = new Set(keys);
+  remaining.delete(entry.storageKey);
+  draft.byOwnerUsageId.set(identity, remaining);
+}
+
+function setUsage(draft: UsageLedgerDraft, entry: MonitorStoredEntry): void {
+  const prior = draft.entries.get(entry.storageKey);
+  if (prior) unindexUsage(draft, prior);
+  draft.entries.set(entry.storageKey, entry);
+  const identity = identityOf(entry);
+  draft.byOwnerUsageId.set(identity, new Set(draft.byOwnerUsageId.get(identity)).add(entry.storageKey));
+}
+
+function deleteUsage(draft: UsageLedgerDraft, key: string): void {
+  const prior = draft.entries.get(key);
+  if (!prior) return;
+  unindexUsage(draft, prior);
+  draft.entries.delete(key);
+}
+
+/** The claim an owner already holds for a usage id, whatever epoch or scope stored it. */
+function ownedUsage(draft: UsageLedgerDraft, context: StoredEntryContext, usageId: string) {
+  const keys = draft.byOwnerUsageId.get(usageIdentity(context.plane, context.ownerId, usageId));
+  if (!keys) return undefined;
+  // A key reused for another usage id can leave one identity on two claims; the first stored answers, as a
+  // scan of the plane in its order did.
+  if (keys.size > 1) {
+    for (const [key, entry] of draft.entries) if (keys.has(key)) return entry;
+  }
+  for (const key of keys) return draft.entries.get(key);
+  return undefined;
+}
+
 function applyUpdates(
   current: ReadonlyMap<string, MonitorStoredEntry>,
+  usage: MonitorUsageSlice,
   updates: readonly MonitorFamilyUpdate[],
   context: StoredEntryContext,
 ): AppliedUpdates {
   const entries = new Map(current);
+  let ledger: UsageLedgerDraft | undefined;
   let compactionStarts = 0;
 
   for (const update of updates) {
@@ -179,6 +245,19 @@ function applyUpdates(
         // Usage is an observation ledger, never a reconstructed snapshot.
         continue;
       }
+      // The ledger lives apart from the planes and is copied only when a usage update applies.
+      ledger ??= draftUsage(usage);
+      const key = storageKey(context, update.family, update.key);
+      if (update.operation === 'retract') {
+        deleteUsage(ledger, key);
+        continue;
+      }
+      // A producer may reconnect under a new epoch. The observation identity
+      // still refers to the original work, so its rate timestamp must survive.
+      const existing = ledger.entries.get(key) ?? ownedUsage(ledger, context, update.value.usageId);
+      if (existing && existing.storageKey !== key) deleteUsage(ledger, existing.storageKey);
+      setUsage(ledger, storedEntry(context, update.family, update.key, update.value, existing));
+      continue;
     }
     if (update.operation === 'retract') {
       entries.delete(storageKey(context, update.family, update.key));
@@ -200,18 +279,7 @@ function applyUpdates(
     }
 
     const key = storageKey(context, update.family, update.key);
-    // A producer may reconnect under a new epoch. The observation identity
-    // still refers to the original work, so its rate timestamp must survive.
-    const usageId = update.value.kind === 'usage' ? update.value.usageId : undefined;
-    const existing =
-      entries.get(key) ??
-      (usageId !== undefined
-        ? [...entries.values()].find(
-            (entry) =>
-              entry.ownerId === context.ownerId && entry.value.kind === 'usage' && entry.value.usageId === usageId,
-          )
-        : undefined);
-    if (usageId !== undefined && existing && existing.storageKey !== key) entries.delete(existing.storageKey);
+    const existing = entries.get(key);
     if (
       context.phase === 'live' &&
       update.family === 'compaction' &&
@@ -224,7 +292,7 @@ function applyUpdates(
     entries.set(key, storedEntry(context, update.family, update.key, update.value, existing));
   }
 
-  return { entries, compactionStarts };
+  return { entries, usage: ledger ?? usage, compactionStarts };
 }
 
 function initialRunEntry(options: CreateMonitorAccumulatorOptions): MonitorStoredEntry {
@@ -264,6 +332,7 @@ export function createMonitorAccumulatorState(options: CreateMonitorAccumulatorO
     runtime: { seenEventIds: new EventIdSet(), entries: new Map([[run.storageKey, run]]) },
     semantic: { seenBatchIds: new EventIdSet(), producers: new Map(), entries: new Map(), resyncs: new Map() },
     workspace: { seenRecordIds: new EventIdSet(), entries: new Map(), provenance: new Map() },
+    usage: { entries: new Map(), byOwnerUsageId: new Map() },
     expiredLeaseIds: new Set(),
     compactionCount: 0,
   };
@@ -324,7 +393,7 @@ function reduceRuntime(state: MonitorAccumulatorState, input: RuntimeMonitorInpu
     phase: input.phase,
     evidence: input.evidence,
   };
-  const applied = applyUpdates(state.runtime.entries, input.updates, context);
+  const applied = applyUpdates(state.runtime.entries, state.usage, input.updates, context);
   const seenEventIds = sourced ? withEventId(state.runtime.seenEventIds, input.eventId) : state.runtime.seenEventIds;
   const next: MonitorAccumulatorState = {
     ...state,
@@ -333,6 +402,7 @@ function reduceRuntime(state: MonitorAccumulatorState, input: RuntimeMonitorInpu
       entries: applied.entries,
       lastAcceptedAt: latestAccepted(state.runtime.lastAcceptedAt, input.observedAt),
     },
+    usage: applied.usage,
     expiredLeaseIds: withRefreshedLeases(state.expiredLeaseIds, applied.entries),
     compactionCount: state.compactionCount + applied.compactionStarts,
   };
@@ -455,13 +525,15 @@ function reduceSemantic(state: MonitorAccumulatorState, batch: RuntimeMonitorObs
   const seenBatchIds = withEventId(state.semantic.seenBatchIds, batchIdentity);
   const resyncs = new Map(state.semantic.resyncs);
   let semanticEntries = new Map(state.semantic.entries);
+  let usage = state.usage;
   let compactionStarts = 0;
 
   if (batch.phase === 'resync') {
     const pending = resyncs.get(batch.producer.id);
     const stagingBase =
       pending?.epoch === batch.producer.epoch ? pending.entries : new Map<string, MonitorStoredEntry>();
-    const applied = applyUpdates(stagingBase, batch.updates, context);
+    // A resync never reaches the ledger: applyUpdates admits usage only from live and correction phases.
+    const applied = applyUpdates(stagingBase, state.usage, batch.updates, context);
     const stagedCompactionStarts =
       (pending?.epoch === batch.producer.epoch ? pending.compactionStarts : 0) + applied.compactionStarts;
     const stagedProducer =
@@ -493,9 +565,10 @@ function reduceSemantic(state: MonitorAccumulatorState, batch: RuntimeMonitorObs
     } else {
       // A complete ready barrier replaces the full producer slice. Partial or
       // unavailable coverage may add/correct facts but cannot erase old ones.
+      // The usage ledger is not in the slice, so a barrier never erases it.
       if (batch.completeness === 'complete') {
         for (const [key, entry] of semanticEntries) {
-          if (entry.ownerId === batch.producer.id && entry.family !== 'usage') semanticEntries.delete(key);
+          if (entry.ownerId === batch.producer.id) semanticEntries.delete(key);
         }
       }
       for (const [key, entry] of applied.entries) semanticEntries.set(key, entry);
@@ -507,8 +580,9 @@ function reduceSemantic(state: MonitorAccumulatorState, batch: RuntimeMonitorObs
     // A live/correction delivery ends an abandoned replacement attempt while
     // preserving the last committed semantic slice.
     resyncs.delete(batch.producer.id);
-    const applied = applyUpdates(semanticEntries, batch.updates, context);
+    const applied = applyUpdates(semanticEntries, state.usage, batch.updates, context);
     semanticEntries = applied.entries;
+    usage = applied.usage;
     compactionStarts = applied.compactionStarts;
     const producer = currentProducer ? updateProducer(currentProducer, batch, switchedEpoch) : newProducer(batch);
     producers.set(batch.producer.id, producer);
@@ -523,6 +597,7 @@ function reduceSemantic(state: MonitorAccumulatorState, batch: RuntimeMonitorObs
       resyncs,
       lastAcceptedAt: latestAccepted(state.semantic.lastAcceptedAt, batch.observedAt),
     },
+    usage,
     expiredLeaseIds: withRefreshedLeases(state.expiredLeaseIds, semanticEntries),
     compactionCount: state.compactionCount + compactionStarts,
   };

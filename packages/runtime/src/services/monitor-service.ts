@@ -529,16 +529,10 @@ export class AgentMonitorService
     this.rateTask = undefined;
     const nowMs = this.options.clock.now().getTime();
     let nextBoundary = Infinity;
-    for (const entries of [
-      this.accumulator.runtime.entries,
-      this.accumulator.semantic.entries,
-      this.accumulator.workspace.entries,
-    ]) {
-      for (const entry of entries.values()) {
-        if (entry.value.kind !== 'usage' || !entry.rateEligible) continue;
-        const boundary = Date.parse(entry.rateAt ?? entry.effectiveAt ?? entry.observedAt) + this.burnRateWindowMs + 1;
-        if (boundary > nowMs && boundary < nextBoundary) nextBoundary = boundary;
-      }
+    for (const entry of this.accumulator.usage.entries.values()) {
+      if (!entry.rateEligible) continue;
+      const boundary = Date.parse(entry.rateAt ?? entry.effectiveAt ?? entry.observedAt) + this.burnRateWindowMs + 1;
+      if (boundary > nowMs && boundary < nextBoundary) nextBoundary = boundary;
     }
     if (!Number.isFinite(nextBoundary)) return;
     this.rateTask = this.options.clock.schedule(nextBoundary - nowMs, () => {

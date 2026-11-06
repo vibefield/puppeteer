@@ -58,7 +58,16 @@ function earliestTimestamp(values: Array<string | undefined>): string | undefine
 }
 
 function allEntries(state: MonitorAccumulatorState): MonitorStoredEntry[] {
-  return [...state.runtime.entries.values(), ...state.semantic.entries.values(), ...state.workspace.entries.values()];
+  const usage = [...state.usage.entries.values()];
+  return [
+    ...state.runtime.entries.values(),
+    ...state.semantic.entries.values(),
+    ...state.workspace.entries.values(),
+    // The ledger in plane order, so each usage identity's claims are ranked as the planes list them.
+    ...usage.filter((entry) => entry.plane === 'runtime'),
+    ...usage.filter((entry) => entry.plane === 'semantic'),
+    ...usage.filter((entry) => entry.plane === 'workspace'),
+  ];
 }
 
 /** Select one current source-owned claim for every provider-neutral family/key identity. */
