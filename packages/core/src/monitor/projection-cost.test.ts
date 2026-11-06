@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { agentEventCategory, agentEventType, type AgentEvent, type AgentEventEnvelope } from '../events/index.js';
 import type {
   ActorRunRef,
   AgentMonitorState,
@@ -29,7 +30,7 @@ import type {
   RuntimeMonitorInput,
 } from './internal-types.js';
 import { projectAgentMonitorState } from './project.js';
-import { createMonitorAccumulatorState, reduceMonitorAccumulator } from './reduce.js';
+import { createMonitorAccumulatorState, reduceMonitorAccumulator, translateAgentEventEnvelope } from './reduce.js';
 
 // The oracle for the monitor's projection cost (RV #9). Seeded input sequences, and every public output they
 // produce: at each step the bounded projection (`previous` chained, `asOf` stepping across the burn window and the
@@ -1039,6 +1040,51 @@ function canonicalGolden(): string {
   return `${JSON.stringify(document, null, 2)}\n`;
 }
 
+/** One live runtime input carrying `count` canonical responses: a ledger of any size at one reduce's cost. */
+function ledgerOf(count: number): RuntimeMonitorInput {
+  return {
+    kind: 'runtime',
+    schemaVersion: 1,
+    eventId: `ledger-${count}`,
+    runtimeRunId: RUN,
+    runtimeEpoch: 1,
+    phase: 'live',
+    observedAt: new Date(T0 + 1_000).toISOString(),
+    source: { id: 'native-hook', kind: 'agent-event' },
+    quality: 'exact',
+    completeness: 'complete',
+    provisional: false,
+    updates: Array.from({ length: count }, (_, index) =>
+      usage(`response-${index.toString().padStart(4, '0')}`, {
+        origin: 'hook',
+        boundary: 'response',
+        canonical: true,
+        totalTokens: 100,
+        costUsd: 0.001,
+      }),
+    ),
+    evidence: [],
+  };
+}
+
+/** One streamed assistant delta, as the runtime translates it. */
+function streamedDelta(): RuntimeMonitorInput {
+  const event: AgentEvent = { type: 'conversation:assistant-message', text: 'Working on it', final: false };
+  const envelope: AgentEventEnvelope = {
+    type: agentEventType(event),
+    category: agentEventCategory(event),
+    sequence: 2,
+    sessionId: 'terminal-1',
+    nativeSessionId: 'native-1',
+    timestamp: new Date(T0 + 2_000).toISOString(),
+    monotonicTime: 2,
+    source: 'native-hook',
+    confidence: 'authoritative',
+    event,
+  };
+  return translateAgentEventEnvelope({ runtimeRunId: RUN, runtimeEpoch: 1, identity: 'delivery', envelope });
+}
+
 /** A clone shares no object with the state, so no memo filled for the state can answer for it. */
 function fresh(state: MonitorAccumulatorState): MonitorAccumulatorState {
   // The seen-identity sets are persistent trees no projection reads; a structured clone would flatten them.
@@ -1074,6 +1120,21 @@ describe('monitor projection cost', () => {
     }
     expect(actual, `${GOLDEN_PATH}: stale projection-equivalence golden`).toBe(golden);
   }, 120_000);
+
+  it('reduces a streamed delta at a cost the size of the usage ledger does not set', () => {
+    const parsesFor = (count: number) => {
+      const ledger = reduceMonitorAccumulator(initial(), ledgerOf(count)).state;
+      expect(ledger.usage.entries.size).toBe(count);
+      const delta = streamedDelta();
+      const parse = vi.spyOn(Date, 'parse');
+      const reduced = reduceMonitorAccumulator(ledger, delta);
+      const parses = parse.mock.calls.length;
+      parse.mockRestore();
+      expect(reduced.accepted).toBe(true);
+      return parses;
+    };
+    expect(parsesFor(2_000)).toBe(parsesFor(200));
+  });
 
   it('projects every state as it projects a fresh copy of it, so no memo answers for a state it did not see', () => {
     for (const s of scenarios()) {
