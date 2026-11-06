@@ -52,7 +52,10 @@ interface LaneCommon {
 /** A row's lane. */
 export interface LiveLane extends LaneCommon {
   readonly row: AgentView;
-  /** When the current status began: before it, back to the birth, the lane has only its record (never before the horizon). */
+  /**
+   * When the current status began, however long ago: the horizon is its readers' to clamp to, never the lane's. Before
+   * it, back to the birth, the lane has only its record.
+   */
   readonly sinceMs: number;
   /** The lane's current state, from `sinceMs` to now. */
   readonly current: LaneSpan;
@@ -113,12 +116,14 @@ export function pastBefore(spans: readonly MonitorPastSpan[], seamMs: number): r
 }
 
 /**
- * A lane from its row (TL-D9): born at its birth, its current status since `statusSince`. With the row's recorded
- * past it holds that past too, cut at the CURRENT `statusSince`, and is born at the earlier of the row's birth and
- * the record's first span (a resumed session's record starts before its run).
+ * A lane from its row (TL-D9): born at its birth, its current status since `statusSince` however long ago, and never
+ * after now (a peer's clock running ahead). Every reader clamps to its own window (the paint, the wakes, the map and
+ * `dayStart`), so a lane older than the day keeps its key from one publish to the next. With the row's recorded past
+ * it holds that past too, cut at the CURRENT `statusSince`, and is born at the earlier of the row's birth and the
+ * record's first span (a resumed session's record starts before its run).
  */
 export function laneFor(row: AgentView, nowMs: number, recorded?: readonly MonitorPastSpan[]): LiveLane {
-  const sinceMs = Math.min(nowMs, Math.max(row.createdAt, row.statusSince, nowMs - TIMELINE_HORIZON_MS));
+  const sinceMs = Math.min(nowMs, Math.max(row.createdAt, row.statusSince));
   const status = laneStatus(row);
   const words = status === 'blocked' ? laneWaitWords(row.wait) : undefined;
   const wait: LaneWait | undefined =
