@@ -246,6 +246,20 @@ describe('CodexNotificationNormalizer', () => {
     ]);
   });
 
+  it('an interrupted turn normalizes to turn:completed with the interrupted outcome', () => {
+    const n = new CodexNotificationNormalizer();
+    n.normalize(CAPTURE[2]!); // turn/started
+    const out = n.normalize({
+      method: 'turn/completed',
+      params: { threadId: THREAD, turn: { id: TURN, status: 'interrupted', error: null } },
+    });
+    // The person's own stop ends the turn without a failure, typed as core's one interrupted outcome.
+    expect(out.events).toEqual([
+      { type: 'turn:started', turnId: TURN, prompt: undefined },
+      { type: 'turn:completed', turnId: TURN, outcome: 'interrupted' },
+    ]);
+  });
+
   it('drives the core reducer to a coherent end state', () => {
     const n = new CodexNotificationNormalizer();
     const stamper = createEnvelopeStamper();
