@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { claude2308TranscriptText } from '../../test-support/claude-transcript-fixtures.js';
+import {
+  claude2308TranscriptRows,
+  claude2308TranscriptText,
+  type Claude2308Turn,
+} from '../../test-support/claude-transcript-fixtures.js';
 import { projectClaudeTranscriptAssistants, projectClaudeTranscriptOpenWork } from './conversation.js';
 import { decodeClaudeTranscript } from './wire.js';
 
@@ -53,26 +57,25 @@ describe('Claude transcript assistant projection', () => {
   });
 
   it('projects only conversation rows from a 2.1.308 transcript: no request bookkeeping becomes a message or a turn', () => {
-    const records = decodeClaudeTranscript(
-      claude2308TranscriptText([
-        { promptUuid: 'prompt-1', prompt: 'List the files', answer: 'Two files.', tool: true },
-        { promptUuid: 'prompt-2', prompt: 'Summarize them', answer: 'Both are notes.' },
-        {
-          promptUuid: 'prompt-3',
-          prompt: '<task-notification>\n<task-id>a1</task-id>\n</task-notification>',
-          answer: 'The background agent finished.',
-          turnOrigin: 'task_notification',
-        },
-      ]),
-    );
-    // The fixture really interleaves user- and assistant-role request blobs.
-    expect(records.filter((record) => record.type === 'api-request-blob').map(({ message }) => message?.role)).toEqual([
-      'user',
-      'assistant',
-      'user',
-      'user',
-      'user',
-    ]);
+    const turns: Claude2308Turn[] = [
+      { promptUuid: 'prompt-1', prompt: 'List the files', answer: 'Two files.', tool: true },
+      { promptUuid: 'prompt-2', prompt: 'Summarize them', answer: 'Both are notes.' },
+      {
+        promptUuid: 'prompt-3',
+        prompt: '<task-notification>\n<task-id>a1</task-id>\n</task-notification>',
+        answer: 'The background agent finished.',
+        turnOrigin: 'task_notification',
+      },
+    ];
+    const records = decodeClaudeTranscript(claude2308TranscriptText(turns));
+    // The fixture really interleaves user- and assistant-role request blobs (read from its rows: a decoded record
+    // keeps no message role).
+    expect(
+      claude2308TranscriptRows(turns)
+        .filter((row) => row.type === 'api-request-blob')
+        .map((row) => (row.message as { role?: unknown }).role),
+    ).toEqual(['user', 'assistant', 'user', 'user', 'user']);
+    expect(records.some((record) => record.type === 'api-request-blob')).toBe(true);
 
     const projected = [...projectClaudeTranscriptAssistants(records).values()];
     expect(projected.map(({ event }) => event)).toEqual([

@@ -14,12 +14,32 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function row(uuid: string): string {
+function textRow(uuid: string, text: string): string {
   return `${JSON.stringify({
     type: 'assistant',
     uuid,
     timestamp: '2026-08-25T00:00:00.000Z',
-    message: { role: 'assistant', content: [{ type: 'text', text: uuid }] },
+    message: { role: 'assistant', content: [{ type: 'text', text }] },
+  })}\n`;
+}
+
+function row(uuid: string): string {
+  return textRow(uuid, uuid);
+}
+
+/** A tool result whose body is large, beside a short text block. */
+function resultRow(uuid: string, toolUseId: string, body: string): string {
+  return `${JSON.stringify({
+    type: 'user',
+    uuid,
+    timestamp: '2026-08-25T00:00:00.000Z',
+    message: {
+      role: 'user',
+      content: [
+        { type: 'tool_result', tool_use_id: toolUseId, content: body },
+        { type: 'text', text: 'short' },
+      ],
+    },
   })}\n`;
 }
 
@@ -64,7 +84,7 @@ describe('createClaudeTranscriptReader', () => {
       { uuid: 'large', index: 0 },
       { uuid: 'tail', index: 1 },
     ]);
-    expect(result[0]?.message?.content).toBe(text);
+    expect(result[0]?.content).toEqual([{ type: 'text', text }]);
   });
 
   it('tails an oversized append-only transcript instead of disabling observation', async () => {
@@ -72,7 +92,7 @@ describe('createClaudeTranscriptReader', () => {
     roots.push(root);
     const path = join(root, 'transcript.jsonl');
     writeFileSync(path, `${'x'.repeat(1_024)}\n${row('recent-1')}${row('recent-2')}`);
-    const reader = createClaudeTranscriptReader(path, { maxBytes: 512, maxRecords: 10 });
+    const reader = createClaudeTranscriptReader(path, { maxTailBytes: 512, maxRecords: 10 });
 
     const first = await reader.read();
     appendFileSync(path, row('recent-3'));
@@ -138,26 +158,55 @@ describe('createClaudeTranscriptReader', () => {
     roots.push(root);
     const path = join(root, 'transcript.jsonl');
     writeFileSync(path, `${row('one')}${row('two')}${row('three')}`);
-    const reader = createClaudeTranscriptReader(path, { maxBytes: 4_096, maxRecords: 2 });
+    const reader = createClaudeTranscriptReader(path, { maxRecords: 2 });
 
     expect((await reader.read()).map(({ uuid }) => uuid)).toEqual(['two', 'three']);
   });
 
-  it('bounds retained wire bytes across many small appends', async () => {
+  it('bounds the retained window by what decoding keeps, never by wire bytes', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'claude-jsonl-kept-'));
+    roots.push(root);
+    const replies = join(root, 'replies.jsonl');
+    writeFileSync(
+      replies,
+      Array.from({ length: 10 }, (_, index) => textRow(`reply-${index}`, 'r'.repeat(100 * 1024))).join(''),
+    );
+    // Each reply keeps its 100 KiB of text, so 256 KiB of kept bytes holds the last two.
+    const retainedReplies = await createClaudeTranscriptReader(replies, { maxRetainedBytes: 256 * 1024 }).read();
+    expect(retainedReplies.map(({ uuid }) => uuid)).toEqual(['reply-8', 'reply-9']);
+
+    const results = join(root, 'results.jsonl');
+    const body = 'b'.repeat(1024 * 1024);
+    writeFileSync(
+      results,
+      Array.from({ length: 10 }, (_, index) => resultRow(`result-${index}`, `toolu_${index}`, body)).join(''),
+    );
+    // A tool result's body is neither kept nor counted: ten 1 MiB results fit the same 256 KiB.
+    const retainedResults = await createClaudeTranscriptReader(results, { maxRetainedBytes: 256 * 1024 }).read();
+    expect(retainedResults.map(({ uuid }) => uuid)).toEqual(
+      Array.from({ length: 10 }, (_, index) => `result-${index}`),
+    );
+    expect(retainedResults[0]?.content).toEqual([
+      { type: 'tool_result', tool_use_id: 'toolu_0' },
+      { type: 'text', text: 'short' },
+    ]);
+  });
+
+  it('bounds retained kept bytes across many small appends', async () => {
     const root = mkdtempSync(join(tmpdir(), 'claude-jsonl-bytes-'));
     roots.push(root);
     const path = join(root, 'transcript.jsonl');
-    writeFileSync(path, row('one'));
-    const reader = createClaudeTranscriptReader(path, { maxBytes: 400, maxRecords: 100 });
+    const text = 't'.repeat(10_000);
+    writeFileSync(path, textRow('one', text));
+    const reader = createClaudeTranscriptReader(path, { maxRetainedBytes: 25_000, maxRecords: 100 });
 
     await reader.read();
-    appendFileSync(path, row('two'));
+    appendFileSync(path, textRow('two', text));
     await reader.read();
-    appendFileSync(path, row('three'));
+    appendFileSync(path, textRow('three', text));
     const retained = await reader.read();
 
-    expect(retained.map(({ uuid }) => uuid)).not.toContain('one');
-    expect(retained.map(({ uuid }) => uuid)).toContain('three');
+    expect(retained.map(({ uuid }) => uuid)).toEqual(['two', 'three']);
   });
 
   it('drops one oversized unterminated row and resumes at the next newline', async () => {
@@ -165,7 +214,7 @@ describe('createClaudeTranscriptReader', () => {
     roots.push(root);
     const path = join(root, 'transcript.jsonl');
     writeFileSync(path, 'x'.repeat(300));
-    const reader = createClaudeTranscriptReader(path, { maxBytes: 256, maxRecords: 10 });
+    const reader = createClaudeTranscriptReader(path, { maxTailBytes: 256, maxRecords: 10 });
 
     await reader.read();
     appendFileSync(path, 'x'.repeat(300));
