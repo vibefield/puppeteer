@@ -81,7 +81,8 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
   const loopRef = useRef<MotionLoop | null>(null);
   /** Draws the field once where it stands: a stopped loop's frame, and a resize's at once. Set by the loop's effect. */
   const stillRef = useRef<(() => void) | null>(null);
-  const [hovered, setHovered] = useState<AgentView>();
+  /** The row under the pointer, by id: the tooltip reads the row as the input has it now. */
+  const [hoveredId, setHoveredId] = useState<string>();
 
   /** Deals the columns to the agents in the field as last measured. It never measures and never draws. */
   const reconcile = useCallback((): void => {
@@ -320,6 +321,8 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
     '--mv-rain-ink-idle': palette.rain.ink.idle,
     '--mv-rain-focus': palette.rain.focus,
   } as CSSProperties;
+  // A changed row is a new object (MV-D21), so the tooltip says the row as it is now, and nothing once it has left.
+  const hovered = hoveredId === undefined ? undefined : input.model.byId.get(hoveredId);
   const hoveredContext = hovered?.kind === 'agent' ? hovered.context?.usedPercent : undefined;
   const hoveredBranch = hovered?.kind === 'agent' ? hovered.project.branch : undefined;
 
@@ -354,11 +357,11 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
             tooltipRef.current.style.left = `${pointerRef.current.x + 15}px`;
             tooltipRef.current.style.top = `${pointerRef.current.y + 15}px`;
           }
-          setHovered((current) => (current?.id === agent?.id ? current : agent));
+          setHoveredId(agent?.id);
         }}
         onPointerLeave={() => {
           hoveredRef.current = undefined;
-          setHovered(undefined);
+          setHoveredId(undefined);
         }}
         onClick={(event) => {
           const agent = agentAt(event.clientX);
