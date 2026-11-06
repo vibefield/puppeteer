@@ -452,6 +452,52 @@ describe('the spend view’s motion', () => {
     await act(async () => frames.step(3));
     expect(frames.pending).toBe(0);
   });
+
+  it('asks for no frame while nothing waves, motion on, and runs the loop once a head waits', async () => {
+    // The stage is the root as it lays out, so the first render and the measured one draw one scale: nothing eases.
+    const stage = {
+      width: WIDE.width,
+      height: WIDE.height,
+      insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      obstacles: [],
+    };
+    // The afternoon's own rows, no head waiting and no reply unseen: nothing on the chart moves. Publishing the
+    // afternoon moves no scale either, so the frame it then asks for is the loop's alone.
+    const calm = afternoon().map((agent): AgentView => ({
+      ...agent,
+      status: agent.status === 'blocked' ? 'idle' : agent.status,
+      unread: false,
+      wait: undefined,
+    }));
+    const view = await mount({ agents: calm, stage });
+    expect(view.view.dataset.motion).toBe('on');
+    await act(async () => frames.step(2));
+    expect(frames.pending).toBe(0);
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: afternoon(), stage }));
+    expect(frames.pending).toBeGreaterThan(0);
+  });
+
+  it('rests out of sight: no clock, no paint and no frame; shown, it paints once, at now, and keeps time again', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const view = await mount({ agents: afternoon(), theme: fixtureTheme('dark', { hidden: true }) });
+    const paints = (): number => calls.filter((call) => call.op === 'clearRect').length;
+    calls.length = 0;
+    for (let step = 0; step < 4; step += 1) {
+      clock.advance(30_000);
+      await act(async () => {
+        vi.advanceTimersByTime(30_000);
+        frames.step();
+      });
+    }
+    expect(paints()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(frames.pending).toBe(0);
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: afternoon(), theme: fixtureTheme('dark') }));
+    expect(paints()).toBe(1);
+    // The one paint is of now, two minutes on, never of the moment the stage left sight.
+    expect(view.root.querySelector('.vf-monitor-spend-chip')?.textContent).toBe(formatClock(clock.now()));
+    expect(vi.getTimerCount()).toBe(1);
+  });
 });
 
 describe('the view on its root', () => {
