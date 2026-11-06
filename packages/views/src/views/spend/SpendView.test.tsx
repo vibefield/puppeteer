@@ -83,6 +83,8 @@ const PARAMETERS = parameterDefaults(SPEND_MANIFEST);
 const NOW = Date.parse('2026-10-03T21:12:15.000Z');
 const MIN = 60_000;
 const WIDE = { width: 1178, height: 638 };
+/** The lab's narrowest plate: a window at its narrowest. */
+const NARROW = { width: 400, height: 260 };
 
 interface Mounted {
   readonly root: HTMLElement;
@@ -264,6 +266,23 @@ describe('the spend view', () => {
     await view.update(fixtureInput({ parameters: PARAMETERS, agents: plain }));
     expect(text(view.root, '.vf-monitor-spend-big')[0]).toMatch(/^~\$[\d,.]+$/);
     expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['since each agent started, at API prices']);
+  });
+
+  it('at a narrow stage the hero still says who it leaves out: one by name, several by how many with no price', async () => {
+    // The caption's first words do not fit beside the number and the burn; who the total leaves out stays, in short.
+    const agents = afternoon();
+    const view = await mount({ agents }, NARROW);
+    expect(view.root.querySelector('.vf-monitor-spend-hero')?.className).toContain('is-narrow');
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['not counting swarm-lab']);
+    // A second agent no price reaches: how many, in the rows' own "no price".
+    const scratch = agentViewFixture({ id: 'scratch', project: { name: 'scratch' }, createdAt: NOW - 30 * MIN });
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: [...agents, scratch] }));
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['2 with no price']);
+    // Nobody left out: the number and the burn alone, and no empty caption beside them.
+    const priced = agents.filter((agent) => agent.id !== 'swarm-lab');
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: priced }));
+    expect(view.root.querySelector('.vf-monitor-spend-cap i')).toBeNull();
+    expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(/^\$[\d.]+\/hr now$/);
   });
 
   it("prints another desktop's total now and draws it no line; before now it says in words that nobody recorded it (SV-D2)", async () => {

@@ -6,6 +6,7 @@ import {
   axisMoney,
   est,
   fitWords,
+  heroCaption,
   modelOf,
   money,
   NOT_RECORDED,
@@ -156,5 +157,24 @@ describe('the spend words', () => {
     expect(state).toMatchObject({ key: 'unseen', glyph: 'reply' });
     expect(stateWords(state, NOW, undefined).tone).toBe('info');
     expect(NOT_RECORDED).toEqual({ text: 'not recorded', tone: 'muted' });
+  });
+
+  it('says who the hero’s total leaves out: after its caption at full width, and at a narrow stage alone and in short', () => {
+    const names = spendNames([row('a', 'notes'), row('b', 'swarm-lab'), row('c', 'scratch')]);
+    const left = (...ids: string[]) => ids.map((id) => ({ id }));
+    // Wide and compact: what the figure is, then who it leaves out (SV review must-fix 3), word for word as before.
+    expect(heroCaption({ missing: [], names, narrow: false })).toBe('since each agent started, at API prices');
+    expect(heroCaption({ missing: left('b'), names, narrow: false })).toBe(
+      'since each agent started, at API prices · not counting swarm-lab',
+    );
+    expect(heroCaption({ missing: left('b', 'c'), names, narrow: false })).toBe(
+      'since each agent started, at API prices · not counting 2 agents with no price',
+    );
+    // Narrow: the caption goes, who it leaves out stays: one by name, several by how many, in the rows' "no price".
+    expect(heroCaption({ missing: left('b'), names, narrow: true })).toBe('not counting swarm-lab');
+    expect(heroCaption({ missing: left('b', 'c'), names, narrow: true })).toBe('2 with no price');
+    expect(heroCaption({ missing: left('a', 'b', 'c'), names, narrow: true })).toBe('3 with no price');
+    // Nobody left out: nothing beside the number and the burn.
+    expect(heroCaption({ missing: [], names, narrow: true })).toBeUndefined();
   });
 });
