@@ -10,6 +10,7 @@
 export * from './monitor/internal-types.js';
 export * from './monitor/reduce.js';
 export * from './monitor/project.js';
+export { projectMonitorTransitions, type MonitorTransitions } from './monitor/transitions.js';
 export * from './monitor/notifications.js';
 export * from './monitor/rate.js';
 export * from './monitor/usage-policy.js';
