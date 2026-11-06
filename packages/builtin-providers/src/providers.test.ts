@@ -672,18 +672,31 @@ describe('createBuiltinProviders launch options', () => {
       report(adapters.createClaudeSession.mock.lastCall?.[0]);
       await claude.prepareSession!({ cwd: '/work/repo', host });
       report(adapters.prepareClaudeTuiSession.mock.lastCall?.[0]);
-      // A typed root no profile names, and an imposter: no account. Until James rules rv-usage-tiles (4), their
-      // readings still reach the service, unstamped, as every reading did before.
+      // A typed root no profile names, and an imposter: no registered account names them, so their sessions are
+      // handed no sink, created, attached or prepared. The registry is the account authority: a reading no account
+      // owns is shown nowhere.
+      const sinkOf = (options: unknown): unknown => (options as { accountUsage?: unknown } | undefined)?.accountUsage;
       await claude.createSession({ cwd: '/work/repo', host, environment: { CLAUDE_CONFIG_DIR: '/elsewhere' } });
-      report(adapters.createClaudeSession.mock.lastCall?.[0]);
+      expect(sinkOf(adapters.createClaudeSession.mock.lastCall?.[0])).toBeUndefined();
       await claude.createSession({
         cwd: '/work/repo',
         host,
         agentOptions: { env: { PUPPETEER_IMPOSTER_HOME: '/fake' } },
       });
-      report(adapters.createClaudeSession.mock.lastCall?.[0]);
+      expect(sinkOf(adapters.createClaudeSession.mock.lastCall?.[0])).toBeUndefined();
+      await claude.attachSession!({
+        sessionId: 'native-2',
+        runtimeSessionId: 'pane-2',
+        cwd: '/work/repo',
+        host,
+        agentOptions: { configDir: '/elsewhere' },
+        ingress,
+      });
+      expect(sinkOf(adapters.attachClaudeTuiSession.mock.lastCall?.[0])).toBeUndefined();
+      await claude.prepareSession!({ cwd: '/work/repo', host, agentOptions: { env: { AI_PERSONA: 'calm' } } });
+      expect(sinkOf(adapters.prepareClaudeTuiSession.mock.lastCall?.[0])).toBeUndefined();
 
-      expect(heard).toEqual(['p1', 'p1', 'p1', 'claude:native-default', 'claude:native-default', undefined, undefined]);
+      expect(heard).toEqual(['p1', 'p1', 'p1', 'claude:native-default', 'claude:native-default']);
     } finally {
       vi.unstubAllEnvs();
     }

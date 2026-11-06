@@ -224,25 +224,45 @@ describe('per-account readings', () => {
     expect(accountUsageEntryKey('push-agent', 'e2f0a1b2')).not.toBe(accountUsageEntryKey('push-agent'));
   });
 
-  it('routes a push update to the account its snapshot names', async () => {
+  it('routes a push update to the account its snapshot names, and drops one no row owns', async () => {
+    let nowMs = Date.parse('2026-07-23T20:00:00.000Z');
+    const fetchUsage = vi.fn(async (providerId: string, profileId?: string) => availableFor(providerId, profileId));
     const monitor = createAccountUsageMonitor({
       providers: PROVIDERS,
-      fetchUsage: async (providerId: string, profileId?: string) => availableFor(providerId, profileId),
+      fetchUsage,
       listProfiles: () => Promise.resolve(PROFILES),
       publish: () => undefined,
-      now: () => new Date('2026-07-23T20:00:00.000Z'),
+      now: () => new Date(nowMs),
     });
-    await monitor.refreshProfiles();
+    const reconciled = await monitor.refreshProfiles();
 
-    const pushed = monitor.ingest('push-agent', {
+    // A push naming no account, for a provider with two rows, has no row: it is dropped, and no unkeyed row is made
+    // to hold it, a row the poll would then read as an account of its own. A failure names no account either.
+    const unattributed = monitor.ingest('push-agent', availableFor('push-agent'));
+    expect(unattributed.entries.filter((entry) => entry.provider.id === 'push-agent')).toHaveLength(2);
+    expect(unattributed).toBe(reconciled);
+    const failed = monitor.ingest('push-agent', {
       status: 'unauthenticated',
       provider: 'push-agent',
       message: 'sign in required',
       retryable: false,
     });
-    // Without a profile in the payload an ambiguous provider keeps its rows and
-    // gains one unkeyed row rather than overwriting a registered account.
-    expect(pushed.entries.filter((entry) => entry.provider.id === 'push-agent')).toHaveLength(3);
+    expect(failed).toBe(reconciled);
+    fetchUsage.mockClear();
+    nowMs += 30 * 60_000;
+    await monitor.refresh();
+    expect(fetchUsage.mock.calls.filter(([providerId]) => providerId === 'push-agent')).toEqual([
+      ['push-agent', 'push-agent:native-default'],
+      ['push-agent', 'e2f0a1b2'],
+    ]);
+
+    // A provider with one row is unambiguous: a push naming no account is that row's.
+    const statusLine: AccountUsageSource = { kind: 'native-statusline', stability: 'documented' };
+    const single = monitor.ingest('fast-agent', available('fast-agent', statusLine));
+    expect(single.entries.find((entry) => entry.provider.id === 'fast-agent')).toMatchObject({
+      profileId: 'fast-agent:native-default',
+      result: { status: 'available', snapshot: { source: statusLine } },
+    });
 
     const targeted = monitor.ingest('push-agent', availableFor('push-agent', 'e2f0a1b2'));
     const second = targeted.entries.find((entry) => entry.profileId === 'e2f0a1b2');
@@ -324,6 +344,27 @@ describe('per-account readings', () => {
     const kept = rows.find((entry) => entry.profileId === 'e2f0a1b2');
     expect(kept?.result.status).toBe('available');
     expect(kept?.profileLabel).toBe('Second seat');
+  });
+
+  it('drops a push naming an account the registry, once it has answered, does not list', async () => {
+    const monitor = createAccountUsageMonitor({
+      providers: PROVIDERS,
+      fetchUsage: async (providerId: string, profileId?: string) => availableFor(providerId, profileId),
+      listProfiles: () => Promise.resolve(PROFILES),
+      publish: () => undefined,
+      now: () => new Date('2026-07-23T20:00:00.000Z'),
+    });
+    const reconciled = await monitor.refreshProfiles();
+
+    // An account the registry does not list, or no longer lists, is not drawn: the registry is the account authority.
+    const unlisted = monitor.ingest('push-agent', availableFor('push-agent', 'retired-seat'));
+    expect(unlisted.entries.map((entry) => entry.profileId)).toEqual([
+      'push-agent:native-default',
+      'e2f0a1b2',
+      'fast-agent:native-default',
+      undefined,
+    ]);
+    expect(unlisted).toBe(reconciled);
   });
 });
 
