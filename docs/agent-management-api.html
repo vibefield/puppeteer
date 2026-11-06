@@ -2425,7 +2425,9 @@ interface AccountUsageProvider {
                       sharing a group id are one family; a view may head them with the group’s label and name each by
                       its window. <code>label</code> stays unique across groups. <code>standby</code> marks an
                       allowance drawn on only after the plan’s own limits run out; untouched, a view may keep it out of
-                      sight.
+                      sight. Core’s <code>accountUsageMetricInPlay(metric, metrics)</code> is that rule, one for every
+                      consumer: a standby metric is in play once any metric of its group is used, or once one of the
+                      plan’s own windows (no group) reaches 100%.
                     </td>
                   </tr>
                   <tr>

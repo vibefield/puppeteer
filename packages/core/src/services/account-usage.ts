@@ -42,7 +42,8 @@ export const AccountUsageMetricGroupSchema = z.strictObject({
   /**
    * An allowance the provider draws on only after the plan's own limits run
    * out. Untouched, it says nothing about the plan, so a consumer may keep it
-   * out of sight until it is used or those limits are spent.
+   * out of sight until it is used or those limits are spent
+   * (`accountUsageMetricInPlay`).
    */
   standby: z.literal(true).optional(),
 });
@@ -120,6 +121,25 @@ export const AccountUsageSnapshotSchema = z
     });
   });
 export type AccountUsageSnapshot = z.infer<typeof AccountUsageSnapshotSchema>;
+
+/** The fields the in-play rule reads, so a host's own copy of the metric contract fits as well as this one. */
+type InPlayMetric = {
+  kind: string;
+  usedPercent: number;
+  group?: { id: string; standby?: boolean | undefined } | undefined;
+};
+
+/**
+ * Whether a meter belongs in sight, by the rule `standby` states: a standby allowance is in play once any meter of
+ * its group is used, or once one of the plan's own windows (no group) is spent; every other meter always is. The one
+ * place that rule is written, so every consumer of a reading keeps the same meters out of sight.
+ */
+export function accountUsageMetricInPlay(metric: InPlayMetric, metrics: readonly InPlayMetric[]): boolean {
+  const group = metric.group;
+  if (group?.standby !== true) return true;
+  if (metrics.some((other) => other.group?.id === group.id && other.usedPercent > 0)) return true;
+  return metrics.some((other) => other.group === undefined && other.kind === 'window' && other.usedPercent >= 100);
+}
 
 export const AccountUsageAvailableSchema = z.strictObject({
   status: z.literal('available'),

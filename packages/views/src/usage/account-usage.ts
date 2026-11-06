@@ -1,3 +1,4 @@
+import { accountUsageMetricInPlay } from '@vibefield/puppeteer-core';
 import type { AccountUsageMetric } from '@vibefield/puppeteer-core';
 import type { AccountUsageBatch, AccountUsageEntry } from '@vibefield/puppeteer-core';
 
@@ -71,7 +72,9 @@ export function accountUsageView(
   const accountLabel =
     options.showAccount && entry.profileLabel ? { accountLabel: entry.profileLabel.toUpperCase() } : {};
   if (entry.result.status === 'available') {
-    const metrics = entry.result.snapshot.metrics.slice(0, 3).map((metric) => metricView(metric, nowMs));
+    const reported = entry.result.snapshot.metrics;
+    const shown = reported.filter((metric) => accountUsageMetricInPlay(metric, reported));
+    const metrics = shown.slice(0, 3).map((metric) => metricView(metric, nowMs));
     const failure = entry.refreshFailure;
     const rateLimited = failure?.code === 'rate-limited';
     const retryLabel = formatUsageReset(failure?.retryAt, nowMs);
@@ -266,7 +269,10 @@ export function usageTile(
 
   if (entry.result.status === 'available') {
     const rateLimited = entry.refreshFailure?.code === 'rate-limited';
-    const windows = entry.result.snapshot.metrics.map((metric) => windowView(metric, nowMs, rateLimited));
+    // Out of sight is out of everything below: the rings, figure, hot, pressure, popup, count and aria.
+    const reported = entry.result.snapshot.metrics;
+    const shown = reported.filter((metric) => accountUsageMetricInPlay(metric, reported));
+    const windows = shown.map((metric) => windowView(metric, nowMs, rateLimited));
     const top = tightest(windows);
     const retryLabel = formatUsageReset(entry.refreshFailure?.retryAt, nowMs);
     const age = formatUsageAge(entry.result.snapshot.fetchedAt, nowMs);
