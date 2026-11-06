@@ -1,7 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { claudeConfigRoot } from '../launch/config-root.js';
 import {
   createClaudeSessionSelection,
   type ClaudeSessionRefusal,
@@ -265,6 +266,79 @@ describe('createClaudeSessionSelection: an attach follows the running process', 
       ]);
     } finally {
       rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('createClaudeSessionSelection: the transcript the rail may follow', () => {
+  const projects = join(ROOT, 'projects');
+
+  it('is the selected session’s own file, one folder under the root’s projects, and nothing else', () => {
+    const selection = launch();
+    const own = join(projects, '-work', `${X}.jsonl`);
+    expect(selection.transcriptFor(own)).toBe(own);
+    // `..` is read as resolved: a folder beside it is still one folder under projects
+    expect(selection.transcriptFor([projects, '-work', '..', '-other', `${X}.jsonl`].join(sep))).toBe(
+      join(projects, '-other', `${X}.jsonl`),
+    );
+    for (const refused of [
+      // another session's file under the root
+      join(projects, '-work', `${Y}.jsonl`),
+      // the selected id's name anywhere else
+      join(resolve('/tmp'), `${X}.jsonl`),
+      join(ROOT, `${X}.jsonl`),
+      join(projects, `${X}.jsonl`),
+      join(projects, '-work', 'deeper', `${X}.jsonl`),
+      join(projects, '-work', X, 'subagents', `${X}.jsonl`),
+      [projects, '..', '..', 'elsewhere', 'projects', '-work', `${X}.jsonl`].join(sep),
+      join(`${ROOT}-sibling`, 'projects', '-work', `${X}.jsonl`),
+    ]) {
+      expect(selection.transcriptFor(refused), refused).toBeUndefined();
+    }
+  });
+
+  it('follows the selection: a rotation pins the new id’s file, a picker that chose nothing pins none', () => {
+    const selection = launch();
+    verdicts(selection, [[Y, 'SessionStart', { source: 'clear' }]]);
+    expect(selection.transcriptFor(join(projects, '-work', `${Y}.jsonl`))).toBe(join(projects, '-work', `${Y}.jsonl`));
+    expect(selection.transcriptFor(join(projects, '-work', `${X}.jsonl`))).toBeUndefined();
+    const picker = launch({ selected: undefined, resumeInvocation: true });
+    expect(picker.transcriptFor(join(projects, '-work', `${X}.jsonl`))).toBeUndefined();
+  });
+
+  it('pins the imposter’s files under its own state root', () => {
+    const imposter = resolve('/imposter-home');
+    const root = claudeConfigRoot({ cwd: resolve('/work'), env: { PUPPETEER_IMPOSTER_HOME: imposter } });
+    const selection = createClaudeSessionSelection({ mode: 'launch', selected: X, root });
+    const own = join(imposter, 'projects', '-work', `${X}.jsonl`);
+    expect(selection.transcriptFor(own)).toBe(own);
+  });
+
+  it('matches a path through a link by where its folders really are, and names the file under the root', () => {
+    const base = mkdtempSync(join(tmpdir(), 'session-selection-link-'));
+    try {
+      const real = join(base, 'real');
+      const link = join(base, 'link');
+      mkdirSync(join(real, 'projects', '-work'), { recursive: true });
+      symlinkSync(real, link, 'junction');
+      const realFile = join(real, 'projects', '-work', `${X}.jsonl`);
+      const linkedFile = join(link, 'projects', '-work', `${X}.jsonl`);
+      // the root named through the link, the hook's path through the real folders, and the other way round: the answer
+      // is the root's own name for the file, never the hook's
+      const throughLink = createClaudeSessionSelection({ mode: 'launch', selected: X, root: link });
+      expect(throughLink.transcriptFor(realFile)).toBe(linkedFile);
+      const throughReal = createClaudeSessionSelection({ mode: 'launch', selected: X, root: real });
+      expect(throughReal.transcriptFor(linkedFile)).toBe(realFile);
+      // a link outside the root to the root's own folder: the rail keeps the root's name, so pointing the link
+      // elsewhere later moves nothing
+      const outside = join(base, 'outside');
+      symlinkSync(join(real, 'projects', '-work'), outside, 'junction');
+      expect(throughReal.transcriptFor(join(outside, `${X}.jsonl`))).toBe(realFile);
+      // a folder that is not there is read only as written
+      expect(throughLink.transcriptFor(join(real, 'projects', '-gone', `${X}.jsonl`))).toBeUndefined();
+      expect(throughLink.transcriptFor(join(real, 'projects', '-work', `${Y}.jsonl`))).toBeUndefined();
+    } finally {
+      rmSync(base, { recursive: true, force: true });
     }
   });
 });

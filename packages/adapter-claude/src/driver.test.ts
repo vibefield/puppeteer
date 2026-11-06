@@ -7,7 +7,16 @@ import * as detection from './detection.js';
  * POSTs fixture-shaped hook payloads with the env-carried token.
  */
 
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -32,10 +41,44 @@ import { createHookBridge, type HookBridge, type NativeHookEnvelope } from './ob
 import type { SemanticObservationEvent, SemanticObservationProvider } from './observation/semantic-provider.js';
 
 let sessions: ClaudeSession[] = [];
+const roots: string[] = [];
 afterEach(async () => {
   for (const s of sessions) await s.dispose();
   sessions = [];
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
+
+/** A config root of the test's own: the transcript rail follows only a conversation kept under it. */
+function configRoot(prefix: string): { configDir: string; transcriptOf(sessionId: string): string } {
+  const configDir = mkdtempSync(join(tmpdir(), prefix));
+  roots.push(configDir);
+  return {
+    configDir,
+    // where Claude keeps the conversation of a session launched in /tmp, its project folder made
+    transcriptOf(sessionId) {
+      const project = join(configDir, 'projects', '-tmp');
+      mkdirSync(project, { recursive: true });
+      return join(project, `${sessionId}.jsonl`);
+    },
+  };
+}
+
+/** A durable observer that reads nothing and records each transcript the driver attaches it to. */
+function recordingProvider(attached: string[]): SemanticObservationProvider {
+  return {
+    capabilities: () => Promise.resolve([]),
+    attach: (request) => {
+      attached.push(request.transcriptPath);
+      return Promise.resolve({
+        onEvent: () => () => undefined,
+        onBatch: () => () => undefined,
+        onError: () => () => undefined,
+        poll: () => Promise.resolve(),
+        dispose: () => Promise.resolve(),
+      });
+    },
+  };
+}
 
 async function startSession(
   options: {
@@ -54,9 +97,11 @@ async function startSession(
 ) {
   let prepared: PreparedClaudeSession | undefined;
   const automations: TerminalAutomationOperation[] = [];
+  const { configDir, transcriptOf } = configRoot('driver-config-');
   const session = await createClaudeSession({
     cwd: '/tmp',
     title: 'driver-test',
+    configDir,
     fileChangeMatcher: options.fileChangeMatcher,
     onDiagnostic: options.onDiagnostic,
     permissionMode: options.permissionMode,
@@ -135,6 +180,9 @@ async function startSession(
     subagentStatusLine,
     endpoint,
     token,
+    configDir,
+    /** This session's own transcript under its config root (another id's, when named). */
+    transcriptOf: (sessionId: string = session.sessionId) => transcriptOf(sessionId),
   };
 }
 
@@ -514,7 +562,9 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('uses only OTLP request usage, models and actor corrections despite conflicting transcript records', async () => {
-    const { session, prepared, events, token, hook } = await startSession({ providerVersion: '2.1.245' });
+    const { session, prepared, events, token, hook, configDir, transcriptOf } = await startSession({
+      providerVersion: '2.1.245',
+    });
     expect(prepared.env).toMatchObject({
       OTEL_LOGS_EXPORTER: 'otlp',
       OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
@@ -583,9 +633,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(emptyResponse.status).toBe(200);
     expect(session.observationLevel()).toBe('terminal-only');
 
-    const dir = mkdtempSync(join(tmpdir(), 'driver-otel-only-'));
-    const transcript = join(dir, `${session.sessionId}.jsonl`);
-    const children = join(dir, session.sessionId, 'subagents');
+    const transcript = transcriptOf();
+    const children = join(configDir, 'projects', '-tmp', session.sessionId, 'subagents');
     mkdirSync(children, { recursive: true });
     const childTranscript = join(children, 'agent-worker.jsonl');
     const transcriptRow = (sequence: number, agentId?: string) =>
@@ -861,17 +910,16 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('ignores root and child transcript metadata and models while observing live root text', async () => {
-    const { session, projection, events, hook } = await startSession();
-    const dir = mkdtempSync(join(tmpdir(), 'driver-no-transcript-metadata-'));
+    const { session, projection, events, hook, configDir, transcriptOf } = await startSession();
     try {
       const row = (fields: Record<string, unknown>) =>
         JSON.stringify({ sessionId: session.sessionId, ...fields }) + '\n';
-      const transcript = join(dir, `${session.sessionId}.jsonl`);
+      const transcript = transcriptOf();
       writeFileSync(
         transcript,
         Array.from({ length: 2_000 }, (_, index) => row({ type: 'attachment', uuid: `metadata-${index}` })).join(''),
       );
-      const children = join(dir, session.sessionId, 'subagents');
+      const children = join(configDir, 'projects', '-tmp', session.sessionId, 'subagents');
       mkdirSync(children, { recursive: true });
       const childTranscript = join(children, 'agent-worker.jsonl');
       writeFileSync(childTranscript, row({ type: 'future-type', uuid: 'child-metadata', agentId: 'worker' }));
@@ -915,21 +963,17 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     } finally {
       projection.dispose();
       await session.dispose();
-      rmSync(dir, { recursive: true, force: true });
     }
   });
 
   it.each([true, false])(
     'keeps hook/status models independent of transcript text when OTLP is enabled=%s',
     async (enabled) => {
-      const { session, projection, events, hook, statusLine, subagentStatusLine } = await startSession({
+      const { session, projection, events, hook, statusLine, subagentStatusLine, transcriptOf } = await startSession({
         providerVersion: '2.1.245',
         observeOtlpUsage: enabled,
       });
-      const dir = mkdtempSync(join(tmpdir(), 'driver-transcript-'));
-      const project = join(dir, '.claude', 'projects', '-driver-test');
-      mkdirSync(project, { recursive: true });
-      const transcript = join(project, `${session.sessionId}.jsonl`);
+      const transcript = transcriptOf();
       writeFileSync(transcript, '');
 
       await hook('SessionStart', { transcript_path: transcript, model: 'hook-model' });
@@ -1030,8 +1074,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           dispose: () => Promise.resolve(),
         }),
     };
-    const { session, events, hook } = await startSession({ semanticProviderFactory: () => provider });
-    await hook('SessionStart', { transcript_path: '/tmp/claude-no-durable-usage.jsonl' });
+    const { session, events, hook, transcriptOf } = await startSession({ semanticProviderFactory: () => provider });
+    await hook('SessionStart', { transcript_path: transcriptOf() });
     await session.pollTranscript();
     expect(deliver).toBeTypeOf('function');
     for (const replay of [true, false]) {
@@ -1072,8 +1116,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         });
       },
     };
-    const { session, events, hook } = await startSession({ semanticProviderFactory: () => provider });
-    const transcriptPath = '/tmp/claude-semantic-retry.jsonl';
+    const { session, events, hook, transcriptOf } = await startSession({ semanticProviderFactory: () => provider });
+    const transcriptPath = transcriptOf();
 
     await hook('SessionStart', { transcript_path: transcriptPath });
     await Promise.resolve();
@@ -1112,9 +1156,9 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           dispose: () => Promise.resolve(),
         }),
     };
-    const { events, hook } = await startSession({ semanticProviderFactory: () => provider });
+    const { events, hook, transcriptOf } = await startSession({ semanticProviderFactory: () => provider });
 
-    await hook('SessionStart', { transcript_path: '/tmp/claude-semantic-error.jsonl' });
+    await hook('SessionStart', { transcript_path: transcriptOf() });
     await vi.waitFor(() => expect(reportError).toBeTypeOf('function'));
     reportError!(Object.assign(new Error('/tmp/private/error'), { code: 'EIO' }));
 
@@ -1459,6 +1503,87 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(session.sessionId).toBe(before);
   });
 
+  it('follows only its own session’s transcript under the config root, and says once what it refused', async () => {
+    const attached: string[] = [];
+    const { session, events, hook, transcriptOf } = await startSession({
+      semanticProviderFactory: () => recordingProvider(attached),
+    });
+    // a file of the hook's choosing outside the root, and another session's under it
+    const forged = join(tmpdir(), `${session.sessionId}.jsonl`);
+    const another = transcriptOf('64a61b19-f4d8-4f96-ba56-07024b4708ae');
+    await hook('SessionStart', { source: 'startup', transcript_path: forged });
+    await hook('UserPromptSubmit', { prompt: 'again', prompt_id: 'p-again', transcript_path: forged });
+    await hook('Stop', { prompt_id: 'p-again', transcript_path: another });
+    await session.pollTranscript();
+    expect(attached).toEqual([]);
+    expect(session.transcriptPath()).toBeUndefined();
+    const refused = events.filter(
+      ({ event }) => event.type === 'adapter:native-event' && event.nativeType === 'transcript-path.refused',
+    );
+    expect(refused.map(({ nativeEvent }) => nativeEvent)).toEqual([
+      { hookEventName: 'SessionStart' },
+      { hookEventName: 'Stop' },
+    ]);
+    expect(JSON.stringify(refused)).not.toContain('.jsonl');
+
+    const own = transcriptOf();
+    await hook('UserPromptSubmit', { prompt: 'own', prompt_id: 'p-own', transcript_path: own });
+    await vi.waitFor(() => expect(attached).toEqual([own]));
+    expect(session.transcriptPath()).toBe(own);
+  });
+
+  it('follows a /clear to the new session’s transcript before Claude has written it', async () => {
+    const attached: string[] = [];
+    const { hook, transcriptOf } = await startSession({ semanticProviderFactory: () => recordingProvider(attached) });
+    const cleared = '64a61b19-f4d8-4f96-ba56-07024b4708af';
+    await hook('SessionStart', { source: 'startup', transcript_path: transcriptOf() });
+    await hook('SessionEnd', { reason: 'clear', transcript_path: transcriptOf() });
+    const next = transcriptOf(cleared);
+    expect(existsSync(next)).toBe(false);
+    await hook('SessionStart', { session_id: cleared, source: 'clear', transcript_path: next });
+    await vi.waitFor(() => expect(attached.at(-1)).toBe(next));
+  });
+
+  it('follows the transcript of a config root reached through a link', async () => {
+    const base = mkdtempSync(join(tmpdir(), 'driver-linked-root-'));
+    roots.push(base);
+    const real = join(base, 'real');
+    const link = join(base, 'link');
+    mkdirSync(join(real, 'projects', '-tmp'), { recursive: true });
+    symlinkSync(real, link, 'junction');
+    const attached: string[] = [];
+    const prepared = await prepareClaudeTuiSession({
+      cwd: '/tmp',
+      configDir: link,
+      semanticProviderFactory: () => recordingProvider(attached),
+      automate: async () => ({ accepted: true }),
+    });
+    const session = await prepared.adopt('linked-root-pane');
+    sessions.push(session);
+    const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
+    };
+    const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
+    // the hook names the conversation by the folders the link leads to; the rail follows it by the root's own name
+    const transcript = join(real, 'projects', '-tmp', `${session.sessionId}.jsonl`);
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
+      },
+      body: JSON.stringify({
+        session_id: session.sessionId,
+        transcript_path: transcript,
+        cwd: '/tmp',
+        hook_event_name: 'SessionStart',
+        source: 'startup',
+      }),
+    });
+    expect(response.status).toBe(200);
+    await vi.waitFor(() => expect(attached).toEqual([join(link, 'projects', '-tmp', `${session.sessionId}.jsonl`)]));
+  });
+
   it('degrades hook observation on rail loss without ending the live session', async () => {
     let hookListener: ((envelope: NativeHookEnvelope) => void) | undefined;
     let unavailableListener: ((reason: string) => void) | undefined;
@@ -1713,8 +1838,10 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           dispose: () => Promise.resolve(),
         }),
     };
+    const { configDir, transcriptOf } = configRoot('driver-slow-transcript-');
     const prepared = await prepareClaudeTuiSession({
       cwd: '/tmp',
+      configDir,
       resumeInvocation: ['--resume'],
       semanticProviderFactory: () => provider,
       automate: async () => ({ accepted: true }),
@@ -1733,7 +1860,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         },
         body: JSON.stringify({
           session_id: '64a61b19-f4d8-4f96-ba56-07024b470891',
-          transcript_path: '/tmp/slow-transcript.jsonl',
+          transcript_path: transcriptOf('64a61b19-f4d8-4f96-ba56-07024b470891'),
           cwd: '/tmp',
           hook_event_name: name,
           ...fields,
@@ -1773,8 +1900,10 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   it('keeps the native resume picker and adopts the session selected after launch', async () => {
     const previewId = '64a61b19-f4d8-4f96-ba56-07024b470898';
     const selectedId = '64a61b19-f4d8-4f96-ba56-07024b470899';
+    const { configDir, transcriptOf } = configRoot('driver-picker-baselines-');
     const prepared = await prepareClaudeTuiSession({
       cwd: '/tmp',
+      configDir,
       resumeInvocation: ['--resume'],
       automate: async () => ({ accepted: true }),
     });
@@ -1789,9 +1918,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
     };
     const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
-    const transcriptDirectory = mkdtempSync(join(tmpdir(), 'driver-picker-baselines-'));
-    const previewTranscript = join(transcriptDirectory, `${previewId}.jsonl`);
-    const selectedTranscript = join(transcriptDirectory, `${selectedId}.jsonl`);
+    const previewTranscript = transcriptOf(previewId);
+    const selectedTranscript = transcriptOf(selectedId);
     for (const [path, id] of [
       [previewTranscript, previewId],
       [selectedTranscript, selectedId],
@@ -1962,8 +2090,10 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     const bootId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f70';
     const selectedId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f71';
     const foreignId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f72';
+    const { configDir, transcriptOf } = configRoot('driver-picker-boot-');
     const prepared = await prepareClaudeTuiSession({
       cwd: '/tmp',
+      configDir,
       resumeInvocation: ['--resume'],
       automate: async () => ({ accepted: true }),
     });
@@ -1980,9 +2110,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     };
     const post = (url: string, body: Record<string, unknown>) =>
       fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-    const transcripts = mkdtempSync(join(tmpdir(), 'driver-picker-boot-'));
-    const bootTranscript = join(transcripts, `${bootId}.jsonl`);
-    const selectedTranscript = join(transcripts, `${selectedId}.jsonl`);
+    const bootTranscript = transcriptOf(bootId);
+    const selectedTranscript = transcriptOf(selectedId);
     writeFileSync(bootTranscript, '');
     writeFileSync(selectedTranscript, '');
     const eventTypes = () => projection.envelopes.map(({ event }) => event.type);
