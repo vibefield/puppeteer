@@ -31,8 +31,17 @@ import type {
   MonitorStoredEntry,
 } from './internal-types.js';
 import { boundMonitorCollection } from './bounds.js';
-import { DEFAULT_MONITOR_BURN_RATE_WINDOW_MS, projectMonitorUsageLedger } from './rate.js';
+import { DEFAULT_MONITOR_BURN_RATE_WINDOW_MS } from './rate.js';
 import { actorOf, compareEntryPreference, planePriority, selectClaims, time } from './selection.js';
+import {
+  countCompleteness,
+  queryUsageIndex,
+  sumCompleteness,
+  summarizeFamilyEvidence,
+  usageIndexOf,
+  type CompletenessCount,
+  type MonitorFamilyEvidence,
+} from './usage-index.js';
 
 export interface ProjectAgentMonitorOptions {
   previous?: AgentMonitorState;
@@ -57,22 +66,14 @@ function earliestTimestamp(values: Array<string | undefined>): string | undefine
     .sort((a, b) => time(a) - time(b))[0];
 }
 
-function allEntries(state: MonitorAccumulatorState): MonitorStoredEntry[] {
-  const usage = [...state.usage.entries.values()];
-  return [
-    ...state.runtime.entries.values(),
-    ...state.semantic.entries.values(),
-    ...state.workspace.entries.values(),
-    // The ledger in plane order, so each usage identity's claims are ranked as the planes list them.
-    ...usage.filter((entry) => entry.plane === 'runtime'),
-    ...usage.filter((entry) => entry.plane === 'semantic'),
-    ...usage.filter((entry) => entry.plane === 'workspace'),
-  ];
+/** The planes' claims of every family but usage, whose ledger the usage index reads. */
+function planeEntries(state: MonitorAccumulatorState): MonitorStoredEntry[] {
+  return [...state.runtime.entries.values(), ...state.semantic.entries.values(), ...state.workspace.entries.values()];
 }
 
-/** Select one current source-owned claim for every provider-neutral family/key identity. */
+/** Select one current claim for every family/key identity but usage's, which the usage index selects per ledger. */
 function selectedEntries(state: MonitorAccumulatorState): MonitorStoredEntry[] {
-  return selectClaims(allEntries(state));
+  return selectClaims(planeEntries(state));
 }
 
 function familyEntries(entries: readonly MonitorStoredEntry[], family: MonitorMetricFamily): MonitorStoredEntry[] {
@@ -438,6 +439,20 @@ function childActors(entries: readonly MonitorStoredEntry[]): Map<string, ChildA
   return actors;
 }
 
+/**
+ * Every child of the run: those the planes' claims name, then those only its usage names. Usage is the last family
+ * in claim order, so this is the order one walk over every selected claim gave. A usage-only child has no state,
+ * activity, model or effort to read: it counts, and carries its usage.
+ */
+function withUsageActors(
+  actors: ReadonlyMap<string, ChildActor>,
+  usageActors: ReadonlyMap<string, ActorRunRef>,
+): Map<string, ChildActor> {
+  const all = new Map(actors);
+  for (const [runKey, actor] of usageActors) if (!all.has(runKey)) all.set(runKey, { actor, entries: [] });
+  return all;
+}
+
 function childActivities(
   actors: ReadonlyMap<string, ChildActor>,
   alive: boolean,
@@ -535,7 +550,7 @@ function projectEnvironment(
 
 function familySupport(
   state: MonitorAccumulatorState,
-  entries: readonly MonitorStoredEntry[],
+  evidence: MonitorFamilyEvidence,
   family: MonitorMetricFamily,
 ) {
   const producers = [...state.semantic.producers.values()];
@@ -546,10 +561,8 @@ function familySupport(
   if (capabilities.some((capability) => capability.support === 'supported')) support = 'supported';
   else if (capabilities.some((capability) => capability.support === 'degraded')) support = 'degraded';
   else if (capabilities.length > 0) support = 'unsupported';
-  const current = familyEntries(entries, family);
-  if (!support && current.length > 0) {
-    support = current.some((entry) => entry.completeness === 'complete') ? 'supported' : 'degraded';
-  }
+  const current = evidence.all;
+  if (!support && current.count > 0) support = current.complete > 0 ? 'supported' : 'degraded';
   if (!support) return undefined;
   const relevantProducers = producers.filter((producer) => {
     const capability = producer.capabilities.get(family);
@@ -557,50 +570,44 @@ function familySupport(
     return (
       capability !== undefined ||
       [...producer.coverage.values()].some((item) => item.family === family) ||
-      current.some((entry) => entry.plane === 'semantic' && entry.ownerId === producer.id)
+      evidence.semantic.has(producer.id)
     );
   });
   const producerIds = new Set(producers.map((producer) => producer.id));
   const coverage = relevantProducers.flatMap((producer) =>
     [...producer.coverage.values()].filter((item) => item.family === family),
   );
-  const completeness = relevantProducers.flatMap((producer) => {
+  // A relevant producer counts its coverage, or else its own claims; a claim no producer owns counts as itself.
+  const counts: CompletenessCount[] = [evidence.other];
+  for (const producer of relevantProducers) {
     const producerCoverage = [...producer.coverage.values()].filter((item) => item.family === family);
-    if (producerCoverage.length > 0) return producerCoverage.map((item) => item.completeness);
-    return current
-      .filter((entry) => entry.plane === 'semantic' && entry.ownerId === producer.id)
-      .map((entry) => entry.completeness);
-  });
-  completeness.push(
-    ...current
-      .filter((entry) => entry.plane !== 'semantic' || !producerIds.has(entry.ownerId))
-      .map((entry) => entry.completeness),
-  );
+    const owned = evidence.semantic.get(producer.id);
+    if (producerCoverage.length > 0) counts.push(countCompleteness(producerCoverage.map((item) => item.completeness)));
+    else if (owned) counts.push(owned);
+  }
+  for (const [ownerId, owned] of evidence.semantic) if (!producerIds.has(ownerId)) counts.push(owned);
+  const { count, complete, unavailable } = sumCompleteness(counts);
   const allRelevantProducersDegraded =
     relevantProducers.length > 0 && relevantProducers.every((producer) => producer.readiness === 'degraded');
   let availability: MonitorFamilyAvailability;
   if (support === 'unsupported') availability = 'unavailable';
   else if (relevantProducers.length > 0 && relevantProducers.every((producer) => producer.readiness === 'loading')) {
     availability = 'loading';
-  } else if (completeness.length > 0) {
-    const complete = completeness.filter((value) => value === 'complete').length;
-    const unavailable = completeness.filter((value) => value === 'unavailable').length;
-    availability =
-      unavailable === completeness.length ? 'unavailable' : complete === completeness.length ? 'available' : 'partial';
+  } else if (count > 0) {
+    availability = unavailable === count ? 'unavailable' : complete === count ? 'available' : 'partial';
     if (availability === 'available' && allRelevantProducersDegraded) availability = 'partial';
-  } else if (current.length > 0) {
-    const currentCompleteness = current.map((entry) => entry.completeness);
+  } else if (current.count > 0) {
     availability = allRelevantProducersDegraded
       ? 'partial'
-      : currentCompleteness.every((value) => value === 'complete')
+      : current.complete === current.count
         ? 'available'
-        : currentCompleteness.every((value) => value === 'unavailable')
+        : current.unavailable === current.count
           ? 'unavailable'
           : 'partial';
   } else {
     availability = 'unavailable';
   }
-  const asOf = latestTimestamp([...current.map((entry) => entry.observedAt), ...coverage.map((item) => item.asOf)]);
+  const asOf = latestTimestamp([evidence.latestObservedAt, ...coverage.map((item) => item.asOf)]);
   const reason = coverage.filter((item) => item.reason).sort((a, b) => time(b.asOf) - time(a.asOf))[0]?.reason;
   return { support, availability, ...(asOf ? { asOf } : {}), ...(reason ? { reason } : {}) };
 }
@@ -638,8 +645,9 @@ export function projectAgentMonitorState(
   ]);
   const projectionAsOf = options.asOf ?? evidenceAsOf ?? accumulator.allocatedAt;
   const asOfMs = time(projectionAsOf);
-  const usageProjection = projectMonitorUsageLedger(
-    familyEntries(entries, 'usage'),
+  const usageIndex = usageIndexOf(accumulator);
+  const usageProjection = queryUsageIndex(
+    usageIndex,
     asOfMs,
     options.burnRateWindowMs ?? DEFAULT_MONITOR_BURN_RATE_WINDOW_MS,
   );
@@ -649,8 +657,9 @@ export function projectAgentMonitorState(
   const lastAssistantMessage = projectAssistantMessage(entries);
   const model = projectModel(entries);
   const effort = projectEffort(entries);
+  const subagentActors = withUsageActors(actors, usageIndex.childActors);
   const subagents = projectSubagents(
-    actors,
+    subagentActors,
     children,
     usageProjection.actorTotals,
     usageProjection.actorBurnRates,
@@ -672,7 +681,7 @@ export function projectAgentMonitorState(
       (a, b) =>
         time(b.effectiveAt ?? b.observedAt) - time(a.effectiveAt ?? a.observedAt) || compareEntryPreference(a, b),
     )[0];
-  const nativeSessionEntry = familyEntries(allEntries(accumulator), 'status')
+  const nativeSessionEntry = familyEntries(planeEntries(accumulator), 'status')
     .filter(
       (entry): entry is MonitorStoredEntry & { value: MonitorRunStatusObservation } =>
         entry.value.kind === 'run' && entry.value.nativeSession !== undefined,
@@ -706,7 +715,9 @@ export function projectAgentMonitorState(
     'conversation',
   ];
   for (const family of familyNames) {
-    const freshness = familySupport(accumulator, entries, family);
+    const evidence =
+      family === 'usage' ? usageIndex.evidence : summarizeFamilyEvidence(familyEntries(entries, family));
+    const freshness = familySupport(accumulator, evidence, family);
     if (freshness) families[family] = freshness;
   }
 
@@ -743,7 +754,7 @@ export function projectAgentMonitorState(
         : {}),
       ...(modeAsOf ? { asOf: modeAsOf } : {}),
     },
-    subagentCount: actors.size,
+    subagentCount: subagentActors.size,
     subagents,
     ...(Object.keys(omitted).length > 0 ? { omitted } : {}),
     compaction: {
