@@ -316,6 +316,101 @@ describe('Claude transcript assistant projection', () => {
     });
   });
 
+  describe("a message's turn changes only when a row arrives, never when one leaves the window", () => {
+    const at = '2026-10-25T02:00:00.000Z';
+    const prompt = (uuid: string, parentUuid: string | null, text: string) => ({
+      type: 'user',
+      uuid,
+      parentUuid,
+      timestamp: at,
+      turnOrigin: 'human',
+      message: { role: 'user', content: text },
+    });
+    const reply = (uuid: string, parentUuid: string, text: string) => ({
+      type: 'assistant',
+      uuid,
+      parentUuid,
+      timestamp: at,
+      message: { role: 'assistant', content: [{ type: 'text', text }] },
+    });
+    /** Each projected reply's turn, walked with the turns an earlier read gave and the parents that have left. */
+    const keptTurnIds = (
+      rows: readonly Record<string, unknown>[],
+      knownTurns: ReadonlyMap<string, string>,
+      departed?: ReadonlySet<string>,
+    ) => {
+      const records = decodeClaudeTranscript(jsonl(rows));
+      const assistants = projectClaudeTranscriptAssistants(records, { knownTurns, departed });
+      return Object.fromEntries(
+        [...assistants.values()].map(({ event, turnId }) => [(event as { messageId: string }).messageId, turnId]),
+      );
+    };
+
+    it('a reply whose prompt left the window keeps its turn, and the replies after it follow', () => {
+      const rows = [
+        { type: 'attachment', uuid: 'context', parentUuid: 'prompt-0', timestamp: at },
+        reply('reply-1', 'context', 'First.'),
+        reply('reply-2', 'reply-1', 'Second.'),
+        reply('reply-3', 'reply-2', 'Third.'),
+      ];
+      expect(turnIds(jsonl(rows))).toEqual({ 'reply-1': undefined, 'reply-2': undefined, 'reply-3': undefined });
+      expect(
+        keptTurnIds(
+          rows,
+          new Map([
+            ['reply-1', 'prompt-0'],
+            ['reply-2', 'prompt-0'],
+          ]),
+        ),
+      ).toEqual({ 'reply-1': 'prompt-0', 'reply-2': 'prompt-0', 'reply-3': 'prompt-0' });
+    });
+
+    it('a reply whose parent left the window keeps its turn, though a later prompt now precedes it', () => {
+      // The reply's parent was flushed after it (teardown) and has since been evicted, so the reply is a root and
+      // file order puts it after a prompt it never answered.
+      const rows = [
+        prompt('prompt-1', 'earlier', 'Next question'),
+        reply('late-reply', 'evicted-parent', 'Late answer.'),
+        prompt('prompt-3', 'late-reply', 'Third question'),
+        reply('reply-4', 'prompt-3', 'Third answer.'),
+      ];
+      expect(turnIds(jsonl(rows))).toEqual({ 'late-reply': 'prompt-1', 'reply-4': 'prompt-3' });
+      expect(keptTurnIds(rows, new Map([['late-reply', 'prompt-0']]), new Set(['evicted-parent']))).toEqual({
+        'late-reply': 'prompt-0',
+        'reply-4': 'prompt-3',
+      });
+    });
+
+    it('a reply whose parent has not arrived yet cuts nothing: the walk wins, for it and for the replies after it', () => {
+      // Teardown flushed two rows before their parents: prompt-2 before reply-2, and reply-4 before reply-3, which has
+      // not arrived. An earlier read, without reply-2, put reply-4 in the second turn; reply-2 answers the first.
+      const rows = [
+        prompt('prompt-1', null, 'First question'),
+        reply('reply-1', 'prompt-1', 'One.'),
+        prompt('prompt-2', 'reply-2', 'Second question'),
+        reply('reply-4', 'reply-3', 'Four.'),
+        reply('reply-2', 'reply-1', 'Two.'),
+      ];
+      const knownTurns = new Map([
+        ['reply-1', 'prompt-1'],
+        ['reply-4', 'prompt-2'],
+      ]);
+      // Nothing has left the window, so the turns an earlier read gave change nothing the walk says.
+      expect(keptTurnIds(rows, knownTurns)).toEqual(turnIds(jsonl(rows)));
+      expect(keptTurnIds(rows, knownTurns)['reply-2']).toBe('prompt-1');
+    });
+
+    it('a reply flushed before its prompt still moves to that prompt when it arrives', () => {
+      // An earlier read, without the prompt, keyed the reply to the turn before it.
+      const rows = [
+        prompt('prompt-1', null, 'First question'),
+        reply('early-reply', 'prompt-2', 'Second answer.'),
+        prompt('prompt-2', 'prompt-1', 'Second question'),
+      ];
+      expect(keptTurnIds(rows, new Map([['early-reply', 'prompt-1']]))).toEqual({ 'early-reply': 'prompt-2' });
+    });
+  });
+
   it('does not reconstruct historical prompts or synthesize turn outcomes', () => {
     const records = decodeClaudeTranscript(
       [

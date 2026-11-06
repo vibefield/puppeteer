@@ -248,6 +248,86 @@ describe('ClaudeTranscriptObservationProvider', () => {
     expect(events).toEqual([]);
   });
 
+  it('keys a reply to the turn it answers while a row after it still awaits its own parent', async () => {
+    // Teardown flushes two rows before their parents: prompt-2 before reply-2, and reply-4 before reply-3. Nothing
+    // leaves the window, so a parent that has not arrived cuts no row's ancestry: the walk keys every reply.
+    const at = '2026-10-25T02:00:00.000Z';
+    const line = (row: Record<string, unknown>) =>
+      JSON.stringify({ sessionId: 'session-1', timestamp: at, ...row }) + '\n';
+    const ask = (uuid: string, parentUuid: string | null, text: string) =>
+      line({ type: 'user', uuid, parentUuid, turnOrigin: 'human', message: { role: 'user', content: text } });
+    const answer = (uuid: string, parentUuid: string, text: string) =>
+      line({ type: 'assistant', uuid, parentUuid, message: { role: 'assistant', content: [{ type: 'text', text }] } });
+    const { path, handle, events } = await fixture(
+      ask('prompt-1', null, 'First question') + answer('reply-1', 'prompt-1', 'One.'),
+    );
+    const turnsOf = (id: string) =>
+      events.filter(({ event }) => (event as { messageId?: string }).messageId === id).map(({ turnId }) => turnId);
+    await handle.poll();
+    expect(events).toEqual([]);
+
+    appendFileSync(path, ask('prompt-2', 'reply-2', 'Second question'));
+    await handle.poll();
+    appendFileSync(path, answer('reply-4', 'reply-3', 'Four.'));
+    await handle.poll();
+    expect(turnsOf('reply-4')).toEqual(['prompt-2']);
+    // reply-2 answers the first prompt: it is published there, though reply-4 was read in the second turn before it.
+    appendFileSync(path, answer('reply-2', 'reply-1', 'Two.'));
+    await handle.poll();
+    expect(turnsOf('reply-2')).toEqual(['prompt-1']);
+
+    // Once every parent has arrived each reply is in the turn it answers, and reply-2 is not announced again.
+    appendFileSync(path, answer('reply-3', 'prompt-2', 'Three.'));
+    await handle.poll();
+    expect(turnsOf('reply-2')).toEqual(['prompt-1']);
+    expect(turnsOf('reply-3')).toEqual(['prompt-2']);
+    expect(turnsOf('reply-4').at(-1)).toBe('prompt-2');
+  });
+
+  it("re-announces nothing when the window evicts a turn's prompt: the turn's replies keep their turn", async () => {
+    const real = jsonlReader.createClaudeTranscriptReader;
+    vi.spyOn(jsonlReader, 'createClaudeTranscriptReader').mockImplementation((path) => real(path, { maxRecords: 9 }));
+    const at = (second: number) => new Date(Date.parse('2026-10-25T02:00:00.000Z') + second * 1_000).toISOString();
+    const rows: Record<string, unknown>[] = [];
+    let parentUuid: string | null = null;
+    const node = (row: Record<string, unknown>) => {
+      rows.push({ ...row, parentUuid, sessionId: 'session-1', timestamp: at(rows.length) });
+      parentUuid = row.uuid as string;
+    };
+    const ask = (uuid: string, text: string) =>
+      node({ type: 'user', uuid, turnOrigin: 'human', message: { role: 'user', content: text } });
+    const answer = (uuid: string, text: string) =>
+      node({ type: 'assistant', uuid, message: { role: 'assistant', content: [{ type: 'text', text }] } });
+    // Three turns of a prompt and two replies: exactly the nine rows the window holds.
+    for (const turn of [0, 1, 2]) {
+      ask(`prompt-${turn}`, `Question ${turn}`);
+      answer(`reply-${turn}-1`, `Answer ${turn}.1`);
+      answer(`reply-${turn}-2`, `Answer ${turn}.2`);
+    }
+    const { path, handle, events } = await fixture(rows.map((row) => JSON.stringify(row)).join('\n') + '\n');
+    await handle.poll();
+    expect(events).toEqual([]);
+
+    // One more reply to the last turn evicts the first turn's prompt.
+    answer('reply-2-3', 'Answer 2.3');
+    appendFileSync(path, JSON.stringify(rows.at(-1)) + '\n');
+    await handle.poll();
+    expect(events.map(({ turnId, event, replay }) => ({ turnId, event, replay }))).toEqual([
+      {
+        turnId: 'prompt-2',
+        event: {
+          type: 'conversation:assistant-message',
+          messageId: 'reply-2-3',
+          turnId: 'prompt-2',
+          text: 'Answer 2.3',
+          final: true,
+          displayOnly: false,
+        },
+        replay: undefined,
+      },
+    ]);
+  });
+
   it('ignores transcript models and usage during attachment and later changes', async () => {
     const { path, handle, events } = await fixture(
       assistantRow(1) + assistantRow(2, { model: 'model-b' }) + assistantRow(3, { requestId: 'request-2' }),
