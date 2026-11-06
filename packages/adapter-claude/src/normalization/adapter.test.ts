@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
+import { createEnvelopeStamper } from '@vibefield/puppeteer-core';
+import {
+  createMonitorAccumulatorState,
+  projectAgentMonitorState,
+  reduceMonitorAccumulator,
+  translateAgentEventEnvelope,
+} from '@vibefield/puppeteer-core/monitor-spi';
 import {
   fakeClaudeHookPayload,
   listHookFixtureEvents,
   loadHookFixtures,
   loadOrderedHookLane,
 } from '../test-support/claude-fixtures.js';
-import { ClaudeHookNormalizer, type ClaudeHookPayload } from './pipeline.js';
+import { ClaudeHookNormalizer, type ClaudeHookPayload, type NormalizedHook } from './pipeline.js';
 import { getHookSpec } from '../generated/registry.js';
 
 const normalizeOne = (body: ClaudeHookPayload) => new ClaudeHookNormalizer().normalize(body);
@@ -82,9 +89,16 @@ describe('ClaudeHookNormalizer against captured fixtures', () => {
     );
     const compactionId = (started.events[0] as { compactionId: string }).compactionId;
 
+    // The gated call never ran, and the question's call has no result: both close, never left running.
     expect(normalizer.normalize(failure as ClaudeHookPayload).events).toEqual([
       { type: 'interaction:permission-resolved', requestId, outcome: 'unknown' },
+      expect.objectContaining({ type: 'tool:failed', toolCallId: 'tool-bash', error: 'permission unknown' }),
       { type: 'interaction:question-resolved', requestId: 'question:tool-question', outcome: 'failed' },
+      expect.objectContaining({
+        type: 'tool:failed',
+        toolCallId: 'tool-question',
+        error: 'no result before the turn ended',
+      }),
       expect.objectContaining({ type: 'compaction:completed', compactionId, outcome: 'failed' }),
       { type: 'turn:failed', turnId: promptId, error: failure.error },
     ]);
@@ -473,6 +487,27 @@ describe('tool, team, and compaction semantics', () => {
     expect(call().toolCallId).not.toBe(call().toolCallId);
   });
 
+  it('closes the oldest open call it stops remembering, rather than leave it running', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const call = (index: number) =>
+      normalizer.normalize(
+        fakeClaudeHookPayload('PreToolUse', {
+          prompt_id: 'busy-turn',
+          tool_name: 'Bash',
+          tool_input: { command: `sleep ${index}` },
+          tool_use_id: `toolu_${index}`,
+        }) as ClaudeHookPayload,
+      );
+    for (let index = 0; index < 64; index += 1) {
+      expect(call(index).events, `call ${index}`).toEqual([expect.objectContaining({ type: 'tool:requested' })]);
+    }
+
+    expect(call(64).events).toEqual([
+      expect.objectContaining({ type: 'tool:failed', toolCallId: 'toolu_0', tool: 'Bash', error: 'evicted' }),
+      expect.objectContaining({ type: 'tool:requested', toolCallId: 'toolu_64' }),
+    ]);
+  });
+
   it.each([
     ['TodoWrite', { todos: [{ content: 'Inspect code', status: 'in_progress' }] }],
     ['ExitPlanMode', { plan: '# Plan\n1. Inspect code', planFilePath: '/private/plan.md' }],
@@ -655,8 +690,9 @@ describe('permission correlation (no native request id)', () => {
     ]);
   });
 
-  it('closes a manual denial at the turn boundary so no permission is orphaned', () => {
+  it('closes a manual denial at the turn boundary so neither the permission nor its call is orphaned', () => {
     const normalizer = new ClaudeHookNormalizer();
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', tool) as ClaudeHookPayload);
     const requested = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', tool) as ClaudeHookPayload);
     const requestId = (requested.events[0] as { requestId: string }).requestId;
     const stop = normalizer.normalize(
@@ -668,6 +704,7 @@ describe('permission correlation (no native request id)', () => {
     );
     expect(stop.events).toEqual([
       { type: 'interaction:permission-resolved', requestId, outcome: 'denied' },
+      expect.objectContaining({ type: 'tool:failed', toolCallId: tool.tool_use_id, error: 'permission denied' }),
       expect.objectContaining({ type: 'turn:completed', turnId: tool.prompt_id }),
     ]);
     expect(stop.diagnostics).toEqual([
@@ -688,7 +725,8 @@ describe('permission correlation (no native request id)', () => {
     // A background agent's own request may still be waiting when the person types again.
     const worker = { ...tool, agent_id: 'a1b2c3d4e5f6a7b8c', agent_type: 'general-purpose', tool_use_id: 'toolu_bg' };
     normalizer.normalize(fakeClaudeHookPayload('PreToolUse', worker) as ClaudeHookPayload);
-    normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', worker) as ClaudeHookPayload);
+    const asked = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', worker) as ClaudeHookPayload);
+    const workerRequestId = (asked.events[0] as { requestId: string }).requestId;
     expect(normalizer.pendingPermissionRequests()).toHaveLength(2);
 
     const next = normalizer.normalize(
@@ -697,10 +735,13 @@ describe('permission correlation (no native request id)', () => {
         prompt: 'try another way',
       }) as ClaudeHookPayload,
     );
+    // The Esc'd call never ran: it closes with its request. The background agent's call is not touched.
     expect(next.events).toEqual([
       { type: 'interaction:permission-resolved', requestId, outcome: 'unknown' },
+      expect.objectContaining({ type: 'tool:failed', toolCallId: tool.tool_use_id, error: 'permission unknown' }),
       expect.objectContaining({ type: 'turn:started', turnId: 'prompt-next' }),
     ]);
+    expect(next).not.toHaveProperty('settled');
     expect(next.diagnostics).toEqual([
       {
         code: 'permission-outlived-turn',
@@ -711,14 +752,135 @@ describe('permission correlation (no native request id)', () => {
     expect(normalizer.pendingPermissionRequests()).toEqual([
       expect.objectContaining({ agentId: worker.agent_id, toolCallId: 'toolu_bg' }),
     ]);
+
+    // The background agent's own boundary closes its request and its call, as that agent.
+    const stopped = normalizer.normalize(
+      fakeClaudeHookPayload('SubagentStop', {
+        prompt_id: tool.prompt_id,
+        agent_id: worker.agent_id,
+        agent_type: worker.agent_type,
+        stop_hook_active: false,
+      }) as ClaudeHookPayload,
+    );
+    expect(stopped).toMatchObject({
+      agentId: worker.agent_id,
+      agentType: worker.agent_type,
+      events: [
+        { type: 'interaction:permission-resolved', requestId: workerRequestId, outcome: 'unknown' },
+        { type: 'tool:failed', toolCallId: 'toolu_bg', error: 'permission unknown' },
+        { type: 'delegation:subagent-stopped', subagentId: worker.agent_id },
+      ],
+    });
+    expect(stopped).not.toHaveProperty('settled');
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
   });
 
-  it('replays the 2.1.308 TUI lane with no request pending past the next prompt', () => {
+  it("leaves a subagent's request to the subagent: the main thread's Stop closes only its own work", () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const worker = { ...tool, agent_id: 'a1b2c3d4e5f6a7b8c', agent_type: 'general-purpose', tool_use_id: 'toolu_bg' };
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', worker) as ClaudeHookPayload);
+    const asked = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', worker) as ClaudeHookPayload);
+    const workerRequestId = (asked.events[0] as { requestId: string }).requestId;
+
+    const stop = normalizer.normalize(
+      fakeClaudeHookPayload('Stop', {
+        prompt_id: tool.prompt_id,
+        stop_hook_active: false,
+        last_assistant_message: 'The worker is still asking.',
+      }) as ClaudeHookPayload,
+    );
+    expect(stop.events).toEqual([expect.objectContaining({ type: 'turn:completed', turnId: tool.prompt_id })]);
+    expect(stop).not.toHaveProperty('settled');
+    expect(stop.diagnostics).toEqual([]);
+    expect(normalizer.pendingPermissionRequests()).toEqual([
+      expect.objectContaining({ requestId: workerRequestId, agentId: worker.agent_id, toolCallId: 'toolu_bg' }),
+    ]);
+  });
+
+  it('closes every open request and call at SessionEnd, each under the actor that asked', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', tool) as ClaudeHookPayload);
+    const main = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', tool) as ClaudeHookPayload);
+    const mainRequestId = (main.events[0] as { requestId: string }).requestId;
+    const read = { prompt_id: tool.prompt_id, tool_name: 'Read', tool_input: { file_path: '/tmp/a' } };
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', { ...read, tool_use_id: 'toolu_read' }));
+    const worker = { ...tool, agent_id: 'a1b2c3d4e5f6a7b8c', agent_type: 'general-purpose', tool_use_id: 'toolu_bg' };
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', worker) as ClaudeHookPayload);
+    const asked = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', worker) as ClaudeHookPayload);
+    const workerRequestId = (asked.events[0] as { requestId: string }).requestId;
+
+    const end = normalizer.normalize(
+      fakeClaudeHookPayload('SessionEnd', { reason: 'prompt_input_exit' }) as ClaudeHookPayload,
+    );
+    expect(end).toMatchObject({
+      events: [
+        { type: 'interaction:permission-resolved', requestId: mainRequestId, outcome: 'dismissed' },
+        { type: 'tool:failed', toolCallId: tool.tool_use_id, error: 'permission dismissed' },
+        { type: 'tool:failed', toolCallId: 'toolu_read', error: 'no result before the session ended' },
+        { type: 'session:exited', reason: 'prompt_input_exit' },
+      ],
+      settled: [
+        {
+          promptId: tool.prompt_id,
+          agentId: worker.agent_id,
+          agentType: worker.agent_type,
+          events: [
+            { type: 'interaction:permission-resolved', requestId: workerRequestId, outcome: 'dismissed' },
+            { type: 'tool:failed', toolCallId: 'toolu_bg', error: 'permission dismissed' },
+          ],
+        },
+      ],
+    });
+    expect(end.agentId).toBeUndefined();
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+  });
+
+  it('replays the 2.1.308 TUI lane with no request pending past the next prompt and no refused call running', () => {
     const normalizer = new ClaudeHookNormalizer();
     const resolved: Array<{ seq: number; requestId: string; outcome: string }> = [];
     let requested: { seq: number; requestId: string } | undefined;
+    // The monitor a run's row reads, fed as the driver publishes: settled closures first, each under its own actor.
+    const run = { runtimeRunId: 'lane', runtimeEpoch: 1 };
+    const laneTime = (seq: number) => new Date(Date.UTC(2026, 9, 1) + seq * 1_000).toISOString();
+    const stamper = createEnvelopeStamper();
+    let monitor = createMonitorAccumulatorState({
+      ...run,
+      executionMode: 'native-tui',
+      observationLevel: 'native-hooks',
+      allocatedAt: laneTime(0),
+    });
+    const publish = (seq: number, nativeSessionId: string, actor: NormalizedHook) => {
+      for (const event of actor.events) {
+        const envelope = stamper.next({
+          sessionId: 'lane',
+          nativeSessionId,
+          ...(actor.promptId ? { promptId: actor.promptId } : {}),
+          ...(actor.agentId ? { agentId: actor.agentId } : {}),
+          ...(actor.agentType ? { agentType: actor.agentType } : {}),
+          timestamp: laneTime(seq),
+          monotonicTime: seq,
+          source: 'native-hook',
+          confidence: 'authoritative',
+          event,
+        });
+        monitor = reduceMonitorAccumulator(monitor, translateAgentEventEnvelope({ ...run, envelope })).state;
+      }
+    };
     for (const { seq, record } of loadOrderedHookLane('interactive')) {
       const result = normalizer.normalize(record as ClaudeHookPayload);
+      for (const settled of result.settled ?? []) publish(seq, record.session_id, settled);
+      publish(seq, record.session_id, result);
+      // The Bash call the person Esc'd at its dialog (seq 30, 31) never ran: the next prompt (seq 34) closes it.
+      if (seq >= 30) {
+        const open = [...monitor.runtime.entries.values()].some((entry) => entry.key === 'tool:toolu_a11a5ed0ba');
+        expect(open, `the refused call's activity after seq ${seq}`).toBe(seq < 34);
+      }
+      if (seq === 41 || seq === 44 || seq === 55) {
+        const state = projectAgentMonitorState(monitor);
+        expect(state.status, `status after the Stop at seq ${seq}`).toBe('idle');
+        expect(state.activity, `activity after the Stop at seq ${seq}`).toBeUndefined();
+        expect(state.freshness, `freshness after the Stop at seq ${seq}`).not.toHaveProperty('toolOpen');
+      }
       for (const event of result.events) {
         if (event.type === 'interaction:permission-requested') requested = { seq, requestId: event.requestId };
         if (event.type === 'interaction:permission-resolved') {
@@ -818,12 +980,14 @@ describe('permission decisions (OTLP tool_decision, keyed by tool_use_id)', () =
     ]);
   });
 
-  it('closes a rejected request at the decision, so its turn boundary closes nothing twice', () => {
+  it('closes a rejected request and its call at the decision, so its turn boundary closes nothing twice', () => {
     const normalizer = new ClaudeHookNormalizer();
     const requestId = requestPermission(normalizer);
 
+    // The rejected call never runs, and no hook will say so: the decision closes it.
     expect(normalizer.resolvePermissionDecision(tool.tool_use_id, 'denied')?.events).toEqual([
       { type: 'interaction:permission-resolved', requestId, outcome: 'denied' },
+      expect.objectContaining({ type: 'tool:failed', toolCallId: tool.tool_use_id, error: 'permission denied' }),
     ]);
     expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
 
@@ -847,12 +1011,17 @@ describe('permission decisions (OTLP tool_decision, keyed by tool_use_id)', () =
     };
     const requestId = requestPermission(normalizer, worker);
 
-    expect(normalizer.resolvePermissionDecision(worker.tool_use_id, 'dismissed')).toMatchObject({
-      events: [{ type: 'interaction:permission-resolved', requestId, outcome: 'dismissed' }],
+    const decided = normalizer.resolvePermissionDecision(worker.tool_use_id, 'dismissed');
+    expect(decided).toMatchObject({
+      events: [
+        { type: 'interaction:permission-resolved', requestId, outcome: 'dismissed' },
+        { type: 'tool:failed', toolCallId: worker.tool_use_id, error: 'permission dismissed' },
+      ],
       promptId: worker.prompt_id,
       agentId: worker.agent_id,
       agentType: worker.agent_type,
     });
+    expect(decided).not.toHaveProperty('settled');
   });
 
   it('leaves a request no decision names to its hooks, and a decision after them closes nothing', () => {

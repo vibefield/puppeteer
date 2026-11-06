@@ -740,7 +740,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       expect((await receipt).status).toBe('confirmed');
     });
 
-    it('closes the request at the person’s reject; a decision that closes nothing stays native', async () => {
+    it('closes the request and its call at the person’s reject; a decision closing nothing stays native', async () => {
       const { projection, events, hook, decide, resolved } = await startDecidingSession();
       await hook('SessionStart', {});
       await hook('UserPromptSubmit', { prompt: 'risky', prompt_id: 'p-risky' });
@@ -767,9 +767,67 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'denied' },
         }),
       ]);
+      // The rejected call never runs and no hook will say so: the decision closes it, as the actor that asked.
+      const failed = () => events.filter(({ event }) => event.type === 'tool:failed');
+      expect(failed()).toEqual([
+        expect.objectContaining({
+          source: 'native-telemetry',
+          promptId: 'p-risky',
+          event: expect.objectContaining({
+            type: 'tool:failed',
+            toolCallId: 'toolu_risky',
+            error: 'permission denied',
+          }),
+        }),
+      ]);
+      expect(failed()[0]?.agentId).toBeUndefined();
+      expect(projection.state.tools.size).toBe(0);
 
       await hook('Stop', { prompt_id: 'p-risky', last_assistant_message: 'Not run.' });
       expect(resolved()).toHaveLength(1);
+      expect(failed()).toHaveLength(1);
+
+      // A subagent's request outlives the main thread's Stop. The session's end closes it, published as the
+      // subagent that asked (SessionEnd's own actor is the main thread), before the session exits.
+      const worker = {
+        prompt_id: 'p-risky',
+        agent_id: 'worker-1',
+        agent_type: 'general-purpose',
+        tool_name: 'Bash',
+        tool_input: { command: 'rm y' },
+      };
+      await hook('PreToolUse', { ...worker, tool_use_id: 'toolu_worker' });
+      await hook('PermissionRequest', worker);
+      expect(projection.state.permissions.size).toBe(1);
+      await hook('SessionEnd', { reason: 'other' });
+
+      const exited = events.findIndex(({ event }) => event.type === 'session:exited');
+      expect(exited).toBeGreaterThan(-1);
+      const closures = events
+        .map((envelope, index) => ({ envelope, index }))
+        .filter(
+          ({ envelope }) =>
+            envelope.agentId === 'worker-1' &&
+            (envelope.event.type === 'interaction:permission-resolved' || envelope.event.type === 'tool:failed'),
+        );
+      expect(closures.map(({ envelope }) => envelope)).toEqual([
+        expect.objectContaining({
+          source: 'native-hook',
+          agentType: 'general-purpose',
+          event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'dismissed' },
+        }),
+        expect.objectContaining({
+          source: 'native-hook',
+          agentType: 'general-purpose',
+          event: expect.objectContaining({
+            type: 'tool:failed',
+            toolCallId: 'toolu_worker',
+            error: 'permission dismissed',
+          }),
+        }),
+      ]);
+      expect(closures.every(({ index }) => index < exited)).toBe(true);
+      expect(events[exited]?.agentId).toBeUndefined();
     });
 
     it('settles at PostToolUse when no decision arrived, and a late decision closes nothing twice', async () => {
