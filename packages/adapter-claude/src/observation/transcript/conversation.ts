@@ -9,9 +9,7 @@ import type { SemanticObservationEvent } from '../semantic-provider.js';
 import {
   safeTranscriptEvidence,
   transcriptContent,
-  transcriptObject,
   transcriptRecordId,
-  transcriptString,
   transcriptText,
   type ClaudeTranscriptRecord,
 } from './wire.js';
@@ -64,14 +62,7 @@ function stripSyntheticUserPreamble(value: string): string | undefined {
  * once the first row carrying the field arrived.
  */
 function opensUserTurn(record: ClaudeTranscriptRecord): boolean {
-  if (
-    transcriptContent(record).some((value) => {
-      const block = transcriptObject(value);
-      return block?.type === 'tool_result';
-    })
-  ) {
-    return false;
-  }
+  if (transcriptContent(record).some((block) => block.type === 'tool_result')) return false;
   if (record.isCompactSummary) return false;
   if (record.turnOrigin !== undefined) return USER_STARTED_TURN_ORIGINS.has(record.turnOrigin);
   return stripSyntheticUserPreamble(transcriptText(record)) !== undefined;
@@ -189,8 +180,8 @@ export function projectClaudeTranscriptAssistants(
 
   for (const record of causalOrder(records)) {
     if (record.isSidechain) continue;
-    // The row type decides, never `message.role`: 2.1.308's `api-request-blob` bookkeeping rows
-    // carry a user or assistant role and are neither a prompt nor a reply.
+    // The row type decides: 2.1.308's `api-request-blob` bookkeeping rows echo a user or assistant
+    // message and are neither a prompt nor a reply.
     if (record.type === 'user') {
       if (opensUserTurn(record)) turnId = transcriptRecordId(record);
       continue;
@@ -204,22 +195,11 @@ export function projectClaudeTranscriptAssistants(
   return assistants;
 }
 
-/** A `tool_use` block's id, name and input, when the content block is one. */
-function toolUse(value: unknown): { id: string; name: string; input: unknown } | undefined {
-  const block = transcriptObject(value);
-  if (block?.type !== 'tool_use') return undefined;
-  const id = transcriptString(block.id);
-  const name = transcriptString(block.name);
-  return id && name ? { id, name, input: block.input } : undefined;
-}
-
 /** The tool calls a `user` row answers: the ids its `tool_result` blocks name. */
 function answeredToolIds(record: ClaudeTranscriptRecord): string[] {
-  return transcriptContent(record).flatMap((value) => {
-    const block = transcriptObject(value);
-    const id = block?.type === 'tool_result' ? transcriptString(block.tool_use_id) : undefined;
-    return id ? [id] : [];
-  });
+  return transcriptContent(record).flatMap((block) =>
+    block.type === 'tool_result' && block.tool_use_id !== undefined ? [block.tool_use_id] : [],
+  );
 }
 
 /**
@@ -261,9 +241,8 @@ export function projectClaudeTranscriptOpenWork(
       continue;
     }
     if (record.type !== 'assistant') continue;
-    for (const value of transcriptContent(record)) {
-      const tool = toolUse(value);
-      if (tool) tools.set(tool.id, { record, name: tool.name, input: tool.input });
+    for (const block of transcriptContent(record)) {
+      if (block.type === 'tool_use') tools.set(block.id, { record, name: block.name, input: block.input });
     }
     owed = false;
   }
