@@ -23,8 +23,6 @@ import { preflightClaudeLaunch } from './detection.js';
  */
 
 import { randomUUID } from 'node:crypto';
-import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
 import {
   type AgentEvent,
   type AgentEventConfidence,
@@ -57,6 +55,7 @@ import {
   type PrepareClaudeSessionOptions,
   type PreparedClaudeSession,
 } from './launch/prepare.js';
+import { claudeConfigRoot } from './launch/config-root.js';
 import { createPromptInjector, type PromptInjector } from './services/prompt.js';
 import { createClaudeTurnStop } from './services/turn-stop.js';
 import { observeClaudeStatusLineAccountUsage } from './services/account-usage.js';
@@ -1138,9 +1137,7 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
     throw new Error('Claude attach needs the ingress the process was launched against (a positive port and a token)');
   }
   const { otelUsageEnabled, otelUsageUnavailableReason, otelUsageVerified } = otelUsagePolicy(options);
-  const configDir = (options.configDir ?? options.env?.CLAUDE_CONFIG_DIR ?? process.env.CLAUDE_CONFIG_DIR)?.trim();
-  const root =
-    options.env?.PUPPETEER_IMPOSTER_HOME ?? (configDir ? resolve(options.cwd, configDir) : join(homedir(), '.claude'));
+  const root = claudeConfigRoot(options);
   let selectedSessionId = options.sessionId;
   let heardPinned = false;
   let observation: ClaudeObservation | undefined;
