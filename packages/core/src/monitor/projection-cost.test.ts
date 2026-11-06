@@ -29,6 +29,7 @@ import type {
   ObservationCoverage,
   RuntimeMonitorInput,
 } from './internal-types.js';
+import * as projection from './project.js';
 import { projectAgentMonitorState } from './project.js';
 import { createMonitorAccumulatorState, reduceMonitorAccumulator, translateAgentEventEnvelope } from './reduce.js';
 
@@ -1134,6 +1135,16 @@ describe('monitor projection cost', () => {
       return parses;
     };
     expect(parsesFor(2_000)).toBe(parsesFor(200));
+  });
+
+  it("derives a streamed delta's notifications without projecting the full monitor state", () => {
+    const ledger = reduceMonitorAccumulator(initial(), ledgerOf(200)).state;
+    const project = vi.spyOn(projection, 'projectAgentMonitorState');
+    const reduced = reduceMonitorAccumulator(ledger, streamedDelta());
+    const projections = project.mock.calls.length;
+    project.mockRestore();
+    expect(reduced.accepted).toBe(true);
+    expect(projections).toBe(0);
   });
 
   it('projects every state as it projects a fresh copy of it, so no memo answers for a state it did not see', () => {
