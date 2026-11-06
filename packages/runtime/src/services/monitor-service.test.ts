@@ -83,6 +83,26 @@ function batch(
   };
 }
 
+/** `count` live canonical responses of ten tokens each, one usage identity apiece. */
+function responses(count: number): MonitorFamilyUpdate[] {
+  return Array.from(
+    { length: count },
+    (_, index): MonitorFamilyUpdate => ({
+      family: 'usage',
+      operation: 'upsert',
+      key: `usage-${index}`,
+      value: {
+        kind: 'usage',
+        origin: 'protocol',
+        usageId: `usage-${index}`,
+        boundary: 'response',
+        canonical: true,
+        deltaTokens: 10,
+      },
+    }),
+  );
+}
+
 function hub(
   options: {
     clock?: FakeClock;
@@ -379,6 +399,26 @@ describe('AgentMonitorService', () => {
     expect(monitor.current().status).toBe('idle');
     clock.advance(55_001);
     expect(monitor.current().usage.burnRatePerMin).toBeUndefined();
+  });
+
+  it('schedules the next burn-rate boundary without parsing the usage ledger again', () => {
+    const parsesFor = (count: number) => {
+      const { clock, hub: monitor } = hub();
+      monitor.updateRun('running', { alive: true });
+      monitor.acceptSemantic(batch('batch-1', responses(count)));
+      clock.advance(100);
+      expect(monitor.current().usage.cumulativeTokens).toBe(count * 10);
+      // A streamed delta leaves the ledger as it is; its flush still projects and reschedules the rate boundary.
+      monitor.acceptAgentEvent(envelope({ type: 'conversation:assistant-message', text: 'Working', final: false }, 1));
+      const parse = vi.spyOn(Date, 'parse');
+      clock.advance(100);
+      const parses = parse.mock.calls.length;
+      parse.mockRestore();
+      expect(monitor.current().status).toBe('working');
+      monitor.remove();
+      return parses;
+    };
+    expect(parsesFor(2_000)).toBe(parsesFor(200));
   });
 
   it('allows a refreshed stable lease to expire again', () => {
