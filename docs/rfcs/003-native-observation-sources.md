@@ -128,6 +128,12 @@ a turn boundary the user did not choose. Three additions make the bridge a stabl
   stays allocated, no `process:exited` is dispatched or recorded, and the host that comes back re-attaches. A plain
   `dispose` still closes the runs for good; `handleProcessExit` is unchanged.
 
+> **Errata (2026-11-06, RV), to the attach bullet above:**
+> - **#14:** "following `/clear` as a spawned session does" says less than the attach now does. An attached session,
+>   like a spawned one, also follows an in-pane `/resume` (a `SessionStart` with source `resume` straight after the
+>   observed session's `SessionEnd` with reason `resume`): one session selection serves both (adapter-claude
+>   `observation/session-selection.ts`). A `fork` start moves neither.
+
 **Amended 2026-09-13 (PU-1b, after VibeField's AR-4 review).** _A release keeps what the process depends on._ The
 detach path disposes each binding with `{ release: true }` (`AdapterDisposeOptions`, core `binding.ts`): the Claude
 binding closes its bridge by DRAINING (in-flight posts complete, a bounded moment, then force) and leaves the staged

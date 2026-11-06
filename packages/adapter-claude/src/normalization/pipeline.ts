@@ -65,6 +65,7 @@ import {
 } from './tool.js';
 import { normalizeClaudeTurnCompleted, normalizeClaudeTurnFailed, normalizeClaudeTurnStarted } from './turn.js';
 import type {
+  ClaudeHookContext,
   ClaudeHookPayload,
   NormalizedHook,
   PendingPermission,
@@ -80,7 +81,7 @@ import {
 } from './wire.js';
 import { normalizeClaudeFileChanged, normalizeClaudeFileOperation } from './workspace.js';
 
-export type { ClaudeHookDiagnostic, ClaudeHookPayload, NormalizedHook } from './types.js';
+export type { ClaudeHookContext, ClaudeHookDiagnostic, ClaudeHookPayload, NormalizedHook } from './types.js';
 
 const MAX_TRACKED_ITEMS = 64;
 
@@ -369,7 +370,7 @@ export class ClaudeHookNormalizer {
     this.pendingPermissions = remaining;
   }
 
-  normalize(body: ClaudeHookPayload): NormalizedHook {
+  normalize(body: ClaudeHookPayload, context: ClaudeHookContext = {}): NormalizedHook {
     const name = claudeString(body.hook_event_name) ?? 'unknown';
     const promptId = claudeString(body.prompt_id);
     const result: NormalizedHook = {
@@ -383,7 +384,9 @@ export class ClaudeHookNormalizer {
       agentType: nonEmptyClaudeString(body.agent_type),
       providerVersion: claudeString(body.version) ?? claudeString(body.claude_version),
     };
-    const isRebind = name === 'SessionStart' && claudeString(body.source) === 'clear';
+    // The observer's word, never the hook's own: a `clear`, `resume` or `fork` start rebinds only when the observer
+    // rotated to it (session-selection.ts).
+    const isRebind = name === 'SessionStart' && context.rebind === true;
     if (isRebind) {
       this.effort.reset();
       this.mode.reset();

@@ -34,6 +34,11 @@ export interface NativeHookEnvelope {
    * reduced one (elided values read null) and this says what was lost.
    */
   reduced?: BodyReduction | undefined;
+  /**
+   * Set on the hook the owner's verdict rotated the observed session to (an
+   * in-process `/clear` or `/resume`): the session starts over from it.
+   */
+  rotated?: boolean | undefined;
 }
 
 export type NativeStatusLineEnvelope = NativeHookEnvelope;
@@ -43,11 +48,12 @@ export type NativeOtelLogsEnvelope = NativeHookEnvelope;
 export type HookBridgeRequestKind = 'hook' | 'statusline' | 'subagent-statusline' | 'otel-logs';
 
 /**
- * The owner's verdict on one request: observe it, refuse it (403), or
- * acknowledge it and drop it (200, no fan-out) when the session is real but not
- * the one being observed.
+ * The owner's verdict on one request: observe it, refuse it (403), acknowledge
+ * it and drop it (200, no fan-out) when the session is real but not the one
+ * being observed, or observe it as the hook the observed session rotated to
+ * (its envelope says `rotated`).
  */
-export type HookBridgeSessionVerdict = boolean | 'ignore';
+export type HookBridgeSessionVerdict = boolean | 'ignore' | 'rotate';
 
 export interface HookBridgeOptions {
   /** Explicit hook/status session allow-list; events for other sessions get 403. */
@@ -187,6 +193,7 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
       }
       const body = read.body;
 
+      let rotated = false;
       if (requestKind !== 'otel-logs') {
         const sessionId = body.session_id;
         const verdict = typeof sessionId === 'string' ? options.allowSession(sessionId, requestKind, body) : false;
@@ -201,6 +208,7 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
           res.end('{}');
           return;
         }
+        rotated = verdict === 'rotate';
       }
 
       // Ack before fan-out: listeners must never hold Claude's hook open.
@@ -212,6 +220,7 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
         receivedAt: new Date().toISOString(),
         body,
         ...(read.kind === 'reduced' ? { reduced: read.reduced } : {}),
+        ...(rotated ? { rotated } : {}),
       };
       for (const listener of targetListeners) {
         try {

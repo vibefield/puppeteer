@@ -56,6 +56,7 @@ import {
   type PreparedClaudeSession,
 } from './launch/prepare.js';
 import { claudeConfigRoot } from './launch/config-root.js';
+import { createClaudeSessionSelection, type ClaudeSessionSelection } from './observation/session-selection.js';
 import { createPromptInjector, type PromptInjector } from './services/prompt.js';
 import { createClaudeTurnStop } from './services/turn-stop.js';
 import { observeClaudeStatusLineAccountUsage } from './services/account-usage.js';
@@ -83,6 +84,8 @@ import type {
 const TOKEN_ENV_VAR = 'PUPPETEER_HOOK_TOKEN';
 const MAX_OTEL_USAGE_FINGERPRINTS = 20_000;
 const MAX_OTEL_ACTOR_FINGERPRINTS = 4_096;
+// Refusals are said once per refused session: a stranger or a background copy posting every hook says it once.
+const MAX_REFUSALS_TOLD = 64;
 
 function rememberFingerprint(
   fingerprints: Map<string, string>,
@@ -97,6 +100,14 @@ function rememberFingerprint(
     if (oldest === undefined) break;
     fingerprints.delete(oldest);
   }
+}
+
+/** Whether `key` is new to `seen`, remembering it; past `capacity` the oldest is forgotten. */
+function firstSighting(seen: Set<string>, key: string, capacity: number): boolean {
+  if (seen.has(key)) return false;
+  seen.add(key);
+  if (seen.size > capacity) seen.delete(seen.values().next().value as string);
+  return true;
 }
 
 function hookEventConfidence(
@@ -286,61 +297,22 @@ export async function prepareClaudeTuiSession(
   if (options.resume && options.resumeInvocation) {
     throw new Error('Claude preparation accepts resume or resumeInvocation, not both');
   }
-  // Session id first: the bridge must be able to enforce its allow-list from
-  // the instant it starts listening, with no window where the closure could
-  // dereference a not-yet-prepared session. On resume the id is the session
-  // being resumed (it keeps its own id); otherwise mint a fresh one.
+  // Session id first: the selection decides from the instant the bridge
+  // starts listening, with no window where it could read a not-yet-prepared
+  // session. On resume the id is the session being resumed (it keeps its own
+  // id); otherwise mint a fresh one. A native picker (`--resume`,
+  // `--continue`) chooses after launch, so it starts with none selected.
   const sessionId = options.resume ?? randomUUID();
-  let selectedSessionId = options.resume ?? (options.resumeInvocation ? undefined : sessionId);
-  let selectionLocked = options.resume !== undefined;
-  // Sessions a native resume launch runs that are never the one resumed.
-  const bootSessionIds = new Set<string>();
+  const selection = createClaudeSessionSelection({
+    mode: 'launch',
+    selected: options.resume ?? (options.resumeInvocation ? undefined : sessionId),
+    resumeInvocation: options.resumeInvocation !== undefined,
+    root: claudeConfigRoot(options),
+  });
   const { otelUsageEnabled, otelUsageUnavailableReason, otelUsageVerified } = otelUsagePolicy(options);
   const bridge: HookBridge = (options.hookBridgeFactory ?? createHookBridge)({
     ...ingressPins(options.ingress),
-    allowSession: (id, kind, body) => {
-      // `/clear` is a native in-process identity rotation regardless of how
-      // the original conversation was selected. Once authenticated, its
-      // SessionStart becomes the new allow-list claim and stale ids are denied.
-      if (kind === 'hook' && body.hook_event_name === 'SessionStart' && body.source === 'clear') {
-        selectedSessionId = id;
-        selectionLocked = true;
-        return true;
-      }
-      if (!options.resumeInvocation) {
-        return id === selectedSessionId;
-      }
-      // Claude chooses the session after launch (`--resume` picker, `--continue`).
-      // Until it announces the choice with the resumed session's SessionStart,
-      // the process runs a throwaway boot session: 2.1.269 fires that session's
-      // InstructionsLoaded (load_reason session_start) before the picker is
-      // even shown, and a release may announce it with a `startup`
-      // SessionStart (packages/surface/vendors/claude/findings.md §6). Neither
-      // is ever the session observed here, so its hooks are acknowledged and
-      // dropped rather than allowed to bind. Status lines rendered for the
-      // highlighted conversation stay visible but claim nothing. The choice
-      // may still move while only SessionStarts have arrived; the first hook
-      // the announced session runs makes it final.
-      const isHook = kind === 'hook';
-      const isSessionStart = isHook && body.hook_event_name === 'SessionStart';
-      if (!selectionLocked && isSessionStart && body.source !== 'startup') {
-        bootSessionIds.delete(id);
-        selectedSessionId = id;
-        return true;
-      }
-      if (id === selectedSessionId) {
-        if (isHook) selectionLocked = true;
-        return true;
-      }
-      if (
-        bootSessionIds.has(id) ||
-        (!selectionLocked && (isSessionStart || (selectedSessionId === undefined && isHook)))
-      ) {
-        bootSessionIds.add(id);
-        return 'ignore';
-      }
-      return selectedSessionId === undefined && !isHook;
-    },
+    allowSession: (id, kind, body) => selection.verdict(id, kind, body),
   });
   await bridge.start();
 
@@ -382,7 +354,7 @@ export async function prepareClaudeTuiSession(
         options,
         bridge,
         { sessionId: prepared.sessionId, cleanup: () => cleanupClaudeSession(prepared) },
-        () => selectedSessionId ?? prepared.sessionId,
+        selection,
         otelUsageEnabled,
         otelUsageUnavailableReason,
         otelUsageVerified,
@@ -463,11 +435,13 @@ function createClaudeObservation(
   options: PrepareClaudeTuiSessionOptions & { attached?: boolean | undefined },
   bridge: HookBridge,
   bound: ClaudeBoundIdentity,
-  nativeSessionId: () => string = () => bound.sessionId,
+  selection: ClaudeSessionSelection,
   otelUsageEnabled = false,
   otelUsageUnavailableReason?: string,
   otelUsageVerified = false,
 ): ClaudeObservation {
+  // A picker that has chosen nothing yet still publishes under the launch's provisional id.
+  const nativeSessionId = (): string => selection.selected() ?? bound.sessionId;
   const normalizer = new ClaudeHookNormalizer();
   const events = new ClaudeEventSource({ sessionId: nativeSessionId, providerVersion: options.providerVersion });
   let observation: ObservationLevel = 'terminal-only';
@@ -673,6 +647,26 @@ function createClaudeObservation(
   };
 
   bridge.onUnavailable(reportHookRailUnavailable);
+
+  // A hook the selection refused is said, once per session: a background copy (`/fork`) or a stranger posting to
+  // this bridge is seen, never followed (session-selection.ts).
+  const refusedSessions = new Set<string>();
+  selection.onRefused((refusal) => {
+    if (disposed || !firstSighting(refusedSessions, refusal.sessionId, MAX_REFUSALS_TOLD)) return;
+    apply(
+      { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'hook-bridge.session-refused' },
+      {
+        source: 'runtime',
+        timestamp: new Date().toISOString(),
+        providerVersion: options.providerVersion,
+        native: {
+          hookEventName: refusal.hookEventName ?? 'unknown',
+          ...(refusal.source === undefined ? {} : { source: refusal.source }),
+        },
+      },
+    );
+  });
+  selection.onUnheardRotation(observeTranscript);
 
   bridge.onOtelLogs((otelEnvelope) => {
     if (!otelUsageEnabled || disposed) return;
@@ -881,6 +875,12 @@ function createClaudeObservation(
     semanticAttachment = nextAttachment;
   }
 
+  function observeTranscript(path: string): void {
+    if (disposed) return;
+    if (subscribed) ensureSemanticProvider(path);
+    else pendingTranscript = path;
+  }
+
   function pollSemantic(hint?: SemanticObservationPollHint): void {
     void semanticAttachment
       ?.then((handle) => handle?.poll(hint))
@@ -892,7 +892,8 @@ function createClaudeObservation(
   bridge.onEvent((hookEnvelope) => {
     observation = 'native-hooks';
     const body = hookEnvelope.body as ClaudeHookPayload;
-    const normalized = normalizer.normalize(body);
+    // The selection's rotation, never the hook's own source, starts the session over.
+    const normalized = normalizer.normalize(body, { rebind: hookEnvelope.rotated === true });
     for (const diagnostic of normalized.diagnostics) {
       try {
         options.onDiagnostic?.(diagnostic);
@@ -1119,11 +1120,7 @@ function createClaudeObservation(
       return adoptedSession;
     },
     dispose,
-    observeTranscript: (path) => {
-      if (disposed) return;
-      if (subscribed) ensureSemanticProvider(path);
-      else pendingTranscript = path;
-    },
+    observeTranscript,
   };
 }
 
@@ -1138,49 +1135,21 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
   }
   const { otelUsageEnabled, otelUsageUnavailableReason, otelUsageVerified } = otelUsagePolicy(options);
   const root = claudeConfigRoot(options);
-  let selectedSessionId = options.sessionId;
-  let heardPinned = false;
-  let observation: ClaudeObservation | undefined;
+  // The attached id holds until a rotation is heard; a /clear typed while no host listened is the first hook under a
+  // new id with a conversation under the root, before the attached id speaks (session-selection.ts).
+  const selection = createClaudeSessionSelection({ mode: 'attach', selected: options.sessionId, root });
   const bridge: HookBridge = (options.hookBridgeFactory ?? createHookBridge)({
     port: options.ingress.port,
     token: options.ingress.token,
-    allowSession: (id, kind, body) => {
-      if (id === selectedSessionId) {
-        if (kind === 'hook') heardPinned = true;
-        return true;
-      }
-      // `/clear` rotates the native identity in-process; the attached session
-      // follows it exactly as a spawned one does.
-      if (kind === 'hook' && body.hook_event_name === 'SessionStart' && body.source === 'clear') {
-        selectedSessionId = id;
-        heardPinned = true;
-        return true;
-      }
-      // A `/clear` typed while no host was listening rotated the id unheard.
-      // The first authenticated hook under a new id — before the selected id
-      // has spoken since the attach — is that rotation, when the new id
-      // already has a transcript under the same root (a subagent's or a
-      // stranger's id has none there). Once heard, the selection is final
-      // until the next in-process `/clear`.
-      if (kind === 'hook' && !heardPinned) {
-        const rotated = locateClaudeTranscript(id, root);
-        if (rotated !== undefined) {
-          selectedSessionId = id;
-          heardPinned = true;
-          observation?.observeTranscript(rotated);
-          return true;
-        }
-      }
-      return false;
-    },
+    allowSession: (id, kind, body) => selection.verdict(id, kind, body),
   });
   await bridge.start();
   try {
-    observation = createClaudeObservation(
+    const observation = createClaudeObservation(
       { ...options, ingress: undefined, attached: true },
       bridge,
       { sessionId: options.sessionId, cleanup: async () => undefined },
-      () => selectedSessionId,
+      selection,
       otelUsageEnabled,
       otelUsageUnavailableReason,
       otelUsageVerified,
