@@ -11,6 +11,7 @@ import type {
   StageGeometry,
 } from '@vibefield/puppeteer-view-sdk';
 import {
+  agentViewFixture,
   agentViewsFixture,
   countingCommands,
   fixtureModel,
@@ -29,8 +30,9 @@ import type { SwarmPhysicsCommand } from './physics/protocol.js';
 // a stub renderer. These are what the parity against the frozen legacy swarm held until MV-8 deleted both, and that
 // no other test or golden witnesses: the view's own properties under their L18 names (M59.4), what it reports in place
 // of the DOM a host used to read, the bloom's keys held while it is open (MV-D8), a body leaving the field as the
-// renderer is asked to draw it (DESIGN §6, the departure), and a field held still drawing each change it shows (MV-W4),
-// its physics in a worker whose answers come after the change that asked for them.
+// renderer is asked to draw it (DESIGN §6, the departure), a field held still drawing each change it shows (MV-W4),
+// its physics in a worker whose answers come after the change that asked for them, and the hidden list and the
+// tooltip saying the rows of the update that hands them over.
 
 /** What the stub renderer was asked to draw, oldest first. */
 const drawn = vi.hoisted(() => ({ frames: [] as SwarmFrame[] }));
@@ -472,5 +474,88 @@ describe('a field held still draws each change it shows, on a frame of its own (
     expect(births.length).toBeGreaterThan(0);
     // Held still, its gone-form is nothing at all.
     expect(births.at(-1)?.opacity).toBe(0);
+  });
+});
+
+describe('the hidden list says the row it was handed, and the tooltip follows it', () => {
+  const still = fixtureTheme('light', { reducedMotion: true });
+
+  /** A body's button in the hidden list. */
+  const button = (root: HTMLElement, id: string): HTMLButtonElement =>
+    root.querySelector<HTMLButtonElement>(`[data-agent-bubble-id="${id}"]`)!;
+
+  /** The tooltip, while one is shown. */
+  const tooltip = (root: HTMLElement): Element | null => root.querySelector('.vf-monitor-swarm-tooltip');
+
+  /** A pointer come to rest on the middle of the body the renderer last drew for this id. */
+  async function hover(field: HTMLElement, id: string): Promise<void> {
+    const body = lastDrawn(id)!;
+    await act(async () => {
+      field.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: body.x, clientY: body.y }));
+    });
+  }
+
+  it('says a row’s new state on its button in the update that brings it, never one input behind', async () => {
+    const { root, agents, show } = await mounted();
+    const [working, ...rest] = agents as [AgentView, ...AgentView[]];
+    expect(working.status).toBe('working');
+    expect(button(root, working.id).getAttribute('data-agent-bubble-visual')).toBe('working');
+    const blocked: AgentView = {
+      ...working,
+      status: 'blocked',
+      wait: { kind: 'permission', tool: 'Bash', detail: 'pnpm test --run', since: working.statusSince },
+    };
+    await show([blocked, ...rest]);
+    // The status, the drawn state and the words, all from the row this update handed over.
+    const asks = button(root, working.id);
+    expect(asks.getAttribute('data-agent-bubble-status')).toBe('blocked');
+    expect(asks.getAttribute('data-agent-bubble-visual')).toBe('blocked');
+    expect(asks.getAttribute('aria-label')).toContain(', blocked:');
+    expect(asks.getAttribute('aria-label')).not.toContain(', working:');
+  });
+
+  it('names the agent that took a shell’s body, never the shell it took over', async () => {
+    const shell = agentViewFixture({
+      id: 'shell-1',
+      kind: 'terminal',
+      project: { name: 'vibe-field', seq: undefined },
+      detail: '/Users/james/Projects/vibe-field',
+    });
+    const { root, show } = await mounted(undefined, theme, { agents: [shell] });
+    expect(button(root, shell.id).getAttribute('aria-label')).toContain('unassigned terminal');
+    // The launcher's agent takes the shell's body (its `visualId`): the same button, now the agent's.
+    const agent = agentViewFixture({
+      id: 'run-1',
+      status: 'working',
+      project: { name: 'vibe-field', seq: 1 },
+      provider: { id: 'claude', label: 'Claude' },
+      model: 'Sonnet 5',
+      visualId: shell.id,
+    });
+    await show([agent]);
+    const took = button(root, shell.id);
+    expect(took.getAttribute('data-agent-bubble-source')).toBe('agent');
+    expect(took.getAttribute('aria-label')).not.toContain('unassigned terminal');
+    expect(took.getAttribute('aria-label')).toMatch(/^vibe-field, Sonnet 5, working: /);
+  });
+
+  it('keeps a hovered body’s tooltip on what its row says now', async () => {
+    const { root, field, agents, show } = await mounted(undefined, still);
+    const [first, second, idle] = agents as [AgentView, AgentView, AgentView];
+    await hover(field, idle.id);
+    expect(tooltip(root)?.textContent).toContain('Done. The suite passes.');
+    await show([first, second, { ...idle, reply: { ...idle.reply!, text: 'Merged the lane.' } }]);
+    expect(tooltip(root)?.textContent).toContain('Merged the lane.');
+    expect(tooltip(root)?.textContent).not.toContain('Done. The suite passes.');
+  });
+
+  it('takes the tooltip away with a row that leaves', async () => {
+    const { root, field, agents, show } = await mounted(undefined, still);
+    const [first, second, idle] = agents as [AgentView, AgentView, AgentView];
+    await hover(field, idle.id);
+    expect(tooltip(root)).not.toBeNull();
+    await show([first, second]);
+    // Its body fades where it stood (M6), out of reach; its words leave with its row.
+    expect(tooltip(root)).toBeNull();
   });
 });
