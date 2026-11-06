@@ -2894,8 +2894,12 @@ interface AccountUsageBatch {
               <code>refreshFailure</code>; the renderer can show both the last known quota and current refresh health.
               Core’s <code>accountUsageFailurePasses(failure)</code> tells the two apart: a passing failure (a read that
               failed or was rate limited) keeps the quota beside it; one that names the account (a refused sign-in,
-              limits not exposed) is the row in its place. Profile defaults are app policy and do not change existing
-              processes.
+              limits not exposed) is the row in its place. A poll’s failure stands until a poll succeeds: a push merged
+              meanwhile keeps a passing one beside its reading, and one that names the account gives way to the push, a
+              reading of it. No push defers a poll while its failure stands: the retry comes at the failure’s backoff or
+              Retry-After, so the failure beside a push lasts no longer than that retry. A sign-in resets only an
+              authentication failure’s local cooldown, never a poll’s server backoff. Profile defaults are app policy
+              and do not change existing processes.
             </p>
           </section>
           <section id="usage-history">

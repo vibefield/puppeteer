@@ -1,3 +1,4 @@
+import { accountUsageFailurePasses } from '@vibefield/puppeteer-core';
 import type {
   AccountUsageAvailable,
   AccountUsageBatch,
@@ -48,7 +49,9 @@ export interface AccountUsageMonitor {
   snapshot(): Promise<AccountUsageBatch>;
   refresh(options?: AccountUsageRefreshOptions): Promise<AccountUsageBatch>;
   /** Apply a provider push update without decoding its native transport. A
-   * push merges into its row by metric id and never brings a poll forward.
+   * push merges into its row by metric id and never brings a poll forward;
+   * a poll's passing failure stays beside it until a poll succeeds, and no
+   * push defers that poll's retry while its failure stands.
    * A push no row owns is dropped, and the last batch is returned as it was. */
   ingest(providerId: string, result: AccountUsageFetchResult): AccountUsageBatch;
   /** Re-read the registry; `poll: false` only reconciles rows, allowing a caller
@@ -145,6 +148,8 @@ interface ProviderRefreshState {
   lastAvailable?: AccountUsageAvailable;
   /** The last successful poll, what a push must carry all of before it may defer the next one. */
   lastPolled?: AccountUsageAvailable;
+  /** The last poll's failure, standing until a poll succeeds: its backoff and Retry-After are the poll's clock. */
+  pollFailure?: AccountUsageFailure;
   nextRefreshAtMs: number;
   consecutiveFailures: number;
   lastCompletedAtMs?: number;
@@ -278,6 +283,7 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
     if (result.status === 'available') {
       state.lastAvailable = result;
       state.lastPolled = result;
+      delete state.pollFailure;
       state.entry = { provider, ...identify(state), result };
       state.consecutiveFailures = 0;
       state.nextRefreshAtMs = Math.min(
@@ -287,6 +293,7 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
       return;
     }
 
+    state.pollFailure = result;
     state.entry = failureEntry(state, result);
     state.nextRefreshAtMs = nextRefreshAt(provider, result, state, completedAtMs);
     state.consecutiveFailures += 1;
@@ -299,7 +306,15 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
    * every meter the last poll did stands in for that poll and may defer the
    * next one (by the push interval, or to the merged reading's earliest reset
    * when that comes first), never bring it forward. A failed push shows
-   * beside the row's reading and moves nothing.
+   * beside the row's reading and moves nothing. Nor does a push clear the
+   * poll's failure: a passing one (a failed or rate-limited read) stays
+   * beside the merged reading until a poll succeeds, since a push says
+   * nothing of the endpoint. One that names the account (a refused sign-in,
+   * limits not exposed) says it cannot be read, and a push is a reading of
+   * it, so the merged reading stands alone; the poll keeps its clock. While
+   * a poll's failure stands no push defers the poll: its retry comes at the
+   * failure's backoff or Retry-After, so the failure beside a push, and a
+   * forced Refresh's refusal, last no longer than that retry.
    */
   const applyPushed = (state: ProviderRefreshState, result: AccountUsageFetchResult, completedAtMs: number): void => {
     const provider = state.provider;
@@ -309,8 +324,12 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
     }
     const merged = mergePush(state.lastAvailable, result, state.profile?.id);
     state.lastAvailable = merged;
-    state.entry = { provider, ...identify(state), result: merged };
-    if (!covers(result, state.lastPolled)) return;
+    const standing = state.pollFailure;
+    state.entry =
+      standing && accountUsageFailurePasses(standing)
+        ? failureEntry(state, standing)
+        : { provider, ...identify(state), result: merged };
+    if (standing !== undefined || !covers(result, state.lastPolled)) return;
     state.lastCompletedAtMs = completedAtMs;
     const deferMs = provider.refresh.pushUpdatePollIntervalMs ?? refreshMsByProvider.get(provider.id)!;
     const deferredToMs = Math.min(completedAtMs + deferMs, nextResetAfter(merged.snapshot, completedAtMs));
@@ -473,8 +492,8 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
       while (inFlight) await inFlight;
       for (const state of states.values()) {
         if (state.profile?.id !== profileId) continue;
-        const entry = state.entry;
-        const failure = entry?.refreshFailure ?? (entry?.result.status !== 'available' ? entry?.result : undefined);
+        // The poll's own failure, never what the row shows: a push may have merged since, or failed itself.
+        const failure = state.pollFailure;
         const retryAt = failure?.retryAt ? Date.parse(failure.retryAt) : Number.NaN;
         // A login can switch accounts. Never retain the previous account's
         // meters, even when a server refusal still prevents another reading.
@@ -492,6 +511,7 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
           continue;
         }
         delete state.entry;
+        delete state.pollFailure;
         delete state.lastCompletedAtMs;
         state.consecutiveFailures = 0;
         state.nextRefreshAtMs = Number.NEGATIVE_INFINITY;

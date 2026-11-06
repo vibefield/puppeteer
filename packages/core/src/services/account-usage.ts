@@ -181,7 +181,8 @@ export const AccountUsageProviderSchema = z.strictObject({
     pollIntervalMs: PositiveSafeIntegerSchema,
     /**
      * The delay before the next poll after a push that carries every meter the last poll did, or less when the
-     * reading names a reset sooner; defaults to `pollIntervalMs`. A push never brings a poll forward.
+     * reading names a reset sooner; defaults to `pollIntervalMs`. A push never brings a poll forward, and defers
+     * none while a poll's failure stands: that poll's retry is the failure's backoff or Retry-After.
      */
     pushUpdatePollIntervalMs: PositiveSafeIntegerSchema.optional(),
   }),
