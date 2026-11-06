@@ -891,4 +891,54 @@ describe('a reading is due again at its earliest reset', () => {
     await monitor.refresh();
     expect(fetchUsage).toHaveBeenCalledTimes(3);
   });
+
+  it('wakes at a reading’s reset though its tick is the 30-minute poll, and not once stopped', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0);
+    try {
+      const fetchUsage = vi.fn(async () => reading(Date.now(), [fiveHour(T0 + 5 * MINUTE), WEEK]));
+      const monitor = createAccountUsageMonitor({
+        providers: [PROVIDERS[0]!],
+        fetchUsage,
+        publish: () => undefined,
+      });
+      monitor.start();
+      await monitor.snapshot();
+      expect(fetchUsage).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(5 * MINUTE);
+      expect(fetchUsage).toHaveBeenCalledTimes(2);
+
+      monitor.stop();
+      await vi.advanceTimersByTimeAsync(60 * MINUTE);
+      expect(fetchUsage).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reads a poll that took a second to answer at its due, not a tick later', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0);
+    try {
+      const fetchUsage = vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+        return reading(Date.now(), []);
+      });
+      const monitor = createAccountUsageMonitor({
+        providers: [PROVIDERS[0]!],
+        fetchUsage,
+        publish: () => undefined,
+      });
+      monitor.start();
+      await vi.advanceTimersByTimeAsync(30 * MINUTE + 1_000);
+      expect(fetchUsage).toHaveBeenCalledTimes(2);
+
+      monitor.stop();
+      await vi.advanceTimersByTimeAsync(60 * MINUTE);
+      expect(fetchUsage).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
