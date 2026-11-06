@@ -774,3 +774,121 @@ describe('a push is a reading of the meters it carries: merged by id, and never 
     expect(fetchUsage).toHaveBeenCalledOnce();
   });
 });
+
+describe('a reading is due again at its earliest reset', () => {
+  const T0 = Date.parse('2026-07-23T20:00:00.000Z');
+  const MINUTE = 60_000;
+  const at = (ms: number): string => new Date(ms).toISOString();
+  const OAUTH: AccountUsageSource = { kind: 'oauth-endpoint', stability: 'experimental' };
+  const STATUS_LINE: AccountUsageSource = { kind: 'native-statusline', stability: 'documented' };
+  /** The short window, full, resetting at `resetsAtMs`. */
+  const fiveHour = (resetsAtMs: number): AccountUsageMetric => ({
+    id: '5h',
+    label: '5H',
+    kind: 'window',
+    usedPercent: 100,
+    resetsAt: at(resetsAtMs),
+  });
+  const WEEK: AccountUsageMetric = {
+    id: '7d',
+    label: '7D',
+    kind: 'window',
+    usedPercent: 40,
+    resetsAt: at(T0 + 7 * 24 * 60 * MINUTE),
+  };
+  const reading = (
+    fetchedAtMs: number,
+    metrics: AccountUsageMetric[],
+    source: AccountUsageSource = OAUTH,
+  ): AccountUsageFetchResult => ({
+    status: 'available',
+    snapshot: { provider: 'push-agent', fetchedAt: at(fetchedAtMs), scope: 'subscription', source, metrics },
+  });
+  /** The 30-minute push agent alone, on a clock the test moves. */
+  const monitorOn = (clock: { ms: number }, fetchUsage: () => Promise<AccountUsageFetchResult>) =>
+    createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      publish: () => undefined,
+      now: () => new Date(clock.ms),
+    });
+
+  it('reads again at a reading’s earliest reset, not only at its poll', async () => {
+    let nowMs = T0;
+    const fetchUsage = vi.fn(async (providerId: string) =>
+      providerId === 'push-agent' ? reading(nowMs, [fiveHour(T0 + 5 * MINUTE), WEEK]) : available(providerId),
+    );
+    const monitor = createAccountUsageMonitor({
+      providers: PROVIDERS,
+      fetchUsage,
+      publish: () => undefined,
+      now: () => new Date(nowMs),
+    });
+    await monitor.refresh();
+    fetchUsage.mockClear();
+
+    nowMs = T0 + 5 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage.mock.calls.map(([providerId]) => providerId)).toEqual(['push-agent', 'fast-agent']);
+  });
+
+  it.each([
+    { reset: 'before', resetsAtMs: T0 - MINUTE },
+    { reset: 'at', resetsAtMs: T0 },
+  ])('a reset $reset the read adds no read: the next is at the poll', async ({ resetsAtMs }) => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [fiveHour(resetsAtMs), WEEK]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+
+    clock.ms = T0 + 1_000;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledOnce();
+    clock.ms = T0 + 30 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
+  it('a push that does not cover the poll never brings its read forward, whatever reset it names', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [fiveHour(T0 + 5 * 60 * MINUTE), WEEK]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+
+    clock.ms = T0 + MINUTE;
+    monitor.ingest('push-agent', reading(clock.ms, [fiveHour(T0 + 5 * MINUTE)], STATUS_LINE));
+    clock.ms = T0 + 5 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledOnce();
+    clock.ms = T0 + 30 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
+  it('a covering push defers a read no later than the reading’s reset, and never before a Retry-After', async () => {
+    const clock = { ms: T0 - 30 * MINUTE };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [fiveHour(T0 + 5 * MINUTE), WEEK]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    clock.ms = T0;
+    fetchUsage.mockResolvedValueOnce({
+      status: 'unavailable',
+      provider: 'push-agent',
+      message: 'Please wait',
+      retryable: true,
+      code: 'rate-limited',
+      retryAt: at(T0 + 30 * MINUTE),
+    });
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+
+    clock.ms = T0 + MINUTE;
+    monitor.ingest('push-agent', reading(clock.ms, [fiveHour(T0 + 5 * MINUTE), WEEK], STATUS_LINE));
+    clock.ms = T0 + 5 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+    clock.ms = T0 + 30 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+  });
+});
