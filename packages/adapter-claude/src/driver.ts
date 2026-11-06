@@ -84,7 +84,7 @@ import type {
 const TOKEN_ENV_VAR = 'PUPPETEER_HOOK_TOKEN';
 const MAX_OTEL_USAGE_FINGERPRINTS = 20_000;
 const MAX_OTEL_ACTOR_FINGERPRINTS = 4_096;
-// Refusals are said once per refused session: a stranger or a background copy posting every hook says it once.
+// Refusals are said once per refused session or transcript path: one posted with every hook is said once.
 const MAX_REFUSALS_TOLD = 64;
 
 function rememberFingerprint(
@@ -649,8 +649,9 @@ function createClaudeObservation(
   bridge.onUnavailable(reportHookRailUnavailable);
 
   // A hook the selection refused is said, once per session: a background copy (`/fork`) or a stranger posting to
-  // this bridge is seen, never followed (session-selection.ts).
+  // this bridge is seen, never followed (session-selection.ts). So is a transcript path it would not follow.
   const refusedSessions = new Set<string>();
+  const refusedTranscripts = new Set<string>();
   selection.onRefused((refusal) => {
     if (disposed || !firstSighting(refusedSessions, refusal.sessionId, MAX_REFUSALS_TOLD)) return;
     apply(
@@ -901,11 +902,26 @@ function createClaudeObservation(
         // Diagnostic consumers must not affect Claude or the normalized stream.
       }
     }
-    // The bridge admits only the selected session's hooks, so the first
-    // transcript path to arrive is that session's durable history — on a
-    // native resume, the path its SessionStart announces.
-    if (normalized.transcriptPath) ensureSemanticProvider(normalized.transcriptPath);
     const hookEventName = typeof body.hook_event_name === 'string' ? body.hook_event_name : 'unknown';
+    // The bridge admits only the selected session's hooks, but any holder of the run's bearer can post one, so the
+    // rail follows a path only when it is that session's own transcript under the config root — on a native resume,
+    // the path its SessionStart announces. Another path is refused, said once per path, and never published.
+    if (normalized.transcriptPath) {
+      const transcript = selection.transcriptFor(normalized.transcriptPath);
+      if (transcript !== undefined) {
+        ensureSemanticProvider(transcript);
+      } else if (firstSighting(refusedTranscripts, normalized.transcriptPath, MAX_REFUSALS_TOLD)) {
+        apply(
+          { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'transcript-path.refused' },
+          {
+            source: 'runtime',
+            timestamp: hookEnvelope.receivedAt,
+            providerVersion: normalized.providerVersion,
+            native: { hookEventName },
+          },
+        );
+      }
+    }
     if (normalized.sessionId) monitorEvidence.observeNativeSession(normalized.sessionId);
     if (normalized.agentId) {
       if (hookEventName === 'SubagentStart') {

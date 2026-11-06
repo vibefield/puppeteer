@@ -426,6 +426,17 @@ recipe of the run it asked for, and nothing of any other run.
   rewrites it can make a strict shim wait and refuse, or let an agent run unmanaged — which it could do anyway, by
   running the real executable. The shim runs `ps` with its own directory taken off PATH, so no launcher stands in
   for it.
+- **A run's hook bearer speaks for its agent, and so does every process the agent starts.** Claude reads the bearer
+  from its own environment, which its tools inherit. Any of them can post an authenticated hook, a `SessionStart`
+  with source `clear` under a new id among them: the observer follows that rotation and refuses the real session's
+  hooks (403) for the run's life. A holder already has the agent's authority (it can post hooks under the real id,
+  rewrite the agent's settings or stop it), so this is a recorded limit, not a defended one. What a hook can make the
+  observer read is bounded: Claude's transcript rail follows only
+  `<config root>/projects/<one folder>/<selected id>.jsonl` (adapter-claude `observation/session-selection.ts`), and
+  by the root's own name for it when the hook reaches it through a link, so a forged hook cannot point it at a file of
+  its choosing elsewhere, then or later. A same-user writer can still write under the root.
+  A refused path is said once, as `adapter:native-event` `transcript-path.refused`, and is never published.
+  <!-- open until James rules rv-el7-limits (4): recorded at its lean, A, with the pin landed in code -->
 
 ## 9. What a host does itself
 

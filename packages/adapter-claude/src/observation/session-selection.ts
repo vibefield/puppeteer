@@ -15,8 +15,15 @@
  *
  * A start that moves the observer gets the verdict `rotate`: the bridge stamps its envelope, and the normalizer starts
  * the session over from it. Every hook refused is told to `onRefused`'s listeners.
+ *
+ * The durable rail follows the selected session's own transcript and nothing else (`transcriptFor`): any holder of
+ * the run's bearer (the agent's tools inherit it) can post a hook, so a path a hook names is followed only when it is
+ * `<root>/projects/<one folder>/<selected id>.jsonl`. A same-uid writer can still write under the root
+ * (docs/guides/spawn-through-hosts.md §8).
  */
 
+import { realpathSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
 import { claudeString } from '../normalization/wire.js';
 import { locateClaudeTranscript } from '../launch/prepare.js';
 import type { HookBridgeRequestKind, HookBridgeSessionVerdict } from './hook-bridge.js';
@@ -48,10 +55,26 @@ export interface ClaudeSessionSelection {
     kind: HookBridgeRequestKind,
     body: Readonly<Record<string, unknown>>,
   ): HookBridgeSessionVerdict;
+  /**
+   * The transcript `path` names, resolved, when it is the selected session's own under the root; else undefined. A
+   * path through a link matches by where its folders really are, and is answered under the root as configured, never
+   * by the hook's spelling, whose link may later lead elsewhere; a file not yet written (a fresh /clear's) is read as
+   * written.
+   */
+  transcriptFor(path: string): string | undefined;
   /** Every hook refused, as it is refused (a status line is refused without a word). */
   onRefused(listener: (refusal: ClaudeSessionRefusal) => void): () => void;
   /** An attach's unheard rotation, with the transcript it found under the root. */
   onUnheardRotation(listener: (transcript: string) => void): () => void;
+}
+
+/** Where `path` really is, or undefined when it is not there. */
+function realPath(path: string): string | undefined {
+  try {
+    return realpathSync(path);
+  } catch {
+    return undefined;
+  }
 }
 
 export function createClaudeSessionSelection(options: ClaudeSessionSelectionOptions): ClaudeSessionSelection {
@@ -135,6 +158,20 @@ export function createClaudeSessionSelection(options: ClaudeSessionSelectionOpti
       }
       if (hook) tell(refusedListeners, { sessionId, hookEventName, source });
       return false;
+    },
+
+    transcriptFor(path) {
+      if (selected === undefined) return undefined;
+      const file = resolve(path);
+      if (basename(file) !== `${selected}.jsonl`) return undefined;
+      const projects = resolve(options.root, 'projects');
+      if (dirname(dirname(file)) === projects) return file;
+      const realProjects = realPath(projects);
+      const realFolder = realPath(dirname(file));
+      // The same file by the root's own name: a link the hook named may be pointed elsewhere after this answer.
+      return realProjects !== undefined && realFolder !== undefined && dirname(realFolder) === realProjects
+        ? join(projects, basename(realFolder), basename(file))
+        : undefined;
     },
 
     onRefused(listener) {

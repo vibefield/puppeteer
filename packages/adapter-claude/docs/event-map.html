@@ -1143,7 +1143,12 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
           patterns → invalidation (or 0% on brand-new empty window).</p>
 
           <h4>Transcript</h4>
-          <p>Path from hook <code>transcript_path</code>. Existing assistant messages form a silent baseline on every
+          <p>Path from hook <code>transcript_path</code>, followed only when it is the observed session&rsquo;s own file
+          under the config root (<code>&lt;root&gt;/projects/&lt;one folder&gt;/&lt;session id&gt;.jsonl</code>; a path
+          through a link is matched by its real folders and followed by the root&rsquo;s own name for the file, so the
+          link pointed elsewhere later moves nothing): any holder of the run&rsquo;s bearer can post a hook, so another
+          path is refused, said once as <code>adapter:native-event</code> <code>transcript-path.refused</code>, and
+          never published. Existing assistant messages form a silent baseline on every
           attachment, including native resume and picker rebinds. Later assistant changes remain observable;
           historical prompts, replies and <code>turn:*</code> are never replayed. Model values are not extracted;
           unknown transcript metadata produces no events. Hooks do not wait for the initial transcript read.
