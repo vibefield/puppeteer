@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AgentView, MonitorViewInput, MonitorViewInstance } from '@vibefield/puppeteer-view-sdk';
 import {
   agentViewFixture,
@@ -23,6 +23,9 @@ import { RAIN_MANIFEST, RAIN_ROOT_CLASS, rainMonitorView } from './index.js';
 interface DrawCall {
   readonly op: 'fillText' | 'fillRect';
   readonly text?: string;
+  /** A rect's width and the fill it was drawn in: the stage's fill spans the field. */
+  readonly width?: number;
+  readonly fillStyle?: unknown;
 }
 
 const draws: DrawCall[] = [];
@@ -31,7 +34,10 @@ function recordingContext(): CanvasRenderingContext2D {
   return new Proxy(state, {
     get(target, key) {
       if (key === 'fillText') return (text: string) => draws.push({ op: 'fillText', text });
-      if (key === 'fillRect') return () => draws.push({ op: 'fillRect' });
+      if (key === 'fillRect') {
+        return (_x: number, _y: number, width: number) =>
+          draws.push({ op: 'fillRect', width, fillStyle: target.fillStyle });
+      }
       if (key === 'setTransform') return () => undefined;
       return target[key as string];
     },
@@ -79,6 +85,8 @@ afterEach(async () => {
   }
   restoreFrames();
   draws.length = 0;
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 async function mount(input: Partial<Parameters<typeof fixtureInput>[0]> = {}): Promise<Mounted> {
@@ -150,6 +158,85 @@ describe('the rain’s loop and the theme', () => {
     await view.update(fixtureInput({ parameters: PARAMETERS, agents: agents.slice(0, 1), theme }));
     expect(draws.some((call) => call.op === 'fillRect')).toBe(true);
     expect(frames.pending).toBe(0);
+  });
+});
+
+describe('the rain’s canvas', () => {
+  it('sizes its canvas only when the size changes, so a publish never clears the field', async () => {
+    // Writing a canvas's width or height clears it, even at the size it already has.
+    const widths = vi.spyOn(HTMLCanvasElement.prototype, 'width', 'set');
+    const heights = vi.spyOn(HTMLCanvasElement.prototype, 'height', 'set');
+    const written = (): number => widths.mock.calls.length + heights.mock.calls.length;
+    const view = await mount({ agents });
+    // Mounting sizes it: happy-dom lays the stage out at 0, so 300×150 becomes 1×1.
+    expect(written()).toBeGreaterThan(0);
+    widths.mockClear();
+    heights.mockClear();
+    for (const step of [1, 2, 3, 4, 5]) {
+      const changed: AgentView = { ...agents[0]!, reply: { text: `Step ${step}.` } };
+      await view.update(fixtureInput({ parameters: PARAMETERS, agents: [changed, agents[1]!] }));
+    }
+    expect(view.root.querySelector('.vf-monitor-rain-agents button')?.textContent).toBe(
+      'vibe-field, Opus, working: Step 5.',
+    );
+    expect(written()).toBe(0);
+  });
+
+  it('draws the field at once when its canvas is resized, before the loop’s next frame', async () => {
+    let observeResize: (() => void) | undefined;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          observeResize = callback;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    await mount({ agents });
+    await act(async () => frames.step(6));
+    expect(frames.pending).toBeGreaterThan(0);
+    draws.length = 0;
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(280);
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(140);
+    // Resizing the backing store clears it: waiting for the loop's next capped frame would show the cleared canvas.
+    observeResize?.();
+    const stage = fixtureTheme('dark').tokens.rain.stage;
+    expect(draws).toContainEqual({ op: 'fillRect', width: 280, fillStyle: stage });
+    // Drawn inside the observer's callback: the loop still runs, and no frame was stepped.
+    expect(frames.pending).toBeGreaterThan(0);
+  });
+
+  it('draws a still field at once when a zoom moves its columns and leaves its backing store as it was', async () => {
+    let observeResize: (() => void) | undefined;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          observeResize = callback;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const ratio = vi.spyOn(window, 'devicePixelRatio', 'get').mockReturnValue(1);
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(280);
+    const height = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(140);
+    const view = await mount({ agents, theme: fixtureTheme('dark', { animations: false }) });
+    expect(frames.pending).toBe(0);
+    const canvas = view.root.querySelector('canvas')!;
+    expect([canvas.width, canvas.height]).toEqual([280, 140]);
+    draws.length = 0;
+    // A page zoom to 200%: the stage halves in CSS pixels as the ratio doubles, so the backing store keeps its size and
+    // nothing clears it. The columns and the transform are new all the same, and a held-still field has no next frame.
+    ratio.mockReturnValue(2);
+    width.mockReturnValue(140);
+    height.mockReturnValue(70);
+    observeResize?.();
+    expect([canvas.width, canvas.height]).toEqual([280, 140]);
+    const stage = fixtureTheme('dark').tokens.rain.stage;
+    expect(draws).toContainEqual({ op: 'fillRect', width: 140, fillStyle: stage });
   });
 });
 
