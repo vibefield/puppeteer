@@ -22,6 +22,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  isAgentAttachRefusedError,
   safeParseAgentEvent,
   type AdapterEventCandidate,
   type TerminalAutomationOperation,
@@ -2587,24 +2588,61 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     await cleanupClaudeSession(prepared!);
   });
 
-  it('fails an attach before adopting anything when the pinned port is taken', async () => {
+  it('refuses an attach whose pinned port another listener holds, as one to retry', async () => {
     const holder = createServer();
     await new Promise<void>((resolve) => holder.listen(0, '127.0.0.1', resolve));
     const address = holder.address();
     const port = typeof address === 'object' && address ? address.port : 0;
+    const token = 'pinned-bearer-value';
     try {
-      await expect(
-        attachClaudeTuiSession({
-          sessionId: '00000000-0000-4000-8000-00000000abcd',
-          runtimeSessionId: 'rt-taken',
-          cwd: '/tmp',
-          ingress: { port, token: 'pinned' },
-          automate: async () => ({ accepted: true }),
-        }),
-      ).rejects.toThrow();
+      const held = await attachClaudeTuiSession({
+        sessionId: '00000000-0000-4000-8000-00000000abcd',
+        runtimeSessionId: 'rt-taken',
+        cwd: '/tmp',
+        ingress: { port, token },
+        automate: async () => ({ accepted: true }),
+      }).catch((error: unknown) => error);
+      // a predecessor's bridge still closing, or another program: the host's ladder retries (RA-D4 B, rung 1)
+      expect(isAgentAttachRefusedError(held)).toBe(true);
+      expect(held).toMatchObject({ next: 'retry' });
+      // the words name the class, never the port or the bearer
+      expect((held as Error).message).not.toContain(String(port));
+      expect((held as Error).message).not.toContain(token);
     } finally {
       await new Promise<void>((resolve) => holder.close(() => resolve()));
     }
+  });
+
+  it('fails an attach whose bind fails otherwise plainly, with no next step and nothing adopted', async () => {
+    let observed = false;
+    const bridge: HookBridge = {
+      token: 'pinned-bearer-value',
+      endpoint: () => 'http://127.0.0.1:1/hooks',
+      statusLineEndpoint: () => 'http://127.0.0.1:1/statusline',
+      subagentStatusLineEndpoint: () => 'http://127.0.0.1:1/subagent-statusline',
+      otelLogsEndpoint: () => 'http://127.0.0.1:1/v1/logs',
+      start: () => Promise.reject(Object.assign(new Error('listen EACCES: permission denied'), { code: 'EACCES' })),
+      onEvent() {
+        observed = true;
+        return () => undefined;
+      },
+      onStatusLine: () => () => undefined,
+      onSubagentStatusLine: () => () => undefined,
+      onOtelLogs: () => () => undefined,
+      onUnavailable: () => () => undefined,
+      async dispose() {},
+    };
+    const denied = await attachClaudeTuiSession({
+      sessionId: '00000000-0000-4000-8000-00000000abce',
+      runtimeSessionId: 'rt-denied',
+      cwd: '/tmp',
+      ingress: { port: 1, token: 'pinned-bearer-value' },
+      hookBridgeFactory: () => bridge,
+      automate: async () => ({ accepted: true }),
+    }).catch((error: unknown) => error);
+    expect(denied).toMatchObject({ code: 'EACCES' });
+    expect(isAgentAttachRefusedError(denied)).toBe(false);
+    expect(observed).toBe(false);
   });
 });
 
