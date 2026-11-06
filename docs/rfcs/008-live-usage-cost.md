@@ -67,6 +67,12 @@ Conversation identity is independent of the terminal's visual identity. Saves
 merge only authoritative live-run snapshots, with monitor revisions protecting
 corrections from delayed saves. The size limit is enforced before writing.
 
+*(2026-11-06, RV #9.)* Retention is unchanged. The monitor derives a usage index from
+the ledger: one claim per usage identity in ledger order, with running totals, the
+sample timeline, actor streams and their cost. The index is memoized per ledger and
+rebuilt only when a usage update replaces the ledger. It is a derived view, never a
+second ledger.
+
 To refresh prices, download `https://models.dev/api.json`, then run
 `node scripts/update-usage-prices.mjs /path/to/api.json`. Review the generated
 `packages/runtime/src/services/usage-prices.ts` diff, format it, and run the
