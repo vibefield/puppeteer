@@ -83,6 +83,23 @@ function batch(
   };
 }
 
+/** `count` live canonical responses of ten tokens each, one usage identity apiece. */
+function responses(count: number): MonitorFamilyUpdate[] {
+  return Array.from({ length: count }, (_, index): MonitorFamilyUpdate => ({
+    family: 'usage',
+    operation: 'upsert',
+    key: `usage-${index}`,
+    value: {
+      kind: 'usage',
+      origin: 'protocol',
+      usageId: `usage-${index}`,
+      boundary: 'response',
+      canonical: true,
+      deltaTokens: 10,
+    },
+  }));
+}
+
 function hub(
   options: {
     clock?: FakeClock;
@@ -267,6 +284,61 @@ describe('AgentMonitorService', () => {
     monitor.remove();
   });
 
+  it('projects the full state once per coalesce window, however many deltas stream into it', () => {
+    const project = vi.spyOn(monitorProjection, 'projectAgentMonitorState');
+    const { clock, hub: monitor } = hub();
+    monitor.updateRun('running', { alive: true });
+    project.mockClear();
+    for (let index = 0; index < 50; index++) {
+      monitor.acceptAgentEvent(
+        envelope({ type: 'conversation:assistant-message', text: `Working ${index}`, final: false }, index + 1),
+      );
+    }
+    clock.advance(100);
+    expect(project).toHaveBeenCalledTimes(1);
+    expect(monitor.current().status).toBe('working');
+    monitor.remove();
+  });
+
+  it('neither flushes nor projects for session metadata that did not change', () => {
+    const project = vi.spyOn(monitorProjection, 'projectAgentMonitorState');
+    const { clock, hub: monitor } = hub();
+    const metadata = {
+      executionMode: 'native-tui',
+      observationLevel: 'native-log',
+      terminalSessionId: 'terminal-1',
+    } as const;
+    monitor.updateSessionMetadata(metadata);
+    clock.advance(100);
+    expect(monitor.current().freshness.level).toBe('native-log');
+    project.mockClear();
+    for (let index = 0; index < 1_000; index++) monitor.updateSessionMetadata(metadata);
+    clock.advance(100);
+    expect(project).not.toHaveBeenCalled();
+    monitor.remove();
+  });
+
+  it('flushes a permission request at once, its urgency read from the transitions view', () => {
+    const { hub: monitor } = hub();
+    monitor.updateRun('running', { alive: true });
+    monitor.acceptAgentEvent(
+      envelope(
+        {
+          type: 'interaction:permission-requested',
+          requestId: 'permission-1',
+          tool: 'Bash',
+          presentation: 'native-tui',
+        },
+        1,
+      ),
+    );
+    expect(monitor.current()).toMatchObject({
+      status: 'blocked',
+      blockers: [{ id: 'permission-1', kind: 'permission' }],
+    });
+    monitor.remove();
+  });
+
   it('publishes deeply immutable monitor snapshots', () => {
     const { hub: monitor } = hub();
     const snapshot = monitor.current();
@@ -379,6 +451,26 @@ describe('AgentMonitorService', () => {
     expect(monitor.current().status).toBe('idle');
     clock.advance(55_001);
     expect(monitor.current().usage.burnRatePerMin).toBeUndefined();
+  });
+
+  it('schedules the next burn-rate boundary without parsing the usage ledger again', () => {
+    const parsesFor = (count: number) => {
+      const { clock, hub: monitor } = hub();
+      monitor.updateRun('running', { alive: true });
+      monitor.acceptSemantic(batch('batch-1', responses(count)));
+      clock.advance(100);
+      expect(monitor.current().usage.cumulativeTokens).toBe(count * 10);
+      // A streamed delta leaves the ledger as it is; its flush still projects and reschedules the rate boundary.
+      monitor.acceptAgentEvent(envelope({ type: 'conversation:assistant-message', text: 'Working', final: false }, 1));
+      const parse = vi.spyOn(Date, 'parse');
+      clock.advance(100);
+      const parses = parse.mock.calls.length;
+      parse.mockRestore();
+      expect(monitor.current().status).toBe('working');
+      monitor.remove();
+      return parses;
+    };
+    expect(parsesFor(2_000)).toBe(parsesFor(200));
   });
 
   it('allows a refreshed stable lease to expire again', () => {
@@ -509,5 +601,25 @@ describe('AgentMonitorService', () => {
     expect(monitor.acknowledgeFailure('missing')).toBe(false);
     expect(monitor.acknowledgeFailure('run:runtime')).toBe(true);
     expect(monitor.current()).toMatchObject({ status: 'idle', alive: false, blockers: [] });
+  });
+
+  it('stamps a source reference as a source identity and every id the runtime minted as a delivery identity', () => {
+    const reduce = vi.spyOn(monitorProjection, 'reduceMonitorAccumulator');
+    const { hub: monitor } = hub();
+    monitor.acceptAgentEvent(envelope({ type: 'session:ready' }, 1));
+    monitor.acceptAgentEvent({
+      ...envelope({ type: 'session:ready' }, 2),
+      sourceEventRef: { namespace: 'claude-code', eventId: 'native-2' },
+    });
+    monitor.updateRun('running', { alive: true });
+    monitor.recordPromptReceipt('receipt-1', '2026-08-16T12:00:01.000Z');
+
+    expect(reduce.mock.calls.map(([, input]) => input)).toMatchObject([
+      { kind: 'runtime', source: { kind: 'agent-event' }, identity: 'delivery' },
+      { kind: 'runtime', source: { kind: 'agent-event' }, identity: 'source' },
+      { kind: 'runtime', source: { kind: 'runtime-lifecycle' }, identity: 'delivery' },
+      { kind: 'runtime', source: { kind: 'prompt-receipt' }, identity: 'delivery' },
+    ]);
+    monitor.remove();
   });
 });

@@ -87,6 +87,23 @@ describe('monitor notifications', () => {
     expect(replayed.notifications[0]?.notificationId).toBe(first.notifications[0]?.notificationId);
   });
 
+  it('announces a worktree once when its source lists it twice', () => {
+    const worktrees = (batchId: string, paths: string[]) =>
+      semantic(batchId, 'live', [
+        {
+          family: 'environment',
+          operation: 'upsert',
+          key: 'environment',
+          value: { kind: 'environment', worktrees: paths },
+        },
+      ]);
+    const listed = reduceMonitorAccumulator(initial(), worktrees('listed', ['/repo/wt', '/repo/wt']));
+    expect(listed.notifications.map((item) => item.type)).toEqual(['worktree.created']);
+
+    const cleared = reduceMonitorAccumulator(listed.state, worktrees('cleared', []));
+    expect(cleared.notifications.map((item) => item.type)).toEqual(['worktree.removed']);
+  });
+
   it('keeps child counts correct at the public cap without emitting lifecycle notices', () => {
     const values = Array.from({ length: 257 }, (_, index) => {
       const id = `child-${index.toString().padStart(3, '0')}`;
