@@ -16,7 +16,9 @@ import {
   createMotionLoop,
   formatClock,
   keyLegend,
+  motionAllowed,
   sizeCanvas,
+  themeMotion,
   type MotionLoop,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { liftedFill, siblingIndex, siblingTone } from './spend-ink.js';
@@ -48,7 +50,9 @@ import {
   axisMoney,
   est,
   fitWords,
+  heroCaption,
   money,
+  NARROW_HERO,
   NOT_RECORDED,
   perHour,
   printedBurn,
@@ -56,6 +60,7 @@ import {
   spendStateAt,
   stateWords,
   waits,
+  type HeroRoom,
   type SpendGlyph,
   type SpendName,
   type SpendState,
@@ -84,8 +89,10 @@ import {
 //
 // React lays out the DOM (the hero, the axes, the rows) from the view's state;
 // the canvas is painted after each render, and the toolkit's loop repaints it
-// only while a waiting head's wave moves. Still (animations off, or motion
-// reduced) no frame loop runs (MV-W4): nothing waves, eases or glides.
+// only while a waiting head's wave moves: with nothing waving it asks for no
+// frame. Still (animations off, or motion reduced) no frame loop runs (MV-W4):
+// nothing waves, eases or glides. Out of sight (`theme.hidden`) it rests: no
+// clock, no paint, no frame; the render that shows it again paints once, at now.
 
 /** A line within this many px of the pointer is the one pointed at; further, the click sets the moment. */
 const REACH_PX = 16;
@@ -103,7 +110,10 @@ export interface Geometry {
   width: number;
   height: number;
   compact: boolean;
-  /** Too narrow for the hero's caption: it keeps the number and the burn. */
+  /**
+   * Too narrow for the hero's whole caption: it keeps the number, the burn and who the total leaves out, cut to the
+   * room beside them (`heroRoom`).
+   */
   narrow: boolean;
   /** The plot. */
   x0: number;
@@ -176,6 +186,19 @@ function canvasMeasure(within: Element): TextMeasure | undefined {
     ctx.font = font;
     return ctx.measureText(text).width;
   };
+}
+
+/**
+ * The room a narrow hero leaves its caption. Its one line runs from the plot's left edge to the list's column, less
+ * the list's inset, and the number and the burn come first, each measured in its face as spend.css sets it at narrow
+ * (the sheet's sizes are the authority; these follow it): the number light at 20 px, the burn 550 at 13 px, the
+ * caption's words 400 at 12 px. The canvas leaves out the number's tracking and the tabular figures, as the rows' fit
+ * leaves out theirs.
+ */
+function heroRoom(g: Geometry, figure: string, rate: string, font: string, measure: TextMeasure): HeroRoom {
+  const { figureFace, gapPx, rateFace, capGapPx, wordsFace, listInsetPx } = NARROW_HERO;
+  const before = measure(figure, `${figureFace} ${font}`) + gapPx + measure(rate, `${rateFace} ${font}`) + capGapPx;
+  return { width: g.lx0 - listInsetPx - g.x0 - before, measure: (text) => measure(text, `${wordsFace} ${font}`) };
 }
 
 // The glyphs (DESIGN §13 Instrument construction: 24 box, one 2-unit stroke, round caps).
@@ -255,14 +278,23 @@ interface Pointer {
 export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElement {
   const { model, parameters, theme, stage } = input;
   const settings = useMemo(() => normalizeSpendParameters(parameters), [parameters]);
-  // The host's animations switch and the person's reduced-motion preference: either one stills the view.
-  const motion = theme.animations && !theme.reducedMotion;
+  // The host's animations switch, the person's reduced-motion preference and the stage out of sight: any one stills
+  // the view. Out of sight it rests as well: no clock and no paint.
+  const motion = motionAllowed(theme);
+  const { hidden } = themeMotion(theme);
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   /** The root's own size once laid out; until then (and wherever nothing lays out) the stage's. */
   const [measured, setMeasured] = useState<Size | null>(null);
   const size = measured ?? stageBox(stage);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  // The clock rests out of sight (below). The render that shows the stage again takes the time first, so the one paint
+  // it makes is of now, never of the moment the stage left sight.
+  const [clockHidden, setClockHidden] = useState(hidden);
+  if (clockHidden !== hidden) {
+    setClockHidden(hidden);
+    if (!hidden) setNowMs(Date.now());
+  }
   const [pointer, setPointer] = useState<Pointer | null>(null);
   /** The moment a click set (SV-D18); it stays while the pointer crosses to the list, until the window passes it. */
   const [held, setHeld] = useState<number | null>(null);
@@ -382,16 +414,18 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     }
     perMinute += row.burn ?? 0;
   }
-  const missing = unpriced.filter((row) => row.bornMs <= tView);
-  const leftOut =
-    missing.length === 1
-      ? ` · not counting ${names.get(missing[0]!.id)!.one}`
-      : missing.length > 1
-        ? ` · not counting ${missing.length} agents with no price`
-        : '';
+  const heroFigure = `~${money(spent)}${partial ? '+' : ''}`;
   const heroRate =
     tCross !== null ? `by ${formatClock(tCross)} · ${perHour(perMinute)} then` : `${perHour(perMinute)} now`;
-  const heroWhat = `since each agent started, at API prices${leftOut}`;
+  // Its caption: what the figure is, and who it leaves out, the unpriced that had started by the moment (one not yet
+  // running is not missing). A narrow stage keeps only who, cut to the room the number and the burn leave it; with
+  // nobody left out it has no caption.
+  const missing = unpriced.filter((row) => row.bornMs <= tView);
+  const heroWhat = heroCaption({
+    missing,
+    names,
+    narrow: g.narrow ? heroRoom(g, heroFigure, heroRate, font, measure) : undefined,
+  });
 
   // The header: how many had started by the moment, and what the money column means.
   const all = rows.length + unpricedRows.length;
@@ -471,6 +505,8 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     time: 0,
   };
   sceneRef.current = scene;
+  /** A head waves (a wait you owe, a reply unseen): the only thing on the chart that moves between renders. */
+  const moves = sceneMoves(scene);
 
   // The tag at the pointed line's head — what it spent in the window by then — the only label on the chart; a row
   // not yet started shows its start instead.
@@ -547,8 +583,9 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     [inks],
   );
 
-  // Every render repaints the canvas from its scene.
+  // Every render repaints the canvas from its scene, except out of sight: the render that shows the stage paints it.
   useLayoutEffect(() => {
+    if (hidden) return;
     paint(typeof performance === 'undefined' ? 0 : performance.now());
   });
 
@@ -563,45 +600,38 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     return () => cancelAnimationFrame(frame);
   }, [yShown, target.max, motion]);
 
-  // The clock: now moves about a pixel at a time; the wave repaints the canvas alone.
+  // The clock: now moves about a pixel at a time; the wave repaints the canvas alone. Out of sight it rests.
   const msPerPx = SPEND_WINDOW_MS / Math.max(1, g.x1 - g.x0);
   useEffect(() => {
+    if (hidden) return;
     const every = Math.min(1000, Math.max(250, msPerPx));
     const id = setInterval(() => setNowMs(Date.now()), every);
     return () => clearInterval(id);
-  }, [msPerPx]);
+  }, [msPerPx, hidden]);
 
   // A set moment the window has slid past lets go.
   useEffect(() => {
     if (held !== null && pinned === null) setHeld(null);
   }, [held, pinned]);
 
-  // The wave's loop: the toolkit's, which asks for no frame at all while animations are off or motion is reduced.
+  // The wave's loop: the toolkit's, at most 30 frames a second, which asks for no frame at all while animations are
+  // off, motion is reduced, the stage is out of sight or no head waves (`moving`).
   const paintRef = useRef(paint);
   paintRef.current = paint;
   const loopRef = useRef<MotionLoop | null>(null);
   useEffect(() => {
-    let last = 0;
-    const loop = createMotionLoop(
-      (time) => {
-        const current = sceneRef.current;
-        if (!current || !sceneMoves(current) || time - last < 33) return;
-        last = time;
-        paintRef.current(time);
-      },
-      { animations: theme.animations, reducedMotion: theme.reducedMotion },
-    );
+    const loop = createMotionLoop((time) => paintRef.current(time), { ...themeMotion(theme), fps: 30, moving: moves });
     loopRef.current = loop;
     return () => {
       loop.dispose();
       loopRef.current = null;
     };
-    // the loop lives as long as the view; the switches reach it below
+    // the loop lives as long as the view; the switches and the waves reach it below
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    loopRef.current?.update({ animations: theme.animations, reducedMotion: theme.reducedMotion });
-  }, [theme.animations, theme.reducedMotion]);
+    loopRef.current?.update({ ...themeMotion(theme), moving: moves });
+  }, [moves, theme.animations, theme.reducedMotion, theme.hidden]);
 
   // ───────────────────────────── acts
   const select = (id: string): void => {
@@ -888,10 +918,10 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
         className={`vf-monitor-spend-hero${g.compact || g.narrow ? ' is-compact' : ''}${g.narrow ? ' is-narrow' : ''}`}
         style={{ left: g.x0 }}
       >
-        <span className="vf-monitor-spend-big">{`~${money(spent)}${partial ? '+' : ''}`}</span>
+        <span className="vf-monitor-spend-big">{heroFigure}</span>
         <span className="vf-monitor-spend-cap">
           <b>{heroRate}</b>
-          <i>{heroWhat}</i>
+          {heroWhat === undefined ? null : <i>{heroWhat}</i>}
         </span>
       </div>
       {pinned !== null ? (

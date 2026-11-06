@@ -83,6 +83,10 @@ const PARAMETERS = parameterDefaults(SPEND_MANIFEST);
 const NOW = Date.parse('2026-10-03T21:12:15.000Z');
 const MIN = 60_000;
 const WIDE = { width: 1178, height: 638 };
+/** The lab's narrowest plate: a window at its narrowest. */
+const NARROW = { width: 400, height: 260 };
+/** Still narrow (under 640), with room beside the hero's number and burn for its short caption whole. */
+const NARROW_ROOMY = { width: 600, height: 260 };
 
 interface Mounted {
   readonly root: HTMLElement;
@@ -264,6 +268,43 @@ describe('the spend view', () => {
     await view.update(fixtureInput({ parameters: PARAMETERS, agents: plain }));
     expect(text(view.root, '.vf-monitor-spend-big')[0]).toMatch(/^~\$[\d,.]+$/);
     expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['since each agent started, at API prices']);
+  });
+
+  it('at a narrow stage the hero still says who it leaves out: one by name, several by how many with no price', async () => {
+    // The caption's first words do not fit beside the number and the burn; who the total leaves out stays, in short,
+    // and here whole: the window has room for it.
+    const agents = afternoon();
+    const view = await mount({ agents }, NARROW_ROOMY);
+    expect(view.root.querySelector('.vf-monitor-spend-hero')?.className).toContain('is-narrow');
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['not counting swarm-lab']);
+    // A second agent no price reaches: how many, in the rows' own "no price".
+    const scratch = agentViewFixture({ id: 'scratch', project: { name: 'scratch' }, createdAt: NOW - 30 * MIN });
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: [...agents, scratch] }));
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['2 with no price']);
+    // Nobody left out: the number and the burn alone, and no empty caption beside them.
+    const priced = agents.filter((agent) => agent.id !== 'swarm-lab');
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: priced }));
+    expect(view.root.querySelector('.vf-monitor-spend-cap i')).toBeNull();
+    expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(/^\$[\d.]+\/hr now$/);
+  });
+
+  it('at the narrowest plate the hero cuts who it leaves out to the room its number and burn leave, keeping the count', async () => {
+    // B' (rv-godview-honesty (2), ruled 2026-11-06): the hero's one line runs from the plot's left edge to the list's
+    // inset short of its column (10 px, the list's own padding), and the number, its 10 px gap, the burn and its 8 px
+    // gap come first (spend.css); this file measures 6.4 px a glyph in any face.
+    const agents = afternoon();
+    const view = await mount({ agents }, NARROW);
+    const g = geometryFor(NARROW.width, NARROW.height);
+    const glyphs = (selector: string): number => text(view.root, selector)[0]!.length * 6.4;
+    const room = g.lx0 - 10 - g.x0 - glyphs('.vf-monitor-spend-big') - 10 - glyphs('.vf-monitor-spend-cap b') - 8;
+    // About 58 px: "1 with…" fits and "1 with no…" does not, nor a word of swarm-lab after "not counting".
+    expect(room).toBeGreaterThanOrEqual('1 with…'.length * 6.4);
+    expect(room).toBeLessThan('1 with no…'.length * 6.4);
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['1 with…']);
+    // A second agent no price reaches: its count, cut at the same word.
+    const scratch = agentViewFixture({ id: 'scratch', project: { name: 'scratch' }, createdAt: NOW - 30 * MIN });
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: [...agents, scratch] }));
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['2 with…']);
   });
 
   it("prints another desktop's total now and draws it no line; before now it says in words that nobody recorded it (SV-D2)", async () => {
@@ -451,6 +492,52 @@ describe('the spend view’s motion', () => {
     );
     await act(async () => frames.step(3));
     expect(frames.pending).toBe(0);
+  });
+
+  it('asks for no frame while nothing waves, motion on, and runs the loop once a head waits', async () => {
+    // The stage is the root as it lays out, so the first render and the measured one draw one scale: nothing eases.
+    const stage = {
+      width: WIDE.width,
+      height: WIDE.height,
+      insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      obstacles: [],
+    };
+    // The afternoon's own rows, no head waiting and no reply unseen: nothing on the chart moves. Publishing the
+    // afternoon moves no scale either, so the frame it then asks for is the loop's alone.
+    const calm = afternoon().map((agent): AgentView => ({
+      ...agent,
+      status: agent.status === 'blocked' ? 'idle' : agent.status,
+      unread: false,
+      wait: undefined,
+    }));
+    const view = await mount({ agents: calm, stage });
+    expect(view.view.dataset.motion).toBe('on');
+    await act(async () => frames.step(2));
+    expect(frames.pending).toBe(0);
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: afternoon(), stage }));
+    expect(frames.pending).toBeGreaterThan(0);
+  });
+
+  it('rests out of sight: no clock, no paint and no frame; shown, it paints once, at now, and keeps time again', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const view = await mount({ agents: afternoon(), theme: fixtureTheme('dark', { hidden: true }) });
+    const paints = (): number => calls.filter((call) => call.op === 'clearRect').length;
+    calls.length = 0;
+    for (let step = 0; step < 4; step += 1) {
+      clock.advance(30_000);
+      await act(async () => {
+        vi.advanceTimersByTime(30_000);
+        frames.step();
+      });
+    }
+    expect(paints()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(frames.pending).toBe(0);
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: afternoon(), theme: fixtureTheme('dark') }));
+    expect(paints()).toBe(1);
+    // The one paint is of now, two minutes on, never of the moment the stage left sight.
+    expect(view.root.querySelector('.vf-monitor-spend-chip')?.textContent).toBe(formatClock(clock.now()));
+    expect(vi.getTimerCount()).toBe(1);
   });
 });
 

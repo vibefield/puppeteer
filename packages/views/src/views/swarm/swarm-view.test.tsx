@@ -102,6 +102,9 @@ async function answers(): Promise<void> {
 /** The body the renderer was last asked to draw for this id, if it was. */
 const lastDrawn = (id: string) => drawn.frames.at(-1)?.bodies.find((body) => body.model.id === id);
 
+/** Every command the view posted to its worker, oldest first (`FakeWorker`). */
+const posted: SwarmPhysicsCommand[] = [];
+
 /**
  * A worker as the platform gives one, with the swarm's own physics host inside it as `swarm-physics.worker.ts` serves
  * it: it proves itself, and every message either way lands on a task of its own (`setTimeout`, which the fake timers
@@ -116,6 +119,7 @@ class FakeWorker {
   }
 
   postMessage(message: unknown): void {
+    posted.push(message as SwarmPhysicsCommand);
     this.later(() => this.host.handle(message as SwarmPhysicsCommand));
   }
 
@@ -151,6 +155,7 @@ async function mounted(spawn?: MonitorSpawnMenu, mountTheme: MonitorTheme = them
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(() => HEIGHT);
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => new DOMRect(0, 0, WIDTH, HEIGHT));
   drawn.frames.length = 0;
+  posted.length = 0;
   const root = document.createElement('div');
   document.body.append(root);
   cleanups.push(() => root.remove());
@@ -163,11 +168,12 @@ async function mounted(spawn?: MonitorSpawnMenu, mountTheme: MonitorTheme = them
     : counting.commands;
   const agents = options.agents ?? agentViewsFixture(3);
   let revision = 1;
+  let shownTheme = mountTheme;
   const input = (rows: readonly AgentView[]): MonitorViewInput => ({
     model: fixtureModel(rows, revision),
     changes: { added: [], updated: [], removed: [] },
     stage: STAGE,
-    theme: mountTheme,
+    theme: shownTheme,
     parameters,
     capabilities: spawn ? { spawn } : {},
   });
@@ -177,9 +183,10 @@ async function mounted(spawn?: MonitorSpawnMenu, mountTheme: MonitorTheme = them
   });
   cleanups.push(() => act(async () => instance.unmount()));
   await frames(3);
-  /** The host's rows become these. */
-  const show = async (rows: readonly AgentView[]): Promise<void> => {
+  /** The host's rows become these, and its theme this one when it is given. */
+  const show = async (rows: readonly AgentView[], nextTheme: MonitorTheme = shownTheme): Promise<void> => {
     revision += 1;
+    shownTheme = nextTheme;
     await act(async () => instance.update(input(rows)));
   };
   return { root, field: root.querySelector<HTMLElement>('.vf-monitor-swarm')!, counting, agents, show };
@@ -495,6 +502,46 @@ describe('a field held still draws each change it shows, on a frame of its own (
     expect(births.length).toBeGreaterThan(0);
     // Held still, its gone-form is nothing at all.
     expect(births.at(-1)?.opacity).toBe(0);
+  });
+});
+
+describe('a field out of sight (`theme.hidden`) draws nothing, and is drawn once when it is shown', () => {
+  const hidden = fixtureTheme('light', { hidden: true });
+
+  beforeEach(() => {
+    vi.stubGlobal('Worker', FakeWorker);
+  });
+
+  it('pauses its physics and draws no row that arrives, nor a resize; shown held still, one frame carries the row', async () => {
+    let observed: (() => void) | undefined;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          observed = callback;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const rows = agentViewsFixture(2);
+    // The host's animations switch is on: only the stage being out of sight holds the field.
+    const { show } = await mounted(undefined, hidden, { agents: rows.slice(0, 1) });
+    expect(posted).toContainEqual({ type: 'pause' });
+    const before = drawn.frames.length;
+    await show(rows);
+    await answers();
+    await act(async () => observed?.());
+    await frames(10);
+    expect(drawn.frames.length).toBe(before);
+    // Shown with the switch off: the field is drawn once where it stands, the row that arrived in it, where it spawned.
+    await show(rows, fixtureTheme('light', { animations: false }));
+    await frames(1);
+    expect(drawn.frames.length).toBe(before + 1);
+    expect(lastDrawn(rows[1]!.id)).toEqual(expect.objectContaining({ scale: 1, opacity: 1 }));
+    const drawnThen = drawn.frames.length;
+    await frames(10);
+    expect(drawn.frames.length).toBe(drawnThen);
   });
 });
 

@@ -124,6 +124,10 @@ const agents: readonly AgentView[] = [
   agentViewFixture({ id: 'b', status: 'idle', reply: { text: 'Done.' }, createdAt: 2 }),
 ];
 
+/** The stage's own fills, one per field drawn (a pane's wash and stripes are filled in its agent's colour). */
+const stageFills = (): number =>
+  draws.filter((call) => call.op === 'fillRect' && call.fillStyle === fixtureTheme('dark').tokens.rain.stage).length;
+
 describe('the rain’s loop and the theme', () => {
   it('runs while animations are on and motion is not reduced', async () => {
     await mount({ agents });
@@ -132,8 +136,11 @@ describe('the rain’s loop and the theme', () => {
     expect(draws.some((call) => call.op === 'fillText')).toBe(true);
   });
 
-  it('asks for no frame while animations are off, and draws the field once where it stands', async () => {
+  it('asks for no frame loop while animations are off, and draws the field where it stands', async () => {
     const view = await mount({ agents, theme: fixtureTheme('dark', { animations: false }) });
+    // The mount's one still frame, and then nothing.
+    expect(frames.pending).toBe(1);
+    await act(async () => frames.step(1));
     expect(frames.pending).toBe(0);
     const still = draws.filter((call) => call.op === 'fillText').map((call) => call.text);
     expect(still.length).toBeGreaterThan(0);
@@ -151,12 +158,36 @@ describe('the rain’s loop and the theme', () => {
     expect(frames.pending).toBe(0);
   });
 
-  it('draws again, still, when what it shows changes while motion is off', async () => {
+  it('draws again, still, once on the next frame, when what it shows changes while motion is off', async () => {
     const theme = fixtureTheme('dark', { animations: false });
     const view = await mount({ agents, theme });
+    await act(async () => frames.step(1));
     draws.length = 0;
     await view.update(fixtureInput({ parameters: PARAMETERS, agents: agents.slice(0, 1), theme }));
-    expect(draws.some((call) => call.op === 'fillRect')).toBe(true);
+    // A publish asks for one still frame: a burst of them is drawn once.
+    expect(draws).toEqual([]);
+    expect(frames.pending).toBe(1);
+    await act(async () => frames.step(1));
+    expect(stageFills()).toBe(1);
+    expect(frames.pending).toBe(0);
+  });
+
+  it('draws nothing while its stage is out of sight, and the field once where it stands when it is shown', async () => {
+    const hidden = fixtureTheme('dark', { hidden: true });
+    // The host's animations switch is on: only the stage being out of sight holds the field.
+    const view = await mount({ agents, theme: hidden });
+    expect(frames.pending).toBe(0);
+    expect(draws).toEqual([]);
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: agents.slice(0, 1), theme: hidden }));
+    await act(async () => frames.step(3));
+    expect(draws).toEqual([]);
+    expect(frames.pending).toBe(0);
+    // Shown with the switch off: one still frame, with what changed while it was out of sight.
+    const still = fixtureTheme('dark', { animations: false });
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: agents.slice(0, 1), theme: still }));
+    expect(frames.pending).toBe(1);
+    await act(async () => frames.step(1));
+    expect(stageFills()).toBe(1);
     expect(frames.pending).toBe(0);
   });
 });
@@ -224,6 +255,8 @@ describe('the rain’s canvas', () => {
     const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(280);
     const height = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(140);
     const view = await mount({ agents, theme: fixtureTheme('dark', { animations: false }) });
+    // The mount's one still frame; then the field is held, with no frame to come.
+    await act(async () => frames.step(1));
     expect(frames.pending).toBe(0);
     const canvas = view.root.querySelector('canvas')!;
     expect([canvas.width, canvas.height]).toEqual([280, 140]);
