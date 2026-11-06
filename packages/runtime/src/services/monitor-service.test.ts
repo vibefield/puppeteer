@@ -510,4 +510,24 @@ describe('AgentMonitorService', () => {
     expect(monitor.acknowledgeFailure('run:runtime')).toBe(true);
     expect(monitor.current()).toMatchObject({ status: 'idle', alive: false, blockers: [] });
   });
+
+  it('stamps a source reference as a source identity and every id the runtime minted as a delivery identity', () => {
+    const reduce = vi.spyOn(monitorProjection, 'reduceMonitorAccumulator');
+    const { hub: monitor } = hub();
+    monitor.acceptAgentEvent(envelope({ type: 'session:ready' }, 1));
+    monitor.acceptAgentEvent({
+      ...envelope({ type: 'session:ready' }, 2),
+      sourceEventRef: { namespace: 'claude-code', eventId: 'native-2' },
+    });
+    monitor.updateRun('running', { alive: true });
+    monitor.recordPromptReceipt('receipt-1', '2026-08-16T12:00:01.000Z');
+
+    expect(reduce.mock.calls.map(([, input]) => input)).toMatchObject([
+      { kind: 'runtime', source: { kind: 'agent-event' }, identity: 'delivery' },
+      { kind: 'runtime', source: { kind: 'agent-event' }, identity: 'source' },
+      { kind: 'runtime', source: { kind: 'runtime-lifecycle' }, identity: 'delivery' },
+      { kind: 'runtime', source: { kind: 'prompt-receipt' }, identity: 'delivery' },
+    ]);
+    monitor.remove();
+  });
 });
