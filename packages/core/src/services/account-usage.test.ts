@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  accountUsageMetricInPlay,
   AccountUsageFetchResultSchema,
   AccountUsageProviderSchema,
   AccountUsageSnapshotSchema,
+  type AccountUsageMetric,
+  type AccountUsageMetricGroup,
 } from './account-usage.js';
 
 describe('account usage contracts', () => {
@@ -115,5 +118,46 @@ describe('account usage contracts', () => {
         refresh: { pollIntervalMs: 0 },
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('accountUsageMetricInPlay', () => {
+  const RESERVE: AccountUsageMetricGroup = { id: 'gpt-reserve', label: 'Luna Reserve', standby: true };
+  const SPARK: AccountUsageMetricGroup = { id: 'spark', label: 'Spark' };
+  const meter = (label: string, usedPercent: number, group?: AccountUsageMetricGroup): AccountUsageMetric => ({
+    id: label,
+    label,
+    kind: 'window',
+    usedPercent,
+    ...(group ? { group } : {}),
+  });
+
+  it('keeps an untouched standby allowance out of play while the plan has room', () => {
+    const untouched = meter('GPT RESERVE 7D', 0, RESERVE);
+    expect(accountUsageMetricInPlay(untouched, [meter('7D', 25), untouched])).toBe(false);
+  });
+
+  it('brings a standby allowance into play once any meter of its group is used', () => {
+    const used = meter('GPT RESERVE 7D', 3, RESERVE);
+    expect(accountUsageMetricInPlay(used, [meter('7D', 25), used])).toBe(true);
+    const untouched = meter('GPT RESERVE 7D', 0, RESERVE);
+    const reading = [meter('7D', 25), meter('GPT RESERVE 5H', 4, RESERVE), untouched];
+    expect(accountUsageMetricInPlay(untouched, reading)).toBe(true);
+  });
+
+  it('brings a standby allowance into play once a plan window is spent, never a budget or a family', () => {
+    const untouched = meter('GPT RESERVE 7D', 0, RESERVE);
+    expect(accountUsageMetricInPlay(untouched, [meter('7D', 100), untouched])).toBe(true);
+    const credit: AccountUsageMetric = { ...meter('CREDIT', 100), kind: 'budget' };
+    expect(accountUsageMetricInPlay(untouched, [credit, untouched])).toBe(false);
+    const family = [meter('7D', 25), meter('SPARK 7D', 100, SPARK), untouched];
+    expect(accountUsageMetricInPlay(untouched, family)).toBe(false);
+  });
+
+  it('keeps every other meter in play, used or not', () => {
+    const plan = meter('7D', 0);
+    const model = meter('SPARK 7D', 0, SPARK);
+    expect(accountUsageMetricInPlay(plan, [plan, model])).toBe(true);
+    expect(accountUsageMetricInPlay(model, [plan, model])).toBe(true);
   });
 });

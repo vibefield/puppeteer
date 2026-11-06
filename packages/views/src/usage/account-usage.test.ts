@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AccountUsageFetchResult, AccountUsageProvider } from '@vibefield/puppeteer-core';
-import type { AccountUsageEntry } from '@vibefield/puppeteer-core';
+import type { AccountUsageEntry, AccountUsageMetricGroup, AccountUsageMetricKind } from '@vibefield/puppeteer-core';
 import { accountUsageView, accountUsageViews, formatUsageAge, formatUsageReset, usageTiles } from './account-usage.js';
 
 const NOW = Date.parse('2026-07-23T20:00:00.000Z');
@@ -134,6 +134,34 @@ describe('account usage display model', () => {
     });
   });
 
+  it('keeps an untouched standby allowance out of the panel, so it never takes one of the three rows', () => {
+    const reading = (reserve: number): AccountUsageEntry =>
+      entry({
+        status: 'available',
+        snapshot: {
+          provider: PROVIDER.id,
+          fetchedAt: '2026-07-23T20:00:00.000Z',
+          scope: 'subscription',
+          source: { kind: 'native-protocol', stability: 'documented' },
+          metrics: [
+            { id: 'plan-5h', label: '5H', kind: 'window', usedPercent: 10 },
+            { id: 'plan-7d', label: '7D', kind: 'window', usedPercent: 25 },
+            {
+              id: 'reserve-7d',
+              label: 'GPT RESERVE 7D',
+              kind: 'window',
+              usedPercent: reserve,
+              group: { id: 'gpt-reserve', label: 'Luna Reserve', standby: true },
+            },
+            { id: 'spark-7d', label: 'SPARK 7D', kind: 'window', usedPercent: 5 },
+          ],
+        },
+      });
+    const labels = (reserve: number) => accountUsageView(reading(reserve), NOW).metrics.map(({ label }) => label);
+    expect(labels(0)).toEqual(['5H', '7D', 'SPARK 7D']);
+    expect(labels(10)).toEqual(['5H', '7D', 'GPT RESERVE 7D']);
+  });
+
   it('formats reset countdowns compactly', () => {
     expect(formatUsageReset('2026-07-23T20:00:30.000Z', NOW)).toBe('1m');
     expect(formatUsageReset('2026-07-24T21:00:00.000Z', NOW)).toBe('1d 1h');
@@ -192,7 +220,13 @@ describe('the usage column', () => {
   const at = (iso: string) => iso;
   function available(
     id: string,
-    metrics: { label: string; used: number; resetsAt?: string }[],
+    metrics: {
+      label: string;
+      used: number;
+      resetsAt?: string;
+      kind?: AccountUsageMetricKind;
+      group?: AccountUsageMetricGroup;
+    }[],
     extra: Partial<AccountUsageEntry> = {},
   ): AccountUsageEntry {
     return {
@@ -207,9 +241,10 @@ describe('the usage column', () => {
           metrics: metrics.map((metric, index) => ({
             id: `${id}-${index}`,
             label: metric.label,
-            kind: 'window' as const,
+            kind: metric.kind ?? ('window' as const),
             usedPercent: metric.used,
             ...(metric.resetsAt ? { resetsAt: metric.resetsAt } : {}),
+            ...(metric.group ? { group: metric.group } : {}),
           })),
         },
       },
@@ -226,6 +261,7 @@ describe('the usage column', () => {
       result: { status, provider: id, message: 'native detail', retryable: true, ...(code ? { code } : {}) },
     };
   }
+  const RESERVE: AccountUsageMetricGroup = { id: 'gpt-reserve', label: 'Luna Reserve', standby: true };
 
   it('places windows in fixed ring slots by kind and keeps every window for the popup', () => {
     const [tile] = usageTiles(
@@ -371,6 +407,61 @@ describe('the usage column', () => {
     );
     expect(tile?.rings).toMatchObject([{ slot: 2, label: 'FABLE', kept: false }]);
     expect(tile?.figure).toBe('30%');
+  });
+
+  it('keeps an untouched standby allowance out of sight until it is in play', () => {
+    const codex = (plan: number, reserve: number) =>
+      usageTiles(
+        {
+          refreshedAt: at('2026-07-23T20:00:00.000Z'),
+          entries: [
+            available('codex', [
+              { label: '7D', used: plan },
+              { label: 'GPT RESERVE 7D', used: reserve, group: RESERVE },
+            ]),
+          ],
+        },
+        NOW,
+      )[0];
+
+    const untouched = codex(25, 0);
+    expect(untouched?.rings.map(({ label }) => label)).toEqual(['7D']);
+    expect(untouched?.windows.map(({ label }) => label)).toEqual(['7D']);
+    expect(untouched?.foot.count).toBe('1 WINDOW');
+    expect(untouched?.aria).toBe('CODEX, 7D 25%');
+
+    const used = codex(25, 10);
+    expect(used?.rings.map(({ slot, label }) => [slot, label])).toEqual([
+      [1, '7D'],
+      [2, 'GPT RESERVE 7D'],
+    ]);
+    expect(used?.windows.map(({ label }) => label)).toEqual(['7D', 'GPT RESERVE 7D']);
+    expect(used?.foot.count).toBe('2 WINDOWS');
+
+    const spent = codex(100, 0);
+    expect(spent?.rings.map(({ slot, label }) => [slot, label])).toEqual([
+      [1, '7D'],
+      [2, 'GPT RESERVE 7D'],
+    ]);
+    expect(spent?.windows.map(({ label }) => label)).toEqual(['7D', 'GPT RESERVE 7D']);
+  });
+
+  it('keeps an untouched standby allowance out of sight beside a spent budget, which is no window of the plan', () => {
+    const [tile] = usageTiles(
+      {
+        refreshedAt: at('2026-07-23T20:00:00.000Z'),
+        entries: [
+          available('codex', [
+            { label: '7D', used: 25 },
+            { label: 'CREDIT', used: 100, kind: 'budget' },
+            { label: 'GPT RESERVE 7D', used: 0, group: RESERVE },
+          ]),
+        ],
+      },
+      NOW,
+    );
+    expect(tile?.windows.map(({ label }) => label)).toEqual(['7D', 'CREDIT']);
+    expect(tile?.foot.count).toBe('2 WINDOWS');
   });
 
   it('formats fetch ages compactly', () => {
