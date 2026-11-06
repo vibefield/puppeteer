@@ -36,12 +36,10 @@ export interface BodyReduction {
 }
 
 export type ParsedJsonObject =
-  | { kind: 'whole'; body: Record<string, unknown> }
-  | { kind: 'malformed'; message: string };
+  { kind: 'whole'; body: Record<string, unknown> } | { kind: 'malformed'; message: string };
 
 export type BoundedJsonResult =
-  | ParsedJsonObject
-  | { kind: 'reduced'; body: Record<string, unknown>; reduced: BodyReduction };
+  ParsedJsonObject | { kind: 'reduced'; body: Record<string, unknown>; reduced: BodyReduction };
 
 export interface BoundedJsonBody {
   push(chunk: Uint8Array): void;
@@ -157,12 +155,7 @@ function isHexByte(byte: number): boolean {
 function isNumberByte(byte: number): boolean {
   // 0-9 - + . E e: the number's own grammar is checked once it ends
   return (
-    (byte >= 0x30 && byte <= 0x39) ||
-    byte === 0x2d ||
-    byte === 0x2b ||
-    byte === 0x2e ||
-    byte === 0x45 ||
-    byte === 0x65
+    (byte >= 0x30 && byte <= 0x39) || byte === 0x2d || byte === 0x2b || byte === 0x2e || byte === 0x45 || byte === 0x65
   );
 }
 
