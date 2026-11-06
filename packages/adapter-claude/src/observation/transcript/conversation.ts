@@ -83,9 +83,7 @@ function observation(
   };
 }
 
-function assistant(record: ClaudeTranscriptRecord, turnId?: string): SemanticObservationEvent | undefined {
-  const text = transcriptText(record);
-  if (!text) return undefined;
+function assistant(record: ClaudeTranscriptRecord, text: string, turnId: string | undefined): SemanticObservationEvent {
   const event: AssistantMessageEvent = {
     type: 'conversation:assistant-message',
     messageId: transcriptRecordId(record),
@@ -171,26 +169,78 @@ function causalOrder(records: readonly ClaudeTranscriptRecord[]): ClaudeTranscri
   return ordered;
 }
 
-/** Extract root assistant messages for live observation without synthesizing historical turns. */
+/** The turn the assistant walk is in: the last prompt it passed, or the turn a known reply kept. */
+interface AssistantWalk {
+  turnId: string | undefined;
+}
+
+/** A reply the walk projects, under its key (its record id). */
+interface WalkedReply {
+  readonly key: string;
+  readonly text: string;
+  readonly projected: SemanticObservationEvent;
+}
+
+/** The reply a row is, when it is one: a root (non-sidechain) assistant row with text. */
+function projectedReply(record: ClaudeTranscriptRecord): { key: string; text: string } | undefined {
+  // The row type decides: 2.1.308's `api-request-blob` bookkeeping rows echo a user or assistant
+  // message and are neither a prompt nor a reply.
+  if (record.isSidechain || record.type !== 'assistant') return undefined;
+  const text = transcriptText(record);
+  return text ? { key: transcriptRecordId(record), text } : undefined;
+}
+
+/**
+ * One row of the assistant walk. A message's turn changes only when a row arrives, never when one leaves the window:
+ * the window's lower edge is no evidence. So a reply an earlier read projected keeps the turn it had when the walk has
+ * no turn open at it (its prompt is outside the window), or when its parent has left the window (`cut`: the window held
+ * the parent and evicted it, so the row's causal position is no evidence either), and the walk continues in that turn,
+ * so the row's own descendants follow it. A parent that has not arrived yet cuts nothing: it is no departure, and the
+ * turn a reply kept under it would carry on to rows that never descended from it. Otherwise the walk's turn wins: a
+ * reply flushed before its prompt (teardown) moves to the prompt's turn when the prompt arrives, which is why a turn
+ * can change at all.
+ */
+function stepAssistantWalk(
+  walk: AssistantWalk,
+  record: ClaudeTranscriptRecord,
+  cut: boolean,
+  known: (key: string) => { readonly turnId: string | undefined } | undefined,
+): WalkedReply | undefined {
+  if (record.isSidechain) return undefined;
+  if (record.type === 'user') {
+    if (opensUserTurn(record)) walk.turnId = transcriptRecordId(record);
+    return undefined;
+  }
+  const reply = projectedReply(record);
+  if (!reply) return undefined;
+  const kept = known(reply.key);
+  if (kept && (walk.turnId === undefined || cut)) walk.turnId = kept.turnId;
+  return { ...reply, projected: assistant(record, reply.text, walk.turnId) };
+}
+
+/**
+ * Extract root assistant messages for live observation without synthesizing historical turns. `knownTurns` holds the
+ * turn an earlier read gave each message key, and `departed` the uuids an earlier read's window held and has since
+ * evicted ({@link stepAssistantWalk}), so a window that has dropped rows re-keys no message it still holds.
+ */
 export function projectClaudeTranscriptAssistants(
   records: readonly ClaudeTranscriptRecord[],
+  options: {
+    knownTurns?: ReadonlyMap<string, string | undefined> | undefined;
+    departed?: ReadonlySet<string> | undefined;
+  } = {},
 ): ReadonlyMap<string, SemanticObservationEvent> {
+  const { knownTurns, departed } = options;
+  const uuids = new Set<string>();
+  for (const record of records) if (record.uuid !== undefined) uuids.add(record.uuid);
+  const known = (key: string) => (knownTurns?.has(key) ? { turnId: knownTurns.get(key) } : undefined);
   const assistants = new Map<string, SemanticObservationEvent>();
-  let turnId: string | undefined;
-
+  const walk: AssistantWalk = { turnId: undefined };
   for (const record of causalOrder(records)) {
-    if (record.isSidechain) continue;
-    // The row type decides: 2.1.308's `api-request-blob` bookkeeping rows echo a user or assistant
-    // message and are neither a prompt nor a reply.
-    if (record.type === 'user') {
-      if (opensUserTurn(record)) turnId = transcriptRecordId(record);
-      continue;
-    }
-    if (record.type !== 'assistant') continue;
-    const projected = assistant(record, turnId);
-    if (!projected) continue;
-    const key = transcriptRecordId(record);
-    assistants.set(key, projected);
+    const parent = record.parentUuid;
+    const cut = parent !== undefined && !uuids.has(parent) && departed?.has(parent) === true;
+    const reply = stepAssistantWalk(walk, record, cut, known);
+    if (reply) assistants.set(reply.key, reply.projected);
   }
   return assistants;
 }
@@ -259,8 +309,4 @@ export function projectClaudeTranscriptOpenWork(
     }
   }
   return open;
-}
-
-export function claudeTranscriptConversationFingerprint(value: SemanticObservationEvent): string {
-  return JSON.stringify([value.turnId ?? null, value.event]);
 }

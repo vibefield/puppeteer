@@ -7,11 +7,7 @@ import type {
   SemanticObservationPollHint,
   SemanticObservationProvider,
 } from '../semantic-provider.js';
-import {
-  claudeTranscriptConversationFingerprint,
-  projectClaudeTranscriptAssistants,
-  projectClaudeTranscriptOpenWork,
-} from './conversation.js';
+import { projectClaudeTranscriptAssistants, projectClaudeTranscriptOpenWork } from './conversation.js';
 import { createClaudeTranscriptReader } from './services/jsonl-reader.js';
 import { createTranscriptYield } from './services/yield.js';
 import type { ClaudeTranscriptRecord } from './wire.js';
@@ -37,7 +33,14 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
     const eventListeners = new Set<(event: SemanticObservationEvent) => void>();
     const batchListeners = new Set<(batch: AdapterMonitorObservationBatch) => void>();
     const errorListeners = new Set<(error: Error) => void>();
-    const assistantFingerprints = new Map<string, string>();
+    // What each message last said: its turn and its text, the only fields that vary (messageId is the key; final and
+    // displayOnly never vary). A message is published again only when one of them changes.
+    const published = new Map<string, { turnId: string | undefined; text: string }>();
+    // The parents that have left the window: uuids an earlier read held and a later one lost while a row it still holds
+    // names them. Those rows' ancestry was cut by the window, never by the transcript (conversation.ts,
+    // stepAssistantWalk); a parent that has not arrived yet is never here. Bounded by the window, as `held` is.
+    const departed = new Set<string>();
+    let held = new Set<string>();
     let lastTranscript: readonly ClaudeTranscriptRecord[] | undefined;
     let firstTranscriptPoll = true;
     let disposed = false;
@@ -54,20 +57,34 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
       const yieldIfNeeded = createTranscriptYield();
       const pending: SemanticObservationEvent[] = [];
       const session = records.filter((record) => !record.sessionId || record.sessionId === request.nativeSessionId);
-      const assistants = projectClaudeTranscriptAssistants(session);
+      const uuids = new Set<string>();
+      for (const record of session) if (record.uuid !== undefined) uuids.add(record.uuid);
+      const missing = new Set<string>();
+      for (const record of session) {
+        if (record.parentUuid !== undefined && !uuids.has(record.parentUuid)) missing.add(record.parentUuid);
+      }
+      for (const uuid of held) if (!uuids.has(uuid) && missing.has(uuid)) departed.add(uuid);
+      for (const uuid of departed) if (!missing.has(uuid)) departed.delete(uuid);
+      held = uuids;
+      const assistants = projectClaudeTranscriptAssistants(session, {
+        knownTurns: new Map([...published].map(([key, { turnId }]): [string, string | undefined] => [key, turnId])),
+        departed,
+      });
 
       // Existing messages form a silent baseline on every attachment,
       // including picker rebinds. Only later changes are live observations.
-      for (const [key, event] of assistants) {
-        const fingerprint = claudeTranscriptConversationFingerprint(event);
-        if (!firstTranscriptPoll && assistantFingerprints.get(key) !== fingerprint) pending.push(event);
-        assistantFingerprints.set(key, fingerprint);
+      for (const [key, value] of assistants) {
+        const text = value.event.type === 'conversation:assistant-message' ? value.event.text : '';
+        const previous = published.get(key);
+        const changed = previous === undefined || previous.turnId !== value.turnId || previous.text !== text;
+        if (!firstTranscriptPoll && changed) pending.push(value);
+        published.set(key, { turnId: value.turnId, text });
         const pause = yieldIfNeeded();
         if (pause) await pause;
         if (disposed) return;
       }
-      for (const key of assistantFingerprints.keys()) {
-        if (!assistants.has(key)) assistantFingerprints.delete(key);
+      for (const key of published.keys()) {
+        if (!assistants.has(key)) published.delete(key);
       }
       // An attached session's first read: what the transcript shows still open is where the agent stands now. It
       // happened before this observer, so it is replay, except a question the agent waits on, which is announced
