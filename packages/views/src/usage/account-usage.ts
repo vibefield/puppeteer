@@ -146,6 +146,8 @@ export interface UsageWindowView {
   usedPercent: number;
   value: string;
   resetLabel?: string;
+  /** Read before its reset, which has since passed: drawn faint, never hot, never the figure, no pressure. */
+  kept: boolean;
   hot: boolean;
   title: string;
 }
@@ -195,12 +197,24 @@ export function formatUsageAge(at: string | undefined, nowMs: number): string | 
   return `${Math.floor(hours / 24)}d AGO`;
 }
 
+/**
+ * The window's reset has passed since it was read (the moment its reset
+ * label says NOW), so the reading no longer describes it; the monitor reads
+ * again at that reset.
+ */
+function resetPassed(metric: AccountUsageMetric, nowMs: number): boolean {
+  const resetMs = metric.resetsAt ? Date.parse(metric.resetsAt) : Number.NaN;
+  return Number.isFinite(resetMs) && resetMs - nowMs <= 0;
+}
+
 function windowView(metric: AccountUsageMetric, nowMs: number, rateLimited: boolean): UsageWindowView {
   const base = metricView(metric, nowMs);
+  const kept = resetPassed(metric, nowMs);
   return {
     ...base,
     slot: usageRingSlot(metric.label),
-    hot: rateLimited || metric.usedPercent >= USAGE_HOT_PERCENT,
+    kept,
+    hot: !kept && (rateLimited || metric.usedPercent >= USAGE_HOT_PERCENT),
   };
 }
 
@@ -213,18 +227,22 @@ const STATE_ORDER: Record<UsageTileState, number> = {
   unavailable: 5,
 };
 
+/** The fullest window still current: a kept window is never the figure and sets no pressure. */
 function tightest(windows: readonly UsageWindowView[]): UsageWindowView | undefined {
   return windows.reduce<UsageWindowView | undefined>(
-    (best, window) => (!best || window.usedPercent > best.usedPercent ? window : best),
+    (best, window) => (!window.kept && (!best || window.usedPercent > best.usedPercent) ? window : best),
     undefined,
   );
 }
 
+/** Per slot, a current window over a kept one, then the fuller. */
 function ringsOf(windows: readonly UsageWindowView[]): UsageWindowView[] {
   const bySlot = new Map<UsageRingSlot, UsageWindowView>();
   for (const window of windows) {
     const held = bySlot.get(window.slot);
-    if (!held || window.usedPercent > held.usedPercent) bySlot.set(window.slot, window);
+    if (!held || (held.kept !== window.kept ? held.kept : window.usedPercent > held.usedPercent)) {
+      bySlot.set(window.slot, window);
+    }
   }
   return [...bySlot.values()].sort((left, right) => left.slot - right.slot);
 }
@@ -290,7 +308,7 @@ export function usageTile(
             count: windowCount(windows.length),
           }
         : { lead: 'FETCHED', ...(age ? { strong: age } : {}), count: windowCount(windows.length) },
-      aria: `${name}, ${windows.map((window) => `${window.label} ${window.value}`).join(', ')}${
+      aria: `${name}, ${windows.map((window) => `${window.label} ${window.kept ? 'reset' : window.value}`).join(', ')}${
         rateLimited ? `, rate limited${retryLabel ? `, retry in ${retryLabel}` : ''}` : ''
       }`,
     };
