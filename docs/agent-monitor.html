@@ -2974,6 +2974,11 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
                 </p>
               </article>
             </div>
+            <p>
+              A turn ends one of two ways. <span class="mono">turn:completed</span> says it finished, or that the person
+              interrupted it (<span class="mono">outcome: 'interrupted'</span>); either way the turn's activity retracts
+              and no failure is raised. Only <span class="mono">turn:failed</span> raises a failure blocker.
+            </p>
 
             <h3>Bounded public collections</h3>
             <div class="table-wrap">
