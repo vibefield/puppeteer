@@ -209,6 +209,7 @@ function projectBlockers(
   entries: readonly MonitorStoredEntry[],
   actors: ReadonlyMap<string, ChildActor>,
   unbounded: boolean,
+  alive: boolean,
 ): {
   blockers: MonitorBlocker[];
   blockedActorRunKeys: Set<string>;
@@ -223,6 +224,8 @@ function projectBlockers(
   for (const entry of familyEntries(entries, 'status')) {
     const since = entry.effectiveAt ?? entry.observedAt;
     if (entry.value.kind === 'interaction' && entry.value.state === 'pending') {
+      // Nobody can answer a dead run, so only its failures block it. The prompt stays evidence, not a blocker.
+      if (!alive) continue;
       const interaction = entry.value as MonitorInteractionObservation;
       if (interaction.actor && actors.get(interaction.actor.runKey)?.state?.value.state === 'stopped') continue;
       if (interaction.interactionKind === 'permission') {
@@ -734,12 +737,13 @@ export function projectAgentMonitorState(
   const unbounded = options.unboundedCollections ?? false;
   const omitted: Partial<Record<MonitorBoundedCollection, number>> = {};
   const run = latestRun(entries);
+  const alive = run?.value.alive ?? true;
   const actors = childActors(entries);
-  const blockerProjection = projectBlockers(entries, actors, unbounded);
+  const blockerProjection = projectBlockers(entries, actors, unbounded, alive);
   if (blockerProjection.omittedBlockers > 0) omitted.blockers = blockerProjection.omittedBlockers;
   if (blockerProjection.omittedQuestions > 0) omitted.questions = blockerProjection.omittedQuestions;
   if (blockerProjection.omittedQuestionOptions > 0) omitted.questionOptions = blockerProjection.omittedQuestionOptions;
-  const children = childActivities(actors, run?.value.alive ?? true, blockerProjection.blockedActorRunKeys);
+  const children = childActivities(actors, alive, blockerProjection.blockedActorRunKeys);
   const activity = projectActivity(entries, run, children);
   // A runnable child keeps the main run working even if another participant needs input.
   const status: AgentMonitorStatus =
@@ -880,7 +884,7 @@ export function projectAgentMonitorState(
       level: accumulator.observationLevel,
       families,
     },
-    alive: run?.value.alive ?? true,
+    alive,
   };
   if (options.previous && comparable(options.previous) === comparable(draft)) return options.previous;
   return draft;
