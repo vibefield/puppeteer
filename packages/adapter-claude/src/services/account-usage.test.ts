@@ -11,10 +11,7 @@ import {
   fetchClaudeAccountUsageForProfileWithDependencies,
   fetchClaudeAccountUsageWithDependencies,
   findClaudeAccessToken,
-  getClaudeStatusLineAccountUsage,
   normalizeClaudeAccountUsage,
-  observeClaudeStatusLineAccountUsage,
-  onClaudeAccountUsage,
   resetClaudeAccountUsageObserversForTests,
   resolveClaudeAccessToken,
 } from './account-usage.js';
@@ -431,33 +428,48 @@ describe('Claude account usage', () => {
     expect(claudeAccountUsageFromStatusLine({ context_window: { used_percentage: 10 } })).toBeUndefined();
   });
 
-  it('notifies process-global status-line usage observers', () => {
-    const listener = vi.fn();
-    const unsubscribe = onClaudeAccountUsage(listener);
+  it('hands a status line’s quota to its own service’s listeners alone, stamped with the session’s account', () => {
+    const own = createClaudeAccountUsageService();
+    const other = createClaudeAccountUsageService();
+    const heard = vi.fn();
+    const elsewhere = vi.fn();
+    const unsubscribe = own.subscribe(heard);
+    other.subscribe(elsewhere);
+    const statusLine = (usedPercent: number) => ({
+      rate_limits: { five_hour: { used_percentage: usedPercent, resets_at: 1_800_000_000 } },
+    });
 
-    const first = observeClaudeStatusLineAccountUsage(
-      {
-        rate_limits: {
-          five_hour: { used_percentage: 10, resets_at: 1_800_000_000 },
-        },
+    own.observeStatusLine({ profileId: 'claude:p1' }, statusLine(10), '2026-07-23T18:00:00.000Z');
+    expect(heard).toHaveBeenCalledOnce();
+    expect(heard.mock.calls[0]![0]).toMatchObject({
+      status: 'available',
+      snapshot: {
+        profileId: 'claude:p1',
+        fetchedAt: '2026-07-23T18:00:00.000Z',
+        source: { kind: 'native-statusline' },
+        metrics: [{ id: 'subscription:five_hour:window', usedPercent: 10 }],
       },
-      '2026-07-23T18:00:00.000Z',
+    });
+    expect(elsewhere).not.toHaveBeenCalled();
+
+    // A status line with no rate_limits is no reading.
+    own.observeStatusLine(
+      { profileId: 'claude:p1' },
+      { context_window: { used_percentage: 10 } },
+      '2026-07-23T18:00:30.000Z',
     );
-    expect(first?.status).toBe('available');
-    expect(listener).toHaveBeenCalledOnce();
-    expect(getClaudeStatusLineAccountUsage()).toBe(first);
+    expect(heard).toHaveBeenCalledOnce();
+
+    // No account (a root no registered account names) goes unstamped, as every reading did before: open until
+    // James rules rv-usage-tiles (4).
+    other.observeStatusLine(undefined, statusLine(15), '2026-07-23T18:00:45.000Z');
+    expect(elsewhere).toHaveBeenCalledOnce();
+    expect(elsewhere.mock.calls[0]![0].snapshot).not.toHaveProperty('profileId');
+    expect(heard).toHaveBeenCalledOnce();
 
     unsubscribe();
-    observeClaudeStatusLineAccountUsage(
-      {
-        rate_limits: {
-          five_hour: { used_percentage: 20, resets_at: 1_800_000_000 },
-        },
-      },
-      '2026-07-23T18:01:00.000Z',
-    );
-    expect(listener).toHaveBeenCalledOnce();
-    expect(getClaudeStatusLineAccountUsage()?.snapshot.metrics[0]?.usedPercent).toBe(20);
+    own.observeStatusLine({ profileId: 'claude:p1' }, statusLine(20), '2026-07-23T18:01:00.000Z');
+    expect(heard).toHaveBeenCalledOnce();
   });
 
   it('does not refresh or rewrite expired OAuth credentials', async () => {

@@ -279,6 +279,44 @@ describe('per-account readings', () => {
       ['slow-agent', undefined],
     ]);
   });
+
+  it('lands every push on the single unkeyed row when no registry is injected, whatever account it names', () => {
+    const monitor = createAccountUsageMonitor({
+      providers: PROVIDERS,
+      fetchUsage: async (providerId: string) => available(providerId),
+      publish: () => undefined,
+      now: () => new Date('2026-07-23T20:00:00.000Z'),
+    });
+
+    const batch = monitor.ingest('push-agent', availableFor('push-agent', 'push-agent:native-default'));
+    expect(batch.entries.map((entry) => [entry.provider.id, entry.profileId])).toEqual([
+      ['push-agent', undefined],
+      ['fast-agent', undefined],
+      ['slow-agent', undefined],
+    ]);
+    expect(batch.entries[0]?.result.status).toBe('available');
+  });
+
+  it('keeps a push that names an account before the registry first answers, under that account', async () => {
+    const monitor = createAccountUsageMonitor({
+      providers: PROVIDERS,
+      fetchUsage: async (providerId: string, profileId?: string) => availableFor(providerId, profileId),
+      listProfiles: () => Promise.resolve(PROFILES),
+      publish: () => undefined,
+      now: () => new Date('2026-07-23T20:00:00.000Z'),
+    });
+
+    const early = monitor.ingest('push-agent', availableFor('push-agent', 'e2f0a1b2'));
+    expect(early.entries.find((entry) => entry.profileId === 'e2f0a1b2')?.result.status).toBe('available');
+
+    // The registry's first answer names the row, and the reading kept under the bare id takes its label then.
+    const reconciled = await monitor.refreshProfiles({ poll: false });
+    const rows = reconciled.entries.filter((entry) => entry.provider.id === 'push-agent');
+    expect(rows.map((entry) => entry.profileId).sort()).toEqual(['e2f0a1b2', 'push-agent:native-default']);
+    const kept = rows.find((entry) => entry.profileId === 'e2f0a1b2');
+    expect(kept?.result.status).toBe('available');
+    expect(kept?.profileLabel).toBe('Second seat');
+  });
 });
 
 describe('startup ordering', () => {

@@ -94,6 +94,7 @@ async function startSession(
     observeSubagentStatus?: boolean;
     hookRailFaultInjection?: Parameters<typeof createClaudeSession>[0]['hookRailFaultInjection'];
     semanticProviderFactory?: () => SemanticObservationProvider;
+    accountUsage?: Parameters<typeof createClaudeSession>[0]['accountUsage'];
   } = {},
 ) {
   let prepared: PreparedClaudeSession | undefined;
@@ -114,6 +115,7 @@ async function startSession(
     observeSubagentStatus: options.observeSubagentStatus,
     hookRailFaultInjection: options.hookRailFaultInjection,
     semanticProviderFactory: options.semanticProviderFactory,
+    accountUsage: options.accountUsage,
     ports: {
       spawn: async (p) => {
         prepared = p;
@@ -1169,6 +1171,19 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       nativeEvent: { name: 'Error', code: 'EIO' },
     });
     expect(JSON.stringify(events.at(-1))).not.toContain('/tmp/private/error');
+  });
+
+  it('hands the account quota a status line carries to its own session’s sink, as received', async () => {
+    const observeStatusLine = vi.fn();
+    const { session, statusLine } = await startSession({ accountUsage: { observeStatusLine } });
+    const rateLimits = { five_hour: { used_percentage: 23.5, resets_at: 1_800_000_000 } };
+
+    await statusLine({ rate_limits: rateLimits });
+
+    expect(observeStatusLine).toHaveBeenCalledOnce();
+    const [body, receivedAt] = observeStatusLine.mock.calls[0]!;
+    expect(body).toEqual({ session_id: session.sessionId, rate_limits: rateLimits });
+    expect(new Date(receivedAt).toISOString()).toBe(receivedAt);
   });
 
   it('tracks Claude context from status-line JSON and retracts both projections after compaction', async () => {

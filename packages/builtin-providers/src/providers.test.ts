@@ -1,4 +1,5 @@
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AgentLaunchProviderSchema,
@@ -612,6 +613,79 @@ describe('createBuiltinProviders launch options', () => {
         model: 'gpt-5.6-sol',
       }),
     );
+  });
+
+  it('binds each Claude session’s status-line quota to the registered account its root names', async () => {
+    const actual = await vi.importActual<typeof import('@vibefield/puppeteer-adapter-claude')>(
+      '@vibefield/puppeteer-adapter-claude',
+    );
+    adapters.createClaudeAccountUsageService.mockImplementation(actual.createClaudeAccountUsageService);
+    // The host's own CLAUDE_CONFIG_DIR never decides: a launch names its root, or its root is the native one.
+    vi.stubEnv('CLAUDE_CONFIG_DIR', undefined);
+    try {
+      const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+        (provider) => provider.descriptor.id === 'claude',
+      )!;
+      claude.profiles!.provider.support.nativeDefaultRoot = join(homedir(), '.claude');
+      const heard: Array<string | undefined> = [];
+      claude.accountUsage!.subscribe!((result) => {
+        heard.push(result.status === 'available' ? result.snapshot.profileId : result.status);
+      });
+      const statusLine = { rate_limits: { five_hour: { used_percentage: 10, resets_at: 1_800_000_000 } } };
+      // What the driver does with each status line: hand it to the sink its launch was given.
+      const report = (options: unknown): void => {
+        const { accountUsage } = options as { accountUsage: { observeStatusLine(body: unknown, at: string): void } };
+        accountUsage.observeStatusLine(statusLine, '2026-11-06T12:00:00.000Z');
+      };
+      const profile: AgentProfile = {
+        id: 'p1',
+        provider: 'claude',
+        label: 'Work',
+        kind: 'managed',
+        dataRoot: '/roots/claude/p1',
+        createdAt: '2026-09-06T00:00:00.000Z',
+      };
+      vi.mocked(claude.profiles!.bindingEnvironment).mockReturnValue({ CLAUDE_CONFIG_DIR: '/roots/claude/p1' });
+      adapters.normalizeClaudeNativeInvocation.mockReturnValue({
+        status: 'accepted',
+        options: { configDir: '/roots/claude/p1' },
+      } as ReturnType<typeof adapters.normalizeClaudeNativeInvocation>);
+
+      // A managed account's root: created, attached and prepared.
+      await claude.createSession({ cwd: '/work/repo', host, profile });
+      report(adapters.createClaudeSession.mock.lastCall?.[0]);
+      const ingress = { port: 4242, token: 'pinned' };
+      await claude.attachSession!({
+        sessionId: 'native-1',
+        runtimeSessionId: 'pane-1',
+        cwd: '/work/repo',
+        host,
+        profile,
+        ingress,
+      });
+      report(adapters.attachClaudeTuiSession.mock.lastCall?.[0]);
+      await claude.prepareSession!({ cwd: '/work/repo', host, profile });
+      report(adapters.prepareClaudeTuiSession.mock.lastCall?.[0]);
+      // The native root: the native default account.
+      await claude.createSession({ cwd: '/work/repo', host });
+      report(adapters.createClaudeSession.mock.lastCall?.[0]);
+      await claude.prepareSession!({ cwd: '/work/repo', host });
+      report(adapters.prepareClaudeTuiSession.mock.lastCall?.[0]);
+      // A typed root no profile names, and an imposter: no account. Until James rules rv-usage-tiles (4), their
+      // readings still reach the service, unstamped, as every reading did before.
+      await claude.createSession({ cwd: '/work/repo', host, environment: { CLAUDE_CONFIG_DIR: '/elsewhere' } });
+      report(adapters.createClaudeSession.mock.lastCall?.[0]);
+      await claude.createSession({
+        cwd: '/work/repo',
+        host,
+        agentOptions: { env: { PUPPETEER_IMPOSTER_HOME: '/fake' } },
+      });
+      report(adapters.createClaudeSession.mock.lastCall?.[0]);
+
+      expect(heard).toEqual(['p1', 'p1', 'p1', 'claude:native-default', 'claude:native-default', undefined, undefined]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("gives a created session the host's launch values beneath its own variables, where its MCP servers run", async () => {
