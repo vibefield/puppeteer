@@ -274,6 +274,33 @@ describe('the rain’s words', () => {
     expect(view.root.querySelector('.vf-monitor-rain-tooltip')).toBeNull();
   });
 
+  it('keeps the tooltip on the row as it is now, and lets it go when the row leaves', async () => {
+    const view = await mount({ agents });
+    const surface = view.root.querySelector('.vf-monitor-rain-surface')!;
+    const tooltip = (): Element | null => view.root.querySelector('.vf-monitor-rain-tooltip');
+    await act(async () => {
+      surface.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 0, clientY: 0 }));
+    });
+    expect(tooltip()?.className).toBe('vf-monitor-rain-tooltip is-working');
+    // The pointer rests while its row changes: a changed row arrives as a new object (MV-D21).
+    const blocked: AgentView = {
+      ...agents[0]!,
+      status: 'blocked',
+      wait: { kind: 'permission', tool: 'Bash', since: 1 },
+    };
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: [blocked, agents[1]!] }));
+    expect(tooltip()?.className).toBe('vf-monitor-rain-tooltip is-blocked');
+    expect(tooltip()?.querySelector('.vf-monitor-rain-tooltip-head span')?.textContent).toBe('blocked');
+    expect([...(tooltip()?.querySelectorAll('dd') ?? [])].map((cell) => cell.textContent)).toEqual([
+      'main',
+      'Opus',
+      'permission · Bash',
+    ]);
+    // Then the row leaves, the pointer still resting where it was.
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: agents.slice(1) }));
+    expect(tooltip()).toBeNull();
+  });
+
   it('says a peer’s line after its desktop’s name', async () => {
     const view = await mount({
       agents: [agentViewFixture({ id: 'p', device: LAPTOP, status: 'blocked', wait: { kind: 'question', since: 1 } })],
