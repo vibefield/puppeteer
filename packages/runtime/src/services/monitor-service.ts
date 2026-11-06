@@ -10,7 +10,9 @@ import type {
 import {
   createMonitorAccumulatorState,
   DEFAULT_MONITOR_BURN_RATE_WINDOW_MS,
+  nextUsageRateBoundaryMs,
   projectAgentMonitorState,
+  projectMonitorTransitions,
   reduceMonitorAccumulator,
   translateAgentEventEnvelope,
   liveUsageOrigin,
@@ -18,6 +20,7 @@ import {
   type MonitorAccumulatorInput,
   type MonitorAccumulatorState,
   type MonitorFamilyUpdate,
+  type MonitorTransitions,
   type RuntimeMonitorInput,
   type RuntimeMonitorObservationBatch,
   type WorkspaceMonitorObservation,
@@ -54,19 +57,20 @@ type UnscopedWorkspaceMonitorObservation =
   | Omit<Extract<WorkspaceMonitorObservation, { operation: 'provenance' }>, 'runtimeRunId' | 'runtimeEpoch'>
   | Omit<Extract<WorkspaceMonitorObservation, { operation: 'retract' }>, 'runtimeRunId' | 'runtimeEpoch'>;
 
-function sameBlockers(left: AgentMonitorState, right: AgentMonitorState): boolean {
-  return JSON.stringify(left.blockers) === JSON.stringify(right.blockers);
+function sameBlockers(left: AgentMonitorState['blockers'], right: AgentMonitorState['blockers']): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
+/** The published state against the accumulator's transitions view, whose blockers are bounded as published. */
 function isUrgentTransition(
   previous: AgentMonitorState,
-  next: AgentMonitorState,
+  next: MonitorTransitions,
   input: MonitorAccumulatorInput,
 ): boolean {
   return (
     previous.alive !== next.alive ||
-    !sameBlockers(previous, next) ||
-    previous.session.nativeSessionId !== next.session.nativeSessionId ||
+    !sameBlockers(previous.blockers, next.blockers) ||
+    previous.session.nativeSessionId !== next.nativeSessionId ||
     (input.kind === 'semantic' && input.readiness !== undefined)
   );
 }
@@ -203,6 +207,14 @@ export class AgentMonitorService
     terminalSessionId: string;
   }): void {
     if (this.closed || this.frozen) return;
+    // An unchanged rail changes nothing a projection reads, so it neither replaces the accumulator nor flushes.
+    if (
+      metadata.executionMode === this.accumulator.executionMode &&
+      metadata.observationLevel === this.accumulator.observationLevel &&
+      metadata.terminalSessionId === this.accumulator.terminalSessionId
+    ) {
+      return;
+    }
     this.accumulator = {
       ...this.accumulator,
       executionMode: metadata.executionMode,
@@ -216,10 +228,13 @@ export class AgentMonitorService
     envelope: RuntimeAgentEventEnvelope,
     options: { hostProcessEvidence?: boolean | undefined } = {},
   ): boolean {
+    // Runtime dispatch mints a fresh eventId for every envelope without a sourceEventRef; only an
+    // envelope that carries one names an identity its producer can deliver again.
     const input = translateAgentEventEnvelope({
       runtimeRunId: this.options.runtimeRunId,
       runtimeEpoch: this.options.runtimeEpoch,
       envelope,
+      identity: envelope.sourceEventRef ? 'source' : 'delivery',
     });
     // The host owns process liveness. Adapter/control rails may disappear while
     // the native TUI remains alive, so their terminal-looking events stay on
@@ -271,6 +286,8 @@ export class AgentMonitorService
       kind: 'runtime',
       schemaVersion: 1,
       eventId: `prompt-receipt:${receiptId}`,
+      // The runtime mints each receipt id (submitManagedPrompt's randomUUID).
+      identity: 'delivery',
       runtimeRunId: this.options.runtimeRunId,
       runtimeEpoch: this.options.runtimeEpoch,
       phase: 'live',
@@ -384,6 +401,7 @@ export class AgentMonitorService
       kind: 'runtime',
       schemaVersion: 1,
       eventId: `runtime-hub:${this.options.runtimeEpoch}:${++this.runtimeInputSequence}:${name}`,
+      identity: 'delivery',
       runtimeRunId: this.options.runtimeRunId,
       runtimeEpoch: this.options.runtimeEpoch,
       phase: 'live',
@@ -421,14 +439,10 @@ export class AgentMonitorService
       return true;
     }
 
-    const candidate = freezeMonitorState(
-      projectAgentMonitorState(this.accumulator, {
-        previous: this.published,
-        asOf: this.options.clock.now().toISOString(),
-        burnRateWindowMs: this.burnRateWindowMs,
-      }),
-    );
-    if (forceUrgent || isUrgentTransition(this.published, candidate, input)) this.flush();
+    // Urgency reads the transitions view, usually a memo hit (the reducer's notifications derived it); only a flush
+    // projects the full state.
+    const transitions = projectMonitorTransitions(this.accumulator);
+    if (forceUrgent || isUrgentTransition(this.published, transitions, input)) this.flush();
     else this.scheduleFlush();
     return true;
   }
@@ -522,19 +536,9 @@ export class AgentMonitorService
     this.rateTask?.cancel();
     this.rateTask = undefined;
     const nowMs = this.options.clock.now().getTime();
-    let nextBoundary = Infinity;
-    for (const entries of [
-      this.accumulator.runtime.entries,
-      this.accumulator.semantic.entries,
-      this.accumulator.workspace.entries,
-    ]) {
-      for (const entry of entries.values()) {
-        if (entry.value.kind !== 'usage' || !entry.rateEligible) continue;
-        const boundary = Date.parse(entry.rateAt ?? entry.effectiveAt ?? entry.observedAt) + this.burnRateWindowMs + 1;
-        if (boundary > nowMs && boundary < nextBoundary) nextBoundary = boundary;
-      }
-    }
-    if (!Number.isFinite(nextBoundary)) return;
+    // The ledger's rate-eligible times are sorted once per ledger in core; a flush only searches them.
+    const nextBoundary = nextUsageRateBoundaryMs(this.accumulator, nowMs, this.burnRateWindowMs);
+    if (nextBoundary === undefined) return;
     this.rateTask = this.options.clock.schedule(nextBoundary - nowMs, () => {
       this.rateTask = undefined;
       this.flush();

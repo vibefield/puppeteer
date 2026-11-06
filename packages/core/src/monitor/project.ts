@@ -1,10 +1,7 @@
 import type {
   AgentMonitorState,
-  AgentMonitorStatus,
   ActorRunRef,
   MonitorActivity,
-  MonitorActivityKind,
-  MonitorBlocker,
   MonitorBoundedCollection,
   MonitorAssistantMessageState,
   MonitorContextState,
@@ -20,18 +17,31 @@ import type {
 import { AGENT_MONITOR_SCHEMA_VERSION } from './types.js';
 import type {
   MonitorAccumulatorState,
-  MonitorActorFamilyValue,
-  MonitorCompactionFamilyValue,
   MonitorContextFamilyValue,
-  MonitorEnvironmentFamilyValue,
   MonitorFamilyValue,
-  MonitorInteractionObservation,
   MonitorModeFamilyValue,
   MonitorRunStatusObservation,
   MonitorStoredEntry,
 } from './internal-types.js';
-import { boundMonitorCollection } from './bounds.js';
-import { DEFAULT_MONITOR_BURN_RATE_WINDOW_MS, projectMonitorUsageLedger } from './rate.js';
+import { DEFAULT_MONITOR_BURN_RATE_WINDOW_MS } from './rate.js';
+import { actorOf, compareEntryPreference, time } from './selection.js';
+import {
+  blockersOf,
+  familyEntries,
+  maybeBound,
+  transitionBasis,
+  type ChildActor,
+  type MonitorTransitionBasis,
+} from './transitions.js';
+import {
+  countCompleteness,
+  queryUsageIndex,
+  sumCompleteness,
+  summarizeFamilyEvidence,
+  usageIndexOf,
+  type CompletenessCount,
+  type MonitorFamilyEvidence,
+} from './usage-index.js';
 
 export interface ProjectAgentMonitorOptions {
   previous?: AgentMonitorState;
@@ -40,23 +50,6 @@ export interface ProjectAgentMonitorOptions {
   burnRateWindowMs?: number;
   /** Private diagnostic/notification projection; renderer state remains bounded. */
   unboundedCollections?: boolean;
-}
-
-const QUALITY_PRIORITY = {
-  exact: 6,
-  strong: 5,
-  derived: 4,
-  estimated: 3,
-  inferred: 2,
-  unknown: 1,
-} as const;
-
-const BLOCKER_PRIORITY = { failure: 0, question: 1, permission: 2 } as const;
-
-function time(value: string | undefined): number {
-  if (value === undefined) return Number.NEGATIVE_INFINITY;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
 }
 
 function latestTimestamp(values: Array<string | undefined>): string | undefined {
@@ -69,335 +62,6 @@ function earliestTimestamp(values: Array<string | undefined>): string | undefine
   return values
     .filter((value): value is string => value !== undefined && Number.isFinite(Date.parse(value)))
     .sort((a, b) => time(a) - time(b))[0];
-}
-
-function planePriority(entry: MonitorStoredEntry): number {
-  if (entry.family === 'environment') return entry.plane === 'workspace' ? 3 : entry.plane === 'runtime' ? 2 : 1;
-  if (entry.family === 'status' && entry.value.kind === 'run') return entry.plane === 'runtime' ? 3 : 2;
-  if (entry.family === 'mode') return entry.plane === 'runtime' ? 3 : entry.plane === 'semantic' ? 2 : 1;
-  return entry.plane === 'semantic' ? 3 : entry.plane === 'runtime' ? 2 : 1;
-}
-
-function compareEntryPreference(a: MonitorStoredEntry, b: MonitorStoredEntry): number {
-  const provisional = Number(!b.provisional) - Number(!a.provisional);
-  if (provisional !== 0) return provisional;
-  // Metrics and child state have complementary owners: provider
-  // samples give the first live boundary and semantic responses make it
-  // durable. Equal-quality claims therefore advance by evidence time instead
-  // of allowing an older plane to mask a newer transition.
-  if (
-    a.family === b.family &&
-    (['model', 'effort', 'context'].includes(a.family) || (a.value.kind === 'actor' && b.value.kind === 'actor'))
-  ) {
-    return (
-      QUALITY_PRIORITY[b.quality] - QUALITY_PRIORITY[a.quality] ||
-      time(b.effectiveAt ?? b.observedAt) - time(a.effectiveAt ?? a.observedAt) ||
-      planePriority(b) - planePriority(a) ||
-      b.storageKey.localeCompare(a.storageKey)
-    );
-  }
-  return (
-    planePriority(b) - planePriority(a) ||
-    QUALITY_PRIORITY[b.quality] - QUALITY_PRIORITY[a.quality] ||
-    time(b.effectiveAt ?? b.observedAt) - time(a.effectiveAt ?? a.observedAt) ||
-    b.storageKey.localeCompare(a.storageKey)
-  );
-}
-
-function allEntries(state: MonitorAccumulatorState): MonitorStoredEntry[] {
-  return [...state.runtime.entries.values(), ...state.semantic.entries.values(), ...state.workspace.entries.values()];
-}
-
-function actorLocalSourceKey(entry: MonitorStoredEntry, actorRunKey: string): string {
-  try {
-    const encoded = JSON.parse(entry.key) as unknown;
-    if (
-      Array.isArray(encoded) &&
-      encoded.length === 2 &&
-      typeof encoded[0] === 'string' &&
-      encoded[1] === actorRunKey
-    ) {
-      return encoded[0];
-    }
-  } catch {
-    // Semantic producers use their own readable keys; only runtime actor keys
-    // are tuple-encoded by translateAgentEventEnvelope.
-  }
-  return entry.key;
-}
-
-function logicalEntryKey(entry: MonitorStoredEntry): string {
-  const actor = actorOf(entry.value)?.runKey ?? '';
-  switch (entry.value.kind) {
-    case 'run':
-      return JSON.stringify([entry.family, 'run']);
-    case 'interaction':
-      return JSON.stringify([entry.family, 'interaction', entry.value.interactionId, actor]);
-    case 'failure':
-      return JSON.stringify([entry.family, 'failure', entry.value.failureId, actor]);
-    case 'usage':
-      // One usage identity may gain better actor attribution on a later rail.
-      // Attribution is evidence, not part of the token observation identity.
-      return JSON.stringify([entry.family, entry.value.usageId]);
-    case 'context':
-      return JSON.stringify([entry.family, actor || 'root']);
-    case 'model':
-    case 'effort':
-      return JSON.stringify([entry.family, entry.value.intent, actor || 'root']);
-    case 'mode':
-      return JSON.stringify([entry.family, entry.value.modeKind, entry.value.intent ?? 'observed', actor || 'root']);
-    case 'actor':
-      return JSON.stringify([entry.family, 'actor', entry.value.actor.runKey]);
-    case 'activity':
-    case 'compaction':
-      return JSON.stringify([entry.family, actor ? actorLocalSourceKey(entry, actor) : entry.key, actor]);
-    case 'environment':
-      return JSON.stringify([entry.family, actor || 'root']);
-    case 'message':
-      return JSON.stringify([entry.family, 'message', actor || 'root']);
-  }
-}
-
-/** Select one current source-owned claim for every provider-neutral family/key identity. */
-function selectedEntries(state: MonitorAccumulatorState): MonitorStoredEntry[] {
-  const grouped = new Map<string, MonitorStoredEntry[]>();
-  for (const entry of allEntries(state)) {
-    const key = logicalEntryKey(entry);
-    const group = grouped.get(key);
-    if (group) group.push(entry);
-    else grouped.set(key, [entry]);
-  }
-  return [...grouped.values()]
-    .map((group) => group.sort(compareEntryPreference)[0]!)
-    .sort((a, b) => a.family.localeCompare(b.family) || a.key.localeCompare(b.key));
-}
-
-function familyEntries(entries: readonly MonitorStoredEntry[], family: MonitorMetricFamily): MonitorStoredEntry[] {
-  return entries.filter((entry) => entry.family === family);
-}
-
-function actorOf(value: MonitorFamilyValue): ActorRunRef | undefined {
-  switch (value.kind) {
-    case 'activity':
-    case 'interaction':
-    case 'failure':
-    case 'usage':
-    case 'context':
-    case 'model':
-    case 'effort':
-    case 'mode':
-    case 'environment':
-    case 'compaction':
-    case 'message':
-      return value.actor;
-    case 'actor':
-      return value.actor;
-    case 'run':
-      return undefined;
-  }
-}
-
-function maybeBound<T>(
-  collection: MonitorBoundedCollection,
-  values: readonly T[],
-  unbounded: boolean,
-): { values: T[]; omitted: number } {
-  return unbounded ? { values: [...values], omitted: 0 } : boundMonitorCollection(collection, values);
-}
-
-function projectBlockers(
-  entries: readonly MonitorStoredEntry[],
-  actors: ReadonlyMap<string, ChildActor>,
-  unbounded: boolean,
-): {
-  blockers: MonitorBlocker[];
-  blockedActorRunKeys: Set<string>;
-  omittedBlockers: number;
-  omittedQuestions: number;
-  omittedQuestionOptions: number;
-} {
-  const blockers: MonitorBlocker[] = [];
-  let omittedQuestions = 0;
-  let omittedQuestionOptions = 0;
-
-  for (const entry of familyEntries(entries, 'status')) {
-    const since = entry.effectiveAt ?? entry.observedAt;
-    if (entry.value.kind === 'interaction' && entry.value.state === 'pending') {
-      const interaction = entry.value as MonitorInteractionObservation;
-      if (interaction.actor && actors.get(interaction.actor.runKey)?.state?.value.state === 'stopped') continue;
-      if (interaction.interactionKind === 'permission') {
-        blockers.push({
-          id: interaction.interactionId,
-          kind: 'permission',
-          since,
-          ...(interaction.detail ? { detail: interaction.detail } : {}),
-          ...(interaction.actor ? { actorRunKey: interaction.actor.runKey } : {}),
-          ...(interaction.permission ? { permission: interaction.permission } : {}),
-        });
-      } else {
-        const boundedQuestions = maybeBound('questions', interaction.questions ?? [], unbounded);
-        omittedQuestions += boundedQuestions.omitted;
-        const questions = boundedQuestions.values.map((question) => {
-          const bounded = maybeBound('questionOptions', question.options ?? [], unbounded);
-          omittedQuestionOptions += bounded.omitted;
-          return { ...question, ...(question.options ? { options: bounded.values } : {}) };
-        });
-        blockers.push({
-          id: interaction.interactionId,
-          kind: 'question',
-          since,
-          ...(interaction.detail ? { detail: interaction.detail } : {}),
-          ...(interaction.actor ? { actorRunKey: interaction.actor.runKey } : {}),
-          questions,
-        });
-      }
-    } else if (entry.value.kind === 'failure' && entry.value.state === 'active') {
-      blockers.push({
-        id: entry.value.failureId,
-        kind: 'failure',
-        since,
-        ...(entry.value.detail ? { detail: entry.value.detail } : {}),
-        ...(entry.value.actor ? { actorRunKey: entry.value.actor.runKey } : {}),
-        failure: { ...(entry.value.code ? { code: entry.value.code } : {}), recoverable: entry.value.recoverable },
-      });
-    } else if (entry.value.kind === 'run' && entry.value.lifecycle === 'failed') {
-      blockers.push({
-        id: `run:${entry.ownerId}`,
-        kind: 'failure',
-        since,
-        ...(entry.value.failure?.detail ? { detail: entry.value.failure.detail } : {}),
-        failure: {
-          ...(entry.value.failure?.code ? { code: entry.value.failure.code } : {}),
-          recoverable: entry.value.failure?.recoverable ?? false,
-        },
-      });
-    }
-  }
-
-  blockers.sort(
-    (a, b) =>
-      BLOCKER_PRIORITY[a.kind] - BLOCKER_PRIORITY[b.kind] || time(a.since) - time(b.since) || a.id.localeCompare(b.id),
-  );
-  const bounded = maybeBound('blockers', blockers, unbounded);
-  return {
-    blockers: bounded.values,
-    blockedActorRunKeys: new Set(blockers.flatMap((blocker) => (blocker.actorRunKey ? [blocker.actorRunKey] : []))),
-    omittedBlockers: bounded.omitted,
-    omittedQuestions,
-    omittedQuestionOptions,
-  };
-}
-
-interface ActivityCandidate extends MonitorActivity {
-  priority: number;
-  key: string;
-}
-
-function activityPriority(kind: MonitorActivity['kind']): number {
-  return kind === 'compacting'
-    ? 1
-    : kind === 'tool'
-      ? 2
-      : kind === 'reasoning'
-        ? 3
-        : kind === 'responding'
-          ? 4
-          : kind === 'delegating'
-            ? 5
-            : kind === 'starting'
-              ? 6
-              : 7;
-}
-
-type ActiveActorActivity = {
-  entry: MonitorStoredEntry;
-  activityKind: MonitorActivityKind | 'compacting';
-  line: string;
-  since: string;
-};
-
-function preferActivity(candidate: ActiveActorActivity, current: ActiveActorActivity): boolean {
-  const candidatePriority = candidate.activityKind === 'compacting' ? 1 : activityPriority(candidate.activityKind);
-  const currentPriority = current.activityKind === 'compacting' ? 1 : activityPriority(current.activityKind);
-  return (
-    candidatePriority < currentPriority ||
-    (candidatePriority === currentPriority &&
-      (time(candidate.since) > time(current.since) ||
-        (time(candidate.since) === time(current.since) && candidate.entry.key.localeCompare(current.entry.key) < 0)))
-  );
-}
-
-function projectActivity(
-  entries: readonly MonitorStoredEntry[],
-  run: { entry: MonitorStoredEntry; value: MonitorRunStatusObservation } | undefined,
-  children: ReadonlyMap<string, MonitorActivity>,
-) {
-  if (run && !run.value.alive) return undefined;
-  const candidates: ActivityCandidate[] = [];
-  for (const entry of entries) {
-    const actor = actorOf(entry.value);
-    if (actor && actor.role !== 'root') continue;
-    if (entry.value.kind === 'compaction' && entry.value.active) {
-      candidates.push({
-        kind: 'compacting',
-        line: 'Compacting context',
-        since: entry.effectiveAt ?? entry.observedAt,
-        priority: 1,
-        key: entry.key,
-      });
-    } else if (entry.value.kind === 'activity' && entry.value.active) {
-      candidates.push({
-        kind: entry.value.activityKind,
-        line: entry.value.line ?? 'Working',
-        since: entry.value.since ?? entry.effectiveAt ?? entry.observedAt,
-        priority: activityPriority(entry.value.activityKind),
-        key: entry.key,
-      });
-    }
-  }
-  for (const [key, activity] of children) {
-    candidates.push({ ...activity, kind: 'delegating', line: `Subagent: ${activity.line}`, priority: 5, key });
-  }
-  // Only a run with no process yet is starting. Once the host runs the process (`starting`), waiting for the
-  // provider's session evidence is readiness, not work: an agent with no turn yet is idle (RFC 001).
-  if (run && ['allocated', 'preparing'].includes(run.value.lifecycle)) {
-    candidates.push({
-      kind: 'starting',
-      line: 'Starting',
-      since: run.entry.effectiveAt ?? run.entry.observedAt,
-      priority: 6,
-      key: 'run',
-    });
-  }
-  const selected = candidates.sort(
-    (a, b) => a.priority - b.priority || time(b.since) - time(a.since) || a.key.localeCompare(b.key),
-  )[0];
-  if (!selected) return undefined;
-  const { priority: _priority, key: _key, ...activity } = selected;
-  return activity;
-}
-
-/** Whether a root tool call is still open, whatever `projectActivity` ranks first (a compaction outranks a tool). */
-function rootToolOpen(
-  entries: readonly MonitorStoredEntry[],
-  run: { entry: MonitorStoredEntry; value: MonitorRunStatusObservation } | undefined,
-): boolean {
-  if (run && !run.value.alive) return false;
-  return entries.some((entry) => {
-    const actor = actorOf(entry.value);
-    if (actor && actor.role !== 'root') return false;
-    return entry.value.kind === 'activity' && entry.value.active && entry.value.activityKind === 'tool';
-  });
-}
-
-function latestRun(
-  entries: readonly MonitorStoredEntry[],
-): { entry: MonitorStoredEntry; value: MonitorRunStatusObservation } | undefined {
-  const runs = familyEntries(entries, 'status').filter(
-    (entry): entry is MonitorStoredEntry & { value: MonitorRunStatusObservation } => entry.value.kind === 'run',
-  );
-  const entry = runs.sort(compareEntryPreference)[0];
-  return entry ? { entry, value: entry.value } : undefined;
 }
 
 function rootEntries<T extends MonitorFamilyValue['kind']>(
@@ -530,61 +194,18 @@ function actorMetric<T extends 'context' | 'model' | 'effort'>(
     })[0];
 }
 
-interface ChildActor {
-  actor: ActorRunRef;
-  entries: MonitorStoredEntry[];
-  state?: { value: MonitorActorFamilyValue; at: string };
-}
-
-function childActors(entries: readonly MonitorStoredEntry[]): Map<string, ChildActor> {
-  const actors = new Map<string, ChildActor>();
-  for (const entry of entries) {
-    const actor = actorOf(entry.value);
-    // Attribution groups and unjoined status tasks are not proven child identities.
-    if (!actor || actor.role !== 'child' || !actor.nativeAgentId) continue;
-    const current: ChildActor = actors.get(actor.runKey) ?? { actor, entries: [] };
-    current.entries.push(entry);
-    if (entry.value.kind === 'actor') {
-      current.actor = actor;
-      current.state = { value: entry.value, at: entry.effectiveAt ?? entry.observedAt };
-    }
-    actors.set(actor.runKey, current);
-  }
-  return actors;
-}
-
-function childActivities(
+/**
+ * Every child of the run: those the planes' claims name, then those only its usage names. Usage is the last family
+ * in claim order, so this is the order one walk over every selected claim gave. A usage-only child has no state,
+ * activity, model or effort to read: it counts, and carries its usage.
+ */
+function withUsageActors(
   actors: ReadonlyMap<string, ChildActor>,
-  alive: boolean,
-  blocked: ReadonlySet<string>,
-): Map<string, MonitorActivity> {
-  const activities = new Map<string, MonitorActivity>();
-  if (!alive) return activities;
-  for (const [key, { state, entries }] of actors) {
-    if (blocked.has(key) || state?.value.state === 'stopped') continue;
-    let selected: ActiveActorActivity | undefined;
-    for (const entry of entries) {
-      if (actorOf(entry.value)?.runKey !== key) continue;
-      const value = entry.value;
-      if ((value.kind !== 'activity' && value.kind !== 'compaction') || !value.active) continue;
-      const since = (value.kind === 'activity' ? value.since : undefined) ?? entry.effectiveAt ?? entry.observedAt;
-      // An idle/unknown observation closes older work even if its tool/turn never emitted an end.
-      if (state && state.value.state !== 'active' && time(since) <= time(state.at)) continue;
-      const candidate: ActiveActorActivity = {
-        entry,
-        activityKind: value.kind === 'compaction' ? 'compacting' : value.activityKind,
-        line: value.kind === 'compaction' ? 'Compacting context' : (value.line ?? 'Working'),
-        since,
-      };
-      if (!selected || preferActivity(candidate, selected)) selected = candidate;
-    }
-    if (selected) {
-      activities.set(key, { kind: selected.activityKind, line: selected.line, since: selected.since });
-    } else if (state?.value.state === 'active') {
-      activities.set(key, { kind: 'delegating', line: state.value.activity ?? 'Working', since: state.at });
-    }
-  }
-  return activities;
+  usageActors: ReadonlyMap<string, ActorRunRef>,
+): Map<string, ChildActor> {
+  const all = new Map(actors);
+  for (const [runKey, actor] of usageActors) if (!all.has(runKey)) all.set(runKey, { actor, entries: [] });
+  return all;
 }
 
 function projectSubagents(
@@ -624,35 +245,18 @@ function projectSubagents(
   return bounded.values;
 }
 
+/** The root's environment as published: its worktrees bounded unless the projection is unbounded. */
 function projectEnvironment(
-  entries: readonly MonitorStoredEntry[],
+  { cwd, git, worktrees }: MonitorTransitionBasis['environment'],
   omitted: Partial<Record<MonitorBoundedCollection, number>>,
   unbounded: boolean,
 ) {
-  const environment = familyEntries(entries, 'environment')
-    .filter(
-      (entry): entry is MonitorStoredEntry & { value: MonitorEnvironmentFamilyValue } =>
-        entry.value.kind === 'environment' && (entry.value.actor === undefined || entry.value.actor.role === 'root'),
-    )
-    .sort((a, b) => time(a.observedAt) - time(b.observedAt) || planePriority(a) - planePriority(b));
-  let cwd: string | undefined;
-  let git: AgentMonitorState['environment']['git'];
-  let worktrees: string[] = [];
-  for (const entry of environment) {
-    if (entry.value.cwd !== undefined) cwd = entry.value.cwd ?? undefined;
-    if (entry.value.git !== undefined) git = entry.value.git;
-    if (entry.value.worktrees !== undefined) worktrees = [...entry.value.worktrees].sort();
-  }
   const boundedWorktrees = maybeBound('worktrees', worktrees, unbounded);
   if (boundedWorktrees.omitted > 0) omitted.worktrees = boundedWorktrees.omitted;
   return { ...(cwd ? { cwd } : {}), ...(git !== undefined ? { git } : {}), worktrees: boundedWorktrees.values };
 }
 
-function familySupport(
-  state: MonitorAccumulatorState,
-  entries: readonly MonitorStoredEntry[],
-  family: MonitorMetricFamily,
-) {
+function familySupport(state: MonitorAccumulatorState, evidence: MonitorFamilyEvidence, family: MonitorMetricFamily) {
   const producers = [...state.semantic.producers.values()];
   const capabilities = producers
     .map((producer) => producer.capabilities.get(family))
@@ -661,10 +265,8 @@ function familySupport(
   if (capabilities.some((capability) => capability.support === 'supported')) support = 'supported';
   else if (capabilities.some((capability) => capability.support === 'degraded')) support = 'degraded';
   else if (capabilities.length > 0) support = 'unsupported';
-  const current = familyEntries(entries, family);
-  if (!support && current.length > 0) {
-    support = current.some((entry) => entry.completeness === 'complete') ? 'supported' : 'degraded';
-  }
+  const current = evidence.all;
+  if (!support && current.count > 0) support = current.complete > 0 ? 'supported' : 'degraded';
   if (!support) return undefined;
   const relevantProducers = producers.filter((producer) => {
     const capability = producer.capabilities.get(family);
@@ -672,50 +274,44 @@ function familySupport(
     return (
       capability !== undefined ||
       [...producer.coverage.values()].some((item) => item.family === family) ||
-      current.some((entry) => entry.plane === 'semantic' && entry.ownerId === producer.id)
+      evidence.semantic.has(producer.id)
     );
   });
   const producerIds = new Set(producers.map((producer) => producer.id));
   const coverage = relevantProducers.flatMap((producer) =>
     [...producer.coverage.values()].filter((item) => item.family === family),
   );
-  const completeness = relevantProducers.flatMap((producer) => {
+  // A relevant producer counts its coverage, or else its own claims; a claim no producer owns counts as itself.
+  const counts: CompletenessCount[] = [evidence.other];
+  for (const producer of relevantProducers) {
     const producerCoverage = [...producer.coverage.values()].filter((item) => item.family === family);
-    if (producerCoverage.length > 0) return producerCoverage.map((item) => item.completeness);
-    return current
-      .filter((entry) => entry.plane === 'semantic' && entry.ownerId === producer.id)
-      .map((entry) => entry.completeness);
-  });
-  completeness.push(
-    ...current
-      .filter((entry) => entry.plane !== 'semantic' || !producerIds.has(entry.ownerId))
-      .map((entry) => entry.completeness),
-  );
+    const owned = evidence.semantic.get(producer.id);
+    if (producerCoverage.length > 0) counts.push(countCompleteness(producerCoverage.map((item) => item.completeness)));
+    else if (owned) counts.push(owned);
+  }
+  for (const [ownerId, owned] of evidence.semantic) if (!producerIds.has(ownerId)) counts.push(owned);
+  const { count, complete, unavailable } = sumCompleteness(counts);
   const allRelevantProducersDegraded =
     relevantProducers.length > 0 && relevantProducers.every((producer) => producer.readiness === 'degraded');
   let availability: MonitorFamilyAvailability;
   if (support === 'unsupported') availability = 'unavailable';
   else if (relevantProducers.length > 0 && relevantProducers.every((producer) => producer.readiness === 'loading')) {
     availability = 'loading';
-  } else if (completeness.length > 0) {
-    const complete = completeness.filter((value) => value === 'complete').length;
-    const unavailable = completeness.filter((value) => value === 'unavailable').length;
-    availability =
-      unavailable === completeness.length ? 'unavailable' : complete === completeness.length ? 'available' : 'partial';
+  } else if (count > 0) {
+    availability = unavailable === count ? 'unavailable' : complete === count ? 'available' : 'partial';
     if (availability === 'available' && allRelevantProducersDegraded) availability = 'partial';
-  } else if (current.length > 0) {
-    const currentCompleteness = current.map((entry) => entry.completeness);
+  } else if (current.count > 0) {
     availability = allRelevantProducersDegraded
       ? 'partial'
-      : currentCompleteness.every((value) => value === 'complete')
+      : current.complete === current.count
         ? 'available'
-        : currentCompleteness.every((value) => value === 'unavailable')
+        : current.unavailable === current.count
           ? 'unavailable'
           : 'partial';
   } else {
     availability = 'unavailable';
   }
-  const asOf = latestTimestamp([...current.map((entry) => entry.observedAt), ...coverage.map((item) => item.asOf)]);
+  const asOf = latestTimestamp([evidence.latestObservedAt, ...coverage.map((item) => item.asOf)]);
   const reason = coverage.filter((item) => item.reason).sort((a, b) => time(b.asOf) - time(a.asOf))[0]?.reason;
   return { support, availability, ...(asOf ? { asOf } : {}), ...(reason ? { reason } : {}) };
 }
@@ -730,20 +326,15 @@ export function projectAgentMonitorState(
   accumulator: MonitorAccumulatorState,
   options: ProjectAgentMonitorOptions = {},
 ): AgentMonitorState {
-  const entries = selectedEntries(accumulator);
+  // Status, blockers, activity, compaction, the environment and liveness are the transitions view's basis: one rule.
+  const basis = transitionBasis(accumulator);
+  const { entries, actors, children, activity, status } = basis;
   const unbounded = options.unboundedCollections ?? false;
   const omitted: Partial<Record<MonitorBoundedCollection, number>> = {};
-  const run = latestRun(entries);
-  const actors = childActors(entries);
-  const blockerProjection = projectBlockers(entries, actors, unbounded);
+  const blockerProjection = blockersOf(accumulator, unbounded);
   if (blockerProjection.omittedBlockers > 0) omitted.blockers = blockerProjection.omittedBlockers;
   if (blockerProjection.omittedQuestions > 0) omitted.questions = blockerProjection.omittedQuestions;
   if (blockerProjection.omittedQuestionOptions > 0) omitted.questionOptions = blockerProjection.omittedQuestionOptions;
-  const children = childActivities(actors, run?.value.alive ?? true, blockerProjection.blockedActorRunKeys);
-  const activity = projectActivity(entries, run, children);
-  // A runnable child keeps the main run working even if another participant needs input.
-  const status: AgentMonitorStatus =
-    children.size > 0 ? 'working' : blockerProjection.blockers.length > 0 ? 'blocked' : activity ? 'working' : 'idle';
   const evidenceAsOf = latestTimestamp([
     accumulator.runtime.lastAcceptedAt,
     accumulator.semantic.lastAcceptedAt,
@@ -752,8 +343,9 @@ export function projectAgentMonitorState(
   ]);
   const projectionAsOf = options.asOf ?? evidenceAsOf ?? accumulator.allocatedAt;
   const asOfMs = time(projectionAsOf);
-  const usageProjection = projectMonitorUsageLedger(
-    familyEntries(entries, 'usage'),
+  const usageIndex = usageIndexOf(accumulator);
+  const usageProjection = queryUsageIndex(
+    usageIndex,
     asOfMs,
     options.burnRateWindowMs ?? DEFAULT_MONITOR_BURN_RATE_WINDOW_MS,
   );
@@ -763,8 +355,9 @@ export function projectAgentMonitorState(
   const lastAssistantMessage = projectAssistantMessage(entries);
   const model = projectModel(entries);
   const effort = projectEffort(entries);
+  const subagentActors = withUsageActors(actors, usageIndex.childActors);
   const subagents = projectSubagents(
-    actors,
+    subagentActors,
     children,
     usageProjection.actorTotals,
     usageProjection.actorBurnRates,
@@ -773,30 +366,7 @@ export function projectAgentMonitorState(
     unbounded,
   );
   // Project before spreading `omitted`; worktree truncation is discovered here.
-  const environment = projectEnvironment(entries, omitted, unbounded);
-  const compactions = entries.filter(
-    (entry): entry is MonitorStoredEntry & { value: MonitorCompactionFamilyValue } => entry.value.kind === 'compaction',
-  );
-  const activeCompaction = compactions.some((entry) => entry.value.active);
-  const provisionalCompaction =
-    activeCompaction && compactions.filter((entry) => entry.value.active).every((entry) => entry.provisional);
-  const lastCompaction = compactions
-    .filter((entry) => !entry.value.active)
-    .sort(
-      (a, b) =>
-        time(b.effectiveAt ?? b.observedAt) - time(a.effectiveAt ?? a.observedAt) || compareEntryPreference(a, b),
-    )[0];
-  const nativeSessionEntry = familyEntries(allEntries(accumulator), 'status')
-    .filter(
-      (entry): entry is MonitorStoredEntry & { value: MonitorRunStatusObservation } =>
-        entry.value.kind === 'run' && entry.value.nativeSession !== undefined,
-    )
-    .sort(
-      (a, b) =>
-        Number(b.plane === 'semantic') - Number(a.plane === 'semantic') ||
-        time(b.effectiveAt ?? b.observedAt) - time(a.effectiveAt ?? a.observedAt) ||
-        compareEntryPreference(a, b),
-    )[0];
+  const environment = projectEnvironment(basis.environment, omitted, unbounded);
   const startedAt = earliestTimestamp(
     familyEntries(entries, 'status')
       .filter(
@@ -820,7 +390,8 @@ export function projectAgentMonitorState(
     'conversation',
   ];
   for (const family of familyNames) {
-    const freshness = familySupport(accumulator, entries, family);
+    const evidence = family === 'usage' ? usageIndex.evidence : summarizeFamilyEvidence(familyEntries(entries, family));
+    const freshness = familySupport(accumulator, evidence, family);
     if (freshness) families[family] = freshness;
   }
 
@@ -857,30 +428,22 @@ export function projectAgentMonitorState(
         : {}),
       ...(modeAsOf ? { asOf: modeAsOf } : {}),
     },
-    subagentCount: actors.size,
+    subagentCount: subagentActors.size,
     subagents,
     ...(Object.keys(omitted).length > 0 ? { omitted } : {}),
-    compaction: {
-      active: activeCompaction,
-      ...(provisionalCompaction ? { provisional: true } : {}),
-      ...(lastCompaction ? { lastAt: lastCompaction.effectiveAt ?? lastCompaction.observedAt } : {}),
-      ...(lastCompaction ? { lastOutcome: lastCompaction.value.outcome ?? ('completed' as const) } : {}),
-      count: accumulator.compactionCount,
-    },
+    compaction: basis.compaction,
     environment,
     session: {
-      ...(nativeSessionEntry?.value.nativeSession
-        ? { nativeSessionId: nativeSessionEntry.value.nativeSession.id }
-        : {}),
+      ...(basis.nativeSessionId !== undefined ? { nativeSessionId: basis.nativeSessionId } : {}),
       ...(startedAt ? { startedAt } : {}),
     },
     freshness: {
       ...(evidenceAsOf ? { lastEvidenceAt: evidenceAsOf } : {}),
-      ...(rootToolOpen(entries, run) ? { toolOpen: true } : {}),
+      ...(basis.toolOpen ? { toolOpen: true } : {}),
       level: accumulator.observationLevel,
       families,
     },
-    alive: run?.value.alive ?? true,
+    alive: basis.alive,
   };
   if (options.previous && comparable(options.previous) === comparable(draft)) return options.previous;
   return draft;

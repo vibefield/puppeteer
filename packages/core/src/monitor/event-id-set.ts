@@ -1,7 +1,8 @@
 // The monitor is a pure reducer: old snapshots must keep their own dedup set.
 // Copying a native Set for every event made a long run quadratic. A persistent
 // AVL index copies only the search path; the shared log preserves Set iteration
-// order and retains exact deduplication for the entire run.
+// order and retains exact deduplication of SOURCE identities for the entire run.
+// Delivery identities the runtime mints unique per input are never retained.
 interface Node {
   readonly value: string;
   readonly left: Node | undefined;
