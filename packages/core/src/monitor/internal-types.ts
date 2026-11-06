@@ -304,6 +304,12 @@ export interface RuntimeMonitorInput {
   kind: 'runtime';
   schemaVersion: 1;
   eventId: string;
+  /**
+   * Who minted `eventId`. A 'source' identity can be delivered again (a replay or a reconnect), so the
+   * reducer rejects its repeat for the run's life. A 'delivery' identity is minted unique per input by the
+   * runtime, so the reducer neither checks nor retains it. Absent reads 'source'.
+   */
+  identity?: 'source' | 'delivery' | undefined;
   runtimeRunId: RuntimeRunId;
   runtimeEpoch: number;
   phase: 'bootstrap' | 'live';
@@ -540,7 +546,6 @@ export interface MonitorAccumulatorState {
   semantic: MonitorSemanticSlice;
   workspace: MonitorWorkspaceSlice;
   expiredLeaseIds: ReadonlySet<string>;
-  emittedNotificationIds: ReadonlySet<string>;
   compactionCount: number;
 }
 

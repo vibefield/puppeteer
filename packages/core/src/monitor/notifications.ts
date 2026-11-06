@@ -81,12 +81,13 @@ function compareState(
       notification(runtimeRunId, input, 'cwd.changed', next.environment.cwd ?? 'cleared', next.environment.cwd),
     );
   }
+  // A source may list one worktree twice; walking the sets gives each worktree one notice and one id.
   const priorWorktrees = new Set(previous.environment.worktrees);
   const nextWorktrees = new Set(next.environment.worktrees);
-  for (const worktree of next.environment.worktrees) {
+  for (const worktree of nextWorktrees) {
     if (!priorWorktrees.has(worktree)) result.push(notification(runtimeRunId, input, 'worktree.created', worktree));
   }
-  for (const worktree of previous.environment.worktrees) {
+  for (const worktree of priorWorktrees) {
     if (!nextWorktrees.has(worktree)) result.push(notification(runtimeRunId, input, 'worktree.removed', worktree));
   }
 

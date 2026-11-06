@@ -65,6 +65,8 @@ export interface TranslateAgentEventOptions {
   runtimeRunId: string;
   runtimeEpoch: number;
   envelope: AgentEventEnvelope;
+  /** Who minted `envelope.eventId` (see `RuntimeMonitorInput.identity`); the minting package says so. */
+  identity?: RuntimeMonitorInput['identity'];
 }
 
 function storageKey(
@@ -263,7 +265,6 @@ export function createMonitorAccumulatorState(options: CreateMonitorAccumulatorO
     semantic: { seenBatchIds: new EventIdSet(), producers: new Map(), entries: new Map(), resyncs: new Map() },
     workspace: { seenRecordIds: new EventIdSet(), entries: new Map(), provenance: new Map() },
     expiredLeaseIds: new Set(),
-    emittedNotificationIds: new Set(),
     compactionCount: 0,
   };
 }
@@ -295,29 +296,20 @@ function latestAccepted(current: string | undefined, candidate: string): string 
   return candidateMs > currentMs ? candidate : current;
 }
 
+// A notification id names its input, and an input arrives here once (deduplicated, or unique by
+// construction), so no set of emitted ids is kept.
 function finishAccepted(
   previous: MonitorAccumulatorState,
   next: MonitorAccumulatorState,
   input: MonitorAccumulatorInput,
 ): MonitorReduceResult {
-  const candidates = deriveMonitorNotifications(previous, next, input);
-  if (candidates.length === 0) return { state: next, notifications: [], accepted: true };
-
-  const emitted = new Set(next.emittedNotificationIds);
-  const notifications = candidates.filter((notification) => {
-    if (emitted.has(notification.notificationId)) return false;
-    emitted.add(notification.notificationId);
-    return true;
-  });
-  return {
-    state: notifications.length > 0 ? { ...next, emittedNotificationIds: emitted } : next,
-    notifications,
-    accepted: true,
-  };
+  return { state: next, notifications: deriveMonitorNotifications(previous, next, input), accepted: true };
 }
 
 function reduceRuntime(state: MonitorAccumulatorState, input: RuntimeMonitorInput): MonitorReduceResult {
-  if (state.runtime.seenEventIds.has(input.eventId)) return rejected(state);
+  // A delivery identity cannot repeat, so only a source identity is checked and retained.
+  const sourced = input.identity !== 'delivery';
+  if (sourced && state.runtime.seenEventIds.has(input.eventId)) return rejected(state);
   const context: StoredEntryContext = {
     plane: 'runtime',
     ownerId: 'runtime',
@@ -333,7 +325,7 @@ function reduceRuntime(state: MonitorAccumulatorState, input: RuntimeMonitorInpu
     evidence: input.evidence,
   };
   const applied = applyUpdates(state.runtime.entries, input.updates, context);
-  const seenEventIds = withEventId(state.runtime.seenEventIds, input.eventId);
+  const seenEventIds = sourced ? withEventId(state.runtime.seenEventIds, input.eventId) : state.runtime.seenEventIds;
   const next: MonitorAccumulatorState = {
     ...state,
     runtime: {
@@ -1070,6 +1062,7 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
     kind: 'runtime',
     schemaVersion: 1,
     eventId,
+    ...(options.identity ? { identity: options.identity } : {}),
     runtimeRunId: options.runtimeRunId,
     runtimeEpoch: options.runtimeEpoch,
     phase,

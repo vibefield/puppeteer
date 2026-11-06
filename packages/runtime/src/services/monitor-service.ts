@@ -216,10 +216,13 @@ export class AgentMonitorService
     envelope: RuntimeAgentEventEnvelope,
     options: { hostProcessEvidence?: boolean | undefined } = {},
   ): boolean {
+    // Runtime dispatch mints a fresh eventId for every envelope without a sourceEventRef; only an
+    // envelope that carries one names an identity its producer can deliver again.
     const input = translateAgentEventEnvelope({
       runtimeRunId: this.options.runtimeRunId,
       runtimeEpoch: this.options.runtimeEpoch,
       envelope,
+      identity: envelope.sourceEventRef ? 'source' : 'delivery',
     });
     // The host owns process liveness. Adapter/control rails may disappear while
     // the native TUI remains alive, so their terminal-looking events stay on
@@ -271,6 +274,8 @@ export class AgentMonitorService
       kind: 'runtime',
       schemaVersion: 1,
       eventId: `prompt-receipt:${receiptId}`,
+      // The runtime mints each receipt id (submitManagedPrompt's randomUUID).
+      identity: 'delivery',
       runtimeRunId: this.options.runtimeRunId,
       runtimeEpoch: this.options.runtimeEpoch,
       phase: 'live',
@@ -384,6 +389,7 @@ export class AgentMonitorService
       kind: 'runtime',
       schemaVersion: 1,
       eventId: `runtime-hub:${this.options.runtimeEpoch}:${++this.runtimeInputSequence}:${name}`,
+      identity: 'delivery',
       runtimeRunId: this.options.runtimeRunId,
       runtimeEpoch: this.options.runtimeEpoch,
       phase: 'live',
