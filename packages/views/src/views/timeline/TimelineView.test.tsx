@@ -339,6 +339,28 @@ describe('the timeline’s draw', () => {
     expect(head.dataset.tone).toBe('blocked');
   });
 
+  it('draws nothing for a publish that changes nothing it shows, a lane older than the day included', async () => {
+    // The still clock's draw once a second is held: only a publish could draw here.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const theme = fixtureTheme('dark', { animations: false });
+    const HOUR = 60 * 60_000;
+    // Idle these 42 hours, longer than the day the timeline shows; each publish is a fresh row saying the same.
+    const idle = (): AgentView =>
+      agentViewFixture({ id: 'a', createdAt: NOW - 50 * HOUR, status: 'idle', statusSince: NOW - 42 * HOUR });
+    const view = await mount({ agents: [idle()], theme });
+    await act(async () => frames.step(3));
+    const clears = () => calls.filter((call) => call.op === 'clearRect').length;
+    const before = clears();
+    // Three frames past the mount, then 16 ms later: each publish builds the lanes again at the clock's now.
+    for (const later of [0, 16]) {
+      clock.advance(later);
+      await view.update(fixtureInput({ parameters: PARAMETERS, agents: [idle()], theme }));
+      await act(async () => frames.step(2));
+    }
+    expect(clears()).toBe(before);
+    expect(frames.pending).toBe(0);
+  });
+
   it('out of sight it keeps no time and draws nothing, and draws both canvases once when it is shown', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const hidden = fixtureTheme('dark', { animations: false, hidden: true });

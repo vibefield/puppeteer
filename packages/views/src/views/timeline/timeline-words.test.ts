@@ -75,8 +75,8 @@ describe('readoutAt', () => {
       createdAt: NOW - 30 * 60 * MIN,
       statusSince: NOW - 26 * 60 * MIN,
     });
-    // A stretch older than the horizon reads from it: a day, at most (as the lane is clipped).
-    expect(readoutAt(long, stateAt(long, NOW), NOW, true, NOW).big).toBe('1d 00h');
+    // A stretch older than the horizon says its true length: the day bounds what is drawn, never a lane's length.
+    expect(readoutAt(long, stateAt(long, NOW), NOW, true, NOW).big).toBe('1d 02h');
     const day = lane({
       status: 'working',
       wait: undefined,
@@ -144,6 +144,17 @@ describe('laneLabel', () => {
     expect(laneLabel(shell, NOW)).toBe('notes, terminal, running for 1 hour 1 minute');
     const quiet = lane({ kind: 'terminal', status: 'idle', wait: undefined });
     expect(laneLabel(quiet, NOW)).toBe('notes, terminal, quiet');
+  });
+
+  it('says a state older than the horizon for its true length', () => {
+    const idle = lane({
+      status: 'idle',
+      wait: undefined,
+      provider: { id: 'codex', label: 'Codex' },
+      createdAt: NOW - 30 * 60 * MIN,
+      statusSince: NOW - 25 * 60 * MIN,
+    });
+    expect(laneLabel(idle, NOW)).toBe('notes, Codex, idle for 25 hours');
   });
 });
 
