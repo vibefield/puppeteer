@@ -13,9 +13,16 @@
  *   tool input, while still tolerating the legacy reverse ordering. The person's
  *   decision closes a request when Claude's OTLP `tool_decision` names its tool
  *   call (`resolvePermissionDecision`); otherwise execution completion proves
- *   allow, and PermissionDenied or a turn boundary closes denial.
+ *   allow, and PermissionDenied or a boundary closes denial.
  *   An Esc-interrupted turn has no boundary hook: the next accepted prompt
  *   closes its main-thread request with an unknown outcome.
+ * - A call that will never run is closed where its fate is decided, never left
+ *   open (Core closes a tool only on its own terminal event): a request settled
+ *   other than allowed closes its call as tool:failed; the main thread's
+ *   Stop/StopFailure closes that turn's remaining main-thread calls, a
+ *   subagent's first SubagentStop its own, SessionEnd every one; bounded memory
+ *   closes what it evicts. Each closure is published under the actor that
+ *   asked: a hook that settles another actor's work returns it in `settled`.
  * - SubagentStop is re-entrant (1× stop_hook_active:false, then N× true):
  *   only the first occurrence per agent_id normalizes to delegation:subagent-stopped.
  *   `/compact` runs an internal agent whose SubagentStop has an empty agent_type and no
@@ -77,6 +84,13 @@ export type { ClaudeHookDiagnostic, ClaudeHookPayload, NormalizedHook } from './
 
 const MAX_TRACKED_ITEMS = 64;
 
+type ClaudeActorWork = { promptId?: string | undefined; agentId?: string | undefined; agentType?: string | undefined };
+
+/** One main-thread turn's work: a subagent's belongs to its own boundary, its first SubagentStop. */
+function mainThreadWorkOf(promptId: string | undefined): (work: ClaudeActorWork) => boolean {
+  return (work) => work.agentId === undefined && (work.promptId === undefined || work.promptId === promptId);
+}
+
 export class ClaudeHookNormalizer {
   private messageBuffers = new Map<string, string>();
   private pendingPermissions: PendingPermission[] = [];
@@ -128,10 +142,54 @@ export class ClaudeHookNormalizer {
     );
   }
 
-  private rememberTool(request: RecentToolRequest): void {
+  /**
+   * Where a closure of `work` is published: the result itself when `work` is the hook's own actor, else that
+   * actor's entry in `settled`, so a hook never publishes another actor's work as its own.
+   */
+  private actorResult(result: NormalizedHook, work: ClaudeActorWork): NormalizedHook {
+    if (work.agentId === result.agentId) return result;
+    result.settled ??= [];
+    let entry = result.settled.find((settled) => settled.agentId === work.agentId);
+    if (!entry) {
+      entry = {
+        events: [],
+        diagnostics: [],
+        promptId: work.promptId,
+        agentId: work.agentId,
+        agentType: work.agentType,
+      };
+      result.settled.push(entry);
+    }
+    return entry;
+  }
+
+  /**
+   * A requested call the adapter knows will never report a result: its terminal event (and the failed file operation
+   * when it proposed one), under the actor that asked, then it is forgotten.
+   */
+  private closeUnrunTool(result: NormalizedHook, request: RecentToolRequest, error: string): void {
+    const actor = this.actorResult(result, request);
+    actor.events.push(normalizeClaudeToolFailed(request.toolCallId, request.toolName, error));
+    const workspace = normalizeClaudeFileOperation(request.toolCallId, request.toolName, request.input, 'failed');
+    if (workspace) actor.events.push(workspace);
+    this.recentToolRequests.delete(request.toolCallId);
+  }
+
+  private closeUnrunTools(
+    result: NormalizedHook,
+    predicate: (request: RecentToolRequest) => boolean,
+    error: string,
+  ): void {
+    for (const request of this.recentToolRequests.values()) {
+      if (predicate(request)) this.closeUnrunTool(result, request, error);
+    }
+  }
+
+  private rememberTool(result: NormalizedHook, request: RecentToolRequest): void {
     if (!this.recentToolRequests.has(request.toolCallId) && this.recentToolRequests.size >= MAX_TRACKED_ITEMS) {
-      const oldest = this.recentToolRequests.keys().next().value;
-      if (oldest !== undefined) this.recentToolRequests.delete(oldest);
+      const oldest = this.recentToolRequests.values().next().value;
+      // Bounded adapter memory must not leave a call open that nothing will close.
+      if (oldest !== undefined) this.closeUnrunTool(result, oldest, 'evicted');
     }
     this.recentToolRequests.set(request.toolCallId, request);
   }
@@ -139,14 +197,16 @@ export class ClaudeHookNormalizer {
   /**
    * A tool an attach found still open in the transcript (the re-attach study, §3.3), which no hook announced to this
    * normalizer. It is remembered as PreToolUse remembers one, so its PostToolUse or failure closes it and resolves
-   * the question an AskUserQuestion call asks. Returns what remembering it superseded, for the caller to publish.
+   * the question an AskUserQuestion call asks. Returns what remembering it superseded or evicted, for the caller to
+   * publish: the main thread's in `events`, another actor's in `settled`.
    */
   adoptOpenTool(tool: {
     toolCallId: string;
     toolName: string;
     input: unknown;
     promptId?: string | undefined;
-  }): NormalizedHook['events'] {
+  }): NormalizedHook {
+    // The bootstrap's open work skips sidechains, so an adopted call is the main thread's.
     const request: RecentToolRequest = {
       toolCallId: tool.toolCallId,
       promptId: tool.promptId,
@@ -154,17 +214,17 @@ export class ClaudeHookNormalizer {
       inputKey: canonicalClaudeValue(tool.input),
       input: tool.input,
     };
-    const superseded: NormalizedHook = { events: [], diagnostics: [] };
+    const result: NormalizedHook = { events: [], diagnostics: [] };
     if (tool.toolName.toLowerCase() === 'askuserquestion' && parseClaudeStructuredQuestions(tool.input)) {
       request.questionRequestId = claudeQuestionRequestId(tool.toolCallId);
-      this.rememberQuestion(superseded, {
+      this.rememberQuestion(result, {
         requestId: request.questionRequestId,
         promptId: tool.promptId,
         toolCallId: tool.toolCallId,
       });
     }
-    this.rememberTool(request);
-    return superseded.events;
+    this.rememberTool(result, request);
+    return result;
   }
 
   private rememberQuestion(result: NormalizedHook, question: PendingQuestion): void {
@@ -174,7 +234,9 @@ export class ClaudeHookNormalizer {
         const evicted = this.pendingQuestions.get(oldest);
         this.pendingQuestions.delete(oldest);
         if (evicted) {
-          result.events.push(normalizeClaudeQuestionResolved(evicted.requestId, 'superseded'));
+          this.actorResult(result, evicted).events.push(
+            normalizeClaudeQuestionResolved(evicted.requestId, 'superseded'),
+          );
         }
       }
     }
@@ -188,7 +250,7 @@ export class ClaudeHookNormalizer {
   ): void {
     for (const [toolCallId, question] of this.pendingQuestions) {
       if (!predicate(question)) continue;
-      result.events.push(normalizeClaudeQuestionResolved(question.requestId, outcome));
+      this.actorResult(result, question).events.push(normalizeClaudeQuestionResolved(question.requestId, outcome));
       this.pendingQuestions.delete(toolCallId);
     }
   }
@@ -211,11 +273,9 @@ export class ClaudeHookNormalizer {
   private permissionBoundaryDiagnostic(
     result: NormalizedHook,
     hookEventName: string,
-    promptId: string | undefined,
+    owned: (permission: PendingPermission) => boolean,
   ): void {
-    const count = this.pendingPermissions.filter(
-      (permission) => permission.promptId === undefined || permission.promptId === promptId,
-    ).length;
+    const count = this.pendingPermissions.filter(owned).length;
     if (count === 0) return;
     result.diagnostics.push({
       code: 'permission-outlived-turn',
@@ -228,8 +288,10 @@ export class ClaudeHookNormalizer {
    * Esc at a permission prompt interrupts the turn and fires no Stop (2.1.308 TUI lane: the
    * PermissionRequest at seq 31 is followed by the next UserPromptSubmit at seq 34). The main
    * thread asks one dialog at a time, so a newly accepted main-thread prompt proves an earlier
-   * turn's dialog is gone. Which answer closed it is not observable, so the outcome is unknown. A
-   * subagent's request is left to its own boundary: a background agent can still be waiting on one.
+   * turn's dialog is gone. Which answer closed it is not observable, so the outcome is unknown; the
+   * call it gated closes with it (resolvePermission). A subagent's request is left to its own
+   * boundary: a background agent can still be waiting on one. No other open call is swept here: a
+   * queued prompt must not fail a call that is still running.
    */
   private resolveInterruptedPermissions(
     result: NormalizedHook,
@@ -258,12 +320,11 @@ export class ClaudeHookNormalizer {
   }
 
   private evictOldestPermission(result: NormalizedHook): void {
-    const permission = this.pendingPermissions.shift();
-    if (!permission) return;
+    const oldest = this.pendingPermissions[0];
+    if (!oldest) return;
     // Bounded adapter memory must not create unbounded reducer state. Close the
-    // request honestly before forgetting its correlation details.
-    result.events.push(normalizeClaudePermissionResolved(permission.requestId, 'unknown'));
-    if (permission.toolCallId) this.recentToolRequests.delete(permission.toolCallId);
+    // request, and the call it gated, honestly before forgetting its correlation details.
+    this.resolvePermission(result, 'unknown', (permission) => permission === oldest, 'evicted');
   }
 
   private rememberStartedSubagent(agentId: string): void {
@@ -282,17 +343,25 @@ export class ClaudeHookNormalizer {
     this.stoppedSubagents.add(agentId);
   }
 
+  /**
+   * Settles requests under the actor that asked. An allowed call still runs: its completion hook reads the request,
+   * then forgets it. Any other outcome means the call never runs, and no hook will say so, so it closes here with
+   * `toolError` (by default `permission <outcome>`).
+   */
   private resolvePermission(
     result: NormalizedHook,
     outcome: 'allowed' | 'denied' | 'dismissed' | 'unknown',
     predicate: (permission: PendingPermission) => boolean,
+    toolError = `permission ${outcome}`,
   ): void {
     const remaining: PendingPermission[] = [];
     for (const permission of this.pendingPermissions) {
       if (predicate(permission)) {
-        result.events.push(normalizeClaudePermissionResolved(permission.requestId, outcome));
-        // An allowed tool still runs: its completion hook reads the request, then forgets it.
-        if (permission.toolCallId && outcome !== 'allowed') this.recentToolRequests.delete(permission.toolCallId);
+        this.actorResult(result, permission).events.push(
+          normalizeClaudePermissionResolved(permission.requestId, outcome),
+        );
+        const gated = permission.toolCallId ? this.recentToolRequests.get(permission.toolCallId) : undefined;
+        if (gated && outcome !== 'allowed') this.closeUnrunTool(result, gated, toolError);
       } else {
         remaining.push(permission);
       }
@@ -435,6 +504,8 @@ export class ClaudeHookNormalizer {
         const request: RecentToolRequest = {
           toolCallId,
           promptId,
+          agentId: result.agentId,
+          agentType: result.agentType,
           toolName,
           inputKey: canonicalClaudeValue(body.tool_input),
           input: body.tool_input,
@@ -446,7 +517,7 @@ export class ClaudeHookNormalizer {
           legacyPending.toolCallId = toolCallId;
           request.permissionRequestId = legacyPending.requestId;
         }
-        this.rememberTool(request);
+        this.rememberTool(result, request);
         result.events.push(normalizeClaudeToolRequested(toolCallId, toolName, body.tool_input));
         const workspace = normalizeClaudeFileOperation(toolCallId, toolName, body.tool_input, 'proposed');
         if (workspace) result.events.push(workspace);
@@ -458,6 +529,8 @@ export class ClaudeHookNormalizer {
             this.rememberQuestion(result, {
               requestId: questionRequestId,
               promptId,
+              agentId: result.agentId,
+              agentType: result.agentType,
               toolCallId,
             });
             result.events.push(normalizeClaudeQuestionRequested(questionRequestId, questions));
@@ -524,74 +597,70 @@ export class ClaudeHookNormalizer {
         const toolName = claudeString(body.tool_name) ?? 'unknown-tool';
         const signature = { promptId, toolName, inputKey: canonicalClaudeValue(body.tool_input) };
         const request = this.findRecentToolForPayload(promptId, toolName, body.tool_input, true);
-        const resolvedToolCallId = toolCallId ?? request?.toolCallId;
-        const terminalToolCallId = resolvedToolCallId ?? this.nextFallbackToolId(promptId, toolName);
-        const before = result.events.length;
+        const terminalToolCallId = toolCallId ?? request?.toolCallId ?? this.nextFallbackToolId(promptId, toolName);
+        const reason = claudeString(body.reason) ?? 'permission denied';
+        const remembered = this.recentToolRequests.get(terminalToolCallId);
         this.resolvePermission(
           result,
           'denied',
           (permission) =>
             (toolCallId !== undefined && permission.toolCallId === toolCallId) || sameClaudeTool(permission, signature),
+          reason,
         );
-        if (resolvedToolCallId) this.recentToolRequests.delete(resolvedToolCallId);
-        result.events.push(
-          normalizeClaudeToolFailed(terminalToolCallId, toolName, claudeString(body.reason) ?? 'permission denied'),
-        );
-        const workspace = normalizeClaudeFileOperation(
-          terminalToolCallId,
-          toolName,
-          request?.input ?? body.tool_input,
-          'failed',
-        );
-        if (workspace) result.events.push(workspace);
-        if (result.events.length === before) {
-          result.events.push(normalizeClaudeNativeEvent(name));
+        // A denial with no dialog (auto mode's classifier) settled no request above, and a call no PreToolUse
+        // announced was never remembered: either way the denied call closes here, once.
+        if (!remembered || this.recentToolRequests.has(terminalToolCallId)) {
+          this.closeUnrunTool(
+            result,
+            remembered ?? {
+              toolCallId: terminalToolCallId,
+              promptId,
+              agentId: result.agentId,
+              agentType: result.agentType,
+              toolName,
+              inputKey: signature.inputKey,
+              input: request?.input ?? body.tool_input,
+            },
+            reason,
+          );
         }
         break;
       }
 
-      case 'Stop':
-        this.permissionBoundaryDiagnostic(result, name, promptId);
-        this.resolvePermission(
-          result,
-          'denied',
-          (permission) => permission.promptId === undefined || permission.promptId === promptId,
-        );
-        this.resolveQuestions(
-          result,
-          'cancelled',
-          (question) => question.promptId === undefined || question.promptId === promptId,
-        );
+      case 'Stop': {
+        // The main thread's turn ends; a subagent's work is left to its own boundary.
+        const ownedByTurn = mainThreadWorkOf(promptId);
+        this.permissionBoundaryDiagnostic(result, name, ownedByTurn);
+        this.resolvePermission(result, 'denied', ownedByTurn);
+        this.resolveQuestions(result, 'cancelled', ownedByTurn);
+        this.closeUnrunTools(result, ownedByTurn, 'no result before the turn ended');
         if (this.activeCompaction && (!this.activeCompaction.promptId || this.activeCompaction.promptId === promptId)) {
           this.closeActiveCompaction(result, 'cancelled');
         }
         result.events.push(normalizeClaudeTurnCompleted(body, promptId));
         break;
+      }
 
-      case 'StopFailure':
-        this.permissionBoundaryDiagnostic(result, name, promptId);
-        this.resolvePermission(
-          result,
-          'unknown',
-          (permission) => permission.promptId === undefined || permission.promptId === promptId,
-        );
-        this.resolveQuestions(
-          result,
-          'failed',
-          (question) => question.promptId === undefined || question.promptId === promptId,
-        );
+      case 'StopFailure': {
+        const ownedByTurn = mainThreadWorkOf(promptId);
+        this.permissionBoundaryDiagnostic(result, name, ownedByTurn);
+        this.resolvePermission(result, 'unknown', ownedByTurn);
+        this.resolveQuestions(result, 'failed', ownedByTurn);
+        this.closeUnrunTools(result, ownedByTurn, 'no result before the turn ended');
         if (this.activeCompaction && (!this.activeCompaction.promptId || this.activeCompaction.promptId === promptId)) {
           this.closeActiveCompaction(result, 'failed');
         }
         result.events.push(normalizeClaudeTurnFailed(body, promptId));
         break;
+      }
 
       case 'SessionEnd':
         this.resolvePermission(result, 'dismissed', () => true);
         this.resolveQuestions(result, 'cancelled', () => true);
+        // Every call still remembered ends with the session; closing each forgets it.
+        this.closeUnrunTools(result, () => true, 'no result before the session ended');
         this.closeActiveCompaction(result, 'cancelled');
         this.messageBuffers.clear();
-        this.recentToolRequests.clear();
         this.stoppedSubagents.clear();
         this.startedSubagents.clear();
         this.toolCounters.clear();
@@ -615,6 +684,11 @@ export class ClaudeHookNormalizer {
           result.events.push(normalizeClaudeNativeEvent(name));
         } else {
           this.rememberStoppedSubagent(agentId);
+          // The subagent's own boundary: what it asked that was never answered, and the calls it never saw end.
+          const ownedByAgent = (work: ClaudeActorWork) => work.agentId === agentId;
+          this.resolvePermission(result, 'unknown', ownedByAgent);
+          this.resolveQuestions(result, 'cancelled', ownedByAgent);
+          this.closeUnrunTools(result, ownedByAgent, 'no result before the subagent stopped');
           result.events.push(normalizeClaudeSubagentStopped(agentId));
         }
         break;
