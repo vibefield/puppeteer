@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   AgentView,
   MonitorSpawnMenu,
   MonitorTheme,
+  MonitorViewCommands,
   MonitorViewInput,
   MonitorViewInstance,
   StageGeometry,
@@ -16,16 +17,20 @@ import {
   fixtureTheme,
   parameterDefaults,
 } from '@vibefield/puppeteer-view-sdk/testing';
+import { WORKER_READY } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { BLOOM_SCENARIOS } from './bloom/scenarios.js';
 import { DEPARTURE_MS, DEPARTURE_REDUCED_MS } from './departure.js';
 import type { SwarmFrame } from './gpu/swarm-renderer.js';
 import { SWARM_MANIFEST, swarmMonitorView } from './index.js';
+import { createSwarmPhysicsHost } from './physics/host.js';
+import type { SwarmPhysicsCommand } from './physics/protocol.js';
 
 // THE SWARM AS ITS HOST MOUNTS IT: the shipping view through `mount`, its physics inline (happy-dom has no Worker),
 // a stub renderer. These are what the parity against the frozen legacy swarm held until MV-8 deleted both, and that
 // no other test or golden witnesses: the view's own properties under their L18 names (M59.4), what it reports in place
-// of the DOM a host used to read, the bloom's keys held while it is open (MV-D8), and a body leaving the field as the
-// renderer is asked to draw it (DESIGN §6, the departure).
+// of the DOM a host used to read, the bloom's keys held while it is open (MV-D8), a body leaving the field as the
+// renderer is asked to draw it (DESIGN §6, the departure), and a field held still drawing each change it shows (MV-W4),
+// its physics in a worker whose answers come after the change that asked for them.
 
 /** What the stub renderer was asked to draw, oldest first. */
 const drawn = vi.hoisted(() => ({ frames: [] as SwarmFrame[] }));
@@ -64,6 +69,7 @@ const cleanups: (() => void | Promise<void>)[] = [];
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
@@ -76,7 +82,61 @@ async function frames(count: number): Promise<void> {
   }
 }
 
-async function mounted(spawn?: MonitorSpawnMenu, mountTheme: MonitorTheme = theme) {
+/**
+ * Lets a worker hear what was posted and answer, and its answers be heard, short of the next frame: each hop is a
+ * task of its own (`setTimeout(0)`), a millisecond or less apart under the fake clock, and a frame is 16.
+ */
+async function answers(): Promise<void> {
+  await act(async () => {
+    vi.advanceTimersByTime(4);
+  });
+}
+
+/** The body the renderer was last asked to draw for this id, if it was. */
+const lastDrawn = (id: string) => drawn.frames.at(-1)?.bodies.find((body) => body.model.id === id);
+
+/**
+ * A worker as the platform gives one, with the swarm's own physics host inside it as `swarm-physics.worker.ts` serves
+ * it: it proves itself, and every message either way lands on a task of its own (`setTimeout`, which the fake timers
+ * drive), never inside the post that sent it. Held still, its host is paused and solves nothing, so it keeps no timer.
+ */
+class FakeWorker {
+  private readonly listeners = new Set<(event: MessageEvent) => void>();
+  private readonly host = createSwarmPhysicsHost({ post: (message) => this.later(() => this.say(message)) });
+
+  constructor() {
+    this.later(() => this.say(WORKER_READY));
+  }
+
+  postMessage(message: unknown): void {
+    this.later(() => this.host.handle(message as SwarmPhysicsCommand));
+  }
+
+  terminate(): void {
+    this.host.dispose();
+  }
+
+  addEventListener(type: string, listener: (event: MessageEvent) => void): void {
+    if (type === 'message') this.listeners.add(listener);
+  }
+
+  private later(run: () => void): void {
+    setTimeout(run, 0);
+  }
+
+  private say(data: unknown): void {
+    for (const listener of this.listeners) listener({ data } as MessageEvent);
+  }
+}
+
+interface MountOptions {
+  /** The rows the host shows at mount. Default: three. */
+  readonly agents?: readonly AgentView[];
+  /** The host refuses every terminal it is asked for (SB §2.6): the ask is counted, then answered no. */
+  readonly refuse?: boolean;
+}
+
+async function mounted(spawn?: MonitorSpawnMenu, mountTheme: MonitorTheme = theme, options: MountOptions = {}) {
   vi.useFakeTimers({
     toFake: ['Date', 'performance', 'requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'],
   });
@@ -88,7 +148,13 @@ async function mounted(spawn?: MonitorSpawnMenu, mountTheme: MonitorTheme = them
   document.body.append(root);
   cleanups.push(() => root.remove());
   const counting = countingCommands();
-  const agents = agentViewsFixture(3);
+  const commands: MonitorViewCommands = options.refuse
+    ? {
+        ...counting.commands,
+        create: (at, target) => counting.commands.create(at, target).then(() => ({ opened: false })),
+      }
+    : counting.commands;
+  const agents = options.agents ?? agentViewsFixture(3);
   let revision = 1;
   const input = (rows: readonly AgentView[]): MonitorViewInput => ({
     model: fixtureModel(rows, revision),
@@ -100,7 +166,7 @@ async function mounted(spawn?: MonitorSpawnMenu, mountTheme: MonitorTheme = them
   });
   let instance!: MonitorViewInstance;
   await act(async () => {
-    instance = swarmMonitorView.mount(root, input(agents), counting.commands);
+    instance = swarmMonitorView.mount(root, input(agents), commands);
   });
   cleanups.push(() => act(async () => instance.unmount()));
   await frames(3);
@@ -159,8 +225,6 @@ describe('a body leaving the field (DESIGN §6, the departure; M4: depart is not
   const LANDED = Math.ceil(720 / FRAME_MS) + 4;
   /** Frames safely inside a departure this long. */
   const inside = (ms: number): number => Math.floor(ms / FRAME_MS) - 1;
-  /** The body the renderer was last asked to draw for this id, if it was. */
-  const lastDrawn = (id: string) => drawn.frames.at(-1)?.bodies.find((body) => body.model.id === id);
 
   it.each([
     ['spawn', 'motion'],
@@ -329,5 +393,81 @@ describe('a body leaving the field (DESIGN §6, the departure; M4: depart is not
     const drawnThen = drawn.frames.length;
     await frames(10);
     expect(drawn.frames.length).toBe(drawnThen);
+  });
+});
+
+describe('a field held still draws each change it shows, on a frame of its own (MV-W4)', () => {
+  const still = fixtureTheme('light', { reducedMotion: true });
+
+  describe('its physics in a worker, whose answers come after the change that asked for them', () => {
+    beforeEach(() => {
+      vi.stubGlobal('Worker', FakeWorker);
+    });
+
+    it('draws every row once the worker has placed it at mount, then asks for no frame', async () => {
+      const { agents, counting } = await mounted(undefined, still);
+      expect(counting.reports).toContainEqual({ physics: 'worker' });
+      // The renderer is ready before the worker's first frame: what the field draws is the worker's answer.
+      const ids = drawn.frames.at(-1)?.bodies.map((body) => body.model.id);
+      expect(ids?.sort()).toEqual(agents.map((agent) => agent.id).sort());
+      const drawnThen = drawn.frames.length;
+      await frames(10);
+      expect(drawn.frames.length).toBe(drawnThen);
+    });
+
+    it('draws a row that arrives once the worker has placed it, where it spawned, on one frame', async () => {
+      const rows = agentViewsFixture(2);
+      const { show } = await mounted(undefined, still, { agents: rows.slice(0, 1) });
+      const before = drawn.frames.length;
+      await show(rows);
+      // The worker hears the rows and answers, its table and then its frame, before the next frame.
+      await answers();
+      await frames(1);
+      expect(drawn.frames.length).toBe(before + 1);
+      expect(lastDrawn(rows[1]!.id)).toEqual(expect.objectContaining({ scale: 1, opacity: 1 }));
+      const drawnThen = drawn.frames.length;
+      await frames(10);
+      expect(drawn.frames.length).toBe(drawnThen);
+    });
+  });
+
+  it('rings the body whose button has the focus, and takes the ring away on blur', async () => {
+    const { root, agents } = await mounted(undefined, still);
+    const id = agents[0]!.id;
+    const button = root.querySelector<HTMLButtonElement>(`[data-agent-bubble-id="${id}"]`)!;
+    await act(async () => button.focus());
+    await frames(1);
+    expect(lastDrawn(id)?.focus).toBe(true);
+    await act(async () => button.blur());
+    await frames(1);
+    expect(lastDrawn(id)?.focus).toBe(false);
+  });
+
+  it('lays the veil of a bloom opened from the keys door over the field', async () => {
+    const { root } = await mounted(BLOOM_SCENARIOS.two, still);
+    await act(async () => root.querySelector<HTMLButtonElement>('[data-swarm-new-terminal]')!.click());
+    await frames(1);
+    expect(drawn.frames.at(-1)?.veil ?? 0).toBeGreaterThan(0);
+  });
+
+  it('draws a birth the host refused gone at once, never left standing until the next change (SB §2.6)', async () => {
+    const { root, counting } = await mounted(BLOOM_SCENARIOS.two, still, { refuse: true });
+    await act(async () => root.querySelector<HTMLButtonElement>('[data-swarm-new-terminal]')!.click());
+    const menu = root.querySelector('[role="menu"]');
+    expect(menu).not.toBeNull();
+    const start = drawn.frames.length;
+    for (const key of ['ArrowRight', 'Enter', 'Enter']) {
+      await act(async () => {
+        menu!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      });
+    }
+    await frames(2);
+    expect(counting.creates).toHaveLength(1);
+    const births = drawn.frames
+      .slice(start)
+      .flatMap((frame) => frame.bodies.filter((body) => body.model.id.startsWith('spawn-bloom-birth-')));
+    expect(births.length).toBeGreaterThan(0);
+    // Held still, its gone-form is nothing at all.
+    expect(births.at(-1)?.opacity).toBe(0);
   });
 });
