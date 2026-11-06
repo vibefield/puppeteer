@@ -99,9 +99,13 @@ function assistant(record: ClaudeTranscriptRecord, text: string, turnId: string 
  * Claude's transcript is a parent-linked graph. Its append workers can flush
  * rows out of physical order during process teardown, so line order alone is
  * not a trustworthy conversation order. Walk each row's known ancestry first
- * while retaining file order for unrelated rows and malformed cycles.
+ * while retaining file order for unrelated rows and malformed cycles; `cyclic`
+ * says a cycle's rows were ordered after every other row.
  */
-function causalOrder(records: readonly ClaudeTranscriptRecord[]): ClaudeTranscriptRecord[] {
+function causalOrder(records: readonly ClaudeTranscriptRecord[]): {
+  ordered: ClaudeTranscriptRecord[];
+  cyclic: boolean;
+} {
   const firstIndexByUuid = new Map<string, number>();
   for (const [index, record] of records.entries()) {
     if (record.uuid !== undefined && !firstIndexByUuid.has(record.uuid)) firstIndexByUuid.set(record.uuid, index);
@@ -163,10 +167,13 @@ function causalOrder(records: readonly ClaudeTranscriptRecord[]): ClaudeTranscri
   }
   // A corrupt cycle has no valid causal order. Retain its physical order so
   // one malformed branch cannot hide otherwise parseable conversation rows.
+  let cyclic = false;
   for (const [index, record] of records.entries()) {
-    if (emitted[index] === 0) ordered.push(record);
+    if (emitted[index] !== 0) continue;
+    ordered.push(record);
+    cyclic = true;
   }
-  return ordered;
+  return { ordered, cyclic };
 }
 
 /** The turn the assistant walk is in: the last prompt it passed, or the turn a known reply kept. */
@@ -179,6 +186,16 @@ interface WalkedReply {
   readonly key: string;
   readonly text: string;
   readonly projected: SemanticObservationEvent;
+}
+
+/** A key's last walked reply, and how many rows of the walk carry the key. */
+interface CountedReply extends WalkedReply {
+  readonly rows: number;
+}
+
+/** Records a walked reply under its key: the key's last row wins, as in a full walk, and every row is counted. */
+function collect(replies: Map<string, CountedReply>, reply: WalkedReply | undefined): void {
+  if (reply) replies.set(reply.key, { ...reply, rows: (replies.get(reply.key)?.rows ?? 0) + 1 });
 }
 
 /** The reply a row is, when it is one: a root (non-sidechain) assistant row with text. */
@@ -233,16 +250,230 @@ export function projectClaudeTranscriptAssistants(
   const { knownTurns, departed } = options;
   const uuids = new Set<string>();
   for (const record of records) if (record.uuid !== undefined) uuids.add(record.uuid);
-  const known = (key: string) => (knownTurns?.has(key) ? { turnId: knownTurns.get(key) } : undefined);
+  const walk = walkAssistants(
+    records,
+    (uuid) => !uuids.has(uuid) && departed?.has(uuid) === true,
+    (key) => (knownTurns?.has(key) ? { turnId: knownTurns.get(key) } : undefined),
+  );
   const assistants = new Map<string, SemanticObservationEvent>();
-  const walk: AssistantWalk = { turnId: undefined };
-  for (const record of causalOrder(records)) {
-    const parent = record.parentUuid;
-    const cut = parent !== undefined && !uuids.has(parent) && departed?.has(parent) === true;
-    const reply = stepAssistantWalk(walk, record, cut, known);
-    if (reply) assistants.set(reply.key, reply.projected);
-  }
+  for (const [key, { projected }] of walk.replies) assistants.set(key, projected);
   return assistants;
+}
+
+/**
+ * The full walk: every row of the window in causal order, and the turn and the cycle flag it ends with. `departed` says
+ * whether a parent uuid has left the window ({@link stepAssistantWalk}).
+ */
+function walkAssistants(
+  records: readonly ClaudeTranscriptRecord[],
+  departed: (uuid: string) => boolean,
+  known: (key: string) => { readonly turnId: string | undefined } | undefined,
+): { replies: Map<string, CountedReply>; turnId: string | undefined; cyclic: boolean } {
+  const { ordered, cyclic } = causalOrder(records);
+  const replies = new Map<string, CountedReply>();
+  const walk: AssistantWalk = { turnId: undefined };
+  for (const record of ordered) {
+    const cut = record.parentUuid !== undefined && departed(record.parentUuid);
+    collect(replies, stepAssistantWalk(walk, record, cut, known));
+  }
+  return { replies, turnId: walk.turnId, cyclic };
+}
+
+/** What changed between two reads of one transcript reader: the rows evicted at its head and appended at its tail. */
+export interface ClaudeTranscriptDelta {
+  readonly evicted: readonly ClaudeTranscriptRecord[];
+  readonly appended: readonly ClaudeTranscriptRecord[];
+}
+
+/** A message the projection holds: its turn and text (the only fields that vary), and the window rows keyed to it. */
+interface KnownReply {
+  readonly turnId: string | undefined;
+  readonly text: string;
+  readonly rows: number;
+}
+
+/** Moves a key's count by one, forgetting the key at zero. */
+function count(counts: Map<string, number>, key: string, by: 1 | -1): void {
+  const next = (counts.get(key) ?? 0) + by;
+  if (next > 0) counts.set(key, next);
+  else counts.delete(key);
+}
+
+/**
+ * The assistant projection of one session's transcript window, kept between reads. The reader only appends at its tail
+ * and evicts at its head, so a read extends the walk by the rows it appended instead of walking the window again: an
+ * appended row whose parent is absent or already present is causally last (min-index order pops it only when nothing
+ * else is ready, and it has no children), so the walk continues from its end. A departure never re-keys a message
+ * ({@link stepAssistantWalk}), so an eviction only forgets, and remembers which parents have left.
+ *
+ * The full walk ({@link ClaudeTranscriptProjection.reproject}) runs at the first read, on a read that is not a pure
+ * append and evict, when an appended row is the parent of a row the window holds without its parent (a parent flushed
+ * after its child re-orders the walk), and while the last full walk left a cycle, whose rows it orders after every
+ * other row, so no appended row is last.
+ */
+export class ClaudeTranscriptProjection {
+  /** The turn the walk is in at its causal end. */
+  private turnId: string | undefined;
+  /** How many rows of the session window carry each uuid. */
+  private readonly uuids = new Map<string, number>();
+  /** How many rows of the session window name each uuid as their parent. */
+  private readonly parents = new Map<string, number>();
+  /** Rows the window holds without their parent, by the parent's uuid: its arrival re-orders them. */
+  private readonly orphans = new Map<string, Set<ClaudeTranscriptRecord>>();
+  /**
+   * The parents that have left the window: uuids it held and evicted while a row it still holds names them. Those rows'
+   * ancestry was cut by the window, never by the transcript ({@link stepAssistantWalk}); a parent that has not arrived
+   * yet is never here. A uuid is forgotten once no window row names it, so the set is bounded by the window.
+   */
+  private readonly departed = new Set<string>();
+  /** The last full walk left a cycle remainder. */
+  private hasCycle = false;
+  private readonly replies = new Map<string, KnownReply>();
+
+  constructor(private readonly nativeSessionId: string) {}
+
+  /** The rows of this session: a row that does not repeat its session id belongs to it. */
+  sessionRows(records: readonly ClaudeTranscriptRecord[]): ClaudeTranscriptRecord[] {
+    return records.filter((record) => this.inSession(record));
+  }
+
+  /**
+   * Takes one read of the window and returns the messages whose turn or text it changed. `delta` is what changed since
+   * the previous read; without one the window is walked whole.
+   */
+  apply(
+    records: readonly ClaudeTranscriptRecord[],
+    delta: ClaudeTranscriptDelta | undefined,
+  ): SemanticObservationEvent[] {
+    if (delta === undefined) return this.reproject(records);
+    for (const record of delta.evicted) this.evict(record);
+    if (!this.extendsWalk(delta.appended)) return this.reproject(records);
+    const walk: AssistantWalk = { turnId: this.turnId };
+    const walked = new Map<string, CountedReply>();
+    for (const record of delta.appended) {
+      if (!this.inSession(record)) continue;
+      this.hold(record);
+      const absent = this.absentParent(record);
+      if (absent !== undefined) this.orphan(absent, record);
+      collect(walked, stepAssistantWalk(walk, record, this.cut(record), (key) => this.replies.get(key)));
+    }
+    this.turnId = walk.turnId;
+    return this.settle(walked, true);
+  }
+
+  /** The full walk of the session window, under the departure rule; it rebuilds the incremental state. */
+  reproject(records: readonly ClaudeTranscriptRecord[]): SemanticObservationEvent[] {
+    const session = this.sessionRows(records);
+    const held = [...this.uuids.keys()];
+    this.uuids.clear();
+    this.parents.clear();
+    this.orphans.clear();
+    for (const record of session) this.hold(record);
+    // A departure is history the window cannot show: the previous window's uuids this one lost join it while a row
+    // names them, and a departed uuid the window holds again, or that no row names any more, leaves it.
+    for (const uuid of held) if (!this.uuids.has(uuid) && this.parents.has(uuid)) this.departed.add(uuid);
+    for (const uuid of this.departed) if (this.uuids.has(uuid) || !this.parents.has(uuid)) this.departed.delete(uuid);
+    for (const record of session) {
+      const absent = this.absentParent(record);
+      if (absent !== undefined) this.orphan(absent, record);
+    }
+    const walk = walkAssistants(session, (uuid) => this.departed.has(uuid), (key) => this.replies.get(key));
+    this.turnId = walk.turnId;
+    this.hasCycle = walk.cyclic;
+    const changed = this.settle(walk.replies, false);
+    for (const key of this.replies.keys()) if (!walk.replies.has(key)) this.replies.delete(key);
+    return changed;
+  }
+
+  private inSession(record: ClaudeTranscriptRecord): boolean {
+    return !record.sessionId || record.sessionId === this.nativeSessionId;
+  }
+
+  /** Counts a row the window now holds: its uuid, and its parent's. */
+  private hold(record: ClaudeTranscriptRecord): void {
+    if (record.uuid !== undefined) count(this.uuids, record.uuid, 1);
+    if (record.parentUuid !== undefined) count(this.parents, record.parentUuid, 1);
+  }
+
+  /** The uuid of a row's parent when the window lacks it: not arrived yet, or departed. */
+  private absentParent(record: ClaudeTranscriptRecord): string | undefined {
+    const parent = record.parentUuid;
+    return parent !== undefined && !this.uuids.has(parent) ? parent : undefined;
+  }
+
+  /** Whether a row's parent has left the window, so the window has cut the row's ancestry. */
+  private cut(record: ClaudeTranscriptRecord): boolean {
+    return record.parentUuid !== undefined && this.departed.has(record.parentUuid);
+  }
+
+  private orphan(parent: string, record: ClaudeTranscriptRecord): void {
+    const waiting = this.orphans.get(parent);
+    if (waiting) waiting.add(record);
+    else this.orphans.set(parent, new Set([record]));
+  }
+
+  /**
+   * Whether the appended rows extend the walk, each causally last: none is the parent of a row the window holds
+   * without its parent (one that has not arrived, or a departed parent back), or of an earlier row of the same append,
+   * and the last full walk left no cycle.
+   */
+  private extendsWalk(appended: readonly ClaudeTranscriptRecord[]): boolean {
+    if (this.hasCycle) return false;
+    const arriving = new Set<string>();
+    const awaited = new Set<string>();
+    for (const record of appended) {
+      if (!this.inSession(record)) continue;
+      if (record.uuid !== undefined) {
+        const parentOfHeld = this.orphans.has(record.uuid) || this.departed.has(record.uuid);
+        if (parentOfHeld || awaited.has(record.uuid)) return false;
+        arriving.add(record.uuid);
+      }
+      const parent = record.parentUuid;
+      if (parent !== undefined && !this.uuids.has(parent) && !arriving.has(parent)) awaited.add(parent);
+    }
+    return true;
+  }
+
+  /**
+   * Forgets an evicted row: its uuid, its count as a child, its wait for an absent parent, and its message once no
+   * window row carries it. A uuid that leaves while a row the window holds names it has departed; a departed uuid no
+   * row names any more is forgotten.
+   */
+  private evict(record: ClaudeTranscriptRecord): void {
+    if (!this.inSession(record)) return;
+    if (record.uuid !== undefined) {
+      count(this.uuids, record.uuid, -1);
+      if (!this.uuids.has(record.uuid) && this.parents.has(record.uuid)) this.departed.add(record.uuid);
+    }
+    const parent = record.parentUuid;
+    if (parent !== undefined) {
+      count(this.parents, parent, -1);
+      if (!this.parents.has(parent)) this.departed.delete(parent);
+      const waiting = this.orphans.get(parent);
+      if (waiting?.delete(record) && waiting.size === 0) this.orphans.delete(parent);
+    }
+    const reply = projectedReply(record);
+    const known = reply === undefined ? undefined : this.replies.get(reply.key);
+    if (reply === undefined || known === undefined) return;
+    if (known.rows > 1) this.replies.set(reply.key, { ...known, rows: known.rows - 1 });
+    else this.replies.delete(reply.key);
+  }
+
+  /**
+   * Records the walked messages and returns those whose turn or text changed. An extending walk adds its rows to a
+   * key's count; a full walk counts every row the window holds.
+   */
+  private settle(walked: ReadonlyMap<string, CountedReply>, extending: boolean): SemanticObservationEvent[] {
+    const changed: SemanticObservationEvent[] = [];
+    for (const [key, reply] of walked) {
+      const known = this.replies.get(key);
+      const { turnId } = reply.projected;
+      if (known === undefined || known.turnId !== turnId || known.text !== reply.text) changed.push(reply.projected);
+      const rows = extending && known !== undefined ? known.rows + reply.rows : reply.rows;
+      this.replies.set(key, { turnId, text: reply.text, rows });
+    }
+    return changed;
+  }
 }
 
 /** The tool calls a `user` row answers: the ids its `tool_result` blocks name. */
@@ -274,7 +505,7 @@ export function projectClaudeTranscriptOpenWork(
   let prompt: ClaudeTranscriptRecord | undefined;
   let owed = false;
   const tools = new Map<string, { record: ClaudeTranscriptRecord; name: string; input: unknown }>();
-  for (const record of causalOrder(records)) {
+  for (const record of causalOrder(records).ordered) {
     if (record.isSidechain) continue;
     if (record.type === 'user') {
       const answered = answeredToolIds(record);
