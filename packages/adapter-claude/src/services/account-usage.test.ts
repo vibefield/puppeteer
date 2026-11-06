@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   CLAUDE_OAUTH_BETA,
   CLAUDE_USAGE_ENDPOINT,
@@ -12,15 +12,11 @@ import {
   fetchClaudeAccountUsageWithDependencies,
   findClaudeAccessToken,
   normalizeClaudeAccountUsage,
-  resetClaudeAccountUsageObserversForTests,
   resolveClaudeAccessToken,
 } from './account-usage.js';
 import * as publicApi from '../index.js';
 
 describe('Claude account usage', () => {
-  afterEach(() => {
-    resetClaudeAccountUsageObserversForTests();
-  });
   it('advertises its provider identity, safe polling cadence, and push channel', () => {
     const service = createClaudeAccountUsageService();
     expect(service.provider).toEqual({

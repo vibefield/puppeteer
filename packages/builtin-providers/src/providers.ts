@@ -32,6 +32,7 @@ import {
 import {
   CLAUDE_BRIEFING_CAPABILITIES,
   CLAUDE_INVOCATION_ENVIRONMENT,
+  claudeConfigRoot,
   createClaudeAccountUsageService,
   createClaudeDistributionService,
   createClaudeExtensionService,
@@ -44,6 +45,7 @@ import {
   preflightClaudeLaunch,
   prepareClaudeTuiSession,
   restoreClaudeContinuationState,
+  type ClaudeAccountUsageSink,
   type ClaudeNativeInvocationOptions,
 } from '@vibefield/puppeteer-adapter-claude';
 import {
@@ -154,6 +156,7 @@ import type {
   PiAgentOptions,
   HermesAgentOptions,
 } from './types.js';
+import { sessionAccount } from './session-account.js';
 
 type ClaudeProviderOptions = ClaudeAgentOptions & ClaudeNativeInvocationOptions;
 type CodexProviderOptions = CodexAgentOptions & CodexNativeInvocationOptions;
@@ -368,6 +371,26 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       ...(detection.version ? { providerVersion: detection.version } : {}),
     };
   };
+  // One Claude usage service for the composition: each session's status line reaches its listeners, stamped with the
+  // registered account the session's root names (session-account.ts).
+  const claudeAccountUsage = createClaudeAccountUsageService();
+  const claudeAccountUsageSink = (
+    cwd: string,
+    profile: AgentProfile | undefined,
+    launch: ClaudeProviderOptions | undefined,
+  ): ClaudeAccountUsageSink => {
+    const account = sessionAccount({
+      root: claudeConfigRoot({ cwd, configDir: launch?.configDir, env: launch?.env }),
+      profile,
+      profiles: services.claude.profiles,
+      env: launch?.env,
+    });
+    // A root no registered account names still reports, unstamped, as every session did before. Open until James
+    // rules rv-usage-tiles (4): held at that behaviour; its lean (A) passes such a session no sink.
+    return {
+      observeStatusLine: (payload, receivedAt) => claudeAccountUsage.observeStatusLine(account, payload, receivedAt),
+    };
+  };
   const grokBackends = new Map<string, GrokBackend>();
   const grokBackendFor = (
     launch: GrokProviderOptions | undefined,
@@ -401,7 +424,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       profiles: services.claude.profiles,
       models: createClaudeModelService({ ...chosen(resolved.claude), ...homeOption }),
       extensions: services.claude.extensions,
-      accountUsage: createClaudeAccountUsageService(),
+      accountUsage: claudeAccountUsage,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.claude,
@@ -468,6 +491,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ingress,
           forwarderRuntime: host.forwarderRuntime,
           stagingDir,
+          accountUsage: claudeAccountUsageSink(cwd, profile, launch),
           ports: {
             spawn: (prepared) => host.spawnTerminal(prepared),
             automate: host.automateTerminal,
@@ -502,6 +526,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           configDir: launch?.configDir,
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: true,
+          accountUsage: claudeAccountUsageSink(cwd, profile, launch),
           automate: host.automateTerminal,
         });
       },
@@ -544,6 +569,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ingress,
           forwarderRuntime: host.forwarderRuntime,
           stagingDir,
+          accountUsage: claudeAccountUsageSink(cwd, profile, launch),
         });
         const { command, args, cwd: launchCwd, env } = prepared.launch;
         return {

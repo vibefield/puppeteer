@@ -101,7 +101,7 @@ const adapters = vi.hoisted(() => {
     createClaudeSession: vi.fn(),
     attachClaudeTuiSession: vi.fn(),
     fetchClaudeAccountUsage: vi.fn(),
-    onClaudeAccountUsage: vi.fn(() => () => undefined),
+    subscribeClaudeAccountUsage: vi.fn(() => () => undefined),
     preflightClaudeLaunch: vi.fn(),
     prepareClaudeTuiSession: vi.fn(),
     normalizeClaudeNativeInvocation: vi.fn(() => ({ status: 'accepted' })),
@@ -188,6 +188,8 @@ vi.mock('@vibefield/puppeteer-adapter-claude', async (importOriginal) => ({
   // The adapter's own list, so the allow-list pin below reads what the adapter declares.
   CLAUDE_INVOCATION_ENVIRONMENT: (await importOriginal<typeof import('@vibefield/puppeteer-adapter-claude')>())
     .CLAUDE_INVOCATION_ENVIRONMENT,
+  // The adapter's own root rule, so the account a session's quota is stamped with is read from the root it runs under.
+  claudeConfigRoot: (await importOriginal<typeof import('@vibefield/puppeteer-adapter-claude')>()).claudeConfigRoot,
   createClaudeDistributionService: adapters.createClaudeDistributionService,
   createClaudeProfileService: adapters.createClaudeProfileService,
   createClaudeExtensionService: adapters.createClaudeExtensionService,
@@ -195,7 +197,6 @@ vi.mock('@vibefield/puppeteer-adapter-claude', async (importOriginal) => ({
   createClaudeSession: adapters.createClaudeSession,
   attachClaudeTuiSession: adapters.attachClaudeTuiSession,
   fetchClaudeAccountUsage: adapters.fetchClaudeAccountUsage,
-  onClaudeAccountUsage: adapters.onClaudeAccountUsage,
   preflightClaudeLaunch: adapters.preflightClaudeLaunch,
   prepareClaudeTuiSession: adapters.prepareClaudeTuiSession,
   normalizeClaudeNativeInvocation: adapters.normalizeClaudeNativeInvocation,
@@ -379,7 +380,7 @@ describe('createBuiltinProviders launch options', () => {
         refresh: { pollIntervalMs: 30 * 60_000, pushUpdatePollIntervalMs: 30 * 60_000 },
       },
       fetch: adapters.fetchClaudeAccountUsage,
-      subscribe: adapters.onClaudeAccountUsage,
+      subscribe: adapters.subscribeClaudeAccountUsage,
     });
     adapters.createCodexAccountUsageService.mockImplementation((options: { executable?: string } = {}) => ({
       provider: { id: 'codex', label: 'Codex', refresh: { pollIntervalMs: 60_000 } },
@@ -1613,7 +1614,7 @@ describe('stable ingress (AR-4 / PU-1)', () => {
         refresh: { pollIntervalMs: 30 * 60_000, pushUpdatePollIntervalMs: 30 * 60_000 },
       },
       fetch: adapters.fetchClaudeAccountUsage,
-      subscribe: adapters.onClaudeAccountUsage,
+      subscribe: adapters.subscribeClaudeAccountUsage,
     });
     adapters.createCodexAccountUsageService.mockImplementation((options: { executable?: string } = {}) => ({
       provider: { id: 'codex', label: 'Codex', refresh: { pollIntervalMs: 60_000 } },

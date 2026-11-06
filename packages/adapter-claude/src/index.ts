@@ -15,6 +15,7 @@ export * from './launch/hook-switches.js';
 export * from './launch/invocation-grammar.js';
 export * from './launch/native-invocation.js';
 export * from './launch/briefing.js';
+export * from './launch/config-root.js';
 export * from './observation/status-channel.js';
 export * from './observation/semantic-provider.js';
 export * from './observation/otel/index.js';
@@ -30,10 +31,9 @@ export {
   createClaudeAccountUsageService,
   fetchClaudeAccountUsage,
   fetchClaudeAccountUsageForProfile,
-  getClaudeStatusLineAccountUsage,
   normalizeClaudeAccountUsage,
-  observeClaudeStatusLineAccountUsage,
-  onClaudeAccountUsage,
+  type ClaudeAccountUsageService,
+  type ClaudeAccountUsageSink,
   type FetchClaudeAccountUsageOptions,
 } from './services/account-usage.js';
 export * from './services/prompt.js';
