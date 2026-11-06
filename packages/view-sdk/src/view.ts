@@ -115,6 +115,12 @@ export interface MonitorTheme {
    * is simulated (the swarm's physics solve nothing), and a row that arrives is drawn where it spawns, at its size.
    */
   readonly animations: boolean;
+  /**
+   * The host's stage is out of sight: its own chrome covers it, or its window is hidden. Absent reads false (a minor
+   * field, MV-D10). Everything `animations: false` asks, and more: no loop, no clock, no still draw. The view keeps its
+   * state current and draws once, where it stands, when shown again. A host delivers it at once (`update`).
+   */
+  readonly hidden?: boolean | undefined;
 }
 
 /**
@@ -251,7 +257,10 @@ export interface MonitorViewManifest {
 }
 
 export interface MonitorViewInstance {
-  /** At most once per frame, and only when the input changed. */
+  /**
+   * At most once per frame, and only when the input changed; and at once when `theme.hidden` changes: a hidden stage
+   * has no next frame.
+   */
   update(input: MonitorViewInput): void;
   unmount(): void;
 }
