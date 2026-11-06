@@ -1,5 +1,5 @@
-import { accountUsageMetricInPlay } from '@vibefield/puppeteer-core';
-import type { AccountUsageMetric } from '@vibefield/puppeteer-core';
+import { accountUsageFailurePasses, accountUsageMetricInPlay } from '@vibefield/puppeteer-core';
+import type { AccountUsageFailure, AccountUsageMetric } from '@vibefield/puppeteer-core';
 import type { AccountUsageBatch, AccountUsageEntry } from '@vibefield/puppeteer-core';
 
 export type AccountUsageViewState = 'available' | 'rate-limited' | 'unauthenticated' | 'unsupported' | 'unavailable';
@@ -25,6 +25,27 @@ export interface AccountUsageView {
   statusText?: string;
   badgeText?: string;
   badgeTitle?: string;
+}
+
+/** Who a row is, the same in every state it draws. */
+type AccountUsageIdentity = Pick<AccountUsageView, 'key' | 'providerId' | 'label' | 'accountLabel'>;
+
+/**
+ * What the latest refresh says beside a reading. A passing failure (a failed or rate-limited read) keeps the
+ * reading; one that names the account (a refused sign-in, limits it does not expose) wins over it, and the row is
+ * that failure's, as when there is no reading. The failure's message is never read: no adapter words reach a view.
+ */
+function refreshHealth(entry: AccountUsageEntry): {
+  failure: AccountUsageFailure | undefined;
+  rateLimited: boolean;
+  names: AccountUsageFailure | undefined;
+} {
+  const failure = entry.refreshFailure;
+  return {
+    failure,
+    rateLimited: failure?.code === 'rate-limited',
+    names: failure && !accountUsageFailurePasses(failure) ? failure : undefined,
+  };
 }
 
 function progressPercent(value: number): number {
@@ -71,46 +92,47 @@ export function accountUsageView(
   const key = entry.profileId ? `${providerId}:${entry.profileId}` : providerId;
   const accountLabel =
     options.showAccount && entry.profileLabel ? { accountLabel: entry.profileLabel.toUpperCase() } : {};
+  const identity: AccountUsageIdentity = { key, providerId, label, ...accountLabel };
   if (entry.result.status === 'available') {
+    const health = refreshHealth(entry);
+    if (health.names) return failureView(identity, health.names, nowMs);
     const reported = entry.result.snapshot.metrics;
     const shown = reported.filter((metric) => accountUsageMetricInPlay(metric, reported));
     const metrics = shown.slice(0, 3).map((metric) => metricView(metric, nowMs));
-    const failure = entry.refreshFailure;
-    const rateLimited = failure?.code === 'rate-limited';
-    const retryLabel = formatUsageReset(failure?.retryAt, nowMs);
+    const retryLabel = formatUsageReset(health.failure?.retryAt, nowMs);
     return {
-      key,
-      providerId,
-      label,
-      ...accountLabel,
-      state: rateLimited ? 'rate-limited' : 'available',
+      ...identity,
+      state: health.rateLimited ? 'rate-limited' : 'available',
       metrics,
-      ...(rateLimited
+      ...(health.rateLimited
         ? {
             badgeText: 'RATE LIMITED',
             badgeTitle: retryLabel ? `Retrying in ${retryLabel}` : 'Waiting to retry',
           }
-        : {}),
+        : health.failure
+          ? { badgeText: 'RETRYING' }
+          : {}),
       ...(metrics.length === 0 ? { statusText: 'NO LIMIT DATA' } : {}),
     };
   }
+  return failureView(identity, entry.result, nowMs);
+}
 
-  const rateLimited = entry.result.code === 'rate-limited';
-  const retryLabel = formatUsageReset(entry.result.retryAt, nowMs);
+/** A failure in place of a reading: its status, no metrics. */
+function failureView(identity: AccountUsageIdentity, failure: AccountUsageFailure, nowMs: number): AccountUsageView {
+  const rateLimited = failure.code === 'rate-limited';
+  const retryLabel = formatUsageReset(failure.retryAt, nowMs);
   const statusText =
-    entry.result.status === 'unauthenticated'
+    failure.status === 'unauthenticated'
       ? 'SIGN IN REQUIRED'
-      : entry.result.status === 'unsupported'
+      : failure.status === 'unsupported'
         ? 'NOT EXPOSED'
         : rateLimited
           ? `RATE LIMITED${retryLabel ? ` · ${retryLabel}` : ''}`
           : 'RETRYING';
   return {
-    key,
-    providerId,
-    label,
-    ...accountLabel,
-    state: rateLimited ? 'rate-limited' : entry.result.status,
+    ...identity,
+    state: rateLimited ? 'rate-limited' : failure.status,
     metrics: [],
     statusText,
   };
@@ -266,22 +288,25 @@ export function usageTile(
   const accountLabel =
     options.showAccount && entry.profileLabel ? { accountLabel: entry.profileLabel.toUpperCase() } : {};
   const name = accountLabel.accountLabel ? `${label} ${accountLabel.accountLabel}` : label;
+  const identity: AccountUsageIdentity = { key, providerId, label, ...accountLabel };
 
   if (entry.result.status === 'available') {
-    const rateLimited = entry.refreshFailure?.code === 'rate-limited';
+    const health = refreshHealth(entry);
+    // A failure that names the account wins over the kept reading: the tile is the failure's, its windows not drawn.
+    if (health.names) return failureTile(identity, name, health.names, nowMs, batchRefreshedAt);
+    const rateLimited = health.rateLimited;
+    // A passing failure keeps the reading, its rings, figure, hot and place; only its words say it is retrying.
+    const retrying = health.failure !== undefined && !rateLimited;
     // Out of sight is out of everything below: the rings, figure, hot, pressure, popup, count and aria.
     const reported = entry.result.snapshot.metrics;
     const shown = reported.filter((metric) => accountUsageMetricInPlay(metric, reported));
     const windows = shown.map((metric) => windowView(metric, nowMs, rateLimited));
     const top = tightest(windows);
-    const retryLabel = formatUsageReset(entry.refreshFailure?.retryAt, nowMs);
+    const retryLabel = formatUsageReset(health.failure?.retryAt, nowMs);
     const age = formatUsageAge(entry.result.snapshot.fetchedAt, nowMs);
     if (windows.length === 0) {
       return {
-        key,
-        providerId,
-        label,
-        ...accountLabel,
+        ...identity,
         state: 'no-data',
         hot: false,
         rings: [],
@@ -296,17 +321,14 @@ export function usageTile(
     }
     const hot = rateLimited || (top?.hot ?? false);
     return {
-      key,
-      providerId,
-      label,
-      ...accountLabel,
+      ...identity,
       state: rateLimited ? 'rate-limited' : 'available',
       hot,
       rings: ringsOf(windows),
       windows,
       figure: rateLimited ? 'RL' : (top?.value ?? '—'),
       figureFaint: false,
-      stateText: rateLimited ? 'RATE LIMITED' : 'AVAILABLE',
+      stateText: rateLimited ? 'RATE LIMITED' : retrying ? 'RETRYING' : 'AVAILABLE',
       foot: rateLimited
         ? {
             lead: 'RETRYING',
@@ -315,15 +337,25 @@ export function usageTile(
           }
         : { lead: 'FETCHED', ...(age ? { strong: age } : {}), count: windowCount(windows.length) },
       aria: `${name}, ${windows.map((window) => `${window.label} ${window.kept ? 'reset' : window.value}`).join(', ')}${
-        rateLimited ? `, rate limited${retryLabel ? `, retry in ${retryLabel}` : ''}` : ''
+        rateLimited ? `, rate limited${retryLabel ? `, retry in ${retryLabel}` : ''}` : retrying ? ', retrying' : ''
       }`,
     };
   }
+  return failureTile(identity, name, entry.result, nowMs, batchRefreshedAt);
+}
 
-  const rateLimited = entry.result.code === 'rate-limited';
-  const retryLabel = formatUsageReset(entry.result.retryAt, nowMs);
+/** A failure in place of a reading: no rings, the state's own figure, one sentence, dated by the batch. */
+function failureTile(
+  identity: AccountUsageIdentity,
+  name: string,
+  failure: AccountUsageFailure,
+  nowMs: number,
+  batchRefreshedAt: string | undefined,
+): UsageTile {
+  const rateLimited = failure.code === 'rate-limited';
+  const retryLabel = formatUsageReset(failure.retryAt, nowMs);
   const age = formatUsageAge(batchRefreshedAt, nowMs);
-  const state: UsageTileState = rateLimited ? 'rate-limited' : entry.result.status;
+  const state: UsageTileState = rateLimited ? 'rate-limited' : failure.status;
   const stateText =
     state === 'unauthenticated'
       ? 'SIGN IN REQUIRED'
@@ -341,10 +373,7 @@ export function usageTile(
           ? 'The provider is rate limiting usage reads. Windows return when it lets the next read through.'
           : 'The last read failed. Windows return with the next successful read.';
   return {
-    key,
-    providerId,
-    label,
-    ...accountLabel,
+    ...identity,
     state,
     hot: rateLimited,
     rings: [],

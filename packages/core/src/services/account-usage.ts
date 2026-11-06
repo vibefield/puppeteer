@@ -158,6 +158,19 @@ export const AccountUsageFailureSchema = z.strictObject({
 });
 export type AccountUsageFailure = z.infer<typeof AccountUsageFailureSchema>;
 
+/** The fields the passing rule reads, so a host's own copy of the failure contract fits as well as this one. */
+type PassingFailure = { status: string; code?: string | undefined };
+
+/**
+ * Whether a failed refresh is passing: a read that failed or was rate limited says nothing of the account, so the
+ * last reading still describes it and stands beside the failure. A failure that names the account (a refused sign-in,
+ * limits it does not expose) says it cannot be read: that failure, not a kept reading, is the row. The one place that
+ * rule is written, so every consumer of a retained reading tells the two apart alike.
+ */
+export function accountUsageFailurePasses(failure: PassingFailure): boolean {
+  return failure.status === 'unavailable' || failure.code === 'rate-limited';
+}
+
 export const AccountUsageFetchResultSchema = z.union([AccountUsageAvailableSchema, AccountUsageFailureSchema]);
 export type AccountUsageFetchResult = z.infer<typeof AccountUsageFetchResultSchema>;
 
@@ -191,6 +204,7 @@ export const AccountUsageEntrySchema = z.strictObject({
   profileLabel: NonEmptyStringSchema.optional(),
   /** The last good snapshot is retained when a later refresh fails. */
   stale: z.boolean().optional(),
+  /** That failure. Whether the kept reading still stands for the account is `accountUsageFailurePasses`. */
   refreshFailure: AccountUsageFailureSchema.optional(),
 });
 export type AccountUsageEntry = z.infer<typeof AccountUsageEntrySchema>;

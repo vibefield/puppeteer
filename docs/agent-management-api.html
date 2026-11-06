@@ -2871,6 +2871,7 @@ interface AccountUsageEntry {
   profileLabel?: string;
   /** The last good snapshot is retained when a later refresh fails. */
   stale?: boolean;
+  /** That failure. Whether the kept reading still stands for the account is `accountUsageFailurePasses`. */
   refreshFailure?: AccountUsageFailure;
 }
 
@@ -2891,7 +2892,10 @@ interface AccountUsageBatch {
               refresh guard only when it covers the last poll, which it may then defer, no further than that reading’s
               earliest reset. A failed refresh can retain the last successful result with <code>stale: true</code> and
               <code>refreshFailure</code>; the renderer can show both the last known quota and current refresh health.
-              Profile defaults are app policy and do not change existing processes.
+              Core’s <code>accountUsageFailurePasses(failure)</code> tells the two apart: a passing failure (a read that
+              failed or was rate limited) keeps the quota beside it; one that names the account (a refused sign-in,
+              limits not exposed) is the row in its place. Profile defaults are app policy and do not change existing
+              processes.
             </p>
           </section>
           <section id="usage-history">
