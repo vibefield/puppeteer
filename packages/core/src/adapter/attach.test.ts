@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentEvent } from '../events/index.js';
-import { AgentAttachRefusedError, isAgentAttachRefusedError, partitionAttachBootstrap } from './attach.js';
+import {
+  AGENT_ATTACH_REFUSAL_CODES,
+  AgentAttachRefusedError,
+  isAgentAttachRefusedError,
+  partitionAttachBootstrap,
+} from './attach.js';
 
 describe('AgentAttachRefusedError', () => {
   it('is read by its brand and its next step, never by instanceof', () => {
@@ -17,6 +22,21 @@ describe('AgentAttachRefusedError', () => {
     expect(isAgentAttachRefusedError({ next: 'retry', message: 'no brand' })).toBe(false);
     // a next step this copy does not know is no refusal: the host maps only words it knows
     expect(isAgentAttachRefusedError(new AgentAttachRefusedError('later' as never, 'unknown word'))).toBe(false);
+  });
+
+  it('carries a neutral word for why, when the adapter knows it, and the brand rules stand without it', () => {
+    expect(AGENT_ATTACH_REFUSAL_CODES).toEqual(['endpoint-held']);
+    const held = new AgentAttachRefusedError('retry', 'the hook port is held by another listener', 'endpoint-held');
+    expect(isAgentAttachRefusedError(held)).toBe(true);
+    expect(held).toMatchObject({ name: 'AgentAttachRefusedError', next: 'retry', code: 'endpoint-held' });
+    expect(new AgentAttachRefusedError('retry', 'the helper is still starting').code).toBeUndefined();
+    // a word a newer copy names and this one does not know leaves the refusal and its next step standing
+    const newer = Object.assign(Object.create(AgentAttachRefusedError.prototype) as object, {
+      next: 'retry',
+      message: 'held',
+      code: 'a-later-word',
+    });
+    expect(isAgentAttachRefusedError(newer)).toBe(true);
   });
 });
 

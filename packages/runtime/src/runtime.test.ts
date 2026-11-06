@@ -4644,7 +4644,7 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-record-registry-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const handed: Array<AgentAttachRecord | undefined> = [];
-    let answer: 'throw' | 'refuse' | 'attach' = 'throw';
+    let answer: 'throw' | 'refuse' | 'held' | 'attach' = 'throw';
     const provider: AgentProvider = {
       ...fakeProvider('one', handles),
       async createSession(options) {
@@ -4656,6 +4656,7 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
         handed.push(options.attachRecord);
         if (answer === 'throw') throw new Error('the adapter does not say');
         if (answer === 'refuse') throw new AgentAttachRefusedError('retry', 'the helper is still starting');
+        if (answer === 'held') throw new AgentAttachRefusedError('retry', 'the endpoint is held', 'endpoint-held');
         // the attached run's facts moved: the next restart must read these
         options.onAttachRecord?.({ version: 1, state: 'endpoint-b', secret: 'nonce-b' });
         return standaloneSession(options.sessionId, options.runtimeSessionId);
@@ -4696,12 +4697,21 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     const refused = await attach();
     expect('error' in refused && refused.error).toMatchObject({ code: 'ATTACH_FAILED', next: 'retry' });
     expect('error' in refused && refused.error.message).toContain('the helper is still starting');
-    // neither failure advanced the claim: the retry attaches at the next epoch
+    expect('error' in refused && refused.error.refusal).toBeUndefined();
+    // a refusal that says why in a neutral word carries it beside the next step, for the host to word the state
+    answer = 'held';
+    const held = await attach();
+    expect('error' in held && held.error).toMatchObject({
+      code: 'ATTACH_FAILED',
+      next: 'retry',
+      refusal: { code: 'endpoint-held' },
+    });
+    // no failure advanced the claim: the retry attaches at the next epoch
     answer = 'attach';
     const attached = await attach();
     if ('error' in attached) throw new Error(attached.error.message);
     expect(attached.runtimeEpoch).toBe(2);
-    expect(handed).toEqual([launched[0], launched[0], launched[0]]);
+    expect(handed).toEqual([launched[0], launched[0], launched[0], launched[0]]);
     expect(reported).toEqual([{ version: 1, state: 'endpoint-b', secret: 'nonce-b' }]);
     await second.dispose();
     await rm(root, { recursive: true, force: true });

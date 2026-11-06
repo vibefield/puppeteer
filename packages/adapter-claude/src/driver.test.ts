@@ -2604,7 +2604,8 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
       }).catch((error: unknown) => error);
       // a predecessor's bridge still closing, or another program: the host's ladder retries (RA-D4 B, rung 1)
       expect(isAgentAttachRefusedError(held)).toBe(true);
-      expect(held).toMatchObject({ next: 'retry' });
+      // and why, in the neutral word a host states without the vendor's text
+      expect(held).toMatchObject({ next: 'retry', code: 'endpoint-held' });
       // the words name the class, never the port or the bearer
       expect((held as Error).message).not.toContain(String(port));
       expect((held as Error).message).not.toContain(token);
