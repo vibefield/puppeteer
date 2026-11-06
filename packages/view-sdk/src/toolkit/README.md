@@ -51,8 +51,10 @@ The ports keep a few differences in their signatures, so a ported view prints ex
   themselves (`AgentIcon`, `ProfileGlyph`) are not in the toolkit, because it is framework-free: since MV-4 they are
   `@vibefield/puppeteer-view-sdk/react`'s (M6), drawn from these marks, and the views' copies are gone.
 - `sizeCanvas` follows the timeline: it rounds the CSS size and the backing size, and writes the backing size only
-  when it changes. The rain floored its backing size and wrote it on every resize. Pass `{ pixels: 'floor' }` to
-  keep the rain's pixels; with integer `clientWidth` and an integer ratio the two agree anyway.
+  when it changes. The rain floored its backing size and wrote it on every measure, every publish included, which
+  cleared its field each time (corrected 2026-11-06: this said "on every resize"). It now sizes through `sizeCanvas`
+  with `{ pixels: 'floor' }`, which keeps its pixels, so a publish clears nothing; with integer `clientWidth` and an
+  integer ratio the two roundings agree anyway.
 
 ## Colour and the replica (L7)
 
