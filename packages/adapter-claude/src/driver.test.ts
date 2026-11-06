@@ -260,6 +260,52 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(projection.state.lastAssistantMessage).toBe('done!');
   });
 
+  it('closes a tool whose PostToolUse outgrows the bridge, and says the body was reduced', async () => {
+    const { projection, events, hook } = await startSession();
+    await hook('SessionStart', { source: 'startup' });
+    await hook('UserPromptSubmit', { prompt: 'edit the big file', prompt_id: 'p-big' });
+    const edit = { file_path: '/tmp/big.ts', old_string: 'a', new_string: 'b' };
+    await hook('PreToolUse', { prompt_id: 'p-big', tool_name: 'Edit', tool_input: edit, tool_use_id: 'toolu_big' });
+    expect(projection.state.tools.size).toBe(1);
+
+    // Claude posts the whole tool_response: an Edit's originalFile alone outgrows the bridge's 256 KiB
+    await hook('PostToolUse', {
+      prompt_id: 'p-big',
+      tool_name: 'Edit',
+      tool_input: edit,
+      tool_response: {
+        filePath: '/tmp/big.ts',
+        oldString: 'a',
+        newString: 'b',
+        originalFile: 'x'.repeat(300_000),
+        structuredPatch: [],
+        userModified: false,
+        replaceAll: false,
+      },
+      tool_use_id: 'toolu_big',
+      duration_ms: 4,
+    });
+
+    expect(projection.state.tools.size).toBe(0);
+    expect(projection.state.counters.toolsCompleted).toBe(1);
+    expect(events.find(({ event }) => event.type === 'tool:completed')?.event).toMatchObject({
+      toolCallId: 'toolu_big',
+      output: { filePath: '/tmp/big.ts', originalFile: null },
+    });
+    expect(
+      events.find(({ event }) => event.type === 'workspace:file-operation' && event.phase === 'applied')?.event,
+    ).toMatchObject({ toolCallId: 'toolu_big', changes: [expect.objectContaining({ path: '/tmp/big.ts' })] });
+    const reduced = events.filter(
+      ({ event }) => event.type === 'adapter:native-event' && event.nativeType === 'hook-bridge.body-reduced',
+    );
+    expect(reduced).toHaveLength(1);
+    expect(reduced[0]).toMatchObject({
+      source: 'runtime',
+      nativeEvent: { hookEventName: 'PostToolUse', receivedBytes: expect.any(Number), elided: 1 },
+    });
+    expect((reduced[0]!.nativeEvent as { receivedBytes: number }).receivedBytes).toBeGreaterThan(300_000);
+  });
+
   it('retains malformed known hooks and reports diagnostics without interrupting the bridge', async () => {
     const diagnostics: ClaudeHookDiagnostic[] = [];
     const { projection, prepared, events, hook } = await startSession({
