@@ -28,6 +28,7 @@ export interface AccountUsageMonitorOptions {
   publish(batch: AccountUsageBatch): void;
   /** Uniform polling override for tests or product-wide policy. */
   refreshMs?: number;
+  /** The longest the started monitor sleeps; it wakes sooner when a read falls due. Defaults to the fastest poll. */
   tickMs?: number;
   now?: () => Date;
   onError?: (error: Error) => void;
@@ -187,7 +188,8 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
   let latest: AccountUsageBatch | undefined;
   let inFlight: Promise<AccountUsageBatch> | undefined;
   let profilesInFlight: Promise<AccountUsageBatch> | undefined;
-  let timer: ReturnType<typeof setInterval> | undefined;
+  let started = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   const states = new Map<string, ProviderRefreshState>(
     providers.map((provider) => [
       accountUsageEntryKey(provider.id),
@@ -249,6 +251,7 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
     );
     const batch = publishBatch(entries, completedAt.toISOString(), options.publish, options.onError);
     latest = batch;
+    arm();
     return batch;
   };
 
@@ -357,6 +360,26 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
       },
     );
     return request;
+  };
+
+  /**
+   * The started monitor's one timer: it wakes at the soonest due read, and at
+   * least every tick. It is re-armed wherever a due time can move (each
+   * materialized batch) and after every wake settles, because a wake that
+   * finds nothing due materializes nothing. A wake during a read awaits it.
+   */
+  const arm = (): void => {
+    if (!started) return;
+    if (timer !== undefined) clearTimeout(timer);
+    let dueAtMs = Number.POSITIVE_INFINITY;
+    for (const state of states.values()) dueAtMs = Math.min(dueAtMs, state.nextRefreshAtMs);
+    timer = setTimeout(wake, Math.min(tickMs, Math.max(0, dueAtMs - now().valueOf())));
+    timer.unref?.();
+  };
+
+  const wake = (): void => {
+    timer = undefined;
+    void refresh().then(arm, arm);
   };
 
   /**
@@ -473,14 +496,13 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
       return materializeBatch(completedAt);
     },
     start() {
-      if (timer) return;
-      void refresh();
-      timer = setInterval(() => void refresh(), tickMs);
-      timer.unref?.();
+      if (started) return;
+      started = true;
+      wake();
     },
     stop() {
-      if (!timer) return;
-      clearInterval(timer);
+      started = false;
+      if (timer !== undefined) clearTimeout(timer);
       timer = undefined;
     },
   };
