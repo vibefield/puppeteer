@@ -29,6 +29,7 @@ import {
   type AgentEvent,
   type AgentEventConfidence,
   type AgentAdapterBinding,
+  type AgentForwarderRuntime,
   type BoundIngress,
   type HostIngress,
   type ObservationLevel,
@@ -173,6 +174,11 @@ export interface CreateClaudeSessionOptions extends AgentRunBriefing {
    * outlives its own process can re-attach (`attachClaudeTuiSession`).
    */
   ingress?: HostIngress | undefined;
+  /**
+   * The program the host lends to run the builtin forwarder entry (core `AgentHost.forwarderRuntime`): the command
+   * hooks and status lines run it, and nothing is staged. Absent = this process's script runner runs a staged copy.
+   */
+  forwarderRuntime?: AgentForwarderRuntime | undefined;
   /** Injectable bridge factory for deterministic transport-failure tests. */
   hookBridgeFactory?: ((options: HookBridgeOptions) => HookBridge) | undefined;
   /**
@@ -360,6 +366,7 @@ export async function prepareClaudeTuiSession(
       home: options.home,
       readsNoSettingsFiles: options.readsNoSettingsFiles,
       refuseHooksOff: options.refuseHooksOff,
+      forwarderRuntime: options.forwarderRuntime,
       endpoint: bridge.endpoint(),
       ...(otelUsageEnabled ? { otelLogsEndpoint: bridge.otelLogsEndpoint() } : {}),
       statusLineEndpoint: bridge.statusLineEndpoint(),
@@ -1158,6 +1165,7 @@ export async function createClaudeSession(options: CreateClaudeSessionOptions): 
     transcriptPollIntervalMs: options.transcriptPollIntervalMs,
     onDiagnostic: options.onDiagnostic,
     ingress: options.ingress,
+    forwarderRuntime: options.forwarderRuntime,
     hookBridgeFactory: options.hookBridgeFactory,
     hookRailFaultInjection: options.hookRailFaultInjection,
     semanticProviderFactory: options.semanticProviderFactory,

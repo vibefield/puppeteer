@@ -1,4 +1,5 @@
 import { AgentLaunchRefusedError } from '@vibefield/puppeteer-core';
+import { ownScriptRunnerFacts, resolveScriptRunner } from '@vibefield/puppeteer-native-observation';
 /**
  * Claude executable detection and capability probe (DESIGN §10, §16.2 steps
  * 1–3). Capability-probe, don't assume: we read `claude --version` and
@@ -126,16 +127,19 @@ const execFileAsync = promisify(execFile);
 const SCRIPT_EXECUTABLE = /\.(mjs|cjs|js|ts)$/;
 
 export const defaultClaudeExec: ClaudeExec = async (file, args) => {
-  // Adapter/Imposter development commonly supplies a JavaScript entry point.
-  // Match launch preparation by running scripts under Node; Electron resolves
-  // `node` from PATH rather than accidentally entering Electron-as-Node.
-  const isScript = SCRIPT_EXECUTABLE.test(file);
-  const command = isScript ? (process.versions.electron ? 'node' : process.execPath) : file;
-  const commandArgs = isScript ? [file, ...args] : args;
+  // Adapter/Imposter development commonly supplies a JavaScript entry point. It runs under this process's script
+  // runner, as launch preparation runs it; where there is none (a single executable) the probe fails, never runs
+  // the script as that executable.
+  const script = SCRIPT_EXECUTABLE.test(file);
+  const runner = script ? resolveScriptRunner(ownScriptRunnerFacts()) : undefined;
+  if (script && runner === undefined) throw new Error(`no program in this process can run the script ${file}`);
+  const command = runner ? runner.command : file;
+  const commandArgs = runner ? [...runner.args, file, ...args] : args;
   const { stdout } = await execFileAsync(command, commandArgs, {
     timeout: 10_000,
     maxBuffer: 1024 * 1024,
     encoding: 'utf8',
+    ...(runner?.env ? { env: { ...process.env, ...runner.env } } : {}),
   });
   return { stdout };
 };

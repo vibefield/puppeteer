@@ -77,7 +77,12 @@ describe('the Claude forwarder', () => {
   });
 
   describe('claude.hook.v1 <endpoint> <token variable> <timeout ms>', () => {
-    const body = JSON.stringify({ session_id: 's-1', hook_event_name: 'SessionStart', source: 'startup', note: '模型 🌱' });
+    const body = JSON.stringify({
+      session_id: 's-1',
+      hook_event_name: 'SessionStart',
+      source: 'startup',
+      note: '模型 🌱',
+    });
 
     it('relays stdin to the endpoint with the bearer its variable names, byte for byte', async () => {
       const run = io(body, { PUPPETEER_HOOK_TOKEN: 'sekrit' });
@@ -107,7 +112,10 @@ describe('the Claude forwarder', () => {
         runClaudeForwarder(['claude.hook.v1', `${origin}/hooks`, 'PUPPETEER_HOOK_TOKEN', '5000'], io(body, env)),
       ).resolves.toBe(1);
       await expect(
-        runClaudeForwarder(['claude.hook.v1', 'http://127.0.0.1:1/hooks', 'PUPPETEER_HOOK_TOKEN', '5000'], io(body, env)),
+        runClaudeForwarder(
+          ['claude.hook.v1', 'http://127.0.0.1:1/hooks', 'PUPPETEER_HOOK_TOKEN', '5000'],
+          io(body, env),
+        ),
       ).resolves.toBe(1);
     });
   });
@@ -169,14 +177,20 @@ describe('the Claude forwarder', () => {
 
     it('with no line of the person’s and no token it posts nothing and exits 0', async () => {
       await expect(
-        runClaudeForwarder(['claude.statusline.v1'], io(body, { PUPPETEER_STATUSLINE_ENDPOINT: `${origin}/statusline` })),
+        runClaudeForwarder(
+          ['claude.statusline.v1'],
+          io(body, { PUPPETEER_STATUSLINE_ENDPOINT: `${origin}/statusline` }),
+        ),
       ).resolves.toBe(0);
       expect(received).toEqual([]);
     });
 
     it('a line of the person’s that never reads its input still answers with its exit', async () => {
       await expect(
-        runClaudeForwarder(['claude.statusline.v1'], io('x'.repeat(1 << 20), { PUPPETEER_STATUSLINE_DELEGATE: 'exit 4' })),
+        runClaudeForwarder(
+          ['claude.statusline.v1'],
+          io('x'.repeat(1 << 20), { PUPPETEER_STATUSLINE_DELEGATE: 'exit 4' }),
+        ),
       ).resolves.toBe(4);
     });
   });

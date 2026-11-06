@@ -4,6 +4,11 @@
  * OTLP records and transcripts, writes the generated hook
  * settings to a per-session file, and builds the interactive spawn command.
  *
+ * Every command hook and status line runs one forwarder (launch/forwarder.ts):
+ * the host's lent runtime (core `AgentHost.forwarderRuntime`), or this
+ * process's script runner on one staged copy. The choice is made once, before
+ * anything is written; a process that has neither refuses the launch.
+ *
  * The command is native-interactive ONLY (§16.3): never -p/--print/
  * --output-format/--input-format — those select structured print mode, a
  * different process class. A typed launch's own arguments ride after the
@@ -14,16 +19,23 @@
 
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
-import { constants, accessSync, existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
-import { delimiter, join, resolve } from 'node:path';
-import { AgentLaunchRefusedError, validateAgentBriefing, type AgentRunBriefing } from '@vibefield/puppeteer-core';
+import { join, resolve } from 'node:path';
+import {
+  AgentLaunchRefusedError,
+  validateAgentBriefing,
+  type AgentForwarderRuntime,
+  type AgentRunBriefing,
+} from '@vibefield/puppeteer-core';
+import { ownScriptRunnerFacts, resolveScriptRunner, type ScriptRunner } from '@vibefield/puppeteer-native-observation';
+import { CLAUDE_FORWARDER_SOURCE } from '../generated/forwarder-source.js';
 import { CLAUDE_BRIEFING_CAPABILITIES, prepareClaudeBriefing } from './briefing.js';
-import { CLAUDE_HOOK_FORWARDER_SOURCE, generateHookSettings } from './settings.js';
+import { CLAUDE_STATUS_LINE_FORWARDER_WORD, CLAUDE_STATUS_LINE_SUBAGENT } from './forwarder.js';
+import { generateHookSettings } from './settings.js';
 import { readClaudeHookSwitches, type ClaudeHookSwitches } from './hook-switches.js';
 import {
-  CLAUDE_STATUS_CHANNEL_FORWARDER_SOURCE,
   resolveClaudeStatusChannels,
   type ClaudeSettingSource,
   type ClaudeStatusLineConfig,
@@ -101,6 +113,18 @@ export interface PrepareClaudeSessionOptions extends AgentRunBriefing {
   prompt?: readonly string[] | undefined;
   /** Override the settings-file directory (tests); default is an mkdtemp dir. */
   settingsDir?: string | undefined;
+  /**
+   * The program the host lends to run the builtin forwarder entry in the agent's process tree (core
+   * `AgentHost.forwarderRuntime`): every command hook and status line runs it with its word, and no forwarder is
+   * staged. Absent = this process's script runner runs one staged forwarder.
+   */
+  forwarderRuntime?: AgentForwarderRuntime | undefined;
+  /**
+   * Which program runs a script here (native-observation `resolveScriptRunner`): the staged forwarder and a script
+   * executable. `null` = this process has none (a single executable). Absent = resolved from this process.
+   * Injectable, as `hookBridgeFactory` is, for tests.
+   */
+  scriptRunner?: ScriptRunner | null | undefined;
 }
 
 /** DESIGN §11 PreparedNativeSession, narrowed to what this adapter fills. */
@@ -111,8 +135,8 @@ export interface PreparedClaudeSession {
   cwd: string;
   env: Record<string, string>;
   settingsPath: string;
-  hookForwarderPath: string;
-  statusLineForwarderPath?: string | undefined;
+  /** The staged forwarder the hooks and status lines run; absent when the host lends a forwarder runtime. */
+  forwarderPath?: string | undefined;
   filesToCleanup: string[];
 }
 
@@ -191,32 +215,9 @@ export function hasClaudeOtelExporterConflict(environment: NodeJS.ProcessEnv = p
   return CLAUDE_OTEL_CONFLICT_KEYS.some((key) => Boolean(environment[key]?.trim()));
 }
 
-// A script executable (the emulator bin, PATH shims) is not directly
-// exec-able: POSIX needs an exec bit the repo can't guarantee, Windows has
-// no shebang handling. Run it under node so the recipe is a real binary on
-// every platform and through every spawn path (PTY spawn, spawn-through
-// execve, test harnesses). Under Electron `process.execPath` is the electron
-// binary, so resolve a real node from PATH instead (electron-as-node has
-// stdin/event-loop quirks that break the bin's control channel — probed
-// 2026-08-07); ELECTRON_RUN_AS_NODE is the documented fallback.
+// A script executable (the Imposter's bin, PATH shims) is never exec'd directly: it runs under this process's
+// script runner (native-observation script-runner.ts says which program that is, and why).
 const SCRIPT_EXECUTABLE = /\.(mjs|cjs|js|ts)$/;
-
-function resolveNodeBinary(): string | undefined {
-  const names = process.platform === 'win32' ? ['node.exe', 'node'] : ['node'];
-  for (const directory of (process.env.PATH ?? '').split(delimiter)) {
-    if (!directory) continue;
-    for (const name of names) {
-      const candidate = resolve(directory, name);
-      try {
-        accessSync(candidate, constants.X_OK);
-        return candidate;
-      } catch {
-        // next PATH entry
-      }
-    }
-  }
-  return undefined;
-}
 
 function posixQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
@@ -228,22 +229,20 @@ function powershellLiteral(value: string): string {
 
 /** Status lines are shell commands, so render one platform-specific, injection-safe invocation. */
 export function statusLineForwarderCommand(
-  executable: string,
-  scriptPath: string,
+  command: string,
+  args: readonly string[],
   targetPlatform: NodeJS.Platform = process.platform,
-  channel: 'root' | 'subagent' = 'root',
 ): string {
-  const args = channel === 'subagent' ? [scriptPath, 'subagent'] : [scriptPath];
   if (targetPlatform === 'win32') {
     const encoded = Buffer.from(
-      `& ${powershellLiteral(executable)} ${args.map(powershellLiteral).join(' ')}`,
+      `& ${powershellLiteral(command)} ${args.map(powershellLiteral).join(' ')}`,
       'utf16le',
     ).toString('base64');
     // Explicit PowerShell works whether Claude selected Git Bash or PowerShell
     // as its outer Windows shell; encoded input keeps path metacharacters inert.
     return `powershell.exe -NoProfile -NonInteractive -EncodedCommand ${encoded}`;
   }
-  return [posixQuote(executable), ...args.map(posixQuote)].join(' ');
+  return [posixQuote(command), ...args.map(posixQuote)].join(' ');
 }
 
 export async function prepareClaudeSession(options: PrepareClaudeSessionOptions): Promise<PreparedClaudeSession> {
@@ -301,6 +300,29 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   if (options.refuseHooksOff !== false && hookSwitches.hooksOff) {
     throw new ClaudeHooksOffError(hookSwitches.hooksOff.source, hookSwitches.hooksOff.path);
   }
+  // The forwarder, decided before anything is written: the host's lent runtime, or this process's script runner on
+  // one staged copy. The runner is asked only where one runs something: that copy, or a script executable.
+  const executable = options.executable ?? 'claude';
+  const scriptExecutable = SCRIPT_EXECUTABLE.test(executable);
+  const runner =
+    options.forwarderRuntime === undefined || scriptExecutable
+      ? options.scriptRunner === undefined
+        ? resolveScriptRunner(ownScriptRunnerFacts())
+        : (options.scriptRunner ?? undefined)
+      : undefined;
+  const forwarder = options.forwarderRuntime ?? runner;
+  if (forwarder === undefined) {
+    // A single executable that lends nothing would run the staged forwarder as itself: never launched unobserved.
+    throw new AgentLaunchRefusedError(
+      'FORWARDER_RUNTIME_UNAVAILABLE',
+      'this host cannot run the forwarder a managed Claude session is observed through',
+    );
+  }
+  if (scriptExecutable && runner === undefined) {
+    throw new AgentLaunchRefusedError('SCRIPT_RUNNER_UNAVAILABLE', 'this host cannot run a script as Claude');
+  }
+  const stagesForwarder = options.forwarderRuntime === undefined;
+  const statusLinesWired = Boolean(options.statusLineEndpoint || options.subagentStatusLineEndpoint);
   // Own the temp dir only when we create it; a caller-supplied settingsDir is
   // the caller's to clean, so it stays out of filesToCleanup (§23: no
   // destroying state we didn't create).
@@ -309,15 +331,12 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   const briefingFiles: string[] = [];
   try {
     const settingsPath = join(dir, `${sessionId}.settings.json`);
-    const hookForwarderPath = join(dir, `${sessionId}.hooks.mjs`);
-    const statusLineForwarderPath =
-      options.statusLineEndpoint || options.subagentStatusLineEndpoint
-        ? join(dir, `${sessionId}.statusline.mjs`)
-        : undefined;
-    const runningUnderElectron = process.versions.electron !== undefined;
-    const resolvedNode = runningUnderElectron ? resolveNodeBinary() : undefined;
-    const electronAsNodeFallback = runningUnderElectron && resolvedNode === undefined;
-    const nodeRunner = resolvedNode ?? process.execPath;
+    const forwarderPath = stagesForwarder ? join(dir, `${sessionId}.forwarder.mjs`) : undefined;
+    // What every hook and status line runs; its word and the word's arguments follow.
+    const forwarderCommand = {
+      command: forwarder.command,
+      args: forwarderPath === undefined ? [...forwarder.args] : [...forwarder.args, forwarderPath],
+    };
     if (options.resume !== undefined) {
       // `claude --resume <id>` for an id with no transcript exits at once with
       // "No conversation found", which a host can only read as a crash. A
@@ -328,7 +347,7 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
       if (!locateClaudeTranscript(sessionId, root)) throw new ClaudeConversationMissingError(sessionId, root);
     }
     const discoveredStatusChannels =
-      statusLineForwarderPath && !options.readsNoSettingsFiles
+      statusLinesWired && !options.readsNoSettingsFiles
         ? await resolveClaudeStatusChannels(options.cwd, personLayers)
         : {};
     const existingStatusLine = options.statusLineEndpoint
@@ -341,32 +360,36 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
         ? discoveredStatusChannels.subagentStatusLine
         : (options.existingSubagentStatusLine ?? undefined)
       : undefined;
-    const statusLine =
-      statusLineForwarderPath && options.statusLineEndpoint
-        ? {
-            type: 'command' as const,
-            command: statusLineForwarderCommand(nodeRunner, statusLineForwarderPath),
-            padding: existingStatusLine?.padding,
-            refreshInterval: existingStatusLine?.refreshInterval,
-            hideVimModeIndicator: existingStatusLine?.hideVimModeIndicator,
-          }
-        : undefined;
-    const subagentStatusLine =
-      statusLineForwarderPath && options.subagentStatusLineEndpoint
-        ? {
-            type: 'command' as const,
-            command: statusLineForwarderCommand(nodeRunner, statusLineForwarderPath, process.platform, 'subagent'),
-            padding: existingSubagentStatusLine?.padding,
-            refreshInterval: existingSubagentStatusLine?.refreshInterval,
-            hideVimModeIndicator: existingSubagentStatusLine?.hideVimModeIndicator,
-          }
-        : undefined;
+    const statusLine = options.statusLineEndpoint
+      ? {
+          type: 'command' as const,
+          command: statusLineForwarderCommand(forwarderCommand.command, [
+            ...forwarderCommand.args,
+            CLAUDE_STATUS_LINE_FORWARDER_WORD,
+          ]),
+          padding: existingStatusLine?.padding,
+          refreshInterval: existingStatusLine?.refreshInterval,
+          hideVimModeIndicator: existingStatusLine?.hideVimModeIndicator,
+        }
+      : undefined;
+    const subagentStatusLine = options.subagentStatusLineEndpoint
+      ? {
+          type: 'command' as const,
+          command: statusLineForwarderCommand(forwarderCommand.command, [
+            ...forwarderCommand.args,
+            CLAUDE_STATUS_LINE_FORWARDER_WORD,
+            CLAUDE_STATUS_LINE_SUBAGENT,
+          ]),
+          padding: existingSubagentStatusLine?.padding,
+          refreshInterval: existingSubagentStatusLine?.refreshInterval,
+          hideVimModeIndicator: existingSubagentStatusLine?.hideVimModeIndicator,
+        }
+      : undefined;
     const settings = {
       ...generateHookSettings({
         endpoint: options.endpoint,
         tokenEnvVar: options.tokenEnvVar,
-        commandForwarderPath: hookForwarderPath,
-        commandExecutable: nodeRunner,
+        forwarder: forwarderCommand,
         ...(options.fileChangeMatcher !== undefined ? { matchers: { FileChanged: options.fileChangeMatcher } } : {}),
         statusLine,
         subagentStatusLine,
@@ -381,10 +404,7 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
         ? { httpHookAllowedEnvVars: [...hookSwitches.httpHookAllowedEnvVars, options.tokenEnvVar] }
         : {}),
     };
-    await writeFile(hookForwarderPath, CLAUDE_HOOK_FORWARDER_SOURCE, 'utf8');
-    if (statusLineForwarderPath) {
-      await writeFile(statusLineForwarderPath, CLAUDE_STATUS_CHANNEL_FORWARDER_SOURCE, 'utf8');
-    }
+    if (forwarderPath !== undefined) await writeFile(forwarderPath, CLAUDE_FORWARDER_SOURCE, 'utf8');
     await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
     const preparedBriefing = await prepareClaudeBriefing(briefing, dir, briefingFiles);
 
@@ -407,14 +427,10 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
     args.push(...(options.carriedArgs ?? []), ...preparedBriefing.args);
     if (options.prompt !== undefined && options.prompt.length > 0) args.push('--', ...options.prompt);
 
-    const executable = options.executable ?? 'claude';
-    const isScript = SCRIPT_EXECUTABLE.test(executable);
-    const command = isScript ? nodeRunner : executable;
-
     return {
       sessionId,
-      command,
-      args: isScript ? [executable, ...args] : args,
+      command: runner && scriptExecutable ? runner.command : executable,
+      args: runner && scriptExecutable ? [...runner.args, executable, ...args] : args,
       cwd: options.cwd,
       env: {
         ...(options.env ?? {}),
@@ -431,7 +447,8 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
             }
           : {}),
         ...(claudeConfigDir ? { CLAUDE_CONFIG_DIR: claudeConfigDir } : {}),
-        ...(electronAsNodeFallback ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
+        // What the runner needs to run a script (Electron as Node), wherever it runs one.
+        ...runner?.env,
         ...(options.statusLineEndpoint
           ? {
               PUPPETEER_STATUSLINE_ENDPOINT: options.statusLineEndpoint,
@@ -444,25 +461,16 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
               PUPPETEER_SUBAGENT_STATUSLINE_DELEGATE: existingSubagentStatusLine?.command ?? '',
             }
           : {}),
-        ...(statusLineForwarderPath ? { PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: options.tokenEnvVar } : {}),
+        ...(statusLinesWired ? { PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: options.tokenEnvVar } : {}),
       },
       settingsPath,
-      hookForwarderPath,
-      statusLineForwarderPath,
-      filesToCleanup: ownsDir
-        ? [
-            settingsPath,
-            hookForwarderPath,
-            ...(statusLineForwarderPath ? [statusLineForwarderPath] : []),
-            ...briefingFiles,
-            dir,
-          ]
-        : [
-            settingsPath,
-            hookForwarderPath,
-            ...(statusLineForwarderPath ? [statusLineForwarderPath] : []),
-            ...briefingFiles,
-          ],
+      forwarderPath,
+      filesToCleanup: [
+        settingsPath,
+        ...(forwarderPath === undefined ? [] : [forwarderPath]),
+        ...briefingFiles,
+        ...(ownsDir ? [dir] : []),
+      ],
     };
   } catch (error) {
     for (const path of ownsDir ? [dir] : briefingFiles)

@@ -455,6 +455,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: true,
           ingress,
+          forwarderRuntime: host.forwarderRuntime,
           ports: {
             spawn: (prepared) => host.spawnTerminal(prepared),
             automate: host.automateTerminal,
@@ -529,6 +530,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           observeSubagentStatus: true,
           automate: host.automateTerminal,
           ingress,
+          forwarderRuntime: host.forwarderRuntime,
         });
         const { command, args, cwd: launchCwd, env } = prepared.launch;
         return {

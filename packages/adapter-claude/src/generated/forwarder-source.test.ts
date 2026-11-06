@@ -23,8 +23,8 @@ describe('generated forwarder source', () => {
     const imports = [...CLAUDE_FORWARDER_SOURCE.matchAll(/^import .* from '([^']+)';$/gmu)].map((match) => match[1]);
     expect(imports.length).toBeGreaterThan(0);
     for (const specifier of imports) expect(specifier).toMatch(/^node:/u);
-    expect(CLAUDE_FORWARDER_SOURCE.trimEnd().endsWith('process.exitCode = await runClaudeForwarder(process.argv.slice(2));')).toBe(
-      true,
-    );
+    expect(
+      CLAUDE_FORWARDER_SOURCE.trimEnd().endsWith('process.exitCode = await runClaudeForwarder(process.argv.slice(2));'),
+    ).toBe(true);
   });
 });

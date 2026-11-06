@@ -98,14 +98,14 @@ describe('prepareClaudeSession', () => {
     const dir = mkdtempSync(join(tmpdir(), 'prepare-test-'));
     const p = await prepare({ settingsDir: dir });
     expect(existsSync(p.settingsPath)).toBe(true);
-    expect(existsSync(p.hookForwarderPath)).toBe(true);
+    expect(existsSync(p.forwarderPath!)).toBe(true);
     const onDisk = JSON.parse(readFileSync(p.settingsPath, 'utf8'));
+    // A test run is a real Node: its own executable runs the staged forwarder.
     expect(onDisk).toEqual(
       generateHookSettings({
         endpoint: BASE.endpoint,
         tokenEnvVar: BASE.tokenEnvVar,
-        commandForwarderPath: p.hookForwarderPath,
-        commandExecutable: process.execPath,
+        forwarder: { command: process.execPath, args: [p.forwarderPath!] },
       }),
     );
 
@@ -125,7 +125,7 @@ describe('prepareClaudeSession', () => {
   it('a caller-supplied settingsDir is not scheduled for removal', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'prepare-keep-'));
     const p = await prepare({ settingsDir: dir });
-    expect(p.filesToCleanup).toEqual([p.settingsPath, p.hookForwarderPath]);
+    expect(p.filesToCleanup).toEqual([p.settingsPath, p.forwarderPath]);
     await cleanupClaudeSession(p);
     expect(existsSync(dir)).toBe(true); // caller's dir survives
   });
@@ -136,7 +136,7 @@ describe('prepareClaudeSession', () => {
     const text = readFileSync(p.settingsPath, 'utf8');
     expect(text).not.toContain(BASE.token);
     expect(text).toContain('$PUPPETEER_HOOK_TOKEN');
-    expect(readFileSync(p.hookForwarderPath, 'utf8')).not.toContain(BASE.token);
+    expect(readFileSync(p.forwarderPath!, 'utf8')).not.toContain(BASE.token);
     expect(p.env).toEqual({ PUPPETEER_HOOK_TOKEN: BASE.token });
   });
 
@@ -160,7 +160,7 @@ describe('prepareClaudeSession', () => {
     expect(hasClaudeOtelExporterConflict({ CLAUDE_CODE_ENABLE_TELEMETRY: '1' })).toBe(false);
   });
 
-  it('posts command-only hooks through the generated Node forwarder', async () => {
+  it('posts command-only hooks through the staged forwarder', async () => {
     const received: Record<string, unknown>[] = [];
     const bridge = createHookBridge({
       token: BASE.token,
@@ -523,7 +523,7 @@ describe('prepareClaudeSession', () => {
     expect(p.args).toEqual(expect.arrayContaining(['--settings', p.settingsPath]));
   });
 
-  it('wraps a script executable with the current node (emulator bin, shims)', async () => {
+  it('runs a script executable under this process’s runner (the Imposter bin, shims)', async () => {
     const p = await prepare({ executable: '/abs/path/bin.mjs' });
     expect(p.command).toBe(process.execPath);
     expect(p.args[0]).toBe('/abs/path/bin.mjs');
@@ -608,7 +608,14 @@ describe('prepareClaudeSession', () => {
       const settings = settingsOf(p);
       expect(settings.hooks.SessionStart![0]!.hooks[0]).toMatchObject({
         command: RUNNER.command,
-        args: [...RUNNER.args, forwarderPath, 'claude.hook.v1', BASE.endpoint, BASE.tokenEnvVar, String(hookTimeoutSec * 1000)],
+        args: [
+          ...RUNNER.args,
+          forwarderPath,
+          'claude.hook.v1',
+          BASE.endpoint,
+          BASE.tokenEnvVar,
+          String(hookTimeoutSec * 1000),
+        ],
       });
       expect(settings.statusLine.command).toBe(
         statusLineForwarderCommand(RUNNER.command, [...RUNNER.args, forwarderPath, 'claude.statusline.v1']),
@@ -650,17 +657,17 @@ describe('prepareClaudeSession', () => {
   it('encodes Windows status-line paths without exposing them to either outer shell', () => {
     const executable = 'C:\\Program Files\\Node $Runtime\\node.exe';
     const script = "C:\\Users\\O'Brien\\hook `status`.mjs";
-    const command = statusLineForwarderCommand(executable, script, 'win32');
+    const command = statusLineForwarderCommand(executable, [script, 'claude.statusline.v1'], 'win32');
     const encoded = command.split(' ').at(-1)!;
     expect(command).not.toContain(executable);
     expect(command).not.toContain(script);
     expect(Buffer.from(encoded, 'base64').toString('utf16le')).toBe(
-      `& '${executable}' '${script.replaceAll("'", "''")}'`,
+      `& '${executable}' '${script.replaceAll("'", "''")}' 'claude.statusline.v1'`,
     );
 
-    const childCommand = statusLineForwarderCommand(executable, script, 'win32', 'subagent');
+    const childCommand = statusLineForwarderCommand(executable, [script, 'claude.statusline.v1', 'subagent'], 'win32');
     expect(Buffer.from(childCommand.split(' ').at(-1)!, 'base64').toString('utf16le')).toBe(
-      `& '${executable}' '${script.replaceAll("'", "''")}' 'subagent'`,
+      `& '${executable}' '${script.replaceAll("'", "''")}' 'claude.statusline.v1' 'subagent'`,
     );
   });
 
@@ -715,8 +722,8 @@ describe('prepareClaudeSession', () => {
         };
       };
 
-      expect(p.statusLineForwarderPath).toBeDefined();
-      expect(existsSync(p.statusLineForwarderPath!)).toBe(true);
+      expect(p.forwarderPath).toBeDefined();
+      expect(existsSync(p.forwarderPath!)).toBe(true);
       expect(settings.statusLine).toMatchObject({
         type: 'command',
         padding: 2,
@@ -729,7 +736,7 @@ describe('prepareClaudeSession', () => {
         PUPPETEER_STATUSLINE_DELEGATE: delegate,
         PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: BASE.tokenEnvVar,
       });
-      expect(readFileSync(p.statusLineForwarderPath!, 'utf8')).not.toContain(BASE.token);
+      expect(readFileSync(p.forwarderPath!, 'utf8')).not.toContain(BASE.token);
 
       await expect(
         runStatusLine(settings.statusLine.command, JSON.stringify({ session_id: 'session-42' }), p.env),

@@ -1945,12 +1945,12 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     const sessionId = launched.sessionId;
 
     // The host RELEASES (stable ingress): its bridge goes, the process and
-    // everything it reads stay — the staged settings and the hook forwarder in
+    // everything it reads stay — the staged settings and the forwarder in
     // particular, which the running process execs on every hook. A plain
     // dispose is the close that removes them.
     await launched.dispose({ release: true });
     expect(existsSync(prepared!.settingsPath)).toBe(true);
-    expect(existsSync(prepared!.hookForwarderPath)).toBe(true);
+    expect(existsSync(prepared!.forwarderPath!)).toBe(true);
     const configDir = mkdtempSync(join(tmpdir(), 'driver-attach-root-'));
     const project = join(configDir, 'projects', '-tmp');
     mkdirSync(project, { recursive: true });
