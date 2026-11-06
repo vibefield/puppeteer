@@ -798,7 +798,14 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       };
       await hook('PreToolUse', { ...worker, tool_use_id: 'toolu_worker' });
       await hook('PermissionRequest', worker);
-      expect(projection.state.permissions.size).toBe(1);
+      // The session's own state counts no subagent's request (core's state skips every envelope an agent or actor
+      // owns), so the worker's request is read where the driver publishes it: under the subagent, tied to its call.
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          agentId: 'worker-1',
+          event: expect.objectContaining({ type: 'interaction:permission-requested', toolCallId: 'toolu_worker' }),
+        }),
+      );
       await hook('SessionEnd', { reason: 'other' });
 
       const exited = events.findIndex(({ event }) => event.type === 'session:exited');
