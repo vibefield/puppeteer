@@ -1387,6 +1387,78 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(stale.status).toBe(403);
   });
 
+  it('/resume in the pane rebinds to the chosen conversation, as /clear does', async () => {
+    const { session, projection, events, hook, endpoint, token } = await startSession();
+    const before = session.sessionId;
+    const chosen = '64a61b19-f4d8-4f96-ba56-07024b4708ab';
+    await hook('SessionStart', { source: 'startup' });
+    await hook('UserPromptSubmit', { prompt: 'before', prompt_id: 'p-before' });
+    await hook('Stop', { prompt_id: 'p-before' });
+    // interactive /resume: the pane's session ends for it, then the chosen one starts
+    await hook('SessionEnd', { reason: 'resume' });
+    await hook('SessionStart', { session_id: chosen, source: 'resume' });
+    expect(session.runtimeSessionId).toBe('rt-1');
+    expect(session.sessionId).toBe(chosen);
+    expect(projection.state.lifecycle).toBe('ready');
+    expect(
+      events.find(({ event }) => event.type === 'session:started' && event.nativeSessionId === chosen)?.event,
+    ).toMatchObject({ type: 'session:started', nativeSessionId: chosen, startSource: 'resume', rebind: true });
+
+    await hook('UserPromptSubmit', { session_id: chosen, prompt: 'after', prompt_id: 'p-after' });
+    expect(projection.state.lifecycle).toBe('running');
+    const stale = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ session_id: before, cwd: '/tmp', hook_event_name: 'Stop' }),
+    });
+    expect(stale.status).toBe(403);
+  });
+
+  it('keeps the pane on its conversation when a fork announces itself, and says so once', async () => {
+    const { session, events, hook, endpoint, token } = await startSession();
+    const before = session.sessionId;
+    const copy = '64a61b19-f4d8-4f96-ba56-07024b4708ac';
+    const post = (fields: Record<string, unknown>) =>
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ session_id: copy, cwd: '/tmp', ...fields }),
+      });
+    await hook('SessionStart', { source: 'startup' });
+    // the /fork background copy: a fork start under a new id while the pane stays where it was
+    expect((await post({ hook_event_name: 'SessionStart', source: 'fork' })).status).toBe(403);
+    expect((await post({ hook_event_name: 'UserPromptSubmit', prompt: 'in the copy' })).status).toBe(403);
+    expect(session.sessionId).toBe(before);
+    expect(
+      events.filter(
+        ({ event }) => event.type === 'adapter:native-event' && event.nativeType === 'hook-bridge.session-refused',
+      ),
+    ).toEqual([
+      expect.objectContaining({ source: 'runtime', nativeEvent: { hookEventName: 'SessionStart', source: 'fork' } }),
+    ]);
+    await hook('UserPromptSubmit', { prompt: 'still here', prompt_id: 'p-here' });
+  });
+
+  it('follows a resume start only straight after the pane’s own session ended for it', async () => {
+    const { session, hook, endpoint, token } = await startSession();
+    const before = session.sessionId;
+    const other = '64a61b19-f4d8-4f96-ba56-07024b4708ad';
+    const start = () =>
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ session_id: other, cwd: '/tmp', hook_event_name: 'SessionStart', source: 'resume' }),
+      });
+    await hook('SessionStart', { source: 'startup' });
+    // a resume start no end announced is another process's conversation
+    expect((await start()).status).toBe(403);
+    // an end for /resume that the session went on from is spent
+    await hook('SessionEnd', { reason: 'resume' });
+    await hook('Notification', { message: 'still running', notification_type: 'idle_prompt' });
+    expect((await start()).status).toBe(403);
+    expect(session.sessionId).toBe(before);
+  });
+
   it('degrades hook observation on rail loss without ending the live session', async () => {
     let hookListener: ((envelope: NativeHookEnvelope) => void) | undefined;
     let unavailableListener: ((reason: string) => void) | undefined;
