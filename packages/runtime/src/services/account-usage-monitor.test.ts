@@ -500,6 +500,35 @@ describe('account usage after sign-in', () => {
     expect(fetchUsage).toHaveBeenCalledTimes(3);
   });
 
+  it.each([
+    { status: 'unavailable' as const, code: 'rate-limited' as const, retryable: true },
+    { status: 'unauthenticated' as const, retryable: false },
+  ])('keeps a poll’s server backoff through a sign-in though a push has merged since: %j', async (refusal) => {
+    let nowMs = 0;
+    const fetchUsage = vi.fn(async (): Promise<AccountUsageFetchResult> => available('push-agent'));
+    const monitor = createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      listProfiles: async () => [PROFILES[1]!],
+      publish: () => undefined,
+      now: () => new Date(nowMs),
+    });
+    await monitor.refreshProfiles();
+    nowMs = 30_000;
+    const retryAt = new Date(120_000).toISOString();
+    fetchUsage.mockResolvedValueOnce({ provider: 'push-agent', message: 'Please wait', retryAt, ...refusal });
+    await monitor.refresh({ force: true });
+    nowMs = 40_000;
+    monitor.ingest('push-agent', available('push-agent', { kind: 'native-statusline', stability: 'documented' }));
+
+    const invalidated = await monitor.invalidateProfileAuthentication('work');
+    expect(invalidated.entries[0]?.result).toMatchObject({ status: refusal.status, retryAt });
+    nowMs = 60_000;
+    await monitor.refresh({ force: true, profileIds: ['work'] });
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
   it('discards a recent successful reading when login may have switched accounts', async () => {
     const fetchUsage = vi.fn(async (): Promise<AccountUsageFetchResult> => available('push-agent'));
     const monitor = createAccountUsageMonitor({
@@ -803,6 +832,113 @@ describe('a push is a reading of the meters it carries: merged by id, and never 
     expect(fetchUsage).toHaveBeenCalledTimes(2);
   });
 
+  it.each([
+    { status: 'unavailable' as const, retryable: true, code: 'rate-limited' as const, retryAt: at(T0 + 180 * MINUTE) },
+    { status: 'unavailable' as const, retryable: true },
+  ])('a push keeps a passing failure of the poll beside its reading until a poll succeeds: %j', async (refusal) => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    clock.ms = T0 + 30 * MINUTE;
+    const failure: AccountUsageFetchResult = { provider: 'push-agent', message: 'Please wait', ...refusal };
+    fetchUsage.mockResolvedValueOnce(failure);
+    await monitor.refresh();
+
+    const push = (minutes: number, used: number) => {
+      clock.ms = T0 + minutes * MINUTE;
+      const pushed = reading(clock.ms, [meter('5h', used), meter('7d', used)], { source: STATUS_LINE });
+      return monitor.ingest('push-agent', pushed).entries[0];
+    };
+    expect(push(31, 30)).toMatchObject({
+      stale: true,
+      refreshFailure: failure,
+      result: {
+        status: 'available',
+        snapshot: { fetchedAt: at(T0 + 31 * MINUTE), metrics: [meter('5h', 30), meter('7d', 30)] },
+      },
+    });
+
+    // A failed push shows beside the reading as before; the next good one keeps the poll's failure, not its own.
+    clock.ms = T0 + 32 * MINUTE;
+    monitor.ingest('push-agent', {
+      status: 'unavailable',
+      provider: 'push-agent',
+      message: 'malformed push',
+      retryable: true,
+    });
+    expect(push(33, 35)).toMatchObject({ stale: true, refreshFailure: failure });
+
+    clock.ms = T0 + 180 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+    const recovered = push(181, 40);
+    expect(recovered?.stale).toBeUndefined();
+    expect(recovered?.refreshFailure).toBeUndefined();
+  });
+
+  it('no covering push defers a failed poll’s retry: the failure beside the pushes ends at that retry', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    clock.ms = T0 + 30 * MINUTE;
+    const failure: AccountUsageFetchResult = {
+      status: 'unavailable',
+      provider: 'push-agent',
+      message: 'Please wait',
+      retryable: true,
+    };
+    fetchUsage.mockResolvedValueOnce(failure);
+    await monitor.refresh();
+
+    const push = (minutes: number) => {
+      clock.ms = T0 + minutes * MINUTE;
+      const pushed = reading(clock.ms, [meter('5h', minutes), meter('7d', minutes)], { source: STATUS_LINE });
+      return monitor.ingest('push-agent', pushed).entries[0];
+    };
+    // Each push covers the poll and lands before the failure's backoff (T0+60m), which none of them moves.
+    for (const minutes of [40, 50, 59]) {
+      expect(push(minutes)).toMatchObject({ stale: true, refreshFailure: failure });
+    }
+    clock.ms = T0 + 60 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+    const recovered = push(61);
+    expect(recovered?.stale).toBeUndefined();
+    expect(recovered?.refreshFailure).toBeUndefined();
+  });
+
+  it('a push answers a sign-in failure of the poll and leaves the poll its clock', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    clock.ms = T0 + 30 * MINUTE;
+    fetchUsage.mockResolvedValueOnce({
+      status: 'unauthenticated',
+      provider: 'push-agent',
+      message: 'Sign in required',
+      retryable: false,
+    });
+    const refused = (await monitor.refresh()).entries[0];
+    expect(refused).toMatchObject({ stale: true, refreshFailure: { status: 'unauthenticated' } });
+
+    clock.ms = T0 + 31 * MINUTE;
+    const pushed = reading(clock.ms, [meter('5h', 30), meter('7d', 40)], { source: STATUS_LINE });
+    const answered = monitor.ingest('push-agent', pushed).entries[0];
+    expect(answered?.result).toMatchObject({ status: 'available', snapshot: { fetchedAt: at(T0 + 31 * MINUTE) } });
+    expect(answered?.stale).toBeUndefined();
+    expect(answered?.refreshFailure).toBeUndefined();
+
+    clock.ms = T0 + 35 * MINUTE;
+    await monitor.refresh({ force: true });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+    clock.ms = T0 + 61 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+  });
+
   it('a push before the first poll does not postpone it', async () => {
     const clock = { ms: T0 };
     const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
@@ -931,6 +1067,22 @@ describe('a reading is due again at its earliest reset', () => {
     clock.ms = T0 + 30 * MINUTE;
     await monitor.refresh();
     expect(fetchUsage).toHaveBeenCalledTimes(3);
+  });
+
+  it('a covering push after a good poll defers its read to the reading’s reset, no later', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [fiveHour(T0 + 40 * MINUTE), WEEK]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+
+    clock.ms = T0 + 20 * MINUTE;
+    monitor.ingest('push-agent', reading(clock.ms, [fiveHour(T0 + 40 * MINUTE), WEEK], STATUS_LINE));
+    clock.ms = T0 + 30 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledOnce();
+    clock.ms = T0 + 40 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
   });
 
   it('wakes at a reading’s reset though its tick is the 30-minute poll, and not once stopped', async () => {
