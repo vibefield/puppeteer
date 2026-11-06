@@ -323,6 +323,56 @@ describe('the usage column', () => {
     expect(tile?.figure).toBe('96%');
   });
 
+  it('a window past its reset is kept: never hot, never the figure, no pressure', () => {
+    const tiles = usageTiles(
+      {
+        refreshedAt: at('2026-07-23T20:00:00.000Z'),
+        entries: [
+          available('claude', [
+            { label: '5H', used: 100, resetsAt: '2026-07-23T19:59:00.000Z' },
+            { label: '7D', used: 40, resetsAt: '2026-07-26T20:00:00.000Z' },
+          ]),
+          available('codex', [{ label: '5H', used: 60, resetsAt: '2026-07-23T22:00:00.000Z' }]),
+          available('kimi', [{ label: '5H', used: 95, resetsAt: '2026-07-23T20:00:00.000Z' }]),
+        ],
+      },
+      NOW,
+    );
+    expect(tiles.map((tile) => [tile.key, tile.figure, tile.hot])).toEqual([
+      ['codex', '60%', false],
+      ['claude', '40%', false],
+      ['kimi', '—', false],
+    ]);
+    const claude = tiles[1]!;
+    expect(claude.windows).toMatchObject([
+      { label: '5H', kept: true, hot: false, resetLabel: 'NOW' },
+      { label: '7D', kept: false, hot: false },
+    ]);
+    expect(claude.rings).toMatchObject([
+      { slot: 0, kept: true },
+      { slot: 1, kept: false },
+    ]);
+    expect(claude.aria).toBe('CLAUDE, 5H reset, 7D 40%');
+    expect(tiles[2]?.aria).toBe('KIMI, 5H reset');
+  });
+
+  it('rings a window still current over a fuller one past its reset in the same slot', () => {
+    const [tile] = usageTiles(
+      {
+        refreshedAt: at('2026-07-23T20:00:00.000Z'),
+        entries: [
+          available('claude', [
+            { label: 'OPUS', used: 90, resetsAt: '2026-07-23T19:00:00.000Z' },
+            { label: 'FABLE', used: 30, resetsAt: '2026-07-24T20:00:00.000Z' },
+          ]),
+        ],
+      },
+      NOW,
+    );
+    expect(tile?.rings).toMatchObject([{ slot: 2, label: 'FABLE', kept: false }]);
+    expect(tile?.figure).toBe('30%');
+  });
+
   it('formats fetch ages compactly', () => {
     expect(formatUsageAge('2026-07-23T19:59:50.000Z', NOW)).toBe('10s AGO');
     expect(formatUsageAge('2026-07-23T19:57:00.000Z', NOW)).toBe('3m AGO');
