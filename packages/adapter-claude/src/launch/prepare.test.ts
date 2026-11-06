@@ -12,7 +12,7 @@ import { Buffer } from 'node:buffer';
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isAgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 import {
   ClaudeHooksOffError,
@@ -514,6 +514,22 @@ describe('prepareClaudeSession', () => {
     const imposterRoot = conversationRoot(resumeId);
     const p = await prepare({ resume: resumeId, env: { PUPPETEER_IMPOSTER_HOME: imposterRoot } });
     expect(p.args).toContain('--resume');
+  });
+
+  it('finds a resume under the launch environment’s CLAUDE_CONFIG_DIR, the root an attach reads', async () => {
+    const resumeId = '64a61b19-f4d8-4f96-ba56-07024b470815';
+    const root = conversationRoot(resumeId);
+    // only the launch environment names the root: no explicit configDir, and nothing in this process
+    vi.stubEnv('CLAUDE_CONFIG_DIR', undefined);
+    try {
+      const p = await prepare({ resume: resumeId, env: { CLAUDE_CONFIG_DIR: root } });
+      expect(p.args[p.args.indexOf('--resume') + 1]).toBe(resumeId);
+      // the process is launched on the root the conversation was found under
+      expect(p.env.CLAUDE_CONFIG_DIR).toBe(root);
+    } finally {
+      vi.unstubAllEnvs();
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('preserves a native resume picker invocation without forcing --session-id', async () => {
