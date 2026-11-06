@@ -93,7 +93,8 @@ waits), so no frame is asked for even with motion allowed. A stopped view still 
   hidden) a still frame asked for is never drawn, and one already asked for is taken back: it is owed. Shown with the
   loop still stopped, it is drawn once on the next frame; shown with motion on, the loop's frames draw it. The host
   delivers `hidden` at once rather than at its next frame, since a hidden page runs none; the view's own clocks and
-  timers rest with the loop.
+  timers rest with the loop. The conformance suite holds a view to it (MV-W4, `rests-when-hidden`): mounted out of
+  sight, it asks for no frame, not even for an update, and keeps no timer standing.
 
 ## Workers and bundlers (MV-D7)
 
