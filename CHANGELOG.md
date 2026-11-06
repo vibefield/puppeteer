@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/vibefield/puppeteer/compare/v0.3.4...v0.4.0) (2026-11-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **adapter-claude:** a host-lent forwarder runtime, bounded hook and transcript memory, calls that close where their fate is decided, and typed turn endings ([#65](https://github.com/vibefield/puppeteer/issues/65))
+
+### Bug Fixes
+
+* **adapter-claude:** a host-lent forwarder runtime, bounded hook and transcript memory, calls that close where their fate is decided, and typed turn endings ([#65](https://github.com/vibefield/puppeteer/issues/65)) ([3c12ba7](https://github.com/vibefield/puppeteer/commit/3c12ba73d124680fabc1f9478228eba5790604c9))
+* **views:** a held-still swarm draws every change, its list and tooltip follow the input, a renderer that fails to build says so, the shader clock wraps, and the rain stops blinking ([#66](https://github.com/vibefield/puppeteer/issues/66)) ([748d015](https://github.com/vibefield/puppeteer/commit/748d015a7e393112e0a91dad80111fdf5abe6583))
+
+
+### Performance Improvements
+
+* **monitor:** one projection per coalesce window, a dead run blocked by its failures alone, and no retained runtime ids ([#64](https://github.com/vibefield/puppeteer/issues/64)) ([7d87dd8](https://github.com/vibefield/puppeteer/commit/7d87dd82d9445becf448d86700b0485ee8327e8a))
+
 ## [0.3.4](https://github.com/vibefield/puppeteer/compare/v0.3.3...v0.3.4) (2026-11-04)
 
 
