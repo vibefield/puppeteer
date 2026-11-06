@@ -26,8 +26,8 @@ export const AGENT_ATTACH_NEXT: readonly AgentAttachNext[] = ['retry', 'respawn'
  *   host's retries, another program holds this agent's connection (a limit of a host-held endpoint: the process
  *   keeps posting to it while no host listens).
  *
- * Open until James rules rv-el7-limits (3): built at its lean, C. This type, {@link AGENT_ATTACH_REFUSAL_CODES}, the
- * error's `code` and the runtime's `refusal` carry exist only under C.
+ * Built at rv-el7-limits (3)'s lean, C, which James ruled (2026-11-06). This type, {@link AGENT_ATTACH_REFUSAL_CODES},
+ * the error's `code` and the runtime's `refusal` carry are that ruling.
  */
 export type AgentAttachRefusalCode = 'endpoint-held';
 

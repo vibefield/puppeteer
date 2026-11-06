@@ -4013,7 +4013,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           // the adapter's word on what the host does instead, carried as it said it, and why, when that is a word
           // this copy knows (a host states it without the vendor's text)
           if (!isAgentAttachRefusedError(error)) return failure;
-          // Open until James rules rv-el7-limits (3): the `refusal` carry is built at its lean, C.
+          // rv-el7-limits (3), ruled at its lean, C (James, 2026-11-06): the `refusal` carry.
           const why =
             error.code !== undefined && AGENT_ATTACH_REFUSAL_CODES.includes(error.code) ? error.code : undefined;
           return {

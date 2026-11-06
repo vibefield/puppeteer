@@ -436,7 +436,7 @@ recipe of the run it asked for, and nothing of any other run.
   by the root's own name for it when the hook reaches it through a link, so a forged hook cannot point it at a file of
   its choosing elsewhere, then or later. A same-user writer can still write under the root.
   A refused path is said once, as `adapter:native-event` `transcript-path.refused`, and is never published.
-  <!-- open until James rules rv-el7-limits (4): recorded at its lean, A, with the pin landed in code -->
+  <!-- rv-el7-limits (4), ruled at its lean, A (James, 2026-11-06): recorded, with the pin landed in code -->
 - **A hook endpoint the host holds is free while the host is down.** Claude's decision-capable hooks (`PreToolUse`,
   `PermissionRequest`, `Stop`, `UserPromptSubmit`) post to a loopback port its settings fix for the process's life,
   and Claude honours a decision any 2xx answer carries. The listener is the host's: through a restart, a replace or a
@@ -447,7 +447,7 @@ recipe of the run it asked for, and nothing of any other run.
   program holds the agent's hook connection, in its own words. Not measured: whether XNU lets another uid take the
   port while the old listener's TIME_WAIT pcbs remain. The structural cure, a listener held by a plane that outlives
   the agent, is not built here.
-  <!-- open until James rules rv-el7-limits (3): recorded at its lean, C (this limit and the endpoint-held code) -->
+  <!-- rv-el7-limits (3), ruled at its lean, C (James, 2026-11-06): this limit and the endpoint-held code -->
 
 ## 9. What a host does itself
 

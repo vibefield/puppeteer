@@ -1175,8 +1175,8 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
     await bridge.start();
   } catch (error) {
     // The words name the class, never the port or the bearer; `endpoint-held` lets a host whose retries end with the
-    // port still held say another program holds this agent's hook connection (spawn-through-hosts.md §8). Open
-    // until James rules rv-el7-limits (3): built at its lean, C.
+    // port still held say another program holds this agent's hook connection (spawn-through-hosts.md §8). Built
+    // at rv-el7-limits (3)'s lean, C, which James ruled (2026-11-06).
     if ((error as NodeJS.ErrnoException | null)?.code === 'EADDRINUSE') {
       throw new AgentAttachRefusedError(
         'retry',
