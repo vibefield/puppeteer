@@ -11,7 +11,7 @@ import {
 import { Buffer } from 'node:buffer';
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isAgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 import {
@@ -27,6 +27,7 @@ import { getHookSpec } from '../generated/registry.js';
 import { readClaudeInvocation } from './invocation-grammar.js';
 import { normalizeClaudeNativeInvocation } from './native-invocation.js';
 import { createHookBridge } from '../observation/hook-bridge.js';
+import { prepareClaudeTuiSession } from '../driver.js';
 
 // Windows starts PowerShell as well as Node; cold startup on hosted runners can exceed the usual test budget.
 const statusLineTestTimeout = process.platform === 'win32' ? 45_000 : 10_000;
@@ -882,3 +883,30 @@ it.each(['--append-system-prompt=old', '--system-prompt-snapshot=on', '--restric
     });
   },
 );
+
+describe('a run’s staging directory, the runtime’s (PU-C)', () => {
+  it('writes every launch file in the directory it is handed, and removes the files, never the directory', async () => {
+    const stagingDir = mkdtempSync(join(tmpdir(), 'prepare-staging-'));
+    const configDir = mkdtempSync(join(tmpdir(), 'prepare-staging-config-'));
+    const session = await prepareClaudeTuiSession({
+      cwd: BASE.cwd,
+      home: BASE.home,
+      configDir,
+      stagingDir,
+      automate: async () => ({ accepted: true }),
+    });
+    try {
+      const { settingsPath, forwarderPath } = session.launch;
+      expect([dirname(settingsPath), dirname(forwarderPath!)]).toEqual([stagingDir, stagingDir]);
+      expect(readdirSync(stagingDir).sort()).toEqual([basename(settingsPath), basename(forwarderPath!)].sort());
+      expect(session.launch.filesToCleanup).not.toContain(stagingDir);
+    } finally {
+      await session.dispose();
+    }
+    // the files go with the session; the directory is the runtime's, removed when the run is over
+    expect(existsSync(stagingDir)).toBe(true);
+    expect(readdirSync(stagingDir)).toEqual([]);
+    rmSync(stagingDir, { recursive: true, force: true });
+    rmSync(configDir, { recursive: true, force: true });
+  });
+});
