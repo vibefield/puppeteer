@@ -156,6 +156,14 @@ typed while no host listened rotates the id unheard; on attach the first authent
 the pinned id has spoken — is taken as that rotation when the new id already has a transcript under the same root,
 and the transcript is observed. Configured intent is not published for an attached process (it is a launch fact).
 
+> **Erratum (2026-11-06, RV #13):** "a released run's staged files are cleaned by the close that eventually ends it" was
+> false when written. A re-attached Claude binding cleans nothing: its cleanup has been a no-op since the attach landed
+> (`d013fef8`; `attachClaudeTuiSession`'s `cleanup: async () => undefined`, `adapter-claude/src/driver.ts`), so a
+> released run left its files behind however it ended. Nor was the temp dir a safe home for them while the run lived:
+> macOS empties files there that have gone about three days unaccessed (spawn-through-hosts.md §3), and a running Claude
+> execs its staged forwarder on every command hook. Since the amendment of the same date below, the runtime removes a
+> run's staging directory when the run is marked terminal, for a host that names a staging root.
+
 What stays with the host: choosing to pin, persisting what was bound (owner-only, like every other credential the
 host keeps), knowing which terminals are still alive after it returns, and the resume fallback for providers with no
 attach path. What stays out of this RFC: buffering hooks posted while no host is listening (a native relay would
@@ -208,3 +216,16 @@ with native-observation's `resolveScriptRunner`, the one authority for which Nod
 `PATH` under Electron, else Electron as Node). A process with neither refuses the launch
 (`FORWARDER_RUNTIME_UNAVAILABLE`) before anything is written. A released run keeps that one staged file, as it kept the
 two it replaces.
+
+**Amended 2026-11-06 (RV #13, a run's staging directory).** _The runtime owns where a run's launch files live, and
+when they go._ A host names a root (`AgentRuntimeOptions.staging`, absolute, outside the OS temp directory). For each
+launch or preparation the runtime makes `<root>/<runtimeRunId>`, 0700 and empty, once the run and its workspace exist
+and just before the provider is asked, and hands it over as `stagingDir` (core `AgentTuiSessionOptions`). The adapter
+writes its launch files inside and never removes the directory: Claude's settings, its staged forwarder and its
+briefing files live there. The runtime removes the directory when the run is marked terminal (an exit, a plain
+`dispose`, a failed launch, a cancelled or expired preparation) and keeps it on `dispose({ detach: true })`. An attached
+run's directory is found by its id, which must be one plain path segment, and goes at that run's end; the attach
+itself writes nothing and is handed none. `sweepStaging({ keep })` removes every other entry under the root and always
+keeps the runtime's own live runs and open preparations: what runs that ended while no host listened left behind,
+for a host that is back. Without a root an adapter stages in the OS temp directory as before, a limit for a host whose
+runs outlive its cleaner.

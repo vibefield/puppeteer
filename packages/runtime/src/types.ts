@@ -111,6 +111,13 @@ export interface AgentProviderSessionOptions extends AgentRunBriefing {
    * the provider's own variables; never logged, persisted, or put in a recipe.
    */
   environment?: Readonly<Record<string, string>> | undefined;
+  /**
+   * This run's staging directory (core `AgentTuiSessionOptions.stagingDir`), when the host named a staging root
+   * ({@link AgentRuntimeOptions.staging}): made by the runtime, 0700 and empty, just before this call, and removed by
+   * it once the run is over. The adapter writes its launch files inside and never removes it. Absent: the adapter
+   * stages where it always has.
+   */
+  stagingDir?: string | undefined;
 }
 
 /**
@@ -546,6 +553,17 @@ export interface AgentRuntimeOptions {
   launchEnvironment?: (
     run: LaunchEnvironmentRequest,
   ) => Promise<Record<string, string> | undefined> | Record<string, string> | undefined;
+  /**
+   * Where each run's launch files live: an absolute directory the host keeps across its restarts, out of the OS temp
+   * directory. For each launch or preparation the runtime makes `<root>/<runtimeRunId>` (0700 and empty; the root
+   * made 0700 when absent) once the run and its workspace exist, just before the provider is asked, and hands it over
+   * as `stagingDir`. It removes the directory when the run is marked terminal, and never on `dispose({detach: true})`,
+   * whose processes still read it. An attached run's directory is found by its id and removed at that run's end; the
+   * attach itself writes nothing and is handed none. What runs that ended while no host listened left behind goes with
+   * {@link AgentRuntime.sweepStaging}. Absent: adapters stage in the OS temp directory, which serves only runs that
+   * end before its cleaner empties it (files about three days unaccessed, on macOS).
+   */
+  staging?: { root: string };
 }
 
 /** The run a host's launch values are asked for. */
@@ -1103,6 +1121,15 @@ export interface AgentRuntime {
   /** Re-attach a run to a process that outlived the host (see {@link AttachAgentOptions}). */
   attach(options: AttachAgentOptions): Promise<CreateAgentSessionResult>;
   cancelPrepared(preparationId: string): Promise<CancelPreparedSessionResult>;
+  /**
+   * Remove every entry under the staging root ({@link AgentRuntimeOptions.staging}) except those `keep` names and the
+   * runs and preparations this runtime holds live: what runs that ended while no host listened left behind, an agent
+   * that died while its host was down among them. A host calls it once it is back and has attached what it kept,
+   * naming every run its own records still hold live, read from those records rather than from what it has attached
+   * so far. A failure to remove an entry is reported through `onError` and the rest still go. Without a staging root
+   * it does nothing.
+   */
+  sweepStaging(options: { keep: Iterable<RuntimeRunId> }): Promise<void>;
   runtimeRunInfo(runtimeRunId: RuntimeRunId): RuntimeRunInfo | undefined;
   monitorState(runtimeRunId: RuntimeRunId): AgentMonitorState | undefined;
   /**

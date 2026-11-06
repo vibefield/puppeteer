@@ -597,6 +597,18 @@ The duties, one by one:
   shim falls back to the real executable in that pid, unmanaged, or exits when strict — then answer `ack`.
 - **Survive your own restart**: persist what `onAdopted` gave you with `processStartedAt(processId)`, and re-attach only
   a pid whose start time still matches — a reused pid is not your agent.
+- **Name a staging root** (`createAgentRuntime({ staging: { root } })`, an absolute directory you keep across your
+  restarts, outside the system temp directory). An adapter writes the files a launch needs into a directory — Claude's
+  settings, its staged forwarder and its briefing files — and the agent reads some of them again for as long as it
+  runs: Claude execs its forwarder on every command hook. Under the system temp directory §3's cleaner fact holds for
+  them too, so an agent that runs for days loses them under it. With a root, the runtime makes each run's directory,
+  `<root>/<runtimeRunId>` (0700), just before the adapter launches or prepares the run, and removes it when the run is
+  marked terminal: an exit, a plain `dispose`, a failed launch, a cancelled or expired preparation. It keeps it on
+  `dispose({ detach: true })`, and an attached run's directory goes when that run ends. After a restart, once you have
+  attached what you kept, call `runtime.sweepStaging({ keep })` with every run your own records still hold live, read
+  from those records: it removes everything else under the root, an agent that died while you were down included, and
+  always keeps the runs and preparations the runtime itself holds. Without a root, adapters stage in the system temp
+  directory, which serves only runs that end within the cleaner's three days.
 
 ### Background cache prewarming
 

@@ -191,6 +191,12 @@ export interface CreateClaudeSessionOptions extends AgentRunBriefing {
    * hooks and status lines run it, and nothing is staged. Absent = this process's script runner runs a staged copy.
    */
   forwarderRuntime?: AgentForwarderRuntime | undefined;
+  /**
+   * The run's staging directory (core `AgentTuiSessionOptions.stagingDir`), the runtime's: every launch file is
+   * written in it (the settings, the staged forwarder, the briefing files), and the files go when the session is
+   * disposed, never the directory. Absent = a private temp directory this adapter makes and removes.
+   */
+  stagingDir?: string | undefined;
   /** Injectable bridge factory for deterministic transport-failure tests. */
   hookBridgeFactory?: ((options: HookBridgeOptions) => HookBridge) | undefined;
   /**
@@ -340,6 +346,7 @@ export async function prepareClaudeTuiSession(
       readsNoSettingsFiles: options.readsNoSettingsFiles,
       refuseHooksOff: options.refuseHooksOff,
       forwarderRuntime: options.forwarderRuntime,
+      settingsDir: options.stagingDir,
       endpoint: bridge.endpoint(),
       ...(otelUsageEnabled ? { otelLogsEndpoint: bridge.otelLogsEndpoint() } : {}),
       statusLineEndpoint: bridge.statusLineEndpoint(),
@@ -1180,6 +1187,8 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
     throw error;
   }
   try {
+    // An attach writes nothing, so it cleans nothing: the launch's files are in the run's staging directory, which the
+    // runtime removes at the run's end (core `AgentTuiSessionOptions.stagingDir`), or a temp dir without one.
     const observation = createClaudeObservation(
       { ...options, ingress: undefined, attached: true },
       bridge,
@@ -1220,6 +1229,7 @@ export async function createClaudeSession(options: CreateClaudeSessionOptions): 
     onDiagnostic: options.onDiagnostic,
     ingress: options.ingress,
     forwarderRuntime: options.forwarderRuntime,
+    stagingDir: options.stagingDir,
     hookBridgeFactory: options.hookBridgeFactory,
     hookRailFaultInjection: options.hookRailFaultInjection,
     semanticProviderFactory: options.semanticProviderFactory,

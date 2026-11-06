@@ -112,7 +112,11 @@ export interface PrepareClaudeSessionOptions extends AgentRunBriefing {
    * person's) can take one for its value, and a prompt that starts with `-` stays a prompt.
    */
   prompt?: readonly string[] | undefined;
-  /** Override the settings-file directory (tests); default is an mkdtemp dir. */
+  /**
+   * The directory every launch file is written in, the caller's (a runtime's per-run staging directory, the driver's
+   * `stagingDir`): {@link cleanupClaudeSession} removes the files and never the directory. Default: a private mkdtemp
+   * directory under the OS temp directory, removed with the files.
+   */
   settingsDir?: string | undefined;
   /**
    * The program the host lends to run the builtin forwarder entry in the agent's process tree (core
