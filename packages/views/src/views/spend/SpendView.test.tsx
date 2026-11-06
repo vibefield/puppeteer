@@ -85,6 +85,8 @@ const MIN = 60_000;
 const WIDE = { width: 1178, height: 638 };
 /** The lab's narrowest plate: a window at its narrowest. */
 const NARROW = { width: 400, height: 260 };
+/** Still narrow (under 640), with room beside the hero's number and burn for its short caption whole. */
+const NARROW_ROOMY = { width: 600, height: 260 };
 
 interface Mounted {
   readonly root: HTMLElement;
@@ -269,9 +271,10 @@ describe('the spend view', () => {
   });
 
   it('at a narrow stage the hero still says who it leaves out: one by name, several by how many with no price', async () => {
-    // The caption's first words do not fit beside the number and the burn; who the total leaves out stays, in short.
+    // The caption's first words do not fit beside the number and the burn; who the total leaves out stays, in short,
+    // and here whole: the window has room for it.
     const agents = afternoon();
-    const view = await mount({ agents }, NARROW);
+    const view = await mount({ agents }, NARROW_ROOMY);
     expect(view.root.querySelector('.vf-monitor-spend-hero')?.className).toContain('is-narrow');
     expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['not counting swarm-lab']);
     // A second agent no price reaches: how many, in the rows' own "no price".
@@ -283,6 +286,25 @@ describe('the spend view', () => {
     await view.update(fixtureInput({ parameters: PARAMETERS, agents: priced }));
     expect(view.root.querySelector('.vf-monitor-spend-cap i')).toBeNull();
     expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(/^\$[\d.]+\/hr now$/);
+  });
+
+  it('at the narrowest plate the hero cuts who it leaves out to the room its number and burn leave, keeping the count', async () => {
+    // B' (rv-godview-honesty (2), ruled 2026-11-06): the hero's one line runs from the plot's left edge to the list's
+    // inset short of its column (10 px, the list's own padding), and the number, its 10 px gap, the burn and its 8 px
+    // gap come first (spend.css); this file measures 6.4 px a glyph in any face.
+    const agents = afternoon();
+    const view = await mount({ agents }, NARROW);
+    const g = geometryFor(NARROW.width, NARROW.height);
+    const glyphs = (selector: string): number => text(view.root, selector)[0]!.length * 6.4;
+    const room = g.lx0 - 10 - g.x0 - glyphs('.vf-monitor-spend-big') - 10 - glyphs('.vf-monitor-spend-cap b') - 8;
+    // About 58 px: "1 with…" fits and "1 with no…" does not, nor a word of swarm-lab after "not counting".
+    expect(room).toBeGreaterThanOrEqual('1 with…'.length * 6.4);
+    expect(room).toBeLessThan('1 with no…'.length * 6.4);
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['1 with…']);
+    // A second agent no price reaches: its count, cut at the same word.
+    const scratch = agentViewFixture({ id: 'scratch', project: { name: 'scratch' }, createdAt: NOW - 30 * MIN });
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: [...agents, scratch] }));
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['2 with…']);
   });
 
   it("prints another desktop's total now and draws it no line; before now it says in words that nobody recorded it (SV-D2)", async () => {
