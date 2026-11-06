@@ -11,7 +11,7 @@ import {
 import { Buffer } from 'node:buffer';
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { isAgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 import {
@@ -23,6 +23,7 @@ import {
   type PreparedClaudeSession,
 } from './prepare.js';
 import { generateHookSettings } from './settings.js';
+import { getHookSpec } from '../generated/registry.js';
 import { readClaudeInvocation } from './invocation-grammar.js';
 import { normalizeClaudeNativeInvocation } from './native-invocation.js';
 import { createHookBridge } from '../observation/hook-bridge.js';
@@ -544,6 +545,98 @@ describe('prepareClaudeSession', () => {
     } finally {
       delete process.versions.electron;
     }
+  });
+
+  describe('the forwarder a launch’s hooks and status lines run', () => {
+    /** A host that lends a runtime: a single executable in its forwarder role, say. */
+    const LENT = { command: '/opt/Host/host-executable', args: ['--host-role=agent-forwarder'] };
+    const RUNNER = { command: '/opt/runner/node', args: ['--no-warnings'], env: { RUNNER_SWITCH: '1' } };
+    const hookTimeoutSec = getHookSpec('SessionStart')!.timeoutSec;
+    const statusLines = {
+      statusLineEndpoint: 'http://127.0.0.1:4100/statusline',
+      subagentStatusLineEndpoint: 'http://127.0.0.1:4100/subagent-statusline',
+      existingStatusLine: null,
+      existingSubagentStatusLine: null,
+    };
+    const settingsOf = (p: PreparedClaudeSession) =>
+      JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
+        hooks: Record<string, Array<{ hooks: Array<Record<string, unknown>> }>>;
+        statusLine: { command: string };
+        subagentStatusLine: { command: string };
+      };
+
+    it('refuses a launch nothing here can run a forwarder for, before anything is written', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-no-runner-'));
+      // A single executable with no runtime lent: it would run the staged forwarder as itself.
+      const refusal = prepare({ settingsDir: dir, scriptRunner: null, ...statusLines });
+      await expect(refusal).rejects.toMatchObject({ code: 'FORWARDER_RUNTIME_UNAVAILABLE' });
+      await expect(refusal).rejects.toSatisfy(isAgentLaunchRefusedError);
+      expect(readdirSync(dir)).toEqual([]);
+    });
+
+    it('runs the host’s lent runtime with each word and stages nothing', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-lent-'));
+      // A host that lends a runtime needs no runner here.
+      const p = await prepare({ settingsDir: dir, forwarderRuntime: LENT, scriptRunner: null, ...statusLines });
+      const settings = settingsOf(p);
+      expect(settings.hooks.SessionStart![0]!.hooks[0]).toEqual({
+        type: 'command',
+        command: LENT.command,
+        args: [...LENT.args, 'claude.hook.v1', BASE.endpoint, BASE.tokenEnvVar, String(hookTimeoutSec * 1000)],
+        timeout: hookTimeoutSec,
+      });
+      expect(settings.statusLine.command).toBe(
+        statusLineForwarderCommand(LENT.command, [...LENT.args, 'claude.statusline.v1']),
+      );
+      expect(settings.subagentStatusLine.command).toBe(
+        statusLineForwarderCommand(LENT.command, [...LENT.args, 'claude.statusline.v1', 'subagent']),
+      );
+      expect(p.forwarderPath).toBeUndefined();
+      expect(readdirSync(dir)).toEqual([basename(p.settingsPath)]);
+      expect(p.filesToCleanup).toEqual([p.settingsPath]);
+      expect(p.env).not.toHaveProperty('ELECTRON_RUN_AS_NODE');
+    });
+
+    it('stages one forwarder that the hooks and both status lines run under this process’s runner', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-runner-'));
+      const p = await prepare({ settingsDir: dir, scriptRunner: RUNNER, ...statusLines });
+      const forwarderPath = join(dir, `${p.sessionId}.forwarder.mjs`);
+      expect(p.forwarderPath).toBe(forwarderPath);
+      expect(readdirSync(dir).sort()).toEqual([`${p.sessionId}.forwarder.mjs`, `${p.sessionId}.settings.json`].sort());
+      expect(readFileSync(forwarderPath, 'utf8')).toContain('claude.statusline.v1');
+      expect(readFileSync(forwarderPath, 'utf8')).not.toContain(BASE.token);
+      const settings = settingsOf(p);
+      expect(settings.hooks.SessionStart![0]!.hooks[0]).toMatchObject({
+        command: RUNNER.command,
+        args: [...RUNNER.args, forwarderPath, 'claude.hook.v1', BASE.endpoint, BASE.tokenEnvVar, String(hookTimeoutSec * 1000)],
+      });
+      expect(settings.statusLine.command).toBe(
+        statusLineForwarderCommand(RUNNER.command, [...RUNNER.args, forwarderPath, 'claude.statusline.v1']),
+      );
+      expect(settings.subagentStatusLine.command).toBe(
+        statusLineForwarderCommand(RUNNER.command, [...RUNNER.args, forwarderPath, 'claude.statusline.v1', 'subagent']),
+      );
+      expect(p.env.RUNNER_SWITCH).toBe('1');
+      expect(p.filesToCleanup).toEqual([p.settingsPath, forwarderPath]);
+
+      // A script executable runs under the same runner.
+      const script = await prepare({ executable: '/abs/path/bin.mjs', scriptRunner: RUNNER });
+      expect(script.command).toBe(RUNNER.command);
+      expect(script.args.slice(0, 3)).toEqual(['--no-warnings', '/abs/path/bin.mjs', '--session-id']);
+    });
+
+    it('refuses a script executable nothing here can run, even when the host lends a forwarder', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-script-no-runner-'));
+      const refusal = prepare({
+        settingsDir: dir,
+        executable: '/abs/path/bin.mjs',
+        forwarderRuntime: LENT,
+        scriptRunner: null,
+      });
+      await expect(refusal).rejects.toMatchObject({ code: 'SCRIPT_RUNNER_UNAVAILABLE' });
+      await expect(refusal).rejects.toSatisfy(isAgentLaunchRefusedError);
+      expect(readdirSync(dir)).toEqual([]);
+    });
   });
 
   it("wires FileChanged only when a caller supplies Claude's filename matcher", async () => {
