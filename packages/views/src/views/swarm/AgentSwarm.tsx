@@ -10,7 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
 } from 'react';
-import type { AgentView, StageGeometry } from '@vibefield/puppeteer-view-sdk';
+import type { AgentView, MonitorSpawnMenu, StageGeometry } from '@vibefield/puppeteer-view-sdk';
 import type { ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
 import {
   approachRecede,
@@ -21,7 +21,15 @@ import {
   type MotionLoop,
   type Rgba,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
-import { birthAgent, birthOf, birthOverdue, birthRow, profileLineFor, type BloomBirth } from './bloom/birth.js';
+import {
+  birthAgent,
+  birthOf,
+  birthOverdue,
+  birthRow,
+  profileLineFor,
+  type BirthProfile,
+  type BloomBirth,
+} from './bloom/birth.js';
 import { BLOOM } from './bloom/constants.js';
 import {
   arrivalFrom,
@@ -222,6 +230,16 @@ function measured(stage: StageGeometry): boolean {
   return stage.width > 0 && stage.height > 0;
 }
 
+/** A terminal born under a profile of the desktop you sit at names it, when there is more than one (SB §2.10). */
+function terminalProfile(menu: MonitorSpawnMenu | undefined, agent: AgentView): BirthProfile | undefined {
+  return agent.kind === 'agent' || !agent.device.self ? undefined : profileLineFor(menu, agent.profileSet);
+}
+
+/**
+ * The frame loop's models, rebuilt by the effects after a commit and by the loop itself (the rows, the fit, the
+ * clock's `MODEL_REFRESH_MS`), never in a render. What the DOM says is built in the render from the input it renders
+ * (`listModels`), by the same projection, `bubbleModel`.
+ */
 interface Models {
   byId: Map<string, SwarmBubbleModel>;
   at: number;
@@ -236,6 +254,31 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   const motionOn = theme.animations && !theme.reducedMotion;
   const swarm = useMemo<SwarmParameters>(() => normalizeSwarmParameters(parameters), [parameters]);
   const agents = useMemo(() => drawnRows(model.agents), [model.agents]);
+  /**
+   * What the hidden list and the tooltip say, from the input this render was handed: the frame loop's models
+   * (`modelsRef`) are rebuilt only after the commit, so a render that read them would say the input before it. No
+   * fit and no foreground job's clock: neither moves a body's state, its accessible name or its title.
+   */
+  const listModels = useMemo(() => {
+    const nowMs = Date.now();
+    const shares = workingShares(agents);
+    const byId = new Map<string, SwarmBubbleModel>();
+    for (const agent of agents) {
+      const profile = terminalProfile(spawnMenu, agent);
+      byId.set(
+        bodyIdOf(agent),
+        bubbleModel({
+          agent,
+          parameters: swarm,
+          nowMs,
+          unread: agent.unread,
+          workingShare: shares.get(agent.id) ?? 0,
+          ...(profile ? { profile } : {}),
+        }),
+      );
+    }
+    return byId;
+  }, [agents, swarm, spawnMenu]);
   const containerRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const driverRef = useRef<SwarmPhysicsDriver | undefined>(undefined);
@@ -265,7 +308,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const focusedIdRef = useRef<string | undefined>(undefined);
   const hoveredIdRef = useRef<string | undefined>(undefined);
-  const [hovered, setHovered] = useState<{ agent: AgentView; x: number; y: number } | undefined>(undefined);
+  /** The body under a resting pointer, by id: its words are read from the input each render (`listModels`). */
+  const [hovered, setHovered] = useState<{ id: string; x: number; y: number } | undefined>(undefined);
   const [cursor, setCursor] = useState<'default' | 'grab' | 'grabbing'>('default');
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const newTerminalRef = useRef<HTMLButtonElement>(null);
@@ -472,10 +516,6 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     };
   }, []);
 
-  /** A terminal born under a profile of the desktop you sit at names it, when there is more than one (SB §2.10). */
-  const terminalProfile = (agent: AgentView) =>
-    agent.kind === 'agent' || !agent.device.self ? undefined : profileLineFor(spawnMenuRef.current, agent.profileSet);
-
   // A new tree can change which terminals name their profile.
   useEffect(() => {
     modelsRef.current.at = 0;
@@ -518,7 +558,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     const shares = workingShares(agentsRef.current);
     for (const agent of agentsRef.current) {
       const runningSince = runningSinceRef.current.get(bodyIdOf(agent));
-      const profile = terminalProfile(agent);
+      const profile = terminalProfile(spawnMenuRef.current, agent);
       byId.set(
         bodyIdOf(agent),
         bubbleModel({
@@ -1063,9 +1103,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       return;
     }
     hoveredIdRef.current = id;
-    const agent = id ? agentById(id) : undefined;
-    setHovered(agent ? { agent, x, y } : undefined);
-    setCursor(agent ? 'grab' : 'default');
+    setHovered(id ? { id, x, y } : undefined);
+    setCursor(id ? 'grab' : 'default');
   };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLElement>): void => {
@@ -1205,20 +1244,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     bloom.fieldKeyDown(event);
   };
 
-  const modelFor = (agent: AgentView): SwarmBubbleModel => {
-    const known = modelsRef.current.byId.get(bodyIdOf(agent));
-    if (known) return known;
-    const profile = terminalProfile(agent);
-    return bubbleModel({
-      agent,
-      parameters: swarm,
-      nowMs: Date.now(),
-      unread: agent.unread,
-      workingShare: workingShares(agentsRef.current).get(agent.id) ?? 0,
-      scale: fitRef.current,
-      ...(profile ? { profile } : {}),
-    });
-  };
+  /** The hovered body's words, while its row is in this input: a row that leaves takes its tooltip with it. */
+  const hoveredModel = hovered ? listModels.get(hovered.id) : undefined;
 
   // The view's own properties (L18): the two palette colours its stylesheets draw with — the monitor's ground
   // behind the bloom's words and the signifier's halo, and the orange of the bloom's waiting dot.
@@ -1287,14 +1314,14 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
           ＋ New terminal…
         </span>
       ) : null}
-      {hovered ? (
+      {hovered && hoveredModel ? (
         <span
           className="vf-monitor-swarm-tooltip"
           style={{ left: hovered.x, top: hovered.y }}
           role="tooltip"
           aria-hidden="true"
         >
-          {modelFor(hovered.agent).title}
+          {hoveredModel.title}
         </span>
       ) : null}
       {/* Every body, reachable without a pointer. Focus draws a ring on the canvas. */}
@@ -1317,8 +1344,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
           </li>
         ) : null}
         {agents.map((agent) => {
-          const model = modelFor(agent);
           const bodyId = bodyIdOf(agent);
+          const model = listModels.get(bodyId)!;
           return (
             <li key={bodyId}>
               <button
