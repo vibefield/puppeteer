@@ -63,6 +63,41 @@ for (const row of filled.rowJoins) {
   if (record.pins.puppeteer !== '748d015a7e393112e0a91dad80111fdf5abe6583') {
     failures.push(`${record.recordId} pin`);
   }
+  if (record.classification.uiReachable === 'yes' && row.rendererRead !== 'direct') {
+    failures.push(`${record.recordId} uiReachable yes without a direct reader`);
+  }
+  if (
+    record.classification.uiReachable === 'yes' &&
+    record.classification.adapterEmittable === 'no' &&
+    !row.alternateProducer
+  ) {
+    failures.push(`${record.recordId} uiReachable yes from a reader with no alternate producer`);
+  }
+  if (record.classification.uiReachable === 'yes' && row.adapterPathProvidesValue === 'no' && !row.alternateProducer) {
+    failures.push(`${record.recordId} uiReachable yes although the adapter path provides no value`);
+  }
+  const graph = readFileSync(
+    join(root, 'audit/godview/evidence', adapter, `${row.fieldId.slice('field.'.length)}.mmd`),
+    'utf8',
+  );
+  if (row.fieldId === 'field.status' && /priceUsageUpdates|usage-pricing/.test(graph)) {
+    failures.push(`${record.recordId} status graph includes a cost pricing step`);
+  }
+  if (
+    ['acp', 'antigravity', 'copilot'].includes(adapter) &&
+    row.fieldId.startsWith('field.cost') &&
+    record.transforms.some((item) => item.name === 'price-before-reduce' || item.source.path.endsWith('usage-pricing.ts'))
+  ) {
+    failures.push(`${record.recordId} invents a pricing hop through an omitted usage signal`);
+  }
+  for (const item of record.transforms) {
+    if (/monitor-capabilities\.ts$/.test(item.source.path) && /handler|reads used and size|does not emit/.test(item.effect)) {
+      failures.push(`${record.recordId} transform effect is paired with a capability declaration`);
+    }
+  }
+  if (record.transport.name === 'not-applicable' && !(row.notApplicableReason && row.notApplicableReason.length > 12)) {
+    failures.push(`${record.recordId} not-applicable transport lacks notApplicableReason`);
+  }
 }
 
 console.log(JSON.stringify({ contradictions: failures.length, failures: failures.slice(0, 20) }, null, 2));

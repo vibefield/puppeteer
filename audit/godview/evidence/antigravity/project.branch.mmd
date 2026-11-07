@@ -1,9 +1,10 @@
-%% graph_ref: path.environment
-%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% field: field.project.branch
+%% adapter: antigravity
 %% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
-flowchart LR
-  n0["packages/view-sdk/src/model.ts:106-106"]
-  n1["packages/core/src/monitor/reduce.ts:100-117"]
+flowchart TD
+  n0["no-git\npackages/adapter-antigravity/src/driver.ts:162-165\nThis adapter publishes cwd and does not publish git. The trace of the adapter signal stops here."]
+  n1["host-branch\npackages/monitor/src/backend/derive.ts:101-106\nderive can still show host.fallbackBranch or workspace.branch. That is not this adapter emitting git."]
   n0 --> n1
-  n2["packages/views/src/views/list/AgentList.tsx:144-199"]
-  n1 --> n2
+  n1 --> fallback["host.fallbackBranch"]
+  n1 --> looked["observed git present: its branch or null"]
+  n1 --> workspace["nothing looked: workspace.branch"]

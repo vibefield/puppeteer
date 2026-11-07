@@ -10,50 +10,18 @@
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-copilot/src/normalization/monitor.ts",
-      "lineStart": 25,
-      "lineEnd": 66,
-      "symbol": "empty monitor updates"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/adapter-copilot/src/normalization/pipeline.ts",
       "lineStart": 100,
-      "lineEnd": 228,
-      "symbol": "turn correlation"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-copilot/src/observation/session-observer.ts",
-      "lineStart": 118,
-      "lineEnd": 118,
-      "symbol": "default poll 100ms"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/runtime/src/services/monitor-service.ts",
-      "lineStart": 176,
-      "lineEnd": 187,
-      "symbol": "MonitorService.consume"
+      "lineEnd": 165,
+      "symbol": "interactionId turn correlation"
     },
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/core/src/monitor/reduce.ts",
       "lineStart": 864,
-      "lineEnd": 938,
-      "symbol": "turn and conversation cases"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/view-sdk/src/model.ts",
-      "lineStart": 65,
-      "lineEnd": 65,
-      "symbol": "model.ts"
+      "lineEnd": 912,
+      "symbol": "turn activity and failure"
     },
     {
       "repo": "puppeteer",
@@ -61,99 +29,97 @@
       "path": "packages/monitor/src/backend/derive.ts",
       "lineStart": 163,
       "lineEnd": 174,
-      "symbol": "derive.ts"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/monitor/src/backend/derive.ts",
-      "lineStart": 313,
-      "lineEnd": 313,
-      "symbol": "derive.ts"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/monitor/src/replica/replica.ts",
-      "lineStart": 297,
-      "lineEnd": 307,
-      "symbol": "replica.ts"
+      "symbol": "agentActivity"
     }
   ],
   "producer": {
     "kind": "adapter",
-    "name": "copilot normalization",
-    "ingestedFrom": "adapter event or monitor batch"
+    "name": "interactionId turn correlation",
+    "ingestedFrom": "interactionId turn correlation"
   },
   "transforms": [
     {
       "order": 0,
-      "name": "adapter-step-0",
-      "effect": "Monitor updates stay empty. Status is declared supported, but no status family update is written.",
-      "source": {
-        "repo": "puppeteer",
-        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-copilot/src/normalization/monitor.ts",
-        "lineStart": 25,
-        "lineEnd": 66,
-        "symbol": "empty monitor updates"
-      }
-    },
-    {
-      "order": 1,
-      "name": "adapter-step-1",
-      "effect": "user.message starts a turn at interactionId. assistant.turn_start only records an internal id and emits no event.",
+      "name": "normalized-activity",
+      "effect": "copilot turn, tool, or child activity is stored as a status-family activity claim.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
         "path": "packages/adapter-copilot/src/normalization/pipeline.ts",
         "lineStart": 100,
-        "lineEnd": 228,
-        "symbol": "turn correlation"
+        "lineEnd": 165,
+        "symbol": "interactionId turn correlation"
+      }
+    },
+    {
+      "order": 1,
+      "name": "reduce-activity",
+      "effect": "The reducer upserts or retracts the activity claim. Completion clears it.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/core/src/monitor/reduce.ts",
+        "lineStart": 864,
+        "lineEnd": 912,
+        "symbol": "turn activity and failure"
       }
     },
     {
       "order": 2,
-      "name": "adapter-step-2",
-      "effect": "assistant.turn_end completes the interaction only when that internal turn was marked terminal, which happens when an assistant message had no tool requests. Otherwise the end emits nothing.",
+      "name": "derive-activity",
+      "effect": "agentActivity copies kind, a bounded line, and since when the timestamp parses. No activity object means the row omits it.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-copilot/src/observation/session-observer.ts",
-        "lineStart": 118,
-        "lineEnd": 118,
-        "symbol": "default poll 100ms"
-      }
-    },
-    {
-      "order": 3,
-      "name": "adapter-step-3",
-      "effect": "abort and session.error fail the current interaction when one exists, and emit no turn event when none exists.",
-      "source": {
-        "repo": "puppeteer",
-        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/runtime/src/services/monitor-service.ts",
-        "lineStart": 176,
-        "lineEnd": 187,
-        "symbol": "MonitorService.consume"
+        "path": "packages/monitor/src/backend/derive.ts",
+        "lineStart": 163,
+        "lineEnd": 174,
+        "symbol": "agentActivity"
       }
     }
   ],
   "merge": {
-    "strategy": "unknown",
-    "defaults": []
+    "strategy": "defaulted",
+    "defaults": [
+      {
+        "when": "host.pending is set",
+        "presence": "present",
+        "literal": "idle",
+        "source": {
+          "repo": "puppeteer",
+          "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+          "path": "packages/monitor/src/backend/derive.ts",
+          "lineStart": 68,
+          "lineEnd": 72,
+          "symbol": "agentStatus defaults"
+        }
+      },
+      {
+        "when": "runtime state is absent and the host run is not pending",
+        "presence": "present",
+        "literal": "working",
+        "source": {
+          "repo": "puppeteer",
+          "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+          "path": "packages/monitor/src/backend/derive.ts",
+          "lineStart": 68,
+          "lineEnd": 72,
+          "symbol": "agentStatus defaults"
+        }
+      }
+    ]
   },
   "transport": {
     "channel": "in-process",
-    "name": "MonitorService.consume",
-    "contract": "AgentEvent or monitor:batch"
+    "name": "AgentMonitorService.consume",
+    "contract": "turn, tool, or monitor activity to deriveAgentRow"
   },
   "renderer": {
     "viewIds": [
       "view.swarm"
     ],
     "component": "direct reader",
-    "symbol": "confirmed"
+    "symbol": "direct"
   },
   "applicability": {
     "states": [
@@ -168,7 +134,7 @@
     "views": [
       "view.swarm"
     ],
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. Direct readers: view.swarm. Reachable predicates for this adapter path: state.activity_starting, state.activity_responding, state.activity_reasoning, state.activity_tool, state.activity_delegating, state.activity_compacting, state.activity_other."
+    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. Applicable states: state.activity_starting, state.activity_responding, state.activity_reasoning, state.activity_tool, state.activity_delegating, state.activity_compacting, state.activity_other. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -187,6 +153,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. Direct readers: view.swarm. Reachable predicates for this adapter path: state.activity_starting, state.activity_responding, state.activity_reasoning, state.activity_tool, state.activity_delegating, state.activity_compacting, state.activity_other."
+    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. Applicable states: state.activity_starting, state.activity_responding, state.activity_reasoning, state.activity_tool, state.activity_delegating, state.activity_compacting, state.activity_other. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   }
 }

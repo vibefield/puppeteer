@@ -1,9 +1,5 @@
-%% graph_ref: path.host
-%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% field: field.inputUsed
+%% adapter: acp
 %% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
-flowchart LR
-  n0["packages/view-sdk/src/model.ts:124-124"]
-  n1["packages/monitor/src/backend/derive.ts:26-113"]
-  n0 --> n1
-  n2["indirect reader only"]
-  n1 --> n2
+flowchart TD
+  n0["omitted-on-agent-row\npackages/monitor/src/backend/derive.ts:240-286\nderiveAgentRow does not copy inputUsed. The terminal copier is a different row and is not this adapter value path."]

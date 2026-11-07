@@ -1,9 +1,7 @@
-%% graph_ref: path.status
-%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% field: field.statusSince
+%% adapter: codex
 %% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
-flowchart LR
-  n0["packages/view-sdk/src/model.ts:135-135"]
-  n1["packages/core/src/monitor/transitions.ts:93-170"]
+flowchart TD
+  n0["normalized-status-signal\npackages/adapter-codex/src/normalization/monitor.ts:643-670\ncodex status changes are projected with statusSince retained by the runtime."]
+  n1["derive-since\npackages/monitor/src/backend/derive.ts:74-76\nagentStatusSince uses the projected statusSince, else host.createdAt."]
   n0 --> n1
-  n2["packages/views/src/views/spend/spend-words.ts:140-151"]
-  n1 --> n2

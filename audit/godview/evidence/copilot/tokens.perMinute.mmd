@@ -1,9 +1,5 @@
-%% graph_ref: path.usage
-%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% field: field.tokens.perMinute
+%% adapter: copilot
 %% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
-flowchart LR
-  n0["packages/adapter-copilot/src/normalization/monitor-capabilities.ts:15-23"]
-  n1["packages/runtime/src/services/usage-pricing.ts:19-78"]
-  n0 --> n1
-  n2["no direct builtin reader"]
-  n1 --> n2
+flowchart TD
+  n0["no-usage\npackages/adapter-copilot/src/normalization/compaction.ts:4-25\nThis adapter does not emit usage:tokens-used or a usage-family sample. The trace stops. field.tokens is omitted."]

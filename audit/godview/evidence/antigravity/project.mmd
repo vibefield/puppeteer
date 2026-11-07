@@ -1,9 +1,7 @@
-%% graph_ref: path.environment
-%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% field: field.project
+%% adapter: antigravity
 %% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
-flowchart LR
-  n0["packages/adapter-antigravity/src/driver.ts:162-165"]
-  n1["packages/core/src/monitor/reduce.ts:100-117"]
+flowchart TD
+  n0["cwd\npackages/adapter-antigravity/src/driver.ts:162-165\nThe adapter publishes a cwd string."]
+  n1["derive-name\npackages/monitor/src/backend/derive.ts:240-286\nprojectName uses the observed directory, else a host workspace path, else the provider label."]
   n0 --> n1
-  n2["packages/views/src/views/list/AgentList.tsx:144-199"]
-  n1 --> n2

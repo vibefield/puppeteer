@@ -11,166 +11,81 @@
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/adapter-codex/src/normalization/monitor.ts",
-      "lineStart": 477,
-      "lineEnd": 542,
-      "symbol": "thread/tokenUsage/updated context"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-codex/src/normalization/monitor.ts",
-      "lineStart": 391,
-      "lineEnd": 414,
-      "symbol": "contextBootstrapBatch"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-codex/src/observation/rollout-context.ts",
-      "lineStart": 14,
-      "lineEnd": 51,
-      "symbol": "readLastCodexContextWindow"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-codex/src/observation/observer.ts",
-      "lineStart": 381,
-      "lineEnd": 385,
-      "symbol": "rollout context publish"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-codex/src/normalization/context-window.ts",
-      "lineStart": 19,
-      "lineEnd": 46,
-      "symbol": "CodexContextWindowNormalizer"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/runtime/src/services/monitor-service.ts",
-      "lineStart": 176,
-      "lineEnd": 187,
-      "symbol": "MonitorService.consume"
+      "lineStart": 530,
+      "lineEnd": 538,
+      "symbol": "root context from last tokens"
     },
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/core/src/monitor/reduce.ts",
       "lineStart": 1075,
-      "lineEnd": 1103,
-      "symbol": "context-window cases"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/view-sdk/src/model.ts",
-      "lineStart": 157,
-      "lineEnd": 157,
-      "symbol": "model.ts"
+      "lineEnd": 1104,
+      "symbol": "context upsert or retract"
     },
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/monitor/src/backend/derive.ts",
-      "lineStart": 247,
-      "lineEnd": 247,
-      "symbol": "derive.ts"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/monitor/src/backend/derive.ts",
-      "lineStart": 274,
-      "lineEnd": 274,
-      "symbol": "derive.ts"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/views/src/views/swarm/bubble-model.ts",
-      "lineStart": 328,
-      "lineEnd": 330,
-      "symbol": "bubble-model.ts"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/views/src/views/rain/rain-streams.ts",
-      "lineStart": 89,
-      "lineEnd": 117,
-      "symbol": "rain-streams.ts"
+      "lineStart": 240,
+      "lineEnd": 286,
+      "symbol": "deriveAgentRow"
     }
   ],
   "producer": {
     "kind": "adapter",
-    "name": "codex normalization",
-    "ingestedFrom": "context usedTokens and capacityTokens"
+    "name": "root context from last tokens",
+    "ingestedFrom": "root context from last tokens"
   },
   "transforms": [
     {
       "order": 0,
-      "name": "adapter-step-0",
-      "effect": "Live and bootstrap notifications upsert root context from last.totalTokens and modelContextWindow. percentageSource is the literal derived. usedPercentage is not set.",
+      "name": "normalized-context",
+      "effect": "The adapter writes used and capacity tokens, and a percentage only when it actually has one.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
         "path": "packages/adapter-codex/src/normalization/monitor.ts",
-        "lineStart": 477,
-        "lineEnd": 542,
-        "symbol": "thread/tokenUsage/updated context"
+        "lineStart": 530,
+        "lineEnd": 538,
+        "symbol": "root context from last tokens"
       }
     },
     {
       "order": 1,
-      "name": "adapter-step-1",
-      "effect": "modelContextWindow null retracts root context. Child occupancy is not upserted.",
+      "name": "reduce-percent",
+      "effect": "A positive capacity stores context. A missing provider percentage becomes a clamped ratio. Invalidation retracts that claim.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-codex/src/normalization/monitor.ts",
-        "lineStart": 391,
-        "lineEnd": 414,
-        "symbol": "contextBootstrapBatch"
+        "path": "packages/core/src/monitor/reduce.ts",
+        "lineStart": 1075,
+        "lineEnd": 1104,
+        "symbol": "context upsert or retract"
       }
     },
     {
       "order": 2,
-      "name": "adapter-step-2",
-      "effect": "The rollout tail reads the same two counts from the last token_count record and does not set a percentage. contextBootstrapBatch would copy usedPercentage if the event had one. The only caller does not set it, so that branch is unreachable from the wired producer.",
+      "name": "derive-percent",
+      "effect": "A finite usedPercent is copied. Otherwise field.context is omitted.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-codex/src/observation/rollout-context.ts",
-        "lineStart": 14,
-        "lineEnd": 51,
-        "symbol": "readLastCodexContextWindow"
-      }
-    },
-    {
-      "order": 3,
-      "name": "adapter-step-3",
-      "effect": "Usage samples are separate and are not emitted for bootstrap phase.",
-      "source": {
-        "repo": "puppeteer",
-        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-codex/src/observation/observer.ts",
-        "lineStart": 381,
-        "lineEnd": 385,
-        "symbol": "rollout context publish"
+        "path": "packages/monitor/src/backend/derive.ts",
+        "lineStart": 240,
+        "lineEnd": 286,
+        "symbol": "deriveAgentRow"
       }
     }
   ],
   "merge": {
-    "strategy": "unknown",
+    "strategy": "replace",
     "defaults": []
   },
   "transport": {
     "channel": "in-process",
-    "name": "MonitorService.consume",
-    "contract": "AgentEvent or monitor:batch"
+    "name": "AgentMonitorService.consume",
+    "contract": "normalized event or monitor batch"
   },
   "renderer": {
     "viewIds": [
@@ -179,7 +94,7 @@
       "view.swarm"
     ],
     "component": "direct reader",
-    "symbol": "confirmed"
+    "symbol": "direct"
   },
   "applicability": {
     "states": [
@@ -191,7 +106,7 @@
       "view.rain",
       "view.swarm"
     ],
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. Direct readers: view.list, view.rain, view.swarm. Reachable predicates for this adapter path: state.context_missing, state.context_hot."
+    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. Applicable states: state.context_missing, state.context_hot. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -210,6 +125,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. Direct readers: view.list, view.rain, view.swarm. Reachable predicates for this adapter path: state.context_missing, state.context_hot."
+    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. Applicable states: state.context_missing, state.context_hot. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   }
 }

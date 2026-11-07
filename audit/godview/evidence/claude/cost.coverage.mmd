@@ -1,10 +1,17 @@
-%% graph_ref: path.usage
-%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% field: field.cost.coverage
+%% adapter: claude
 %% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
-flowchart LR
-  raw["adapter usage or pricing"] --> price["priceUsageUpdates BEFORE reduce monitor-service.ts:418-425"]
-  price --> rules["usage-pricing.ts:19-78 reported USD or catalog"]
-  rules --> red["reduce.ts:1049-1073 copies costUsd"]
-  red --> led["cost.ts priced or skipped"]
-  led --> row["backend.ts:197-205 costOf complete or partial"]
-  row --> view["bubble-model.ts:469-477 and spend-series.ts:35-150"]
+flowchart TD
+  n0["provider-costUsd\npackages/adapter-claude/src/observation/otel/usage.ts:37-69\nValid nonnegative cost_usd, including zero, is copied. Missing cost leaves costUsd unset."]
+  n1["price-before-reduce\npackages/runtime/src/services/monitor-service.ts:418-425\nReported costUsd wins. Otherwise complete Anthropic buckets can be catalog-priced. This runs before reduce."]
+  n0 --> n1
+  n2["reduce-after-price\npackages/core/src/monitor/reduce.ts:1049-1073\nThe reducer copies the already priced costUsd. It does not consult the catalog."]
+  n1 --> n2
+  n3["row-cost\npackages/monitor/src/backend/backend.ts:197-205\nA priced total becomes field.cost complete or partial. No priced total omits the object: cost_missing, not a present unavailable coverage."]
+  n2 --> n3
+  n3 --> complete["priced and unpriced zero: coverage complete"]
+  n3 --> partial["priced and unpriced both positive: coverage partial"]
+  n3 --> missing["no priced total: omit field.cost"]
+  complete --> flames["working observed body: flame tiers are conditional"]
+  partial --> flames
+  missing --> unpriced["working observed body: burn_unpriced"]

@@ -10,185 +10,82 @@
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-claude/src/observation/status-channel.ts",
-      "lineStart": 124,
-      "lineEnd": 148,
-      "symbol": "claudeEnvironmentEvents"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/adapter-claude/src/normalization/monitor.ts",
       "lineStart": 239,
       "lineEnd": 252,
-      "symbol": "rootStatusBatch model replace"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-claude/src/normalization/model.ts",
-      "lineStart": 5,
-      "lineEnd": 55,
-      "symbol": "hook model and ClaudeRootModelGate"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-claude/src/observation/otel/model.ts",
-      "lineStart": 11,
-      "lineEnd": 16,
-      "symbol": "normalizeClaudeOtelModel"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-claude/src/driver.ts",
-      "lineStart": 634,
-      "lineEnd": 638,
-      "symbol": "launch configured model"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-claude/src/normalization/monitor.ts",
-      "lineStart": 368,
-      "lineEnd": 378,
-      "symbol": "child task model"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/runtime/src/services/monitor-service.ts",
-      "lineStart": 176,
-      "lineEnd": 187,
-      "symbol": "MonitorService.consume"
+      "symbol": "root status model replace"
     },
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/core/src/monitor/reduce.ts",
-      "lineStart": 1117,
-      "lineEnd": 1127,
-      "symbol": "environment model effort mode cases"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/view-sdk/src/model.ts",
-      "lineStart": 154,
-      "lineEnd": 154,
-      "symbol": "model.ts"
+      "lineStart": 1120,
+      "lineEnd": 1125,
+      "symbol": "model and effort upsert"
     },
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/monitor/src/backend/derive.ts",
-      "lineStart": 244,
-      "lineEnd": 244,
-      "symbol": "derive.ts"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/monitor/src/backend/derive.ts",
-      "lineStart": 271,
-      "lineEnd": 271,
-      "symbol": "derive.ts"
+      "lineStart": 240,
+      "lineEnd": 286,
+      "symbol": "deriveAgentRow"
     }
   ],
   "producer": {
     "kind": "adapter",
-    "name": "claude normalization",
-    "ingestedFrom": "model id and optional display name"
+    "name": "root status model replace",
+    "ingestedFrom": "root status model replace"
   },
   "transforms": [
     {
       "order": 0,
-      "name": "adapter-step-0",
-      "effect": "Status line model.id becomes a monitor replace of key observed, intent observed, plus display name when present. That monitor write is not passed through ClaudeRootModelGate.",
-      "source": {
-        "repo": "puppeteer",
-        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-claude/src/observation/status-channel.ts",
-        "lineStart": 124,
-        "lineEnd": 148,
-        "symbol": "claudeEnvironmentEvents"
-      }
-    },
-    {
-      "order": 1,
-      "name": "adapter-step-1",
-      "effect": "The parallel model:updated event is published only when admitStatusLine says the card changed. admitHook drops a root hook model whose id is unchanged, and drops PostModelSwitch when from_model is not the card currently reported.",
+      "name": "normalized-card",
+      "effect": "model is emitted as an event or monitor upsert. Antigravity does this only from launch options.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
         "path": "packages/adapter-claude/src/normalization/monitor.ts",
         "lineStart": 239,
         "lineEnd": 252,
-        "symbol": "rootStatusBatch model replace"
+        "symbol": "root status model replace"
+      }
+    },
+    {
+      "order": 1,
+      "name": "reduce-card",
+      "effect": "model:updated and effort:updated upsert or retract. Null retracts. Configured and observed stay distinct.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/core/src/monitor/reduce.ts",
+        "lineStart": 1120,
+        "lineEnd": 1125,
+        "symbol": "model and effort upsert"
       }
     },
     {
       "order": 2,
-      "name": "adapter-step-2",
-      "effect": "SessionStart model omits intent. PostModelSwitch to_model sets intent observed. OTLP api_request model sets intent observed and is fingerprinted per actor key.",
+      "name": "derive-card",
+      "effect": "derive copies model displayName or id, and effort value plus intent when present.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-claude/src/normalization/model.ts",
-        "lineStart": 5,
-        "lineEnd": 55,
-        "symbol": "hook model and ClaudeRootModelGate"
-      }
-    },
-    {
-      "order": 3,
-      "name": "adapter-step-3",
-      "effect": "Launch options.model emits intent configured with provider anthropic.",
-      "source": {
-        "repo": "puppeteer",
-        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-claude/src/observation/otel/model.ts",
-        "lineStart": 11,
-        "lineEnd": 16,
-        "symbol": "normalizeClaudeOtelModel"
-      }
-    },
-    {
-      "order": 4,
-      "name": "adapter-step-4",
-      "effect": "Child tasks copy task.model with intent observed. The child batch replaces the whole model family, so a task that omits model drops the previous child row.",
-      "source": {
-        "repo": "puppeteer",
-        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-claude/src/driver.ts",
-        "lineStart": 634,
-        "lineEnd": 638,
-        "symbol": "launch configured model"
-      }
-    },
-    {
-      "order": 5,
-      "name": "adapter-step-5",
-      "effect": "Transcript onBatch listeners are registered and never invoked. No transcript model:updated was found.",
-      "source": {
-        "repo": "puppeteer",
-        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-claude/src/normalization/monitor.ts",
-        "lineStart": 368,
-        "lineEnd": 378,
-        "symbol": "child task model"
+        "path": "packages/monitor/src/backend/derive.ts",
+        "lineStart": 240,
+        "lineEnd": 286,
+        "symbol": "deriveAgentRow"
       }
     }
   ],
   "merge": {
-    "strategy": "unknown",
+    "strategy": "replace",
     "defaults": []
   },
   "transport": {
     "channel": "in-process",
-    "name": "MonitorService.consume",
-    "contract": "AgentEvent or monitor:batch"
+    "name": "AgentMonitorService.consume",
+    "contract": "normalized event or monitor batch"
   },
   "renderer": {
     "viewIds": [
@@ -199,7 +96,7 @@
       "view.timeline"
     ],
     "component": "direct reader",
-    "symbol": "confirmed"
+    "symbol": "direct"
   },
   "applicability": {
     "states": "model-axes",
@@ -210,7 +107,7 @@
       "view.spend",
       "view.timeline"
     ],
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. Direct readers: view.list, view.rain, view.swarm, view.spend, view.timeline. No source-permitted predicate from this field domain is claimed for this adapter. No field-domain predicate is claimed as source-permitted here."
+    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. No source-permitted field-domain state is claimed. Excluded from applicability: state.model_missing. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -229,6 +126,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. Direct readers: view.list, view.rain, view.swarm, view.spend, view.timeline. No source-permitted predicate from this field domain is claimed for this adapter. No field-domain predicate is claimed as source-permitted here."
+    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. No source-permitted field-domain state is claimed. Excluded from applicability: state.model_missing. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   }
 }

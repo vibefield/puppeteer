@@ -1,9 +1,9 @@
-%% graph_ref: path.conversation
-%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% field: field.reply.at
+%% adapter: copilot
 %% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
-flowchart LR
-  n0["packages/adapter-copilot/src/normalization/conversation.ts:4-19"]
-  n1["packages/core/src/monitor/reduce.ts:742-746"]
+flowchart TD
+  n0["assistant-text\npackages/adapter-copilot/src/normalization/conversation.ts:4-19\nAn assistant message event carries text and a final flag."]
+  n1["reduce-message\npackages/core/src/monitor/reduce.ts:913-938\nNonblank text replaces the actor reply. final false also marks responding."]
   n0 --> n1
-  n2["no direct builtin reader"]
+  n2["derive-reply\npackages/monitor/src/backend/derive.ts:188-195\nBlank text is omitted. Otherwise text, optional at, and final are copied."]
   n1 --> n2

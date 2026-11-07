@@ -1,10 +1,8 @@
-%% graph_ref: path.usage
-%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% field: field.cost.burnPerHour
+%% adapter: copilot
 %% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
-flowchart LR
-  raw["no priced costUsd from current producers"] --> price["priceUsageUpdates has nothing to price"]
-  price --> red["reduce.ts:1049-1073 no usage cost"]
-  red --> row["backend.ts:197-205 omits field.cost"]
-  row --> missing["state.cost_missing"]
-  row --> hollow["state.burn_unpriced bubble-model.ts:476"]
-  notrow["not a present state.cost_unavailable"] --> row
+flowchart TD
+  n0["handler-omits-usage\npackages/adapter-copilot/src/normalization/compaction.ts:4-25\nThe executing handler does not emit usage or costUsd. Capability text is not this step. The trace stops."]
+  n1["omission-consequence\npackages/monitor/src/backend/backend.ts:197-205\nWith no priced sample, costOf returns undefined and the row omits field.cost. A working observed body can still show the unpriced flame."]
+  n0 --> n1
+  n1 --> visible["missing state can be visible while the USD value is not"]

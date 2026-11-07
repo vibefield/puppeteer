@@ -11,25 +11,9 @@
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/adapter-codex/src/normalization/monitor.ts",
-      "lineStart": 477,
-      "lineEnd": 528,
-      "symbol": "usage upsert"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-codex/src/normalization/usage.ts",
-      "lineStart": 11,
-      "lineEnd": 64,
-      "symbol": "codexUsageCounter and codexUsagePricing"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/runtime/src/services/monitor-service.ts",
-      "lineStart": 176,
-      "lineEnd": 187,
-      "symbol": "MonitorService.consume"
+      "lineStart": 503,
+      "lineEnd": 527,
+      "symbol": "cumulativeTokens usage upsert"
     },
     {
       "repo": "puppeteer",
@@ -37,115 +21,81 @@
       "path": "packages/core/src/monitor/reduce.ts",
       "lineStart": 1049,
       "lineEnd": 1073,
-      "symbol": "usage:tokens-used case"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/view-sdk/src/model.ts",
-      "lineStart": 98,
-      "lineEnd": 98,
-      "symbol": "model.ts"
+      "symbol": "usage:tokens-used"
     },
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/monitor/src/backend/derive.ts",
       "lineStart": 198,
-      "lineEnd": 208,
-      "symbol": "derive.ts"
+      "lineEnd": 207,
+      "symbol": "agentTokens"
     }
   ],
   "producer": {
     "kind": "adapter",
-    "name": "codex normalization",
-    "ingestedFrom": "usage.cumulativeTokens and usage.pricing"
+    "name": "cumulativeTokens usage upsert",
+    "ingestedFrom": "cumulativeTokens usage upsert"
   },
   "transforms": [
     {
       "order": 0,
-      "name": "adapter-step-0",
-      "effect": "cumulativeTokens is total.totalTokens when it is a non-negative safe integer. The usage upsert is live phase only, and a duplicate counter is not upserted again.",
+      "name": "cumulative-sample",
+      "effect": "Live non-duplicate samples carry cumulativeTokens. Bootstrap samples are not usage upserts.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
         "path": "packages/adapter-codex/src/normalization/monitor.ts",
-        "lineStart": 477,
-        "lineEnd": 528,
-        "symbol": "usage upsert"
+        "lineStart": 503,
+        "lineEnd": 527,
+        "symbol": "cumulativeTokens usage upsert"
       }
     },
     {
       "order": 1,
-      "name": "adapter-step-1",
-      "effect": "Bootstrap phase stores a counter when usageStartsAtZero but does not emit the usage update. The monitor test shows bootstrap history is not burned.",
-      "source": {
-        "repo": "puppeteer",
-        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-codex/src/normalization/usage.ts",
-        "lineStart": 11,
-        "lineEnd": 64,
-        "symbol": "codexUsageCounter and codexUsagePricing"
-      }
-    },
-    {
-      "order": 2,
-      "name": "adapter-step-2",
-      "effect": "pricing is attached when the counter total is > 0 or a previous counter exists. The first sample is gap baseline. A decreasing total is gap counter-reset. A model change is gap model-change. Incomplete or inconsistent buckets are gap incomplete-buckets.",
-      "source": {
-        "repo": "puppeteer",
-        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/runtime/src/services/monitor-service.ts",
-        "lineStart": 176,
-        "lineEnd": 187,
-        "symbol": "MonitorService.consume"
-      }
-    },
-    {
-      "order": 3,
-      "name": "adapter-step-3",
-      "effect": "A complete interval sets inputTokens to input minus cached, cacheReadTokens to cached, cacheCreationTokens to the literal 0, and outputTokens to the output delta. contextTokens is the input delta only when it equals the last request.",
+      "name": "reduce-copy",
+      "effect": "The reducer copies cumulativeTokens. Pricing may add costUsd and does not erase the counter.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
         "path": "packages/core/src/monitor/reduce.ts",
         "lineStart": 1049,
         "lineEnd": 1073,
-        "symbol": "usage:tokens-used case"
+        "symbol": "usage:tokens-used"
       }
     },
     {
-      "order": 4,
-      "name": "adapter-step-4",
-      "effect": "The usage value sets boundary sample and canonical false. It does not set totalTokens, deltaTokens, or costUsd.",
+      "order": 2,
+      "name": "row-tokens",
+      "effect": "derive maps cumulativeTokens to tokens.total and burnRatePerMin to tokens.perMinute when the index produces a rate.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/view-sdk/src/model.ts",
-        "lineStart": 98,
-        "lineEnd": 98,
-        "symbol": "model.ts"
+        "path": "packages/monitor/src/backend/derive.ts",
+        "lineStart": 198,
+        "lineEnd": 207,
+        "symbol": "agentTokens"
       }
     }
   ],
   "merge": {
-    "strategy": "unknown",
+    "strategy": "replace",
     "defaults": []
   },
   "transport": {
     "channel": "in-process",
-    "name": "MonitorService.consume",
-    "contract": "AgentEvent or monitor:batch"
+    "name": "AgentMonitorService.consume",
+    "contract": "normalized event or monitor batch"
   },
   "renderer": {
     "viewIds": [],
-    "component": "no direct reader",
-    "symbol": "no direct builtin reader"
+    "component": "no reader",
+    "symbol": "none"
   },
   "applicability": {
     "states": "model-axes",
     "views": "all-monitor-views",
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. No direct or indirect builtin reader was found for this row field. No source-permitted predicate from this field domain is claimed for this adapter. No field-domain predicate is claimed as source-permitted here."
+    "notes": "rendererRead=none. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=no is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. No source-permitted field-domain state is claimed. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -164,6 +114,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. No direct or indirect builtin reader was found for this row field. No source-permitted predicate from this field domain is claimed for this adapter. No field-domain predicate is claimed as source-permitted here."
+    "notes": "rendererRead=none. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=no is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. No source-permitted field-domain state is claimed. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   }
 }

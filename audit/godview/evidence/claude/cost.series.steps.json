@@ -13,55 +13,7 @@
       "path": "packages/adapter-claude/src/observation/otel/usage.ts",
       "lineStart": 37,
       "lineEnd": 69,
-      "symbol": "costUsd"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/runtime/src/services/monitor-service.ts",
-      "lineStart": 176,
-      "lineEnd": 187,
-      "symbol": "MonitorService.consume"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/core/src/monitor/reduce.ts",
-      "lineStart": 1049,
-      "lineEnd": 1073,
-      "symbol": "usage:tokens-used case"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/monitor/src/backend/derive.ts",
-      "lineStart": 240,
-      "lineEnd": 286,
-      "symbol": "deriveAgentRow"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/view-sdk/src/model.ts",
-      "lineStart": 29,
-      "lineEnd": 29,
-      "symbol": "model.ts"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/monitor/src/backend/backend.ts",
-      "lineStart": 189,
-      "lineEnd": 207,
-      "symbol": "backend.ts"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/monitor/src/backend/usage-ledger.ts",
-      "lineStart": 62,
-      "lineEnd": 82,
-      "symbol": "usage-ledger.ts"
+      "symbol": "costUsd on usage:tokens-used"
     },
     {
       "repo": "puppeteer",
@@ -69,15 +21,15 @@
       "path": "packages/runtime/src/services/monitor-service.ts",
       "lineStart": 418,
       "lineEnd": 425,
-      "symbol": "priceUsageUpdates before reduce"
+      "symbol": "accept prices before reduce"
     },
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/runtime/src/services/usage-pricing.ts",
-      "lineStart": 19,
-      "lineEnd": 78,
-      "symbol": "catalog and provider costUsd"
+      "path": "packages/core/src/monitor/reduce.ts",
+      "lineStart": 1049,
+      "lineEnd": 1073,
+      "symbol": "usage:tokens-used"
     },
     {
       "repo": "puppeteer",
@@ -85,109 +37,83 @@
       "path": "packages/monitor/src/backend/backend.ts",
       "lineStart": 197,
       "lineEnd": 205,
-      "symbol": "costOf omits unpaid total"
+      "symbol": "costOf"
     }
   ],
   "producer": {
     "kind": "adapter",
-    "name": "claude normalization",
-    "ingestedFrom": "usage:tokens-used.costUsd"
+    "name": "costUsd on usage:tokens-used",
+    "ingestedFrom": "costUsd on usage:tokens-used"
   },
   "transforms": [
     {
       "order": 0,
-      "name": "adapter-step-0",
-      "effect": "cost_usd is copied when it is a non-negative finite number, including 0. A missing or negative value omits costUsd.",
+      "name": "provider-costUsd",
+      "effect": "Valid nonnegative cost_usd, including zero, is copied. Missing cost leaves costUsd unset.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
         "path": "packages/adapter-claude/src/observation/otel/usage.ts",
         "lineStart": 37,
         "lineEnd": 69,
-        "symbol": "costUsd"
+        "symbol": "costUsd on usage:tokens-used"
       }
     },
     {
       "order": 1,
-      "name": "adapter-step-1",
-      "effect": "The event does not set cost coverage, burnPerHour, or a series.",
-      "source": {
-        "repo": "puppeteer",
-        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/runtime/src/services/monitor-service.ts",
-        "lineStart": 176,
-        "lineEnd": 187,
-        "symbol": "MonitorService.consume"
-      }
-    },
-    {
-      "order": 2,
-      "name": "runtime-priceUsageUpdates-before-reduce",
-      "effect": "Runtime priceUsageUpdates runs before reduceMonitorAccumulator. Reported nonnegative costUsd, including zero, wins. Otherwise exact catalog pricing. A failed estimate writes no costUsd.",
+      "name": "price-before-reduce",
+      "effect": "Reported costUsd wins. Otherwise complete Anthropic buckets can be catalog-priced. This runs before reduce.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
         "path": "packages/runtime/src/services/monitor-service.ts",
         "lineStart": 418,
         "lineEnd": 425,
-        "symbol": "priceUsageUpdates before reduce"
+        "symbol": "accept prices before reduce"
       }
     },
     {
-      "order": 3,
-      "name": "catalog-or-provider-cost",
-      "effect": "Live/correction allowed-origin usage upserts with canonical/pricing/costUsd: valid reported nonnegative USD incl zero wins; otherwise exact request model/catalog/buckets/tier pricing. Missing metadata is not reconstructed from row/session model. Failed estimate has no USD.",
-      "source": {
-        "repo": "puppeteer",
-        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/runtime/src/services/usage-pricing.ts",
-        "lineStart": 19,
-        "lineEnd": 78,
-        "symbol": "catalog and provider costUsd"
-      }
-    },
-    {
-      "order": 4,
-      "name": "core-reduce-copies-costUsd",
-      "effect": "After pricing, reduce copies costUsd onto the monitor usage value. It does not price.",
+      "order": 2,
+      "name": "reduce-after-price",
+      "effect": "The reducer copies the already priced costUsd. It does not consult the catalog.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
         "path": "packages/core/src/monitor/reduce.ts",
         "lineStart": 1049,
         "lineEnd": 1073,
-        "symbol": "usage:tokens-used case"
+        "symbol": "usage:tokens-used"
       }
     },
     {
-      "order": 5,
-      "name": "backend-costOf",
-      "effect": "costOf returns no cost object when history.total is undefined. That is cost_missing, not a present coverage of unavailable.",
+      "order": 3,
+      "name": "row-cost",
+      "effect": "A priced total becomes field.cost complete or partial. No priced total omits the object: cost_missing, not a present unavailable coverage.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
         "path": "packages/monitor/src/backend/backend.ts",
         "lineStart": 197,
         "lineEnd": 205,
-        "symbol": "costOf omits unpaid total"
+        "symbol": "costOf"
       }
     }
   ],
   "merge": {
-    "strategy": "unknown",
+    "strategy": "fold",
     "defaults": []
   },
   "transport": {
     "channel": "in-process",
-    "name": "MonitorService.consume",
-    "contract": "AgentEvent or monitor:batch"
+    "name": "AgentMonitorService.accept",
+    "contract": "priceUsageUpdates then reduceMonitorAccumulator"
   },
   "renderer": {
     "viewIds": [
       "view.spend"
     ],
     "component": "direct reader",
-    "symbol": "confirmed"
+    "symbol": "direct"
   },
   "applicability": {
     "states": [
@@ -204,7 +130,7 @@
     "views": [
       "view.spend"
     ],
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. Direct readers: view.spend. Runtime priceUsageUpdates runs before reduce. The normal backend omits field.cost when there is no priced total, so a present coverage of unavailable is not the row result. Reachable predicates for this adapter path: state.cost_complete, state.cost_partial, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, state.burn_unpriced. Not claimed, and not listed as applicable: state.cost_unavailable."
+    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=yes. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. A missing-state presentation can be visible while field-value uiReachable is no. Applicable states: state.cost_complete, state.cost_partial, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, state.burn_unpriced. Excluded from applicability: state.cost_unavailable. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -223,6 +149,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. Direct readers: view.spend. Runtime priceUsageUpdates runs before reduce. The normal backend omits field.cost when there is no priced total, so a present coverage of unavailable is not the row result. Reachable predicates for this adapter path: state.cost_complete, state.cost_partial, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, state.burn_unpriced. Not claimed, and not listed as applicable: state.cost_unavailable."
+    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=yes. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. A missing-state presentation can be visible while field-value uiReachable is no. Applicable states: state.cost_complete, state.cost_partial, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, state.burn_unpriced. Excluded from applicability: state.cost_unavailable. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   }
 }

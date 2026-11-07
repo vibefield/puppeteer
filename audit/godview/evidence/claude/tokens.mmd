@@ -1,9 +1,16 @@
-%% graph_ref: path.usage
-%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% field: field.tokens
+%% adapter: claude
 %% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
-flowchart LR
-  n0["packages/adapter-claude/src/observation/otel/usage.ts:28-87"]
-  n1["packages/runtime/src/services/usage-pricing.ts:19-78"]
+flowchart TD
+  n0["request-total\npackages/adapter-claude/src/observation/otel/usage.ts:28-79\nWith at least one token bucket, totalTokens is the sum and meterTokens is fresh input plus output. Cost-only events omit the token total."]
+  n1["price-does-not-replace-tokens\npackages/runtime/src/services/monitor-service.ts:418-425\npriceUsageUpdates may add costUsd and does not replace totalTokens. It runs before reduce."]
   n0 --> n1
-  n2["no direct builtin reader"]
+  n2["reduce-copy\npackages/core/src/monitor/reduce.ts:1049-1073\nThe reducer copies totalTokens onto the usage observation."]
   n1 --> n2
+  n3["sum-canonical\npackages/core/src/monitor/usage-index.ts:345-366\ntotalContribution prefers totalTokens. Canonical contributions fold into cumulativeTokens, including a real zero."]
+  n2 --> n3
+  n4["row-total\npackages/monitor/src/backend/derive.ts:198-207\nderive agentTokens copies cumulativeTokens to tokens.total. No builtin view reads it."]
+  n3 --> n4
+  n0 --> withBuckets["at least one bucket: totalTokens"]
+  n0 --> costOnly["cost only: omit the token total"]
+  n4 --> noReader["row can hold tokens.total; no builtin direct reader"]

@@ -18,62 +18,30 @@
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/adapter-copilot/src/driver.ts",
-      "lineStart": 143,
-      "lineEnd": 147,
-      "symbol": "launch configured effort"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/runtime/src/services/monitor-service.ts",
-      "lineStart": 176,
-      "lineEnd": 187,
-      "symbol": "MonitorService.consume"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/core/src/monitor/reduce.ts",
-      "lineStart": 1117,
-      "lineEnd": 1127,
-      "symbol": "environment model effort mode cases"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/view-sdk/src/model.ts",
-      "lineStart": 155,
-      "lineEnd": 155,
-      "symbol": "model.ts"
+      "lineStart": 1120,
+      "lineEnd": 1125,
+      "symbol": "model and effort upsert"
     },
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/monitor/src/backend/derive.ts",
-      "lineStart": 176,
-      "lineEnd": 181,
-      "symbol": "derive.ts"
-    },
-    {
-      "repo": "puppeteer",
-      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-      "path": "packages/views/src/views/swarm/bubble-model.ts",
-      "lineStart": 320,
-      "lineEnd": 325,
-      "symbol": "bubble-model.ts"
+      "lineStart": 240,
+      "lineEnd": 286,
+      "symbol": "deriveAgentRow"
     }
   ],
   "producer": {
     "kind": "adapter",
-    "name": "copilot normalization",
-    "ingestedFrom": "effort:updated"
+    "name": "normalizeCopilotEffort",
+    "ingestedFrom": "normalizeCopilotEffort"
   },
   "transforms": [
     {
       "order": 0,
-      "name": "adapter-step-0",
-      "effect": "reasoningEffort is read on session.start, session.resume, and session.model_change. auto_mode_resolved does not update effort.",
+      "name": "normalized-card",
+      "effect": "effort is emitted as an event or monitor upsert. Antigravity does this only from launch options.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
@@ -85,53 +53,53 @@
     },
     {
       "order": 1,
-      "name": "adapter-step-1",
-      "effect": "A non-empty string emits effort:updated intent observed. A missing value emits nothing and does not retract.",
+      "name": "reduce-card",
+      "effect": "model:updated and effort:updated upsert or retract. Null retracts. Configured and observed stay distinct.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/adapter-copilot/src/driver.ts",
-        "lineStart": 143,
-        "lineEnd": 147,
-        "symbol": "launch configured effort"
+        "path": "packages/core/src/monitor/reduce.ts",
+        "lineStart": 1120,
+        "lineEnd": 1125,
+        "symbol": "model and effort upsert"
       }
     },
     {
       "order": 2,
-      "name": "adapter-step-2",
-      "effect": "Launch options.effort is intent configured.",
+      "name": "derive-card",
+      "effect": "derive copies model displayName or id, and effort value plus intent when present.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
-        "path": "packages/runtime/src/services/monitor-service.ts",
-        "lineStart": 176,
-        "lineEnd": 187,
-        "symbol": "MonitorService.consume"
+        "path": "packages/monitor/src/backend/derive.ts",
+        "lineStart": 240,
+        "lineEnd": 286,
+        "symbol": "deriveAgentRow"
       }
     }
   ],
   "merge": {
-    "strategy": "unknown",
+    "strategy": "replace",
     "defaults": []
   },
   "transport": {
     "channel": "in-process",
-    "name": "MonitorService.consume",
-    "contract": "AgentEvent or monitor:batch"
+    "name": "AgentMonitorService.consume",
+    "contract": "normalized event or monitor batch"
   },
   "renderer": {
     "viewIds": [
       "view.swarm"
     ],
     "component": "direct reader",
-    "symbol": "confirmed"
+    "symbol": "direct"
   },
   "applicability": {
     "states": "model-axes",
     "views": [
       "view.swarm"
     ],
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. Direct readers: view.swarm. No source-permitted predicate from this field domain is claimed for this adapter. No field-domain predicate is claimed as source-permitted here."
+    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. No source-permitted field-domain state is claimed. Excluded from applicability: state.effort_configured, state.effort_observed, state.effort_absent. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -150,6 +118,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. Direct readers: view.swarm. No source-permitted predicate from this field domain is claimed for this adapter. No field-domain predicate is claimed as source-permitted here."
+    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. No source-permitted field-domain state is claimed. Excluded from applicability: state.effort_configured, state.effort_observed, state.effort_absent. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
   }
 }

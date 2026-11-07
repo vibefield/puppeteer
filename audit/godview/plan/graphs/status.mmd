@@ -1,4 +1,25 @@
-flowchart LR
-  events[turn tool permission events] --> transitions[transitions.ts status]
-  transitions --> derive[derive.ts agentStatus]
-  derive --> views[list rain swarm spend]
+%% field: field.status
+%% adapter: claude
+%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
+flowchart TD
+  n0["normalized-status-signal\npackages/adapter-claude/src/normalization/monitor.ts:328-367\nchildStatusBatch upserts delegating activity for each task. This is not yet row status."]
+  n1["reduce-activity\npackages/core/src/monitor/reduce.ts:864-912\nturn:started upserts activity kind other; completion retracts it; tool events upsert or retract tool activity."]
+  n0 --> n1
+  n2["project-status\npackages/core/src/monitor/transitions.ts:361-371\ntransitions.ts chooses working if a child is runnable, blocked if blockers remain, working if activity remains, otherwise idle."]
+  n1 --> n2
+  n3["derive-status-default\npackages/monitor/src/backend/derive.ts:68-72\nhost.pending forces idle. A missing runtime state becomes working. Otherwise the projected status is kept."]
+  n2 --> n3
+  n4["replica-passthrough\npackages/monitor/src/replica/replica.ts:315-321\nFor an agent row the replica copies status. It recomputes status only for a terminal whose window activity is joined."]
+  n3 --> n4
+  n5["readers\npackages/views/src/views/list/AgentList.tsx:144-199\nList reads status at AgentList.tsx:144-199. Rain reads agent.status at RainView.tsx:217. Swarm uses status at bubble-model.ts:298-345. Spend reads it at spend-words.ts:145. Timeline laneStatus is timeline-lanes.ts:94-97. This path has no catalog pricing step."]
+  n4 --> n5
+  turnIn["turn.ts:5-18 hook turn started, completed, or failed"] --> n1
+  toolIn["tool.ts:46-52 hook tool requested"] --> n1
+  n2 --> child["runnable child: working"]
+  n2 --> blocked["blockers and no child: blocked"]
+  n2 --> active["activity remains: working"]
+  n2 --> idle["otherwise: idle"]
+  n3 --> pending["host.pending: idle"]
+  n3 --> starting["no runtime state: working"]
+  n4 --> agentCopy["agent row: copy status"]
+  n4 --> terminal["terminal with window activity: recompute"]

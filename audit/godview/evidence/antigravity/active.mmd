@@ -1,9 +1,5 @@
-%% graph_ref: path.window
-%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% field: field.active
+%% adapter: antigravity
 %% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
-flowchart LR
-  n0["packages/view-sdk/src/model.ts:365-365"]
-  n1["packages/monitor/src/replica/replica.ts:245-373"]
-  n0 --> n1
-  n2["packages/views/src/views/list/AgentList.tsx:144-199"]
-  n1 --> n2
+flowchart TD
+  n0["not-an-adapter-signal\npackages/monitor/src/replica/replica.ts:337-372\nThis row property is not an adapter emission. The cited host or replica function supplies it."]
