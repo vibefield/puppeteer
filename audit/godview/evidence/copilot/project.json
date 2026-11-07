@@ -151,8 +151,8 @@
       "view.spend",
       "view.timeline"
     ],
-    "component": "view.list,view.rain,view.swarm,view.spend,view.timeline",
-    "symbol": "model-slice-consumer"
+    "component": "catalog-consumer-unproven",
+    "symbol": "view.list,view.rain,view.swarm,view.spend,view.timeline"
   },
   "applicability": {
     "states": "model-axes",
@@ -163,25 +163,25 @@
       "view.spend",
       "view.timeline"
     ],
-    "notes": "ROW FIELD field.project. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns the step from adapter output to the row. This audit does not perform it.   field.project.branch can be fed by git.branch, including null. The row merge is pending. A null branch is nullable evidence, not the row state.branch_none, until that mapping exists. --name is not a project title. The adapter does not write the row property. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from copilot-session-context. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.copilot.upstream.cwd=\"non-empty cwd\" (launch, session context, or context_changed); adapter.copilot.upstream.branch.named=\"non-empty branch string\" (context_changed branch); adapter.copilot.upstream.branch.null=null (gitRoot present and branch missing) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "ROW FIELD field.project. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns adapter output to row predicates, including cost, burn rate, history, timeline, and git branch. This audit does not give that verdict. Schema acceptance is not complete provenance. verification.status source-read is a static reading. observation.presence unknown means no live sample was taken. It does not mean the row value is missing. classification.adapterEmittable and uiReachable stay unknown. A raw adapter property is not the row field, and a catalog consumer is not a proven UI path.   field.project.branch can be fed by git.branch, including null. The row merge is pending. A null branch is nullable evidence, not the row state.branch_none, until that mapping exists. --name is not a project title. The adapter does not write this MonitorAgentRow property. That is the architecture, not a conclusion that the row predicate is unreachable. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from copilot-session-context. declaration only; supported does not guarantee availability/value; degraded is not unreachable No raw adapter signal does not rule out the row value from host, runtime, history, or another producer. Raw source literals, not live samples: adapter.copilot.upstream.cwd=\"non-empty cwd\" (launch, session context, or context_changed); adapter.copilot.upstream.branch.named=\"non-empty branch string\" (context_changed branch); adapter.copilot.upstream.branch.null=null (gitRoot present and branch missing) Graph: evidence/copilot/project.mmd. Continuation anchors, not a reachability verdict: MonitorService.consume, core reduce and project, deriveAgentRow. Vibefield AgentView and window-rows are not traced."
   },
   "absence": {
-    "onMissing": "omit-field",
+    "onMissing": "record-unknown",
     "onStale": "unknown",
     "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
   },
   "observation": {
-    "presence": "present",
+    "presence": "unknown",
     "synthetic": false
   },
   "classification": {
     "modelSupported": "yes",
-    "adapterEmittable": "yes",
-    "uiReachable": "yes"
+    "adapterEmittable": "unknown",
+    "uiReachable": "unknown"
   },
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "ROW FIELD field.project. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns the step from adapter output to the row. This audit does not perform it.   field.project.branch can be fed by git.branch, including null. The row merge is pending. A null branch is nullable evidence, not the row state.branch_none, until that mapping exists. --name is not a project title. The adapter does not write the row property. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from copilot-session-context. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.copilot.upstream.cwd=\"non-empty cwd\" (launch, session context, or context_changed); adapter.copilot.upstream.branch.named=\"non-empty branch string\" (context_changed branch); adapter.copilot.upstream.branch.null=null (gitRoot present and branch missing) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "ROW FIELD field.project. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns adapter output to row predicates, including cost, burn rate, history, timeline, and git branch. This audit does not give that verdict. Schema acceptance is not complete provenance. verification.status source-read is a static reading. observation.presence unknown means no live sample was taken. It does not mean the row value is missing. classification.adapterEmittable and uiReachable stay unknown. A raw adapter property is not the row field, and a catalog consumer is not a proven UI path.   field.project.branch can be fed by git.branch, including null. The row merge is pending. A null branch is nullable evidence, not the row state.branch_none, until that mapping exists. --name is not a project title. The adapter does not write this MonitorAgentRow property. That is the architecture, not a conclusion that the row predicate is unreachable. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from copilot-session-context. declaration only; supported does not guarantee availability/value; degraded is not unreachable No raw adapter signal does not rule out the row value from host, runtime, history, or another producer. Raw source literals, not live samples: adapter.copilot.upstream.cwd=\"non-empty cwd\" (launch, session context, or context_changed); adapter.copilot.upstream.branch.named=\"non-empty branch string\" (context_changed branch); adapter.copilot.upstream.branch.null=null (gitRoot present and branch missing) Graph: evidence/copilot/project.mmd. Continuation anchors, not a reachability verdict: MonitorService.consume, core reduce and project, deriveAgentRow. Vibefield AgentView and window-rows are not traced."
   }
 }

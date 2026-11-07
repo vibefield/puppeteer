@@ -1423,26 +1423,35 @@ function envelope(adapter, field) {
     field.id === 'field.contract.MonitorTokens.perMinute'
       ? 'This record does not emit state.cost_complete, state.cost_partial, state.cost_unavailable, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, or state.burn_unpriced. Those predicates stay downstream. PENDING DOWNSTREAM MAPPING.'
       : '';
+  const rawProperty =
+    upstream?.emitted_as?.property ??
+    upstream?.emitted_as?.event ??
+    upstream?.emitted_as?.monitor ??
+    (produced ? 'adapter signal, see transforms' : null);
   const trace = [
     classNote,
-    'PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns the step from adapter output to the row. This audit does not perform it.',
+    'PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns adapter output to row predicates, including cost, burn rate, history, timeline, and git branch. This audit does not give that verdict.',
+    'Schema acceptance is not complete provenance. verification.status source-read is a static reading. observation.presence unknown means no live sample was taken. It does not mean the row value is missing.',
+    'classification.adapterEmittable and uiReachable stay unknown. A raw adapter property is not the row field, and a catalog consumer is not a proven UI path.',
     sinceNote,
     costNote,
-    upstream?.notes ?? `${field.id} is not adapter-produced by ${adapter}.`,
-    'The adapter does not write the row property.',
+    upstream?.notes ?? `${field.id} has no raw adapter write in the producers reviewed for ${adapter}.`,
+    rowField
+      ? 'The adapter does not write this MonitorAgentRow property. That is the architecture, not a conclusion that the row predicate is unreachable.'
+      : 'This SDK leaf is not a live observation and is not synthetic fixture data.',
     'This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run.',
     declared
       ? `Declaration ${declared.declared_support ?? 'undeclared'} from ${declared.declared_source ?? 'no capability cell'}. ${declared.meaning ?? ''}`
       : 'No capability cell for this field.',
     upstream?.declaration_mismatch
-      ? 'Declared support does not match the producer channel. Unsupported or degraded does not make a later runtime combination impossible.'
-      : 'A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer.',
+      ? 'Declared support does not match the producer channel. That mismatch is not a runtime impossibility.'
+      : 'No raw adapter signal does not rule out the row value from host, runtime, history, or another producer.',
     upstream
-      ? `Upstream states: ${upstream.states_present.map((state) => `${state.id}=${JSON.stringify(state.value)} (${state.when})`).join('; ')}`
-      : 'No upstream adapter literal was found.',
-    `Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced.`,
+      ? `Raw source literals, not live samples: ${upstream.states_present.map((state) => `${state.id}=${JSON.stringify(state.value)} (${state.when})`).join('; ')}`
+      : 'No raw adapter literal was found for this field.',
+    `Graph: evidence/${adapter}/${fieldPath}.mmd. Continuation anchors, not a reachability verdict: MonitorService.consume, core reduce and project, deriveAgentRow. Vibefield AgentView and window-rows are not traced.`,
   ].join(' ');
-  const presence = produced ? 'present' : unsupported ? 'unsupported' : searchedAbsent ? 'absent' : 'unknown';
+  const presence = 'unknown';
   const transforms = (upstream?.transforms ?? [
     'No adapter write of this contract property was found in the reviewed producers.',
   ]).map((effect, order) => ({
@@ -1451,7 +1460,7 @@ function envelope(adapter, field) {
     effect,
     source: sources[Math.min(order, sources.length - 1)],
   }));
-  return {
+  const record = {
     recordId: `prov.${adapter}.${fieldPath}`,
     pins: PINS,
     adapterId: `adapter.${adapter}`,
@@ -1484,8 +1493,8 @@ function envelope(adapter, field) {
       : { channel: 'unknown', name: 'not-adapter-produced' },
     renderer: {
       viewIds: views,
-      component: views.length ? views.join(',') : 'not-established',
-      symbol: views.length ? 'model-slice-consumer' : 'no-consumer-recorded',
+      component: views.length ? 'catalog-consumer-unproven' : 'not-established',
+      symbol: views.length ? views.join(',') : 'no-consumer-recorded',
     },
     applicability: {
       states: states.length ? states : 'model-axes',
@@ -1493,7 +1502,7 @@ function envelope(adapter, field) {
       notes: trace,
     },
     absence: {
-      onMissing: produced ? 'omit-field' : unsupported ? 'record-unsupported' : searchedAbsent ? 'record-absent' : 'record-unknown',
+      onMissing: 'record-unknown',
       onStale: 'unknown',
       zeroPolicy: 'unknown-unsupported-and-absent-are-not-zero',
     },
@@ -1503,38 +1512,91 @@ function envelope(adapter, field) {
     },
     classification: {
       modelSupported: 'yes',
-      adapterEmittable: produced ? 'yes' : 'no',
-      uiReachable: views.length ? 'yes' : 'unknown',
+      adapterEmittable: 'unknown',
+      uiReachable: 'unknown',
     },
     verification: {
-      status: upstream ? 'source-read' : sources[0].repo === 'external' ? 'unverified' : 'source-read',
+      status: upstream || sources[0].repo !== 'external' ? 'source-read' : 'unverified',
       owner: 'GV-AUDIT3',
       notes: trace,
     },
   };
+  return {
+    record,
+    meta: {
+      rowField,
+      rawPresent: Boolean(produced && rawProperty),
+      rawProperty,
+      declarationMismatch: Boolean(upstream?.declaration_mismatch),
+      source: sources[0],
+      steps: upstream?.steps ?? ['no raw adapter write found'],
+      states,
+    },
+  };
+}
+
+function mermaid(adapter, field, meta) {
+  const raw = meta.rawPresent ? meta.rawProperty : 'no raw adapter write found';
+  const cite = meta.source.lineStart
+    ? `${meta.source.path}:${meta.source.lineStart}-${meta.source.lineEnd}`
+    : meta.source.path;
+  const lines = [
+    'flowchart LR',
+    `  src["${adapter} source ${cite}"]`,
+    `  raw["${String(raw).replaceAll('"', "'")}"]`,
+    `  row["UNRESOLVED ${field.id} row mapping"]`,
+    '  ui["UNRESOLVED UI reachability"]',
+    '  states["UNRESOLVED downstream state predicates"]',
+    '  src --> raw --> row',
+    '  row --> ui',
+    '  row --> states',
+  ];
+  if (!meta.rowField) {
+    lines.push('  leaf["SDK contract leaf, not a row field"]');
+    lines.push('  raw --> leaf');
+  }
+  return `${lines.join('\n')}\n`;
 }
 
 const evidenceRoot = join(ROOT, 'audit/godview/evidence');
 rmSync(evidenceRoot, { recursive: true, force: true });
 rmSync(join(ROOT, 'audit/godview/contracts'), { recursive: true, force: true });
 const index = [];
+const joins = [];
 for (const adapter of OWNED) {
   for (const field of [...audit.fields, ...audit.contractFields]) {
-    const record = envelope(adapter, field);
+    const { record, meta } = envelope(adapter, field);
     const fieldPath = field.id.slice('field.'.length);
     const relativePath = join('audit/godview/evidence', adapter, `${fieldPath}.json`);
     const absolute = join(ROOT, relativePath);
     mkdirSync(dirname(absolute), { recursive: true });
     writeFileSync(absolute, `${JSON.stringify(record, null, 2)}\n`);
+    writeFileSync(absolute.replace(/\.json$/u, '.mmd'), mermaid(adapter, field, meta));
     index.push({
       id: record.recordId,
       adapterId: record.adapterId,
       fieldId: record.fieldId,
       path: relativePath,
-      presence: record.observation.presence,
-      adapterEmittable: record.classification.adapterEmittable,
-      mismatch: Boolean(N[adapter]?.[groupFor(field.id)]?.declaration_mismatch),
+      rowField: meta.rowField,
+      rawPresent: meta.rawPresent,
+      mismatch: meta.declarationMismatch,
     });
+    if (meta.rowField) {
+      joins.push({
+        adapterId: record.adapterId,
+        fieldId: record.fieldId,
+        record: `evidence/${adapter}/${fieldPath}.json`,
+        graph: `evidence/${adapter}/${fieldPath}.mmd`,
+        rawProperty: meta.rawProperty,
+        rawSignalInSource: meta.rawPresent,
+        rowFieldWrittenByAdapter: false,
+        downstreamMapping: 'pending',
+        downstreamOwner: 'GV-AUDIT2',
+        continuation: meta.rawPresent
+          ? ['MonitorService.consume', 'core reduce and project', 'deriveAgentRow']
+          : ['no raw adapter input found', 'row mapping still pending'],
+      });
+    }
   }
 }
 
@@ -1547,17 +1609,85 @@ const fragment = {
     const mismatches = rows.filter((item) => item.mismatch).map((item) => item.fieldId);
     return {
       id: `adapter.${adapter}`,
-      status: 'satisfied',
+      status: 'in-progress',
       evidence: [`evidence/${adapter}/`],
-      notes: `74 canonical row-field records plus 86 SDK contract-leaf records (160 files). Only field ids without the field.contract prefix are row fields. Contract leaves must not be joined as row fields. Puppeteer 748d015 only, newer than shipped 0.3.3, which was not audited. adapterEmittable yes: ${rows.filter((item) => item.adapterEmittable === 'yes').length}. PENDING DOWNSTREAM MAPPING on every row field. Declaration mismatches: ${mismatches.join(', ') || 'none'}.`,
+      notes: `74 row-field envelopes plus 86 SDK leaves. Row classifications stay unknown for adapterEmittable and uiReachability. Raw signals are in plan/gv-audit3-join.json. Graphs are sibling .mmd files with unresolved row, UI, and state nodes. Puppeteer 748d015 only. Schema acceptance is not complete provenance. PENDING DOWNSTREAM MAPPING. Declaration mismatches: ${mismatches.join(', ') || 'none'}.`,
     };
   }),
 };
 const fragmentPath = join(ROOT, 'audit/godview/plan/matrix-fragments/GV-AUDIT3.json');
 mkdirSync(dirname(fragmentPath), { recursive: true });
 writeFileSync(fragmentPath, `${JSON.stringify(fragment, null, 2)}\n`);
+const stateReachability = OWNED.flatMap((adapter) =>
+  audit.states.map((state) => ({
+    adapterId: `adapter.${adapter}`,
+    stateId: state.id,
+    adapterEmitsPredicate: false,
+    downstream: 'unknown',
+    impossible: false,
+    note: 'The adapter not emitting this view predicate is expected. It is not an unreachable conclusion. History, timeline, git branch, cost, and burn predicates stay pending for GV-AUDIT2.',
+  })),
+);
+const handoff = {
+  pins: PINS,
+  sourceSha: SHA,
+  representsInstalledVibefield: false,
+  provenanceComplete: false,
+  schemaAcceptanceIsNotProvenance: true,
+  downstreamOwner: 'GV-AUDIT2',
+  downstreamVerdict: 'pending',
+  counts: {
+    rowFields: audit.fields.length,
+    rowRecords: joins.length,
+    sdkContractLeaves: audit.contractFields.length,
+    sdkLeafRecords: index.filter((item) => !item.rowField).length,
+    statesPerAdapter: audit.states.length,
+  },
+  costHandoff: {
+    'adapter.claude': {
+      rawProperty: 'usage:tokens-used.costUsd',
+      source: 'packages/adapter-claude/src/observation/otel/usage.ts:37-69',
+      writesFieldCostUsd: false,
+      burnRateWritten: false,
+      continuation: 'packages/core/src/monitor/reduce.ts:1049-1073 copies event.costUsd onto a monitor usage value. Whether that becomes field.cost.usd, cost_missing, cost_unavailable, complete, or partial is a GV-AUDIT2 verdict, not this audit.',
+    },
+    'adapter.codex': {
+      rawProperty: null,
+      source: 'packages/adapter-codex/src/normalization/monitor.ts:503-527',
+      writesFieldCostUsd: false,
+      burnRateWritten: false,
+      continuation: 'Usage pricing is token deltas or a gap. No costUsd. A unit test reads a projected burnRatePerMin, including 0. That is not an adapter emission and not a row burn state.',
+    },
+    'adapter.acp': {
+      rawProperty: null,
+      source: 'packages/adapter-acp/src/normalization/monitor.ts:216-228',
+      writesFieldCostUsd: false,
+      burnRateWritten: false,
+      continuation: 'usage_update is context occupancy. No costUsd and no burn rate.',
+    },
+    'adapter.antigravity': {
+      rawProperty: null,
+      source: 'packages/adapter-antigravity/src/normalization/monitor-capabilities.ts:15-23',
+      writesFieldCostUsd: false,
+      burnRateWritten: false,
+      continuation: 'No costUsd symbol in this adapter.',
+    },
+    'adapter.copilot': {
+      rawProperty: null,
+      source: 'packages/adapter-copilot/src/normalization/monitor-capabilities.ts:15-23',
+      writesFieldCostUsd: false,
+      burnRateWritten: false,
+      continuation: 'No costUsd symbol. Compaction token counts are context, not cost.',
+    },
+  },
+  rowJoins: joins,
+  stateReachability,
+};
+writeFileSync(join(ROOT, 'audit/godview/plan/gv-audit3-join.json'), `${JSON.stringify(handoff, null, 2)}\n`);
 console.log(JSON.stringify({
   records: index.length,
-  emittable: index.filter((item) => item.adapterEmittable === 'yes').length,
+  rowJoins: joins.length,
+  graphs: index.length,
   mismatches: index.filter((item) => item.mismatch).length,
+  states: stateReachability.length,
 }, null, 2));
