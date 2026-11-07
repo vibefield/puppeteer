@@ -165,12 +165,15 @@ describe('createPendingControlSession', () => {
     await expect(receiptPending).resolves.toEqual({ status: 'confirmed', turnId: 't1' });
   });
 
-  it('rejects prompt submission when control does not attach', async () => {
+  it('rejects prompt submission for good when control does not attach', async () => {
     const session = createPendingControlSession('sid', 'rt', () => Promise.reject(new Error('nope')));
     const projection = projectAgentEvents(session);
     const events = projection.envelopes;
     const monitor = projection.monitorBatches;
-    await expect(session.services.prompt.submit({ text: 'hi' })).resolves.toMatchObject({ status: 'rejected' });
+    await expect(session.services.prompt.submit({ text: 'hi' })).resolves.toMatchObject({
+      status: 'rejected',
+      retryable: false,
+    });
     expect(projection.state).toMatchObject({
       lifecycle: 'preparing',
       diagnostics: [expect.objectContaining({ code: 'grok-control-attach-failed', message: 'nope' })],

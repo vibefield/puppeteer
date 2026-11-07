@@ -34,6 +34,7 @@ function fakeAcp(inside: (turnId: string) => void = () => undefined) {
   return { binding, submitted };
 }
 
+const railRefused = { status: 'rejected', reason: 'grok control rail unavailable', retryable: false };
 const listed = (id: string, text: string): GrokQueueChanged => ({ entries: [{ id, text, kind: 'prompt' }] });
 const running = (id: string, text: string, entries: GrokQueueChanged['entries'] = []): GrokQueueChanged => ({
   entries,
@@ -156,20 +157,14 @@ describe('GrokPromptService', () => {
     await expect(accepted).resolves.toEqual({ status: 'confirmed', turnId: 'q2' });
   });
 
-  it('refuses while the control rail is down and once disposed, without asking adapter-acp', async () => {
+  it('refuses for good while the control rail is down and once disposed, without asking adapter-acp', async () => {
     const acp = fakeAcp();
     const down = service(acp.binding);
     down.transportClosed();
-    await expect(down.submit({ text: 'hello' })).resolves.toEqual({
-      status: 'rejected',
-      reason: 'grok control rail unavailable',
-    });
+    await expect(down.submit({ text: 'hello' })).resolves.toEqual(railRefused);
     const disposed = service(acp.binding);
     disposed.dispose();
-    await expect(disposed.submit({ text: 'hello' })).resolves.toEqual({
-      status: 'rejected',
-      reason: 'grok control rail unavailable',
-    });
+    await expect(disposed.submit({ text: 'hello' })).resolves.toEqual(railRefused);
 
     // The rail can close while the attach is awaited.
     let attach!: (binding: AgentAdapterBinding) => void;
@@ -183,15 +178,12 @@ describe('GrokPromptService', () => {
     const receipt = attaching.submit({ text: 'hello' });
     attaching.transportClosed();
     attach(acp.binding);
-    await expect(receipt).resolves.toEqual({ status: 'rejected', reason: 'grok control rail unavailable' });
+    await expect(receipt).resolves.toEqual(railRefused);
     expect(acp.submitted).toEqual([]);
   });
 
-  it('refuses when control never attached', async () => {
-    await expect(service(undefined).submit({ text: 'hello' })).resolves.toEqual({
-      status: 'rejected',
-      reason: 'grok control client not attached',
-    });
+  it('refuses for good when control never attached', async () => {
+    await expect(service(undefined).submit({ text: 'hello' })).resolves.toEqual(railRefused);
   });
 
   it('settles every waiting prompt uncertain when the rail closes or the session is disposed', async () => {

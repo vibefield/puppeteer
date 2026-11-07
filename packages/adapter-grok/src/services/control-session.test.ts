@@ -417,7 +417,7 @@ describe('Grok prompt receipts and rail-started turns over the 1.0.70 captures',
 });
 
 describe('Grok receipts on a failing control rail', () => {
-  it('refuses a prompt once the control rail closed, without writing it', async () => {
+  it('refuses a prompt for good once the control rail closed, without writing it', async () => {
     for (const observer of [undefined, stubObserver().observer]) {
       const acp = fakeAcp();
       const binding = createPendingControlSession(acp.binding.sessionId, 'rt', () => acp.binding, observer);
@@ -426,6 +426,7 @@ describe('Grok receipts on a failing control rail', () => {
       await expect(binding.services.prompt.submit({ text: 'hello', confirmationTimeoutMs: 20 })).resolves.toEqual({
         status: 'rejected',
         reason: 'grok control rail unavailable',
+        retryable: false,
       });
       expect(acp.submitted).toEqual([]);
       await binding.dispose();
