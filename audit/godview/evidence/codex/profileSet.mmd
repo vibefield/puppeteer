@@ -1,5 +1,11 @@
 %% field: field.profileSet
 %% adapter: codex
-%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
+%% sourceScope: common-runtime
 flowchart TD
-  n0["not-an-adapter-signal\npackages/monitor/src/backend/derive.ts:62-65\nThis row property is not an adapter emission. The cited host or replica function supplies it."]
+  inputs["host profileSet or profileId"] --> resolve["derive.ts:62-66 host value, else persona set, else native"]
+  resolve --> apply["backend.ts:433"]
+  apply --> row["derive.ts:282 always copies profileSet onto an agent row"]
+  row --> self["self row keeps it"]
+  row --> peer["window-rows.ts:130-134 drops other-device profileSet"]
+  self --> tabs["profile-tabs.ts:26-28"]
+  self --> bloom["swarm bloom model.ts:381"]

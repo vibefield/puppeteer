@@ -97,6 +97,84 @@
         "lineEnd": 205,
         "symbol": "costOf"
       }
+    },
+    {
+      "order": 4,
+      "name": "project-usage",
+      "effect": "projectAgentMonitorState publishes usage from the priced index. This is the monitor usage object, not yet field.cost.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/core/src/monitor/project.ts",
+        "lineStart": 407,
+        "lineEnd": 417,
+        "symbol": "projectAgentMonitorState usage"
+      }
+    },
+    {
+      "order": 5,
+      "name": "derive-cost",
+      "effect": "deriveAgentRow copies input.cost when costOf returned an object, and omits it when the ledger has no priced total.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/monitor/src/backend/derive.ts",
+        "lineStart": 277,
+        "lineEnd": 277,
+        "symbol": "row cost copy"
+      }
+    },
+    {
+      "order": 6,
+      "name": "replica-passthrough",
+      "effect": "The replica join spreads the agent row. It does not recompute cost.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/monitor/src/replica/replica.ts",
+        "lineStart": 337,
+        "lineEnd": 372,
+        "symbol": "replica join"
+      }
+    },
+    {
+      "order": 7,
+      "name": "window-passthrough",
+      "effect": "window-rows spreads the row. It rewrites peer stale and drops peer profileSet. It does not recompute cost.",
+      "source": {
+        "repo": "vibefield",
+        "sha": "433505fd0f224f4cda540d642661b13848c0ef82",
+        "path": "packages/field-app/src/godview/monitor/window-rows.ts",
+        "lineStart": 116,
+        "lineEnd": 134,
+        "symbol": "window row patch"
+      }
+    },
+    {
+      "order": 8,
+      "name": "swarm-reader",
+      "effect": "A working observed body reads cost coverage and burn to choose a priced flame or the unpriced flame.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/views/src/views/swarm/bubble-model.ts",
+        "lineStart": 469,
+        "lineEnd": 477,
+        "symbol": "working body cost"
+      }
+    },
+    {
+      "order": 9,
+      "name": "spend-reader",
+      "effect": "spendOf reads cost.usd unless coverage is unavailable or the total is missing.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/views/src/views/spend/spend-series.ts",
+        "lineStart": 34,
+        "lineEnd": 38,
+        "symbol": "spendOf"
+      }
     }
   ],
   "merge": {
@@ -125,14 +203,13 @@
       "state.burn_flames_1",
       "state.burn_flames_2",
       "state.burn_flames_3",
-      "state.burn_flames_4",
-      "state.burn_unpriced"
+      "state.burn_flames_4"
     ],
     "views": [
       "view.swarm",
       "view.spend"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=yes. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. A missing-state presentation can be visible while field-value uiReachable is no. Applicable states: state.cost_complete, state.cost_partial, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, state.burn_unpriced. Excluded from applicability: state.cost_unavailable. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=adapter-provided. sourceRef=packages/adapter-claude/src/observation/otel/usage.ts:37-69 costUsd. staticPresence=emitted-when-condition. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=yes. uiReachable=yes. The value reaches a direct reader from this adapter-provided producer. Field domain: state.cost_complete, state.cost_partial, state.cost_unavailable, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4. Reachable subset: state.cost_complete, state.cost_partial, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4. In the domain but not reachable on this path: state.cost_unavailable."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -151,6 +228,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=yes. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. A missing-state presentation can be visible while field-value uiReachable is no. Applicable states: state.cost_complete, state.cost_partial, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, state.burn_unpriced. Excluded from applicability: state.cost_unavailable. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=adapter-provided. sourceRef=packages/adapter-claude/src/observation/otel/usage.ts:37-69 costUsd. staticPresence=emitted-when-condition. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=yes. uiReachable=yes. The value reaches a direct reader from this adapter-provided producer. Field domain: state.cost_complete, state.cost_partial, state.cost_unavailable, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4. Reachable subset: state.cost_complete, state.cost_partial, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4. In the domain but not reachable on this path: state.cost_unavailable."
   }
 }

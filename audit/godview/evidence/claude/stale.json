@@ -24,15 +24,41 @@
   "transforms": [
     {
       "order": 0,
-      "name": "not-an-adapter-signal",
-      "effect": "This row property is not an adapter emission. The cited host or replica function supplies it.",
+      "name": "recency",
+      "effect": "classifyMonitorRecency returns fresh or stale from evidence age. No clock is not stale.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/core/src/monitor/freshness.ts",
+        "lineStart": 32,
+        "lineEnd": 42,
+        "symbol": "classifyMonitorRecency"
+      }
+    },
+    {
+      "order": 1,
+      "name": "is-stale",
+      "effect": "isStale is false for idle, for an open root tool, and when no clock exists. Otherwise it is the recency result. derive always writes the boolean.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
         "path": "packages/monitor/src/backend/derive.ts",
         "lineStart": 215,
-        "lineEnd": 224,
+        "lineEnd": 225,
         "symbol": "isStale"
+      }
+    },
+    {
+      "order": 2,
+      "name": "peer-standing",
+      "effect": "For another device, window-rows replaces that boolean with standing !== live. A self row keeps isStale.",
+      "source": {
+        "repo": "vibefield",
+        "sha": "433505fd0f224f4cda540d642661b13848c0ef82",
+        "path": "packages/field-app/src/godview/monitor/window-rows.ts",
+        "lineStart": 116,
+        "lineEnd": 134,
+        "symbol": "window row patch"
       }
     }
   ],
@@ -54,12 +80,16 @@
     "symbol": "direct"
   },
   "applicability": {
-    "states": "model-axes",
+    "states": [
+      "state.stale",
+      "state.fresh",
+      "state.device_stale"
+    ],
     "views": [
       "view.list",
       "view.swarm"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: isStale at packages/monitor/src/backend/derive.ts:215-224. No source-permitted field-domain state is claimed. Excluded from applicability: state.stale, state.fresh, state.device_stale. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=common-runtime. sourceRef=packages/monitor/src/backend/derive.ts:215-225 isStale. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this common-runtime producer. Field domain: state.stale, state.fresh, state.device_stale. Reachable subset: state.stale, state.fresh, state.device_stale."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -78,6 +108,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: isStale at packages/monitor/src/backend/derive.ts:215-224. No source-permitted field-domain state is claimed. Excluded from applicability: state.stale, state.fresh, state.device_stale. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=common-runtime. sourceRef=packages/monitor/src/backend/derive.ts:215-225 isStale. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this common-runtime producer. Field domain: state.stale, state.fresh, state.device_stale. Reachable subset: state.stale, state.fresh, state.device_stale."
   }
 }

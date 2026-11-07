@@ -100,6 +100,7 @@
   },
   "applicability": {
     "states": [
+      "state.branch_unknown",
       "state.branch_none",
       "state.branch_named"
     ],
@@ -110,7 +111,7 @@
       "view.spend",
       "view.timeline"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. Applicable states: state.branch_none, state.branch_named. Excluded from applicability: state.branch_unknown. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=adapter-provided. sourceRef=packages/adapter-copilot/src/normalization/environment.ts:4-18 git.branch. staticPresence=emitted-when-condition. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=yes. uiReachable=yes. The value reaches a direct reader from this adapter-provided producer. Field domain: state.branch_unknown, state.branch_none, state.branch_named. Reachable subset: state.branch_unknown, state.branch_none, state.branch_named."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -129,6 +130,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. Applicable states: state.branch_none, state.branch_named. Excluded from applicability: state.branch_unknown. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=adapter-provided. sourceRef=packages/adapter-copilot/src/normalization/environment.ts:4-18 git.branch. staticPresence=emitted-when-condition. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=yes. uiReachable=yes. The value reaches a direct reader from this adapter-provided producer. Field domain: state.branch_unknown, state.branch_none, state.branch_named. Reachable subset: state.branch_unknown, state.branch_none, state.branch_named."
   }
 }

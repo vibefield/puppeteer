@@ -1,7 +1,9 @@
 %% field: field.project.name
-%% adapter: antigravity
-%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
+%% sourceScope: common-runtime
+%% staticPresence: always-on-row
+%% liveObserved: false
 flowchart TD
-  n0["cwd\npackages/adapter-antigravity/src/driver.ts:162-165\nThe adapter publishes a cwd string."]
-  n1["derive-name\npackages/monitor/src/backend/derive.ts:240-286\nprojectName uses the observed directory, else a host workspace path, else the provider label."]
-  n0 --> n1
+  producer["packages/monitor/src/backend/derive.ts:91-95\nprojectName"]
+  producer --> row["row property from that producer"]
+  row --> window["window-rows.ts:116-134 pass-through unless this field is stale or profileSet"]
+  window --> reader["rendererRead direct"]

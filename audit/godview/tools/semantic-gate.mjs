@@ -98,6 +98,64 @@ for (const row of filled.rowJoins) {
   if (record.transport.name === 'not-applicable' && !(row.notApplicableReason && row.notApplicableReason.length > 12)) {
     failures.push(`${record.recordId} not-applicable transport lacks notApplicableReason`);
   }
+  const scopes = ['adapter-provided', 'common-runtime', 'host-supplied', 'replica-derived', 'absent'];
+  if (!scopes.includes(row.sourceScope)) failures.push(`${record.recordId} missing sourceScope`);
+  if (!row.sourceRef || !row.staticPresence || row.liveObserved !== false) {
+    failures.push(`${record.recordId} staticPresence or liveObserved is missing`);
+  }
+  if (row.uiPathVerdict !== record.classification.uiReachable) {
+    failures.push(`${record.recordId} uiPathVerdict disagrees with classification`);
+  }
+  if (row.uiReachabilityScope) failures.push(`${record.recordId} still has a global uiReachabilityScope`);
+  if (record.classification.uiReachable === 'yes' && record.classification.adapterEmittable === 'no') {
+    if (!['host-supplied', 'common-runtime', 'replica-derived'].includes(row.sourceScope) || !row.sourceRef) {
+      failures.push(`${record.recordId} uiReachable yes without a cited non-adapter producer`);
+    }
+  }
+  if (row.sourceScope === 'absent' && record.classification.uiReachable !== 'no') {
+    failures.push(`${record.recordId} absent source is uiReachable ${record.classification.uiReachable}`);
+  }
+  const domain = row.stateDomain ?? [];
+  const reachIds = (row.stateReachability ?? []).map((item) => item.stateId);
+  if (reachIds.join() !== [...domain].join()) failures.push(`${record.recordId} stateReachability is not the field domain`);
+  if (domain.includes('state.effort_observed') && row.fieldId === 'field.observed') {
+    failures.push(`${record.recordId} effort_observed is in the observed domain`);
+  }
+  if (domain.some((id) => id.startsWith('state.branch_')) && row.fieldId !== 'field.project.branch') {
+    failures.push(`${record.recordId} branch predicate is outside field.project.branch`);
+  }
+  const reachableIds = (row.stateReachability ?? []).filter((item) => item.applicable).map((item) => item.stateId);
+  if (domain.length === 0) {
+    if (record.applicability.states !== 'model-axes') failures.push(`${record.recordId} empty domain is not model-axes`);
+    if (!notes.includes('not a reachable set')) failures.push(`${record.recordId} model-axes is not distinguished from a reachable set`);
+  } else if (!Array.isArray(record.applicability.states) || record.applicability.states.join() !== reachableIds.join()) {
+    failures.push(`${record.recordId} applicability is not the reachable subset`);
+  }
+  if (!notes.includes(`sourceScope=${row.sourceScope}`) || !notes.includes(`staticPresence=${row.staticPresence}`) || !notes.includes('liveObserved=false')) {
+    failures.push(`${record.recordId} notes omit structured scope`);
+  }
+  if (row.fieldId === 'field.stale' && reachableIds.join() !== 'state.stale,state.fresh,state.device_stale') {
+    failures.push(`${record.recordId} stale domain is not the three freshness predicates`);
+  }
+  if (row.fieldId === 'field.account') {
+    if (record.classification.uiReachable !== 'no' || row.staticPresence !== 'host-dependent') {
+      failures.push(`${record.recordId} account is not the Vibefield-consumer host scope`);
+    }
+    if (row.hostScopes?.vibefield?.account !== 'unreachable') failures.push(`${record.recordId} vibefield account scope`);
+    const expected = row.adapterId === 'adapter.acp' ? 'unreachable' : 'profile-label-when-bound';
+    if (row.hostScopes?.puppeteerGodview?.account !== expected) failures.push(`${record.recordId} puppeteer account scope`);
+  }
+  if (row.fieldId === 'field.status' && !graph.includes('window-rows.ts')) {
+    failures.push(`${record.recordId} status graph omits window-rows`);
+  }
+  if (row.fieldId === 'field.cost.usd' && ['adapter.claude', 'adapter.codex'].includes(row.adapterId)) {
+    for (const needle of ['project.ts', 'derive.ts', 'replica.ts', 'window-rows.ts', 'bubble-model.ts', 'spend-series.ts']) {
+      if (!graph.includes(needle)) failures.push(`${record.recordId} cost graph omits ${needle}`);
+    }
+  }
+  if (row.fieldId.startsWith('field.cost') && ['adapter.acp', 'adapter.antigravity', 'adapter.copilot'].includes(row.adapterId)) {
+    if (graph.includes('priceUsageUpdates')) failures.push(`${record.recordId} omission graph still runs pricing`);
+  }
 }
 
 console.log(JSON.stringify({ contradictions: failures.length, failures: failures.slice(0, 20) }, null, 2));

@@ -66,7 +66,7 @@
       "view.swarm",
       "view.spend"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: host.pending at packages/monitor/src/backend/derive.ts:262-262. Applicable states: state.starting_unobserved, state.pending_unobserved. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=host-supplied. sourceRef=packages/monitor/src/backend/derive.ts:262-262 host.pending. staticPresence=host-dependent. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this host-supplied producer. Field domain: state.starting_unobserved, state.pending_unobserved. Reachable subset: state.starting_unobserved, state.pending_unobserved."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -85,6 +85,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: host.pending at packages/monitor/src/backend/derive.ts:262-262. Applicable states: state.starting_unobserved, state.pending_unobserved. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=host-supplied. sourceRef=packages/monitor/src/backend/derive.ts:262-262 host.pending. staticPresence=host-dependent. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this host-supplied producer. Field domain: state.starting_unobserved, state.pending_unobserved. Reachable subset: state.starting_unobserved, state.pending_unobserved."
   }
 }

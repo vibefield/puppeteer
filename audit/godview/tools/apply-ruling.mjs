@@ -402,6 +402,8 @@ function mermaid(adapter, fieldId, list) {
 
 let checked = { status: 0, wait: 0, model: 0, effort: 0, context: 0, tokens: 0, cost: 0, branch: 0, reply: 0 };
 for (const row of filled.rowJoins) {
+  // field.account and field.profileSet are host-scoped in apply-host-scopes.mjs.
+  if (row.fieldId === 'field.account' || row.fieldId === 'field.profileSet') continue;
   const adapter = row.adapterId.slice('adapter.'.length);
   const field = fields.get(row.fieldId);
   const fam = family(row.fieldId);
@@ -409,8 +411,7 @@ for (const row of filled.rowJoins) {
   const read = rendererRead(field);
   const alternate = value === 'no' ? ALT[row.fieldId] ?? (fam === 'branch' ? ALT['field.project.branch'] : null) : null;
   let ui = 'unknown';
-  if (row.fieldId === 'field.account') ui = 'unknown';
-  else if (value === 'conditional') ui = read === 'direct' ? 'yes' : 'no';
+  if (value === 'conditional') ui = read === 'direct' ? 'yes' : 'no';
   else if (value === 'no' && alternate && read === 'direct') ui = 'yes';
   else if (value === 'no') ui = 'no';
   const visible = missingVisible(adapter, row.fieldId, ui);

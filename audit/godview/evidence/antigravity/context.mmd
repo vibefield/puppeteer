@@ -1,5 +1,9 @@
 %% field: field.context
-%% adapter: antigravity
-%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
+%% sourceScope: absent
+%% staticPresence: omitted
+%% liveObserved: false
 flowchart TD
-  n0["no-context\npackages/adapter-antigravity/src/normalization/pipeline.ts:86-88\nCHECKPOINT is retained native and is not a context-window event. No occupancy sample is emitted."]
+  producer["packages/adapter-antigravity/src/normalization/pipeline.ts:86-88\nCHECKPOINT is not context"]
+  producer --> row["row property from that producer"]
+  row --> window["window-rows.ts:116-134 pass-through unless this field is stale or profileSet"]
+  window --> reader["rendererRead direct"]

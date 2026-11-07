@@ -75,13 +75,12 @@
   },
   "applicability": {
     "states": [
-      "state.cost_missing",
-      "state.burn_unpriced"
+      "state.cost_missing"
     ],
     "views": [
       "view.spend"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=yes. uiReachable=no is this adapter's value path, not the existence of a global reader. The adapter path does not provide the value. The trace stops at the omission. A missing-state presentation can be visible while field-value uiReachable is no. Applicable states: state.cost_missing, state.burn_unpriced. Excluded from applicability: state.cost_complete, state.cost_partial, state.cost_unavailable, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=absent. sourceRef=packages/adapter-acp/src/normalization/monitor.ts:216-228 usage_update omits usage. staticPresence=omitted. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=no. A global reader does not make this value reachable. Field domain: state.cost_complete, state.cost_partial, state.cost_unavailable, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4. Reachable subset: state.cost_missing. In the domain but not reachable on this path: state.cost_complete, state.cost_partial, state.cost_unavailable, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -89,7 +88,7 @@
     "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
   },
   "observation": {
-    "presence": "absent",
+    "presence": "unknown",
     "synthetic": false
   },
   "classification": {
@@ -100,6 +99,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=yes. uiReachable=no is this adapter's value path, not the existence of a global reader. The adapter path does not provide the value. The trace stops at the omission. A missing-state presentation can be visible while field-value uiReachable is no. Applicable states: state.cost_missing, state.burn_unpriced. Excluded from applicability: state.cost_complete, state.cost_partial, state.cost_unavailable, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=absent. sourceRef=packages/adapter-acp/src/normalization/monitor.ts:216-228 usage_update omits usage. staticPresence=omitted. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=no. A global reader does not make this value reachable. Field domain: state.cost_complete, state.cost_partial, state.cost_unavailable, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4. Reachable subset: state.cost_missing. In the domain but not reachable on this path: state.cost_complete, state.cost_partial, state.cost_unavailable, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4."
   }
 }

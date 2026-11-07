@@ -6,7 +6,7 @@
       "id": "adapter.acp",
       "status": "in-progress",
       "evidence": ["evidence/acp/"],
-      "notes": "74 row envelopes plus 86 SDK leaves at Puppeteer 748d015. uiReachable is this adapter's value path. rendererRead is separate. ACP cost and tokens stop at monitor.ts usage_update, which writes context only. Missing cost can be visible as cost_missing and burn_unpriced while field.cost uiReachable is no. Not a live sample. Schema acceptance is not provenance."
+      "notes": "74 row envelopes plus 86 SDK leaves at Puppeteer 748d015. uiReachable follows sourceScope plus a direct reader. ACP cost stops at usage_update. Account is host-scoped: Vibefield hostRunFromSummary never sets it, and ACP also has no profiles service on the Puppeteer host. profileSet resolves to native when unbound. Not a live sample."
     },
     {
       "id": "adapter.antigravity",

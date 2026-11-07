@@ -1,8 +1,9 @@
 %% field: field.cost.series.stepMs
-%% adapter: antigravity
-%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
+%% sourceScope: absent
+%% staticPresence: omitted
+%% liveObserved: false
 flowchart TD
-  n0["handler-omits-usage\npackages/adapter-antigravity/src/normalization/pipeline.ts:21-107\nThe executing handler does not emit usage or costUsd. Capability text is not this step. The trace stops."]
-  n1["omission-consequence\npackages/monitor/src/backend/backend.ts:197-205\nWith no priced sample, costOf returns undefined and the row omits field.cost. A working observed body can still show the unpriced flame."]
-  n0 --> n1
-  n1 --> visible["missing state can be visible while the USD value is not"]
+  producer["packages/adapter-antigravity/src/normalization/pipeline.ts:21-107\nno usage"]
+  producer --> row["row property from that producer"]
+  row --> window["window-rows.ts:116-134 pass-through unless this field is stale or profileSet"]
+  window --> reader["rendererRead direct"]

@@ -55,13 +55,15 @@
     "symbol": "direct"
   },
   "applicability": {
-    "states": "model-axes",
+    "states": [
+      "state.context_missing"
+    ],
     "views": [
       "view.list",
       "view.rain",
       "view.swarm"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=no is this adapter's value path, not the existence of a global reader. The adapter path does not provide the value. The trace stops at the omission. No source-permitted field-domain state is claimed. Excluded from applicability: state.context_missing, state.context_hot. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=absent. sourceRef=packages/adapter-antigravity/src/normalization/pipeline.ts:86-88 CHECKPOINT is not context. staticPresence=omitted. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=no. A global reader does not make this value reachable. Field domain: state.context_missing, state.context_hot. Reachable subset: state.context_missing. In the domain but not reachable on this path: state.context_hot."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -69,7 +71,7 @@
     "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
   },
   "observation": {
-    "presence": "absent",
+    "presence": "unknown",
     "synthetic": false
   },
   "classification": {
@@ -80,6 +82,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=no is this adapter's value path, not the existence of a global reader. The adapter path does not provide the value. The trace stops at the omission. No source-permitted field-domain state is claimed. Excluded from applicability: state.context_missing, state.context_hot. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=absent. sourceRef=packages/adapter-antigravity/src/normalization/pipeline.ts:86-88 CHECKPOINT is not context. staticPresence=omitted. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=no. A global reader does not make this value reachable. Field domain: state.context_missing, state.context_hot. Reachable subset: state.context_missing. In the domain but not reachable on this path: state.context_hot."
   }
 }

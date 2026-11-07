@@ -1,5 +1,9 @@
 %% field: field.spawnHint.x
-%% adapter: claude
-%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
+%% sourceScope: replica-derived
+%% staticPresence: host-dependent
+%% liveObserved: false
 flowchart TD
-  n0["not-an-adapter-signal\npackages/monitor/src/replica/replica.ts:290-295\nThis row property is not an adapter emission. The cited host or replica function supplies it."]
+  producer["packages/monitor/src/replica/replica.ts:290-295\nspawnHintOf"]
+  producer --> row["row property from that producer"]
+  row --> window["window-rows.ts:116-134 pass-through unless this field is stale or profileSet"]
+  window --> reader["rendererRead direct"]

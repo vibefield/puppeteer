@@ -58,18 +58,20 @@
   },
   "applicability": {
     "states": [
-      "state.blocked_permission",
-      "state.blocked_question",
-      "state.blocked_failure",
-      "state.activity_starting",
-      "state.activity_responding",
-      "state.activity_reasoning",
-      "state.activity_tool",
-      "state.activity_delegating",
-      "state.activity_compacting",
-      "state.activity_other",
       "state.starting_unobserved",
-      "state.pending_unobserved"
+      "state.pending_unobserved",
+      "state.unread",
+      "state.terminal_running",
+      "state.terminal_quiet",
+      "state.past_worked",
+      "state.past_quiet",
+      "state.past_unrecorded",
+      "state.past_bounds",
+      "state.timeline_unborn",
+      "state.timeline_unrecorded",
+      "state.timeline_past",
+      "state.timeline_ended",
+      "state.timeline_span"
     ],
     "views": [
       "view.list",
@@ -78,7 +80,7 @@
       "view.spend",
       "view.timeline"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: kind agent at packages/monitor/src/backend/derive.ts:254-254. Applicable states: state.blocked_permission, state.blocked_question, state.blocked_failure, state.activity_starting, state.activity_responding, state.activity_reasoning, state.activity_tool, state.activity_delegating, state.activity_compacting, state.activity_other, state.starting_unobserved, state.pending_unobserved. Excluded from applicability: state.unread, state.failed_retained, state.terminal_running, state.terminal_quiet, state.past_worked, state.past_quiet, state.past_unrecorded, state.past_bounds, state.timeline_unborn, state.timeline_unrecorded, state.timeline_past, state.timeline_ended, state.timeline_span, state.blocked_unknown_kind. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=common-runtime. sourceRef=packages/monitor/src/backend/derive.ts:254-254 kind agent. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this common-runtime producer. Field domain: state.starting_unobserved, state.pending_unobserved, state.unread, state.terminal_running, state.terminal_quiet, state.past_worked, state.past_quiet, state.past_unrecorded, state.past_bounds, state.timeline_unborn, state.timeline_unrecorded, state.timeline_past, state.timeline_ended, state.timeline_span, state.blocked_unknown_kind. Reachable subset: state.starting_unobserved, state.pending_unobserved, state.unread, state.terminal_running, state.terminal_quiet, state.past_worked, state.past_quiet, state.past_unrecorded, state.past_bounds, state.timeline_unborn, state.timeline_unrecorded, state.timeline_past, state.timeline_ended, state.timeline_span. In the domain but not reachable on this path: state.blocked_unknown_kind."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -97,6 +99,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: kind agent at packages/monitor/src/backend/derive.ts:254-254. Applicable states: state.blocked_permission, state.blocked_question, state.blocked_failure, state.activity_starting, state.activity_responding, state.activity_reasoning, state.activity_tool, state.activity_delegating, state.activity_compacting, state.activity_other, state.starting_unobserved, state.pending_unobserved. Excluded from applicability: state.unread, state.failed_retained, state.terminal_running, state.terminal_quiet, state.past_worked, state.past_quiet, state.past_unrecorded, state.past_bounds, state.timeline_unborn, state.timeline_unrecorded, state.timeline_past, state.timeline_ended, state.timeline_span, state.blocked_unknown_kind. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=common-runtime. sourceRef=packages/monitor/src/backend/derive.ts:254-254 kind agent. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this common-runtime producer. Field domain: state.starting_unobserved, state.pending_unobserved, state.unread, state.terminal_running, state.terminal_quiet, state.past_worked, state.past_quiet, state.past_unrecorded, state.past_bounds, state.timeline_unborn, state.timeline_unrecorded, state.timeline_past, state.timeline_ended, state.timeline_span, state.blocked_unknown_kind. Reachable subset: state.starting_unobserved, state.pending_unobserved, state.unread, state.terminal_running, state.terminal_quiet, state.past_worked, state.past_quiet, state.past_unrecorded, state.past_bounds, state.timeline_unborn, state.timeline_unrecorded, state.timeline_past, state.timeline_ended, state.timeline_span. In the domain but not reachable on this path: state.blocked_unknown_kind."
   }
 }

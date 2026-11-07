@@ -1,5 +1,9 @@
 %% field: field.tokens.total
-%% adapter: acp
-%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
+%% sourceScope: absent
+%% staticPresence: omitted
+%% liveObserved: false
 flowchart TD
-  n0["no-usage\npackages/adapter-acp/src/normalization/monitor.ts:216-228\nThis adapter does not emit usage:tokens-used or a usage-family sample. The trace stops. field.tokens is omitted."]
+  producer["packages/adapter-acp/src/normalization/monitor.ts:216-228\nno usage:tokens-used"]
+  producer --> row["row property from that producer"]
+  row --> window["window-rows.ts:116-134 pass-through unless this field is stale or profileSet"]
+  window --> reader["rendererRead none"]

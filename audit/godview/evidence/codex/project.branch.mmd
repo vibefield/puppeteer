@@ -1,10 +1,9 @@
 %% field: field.project.branch
-%% adapter: codex
-%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
+%% sourceScope: host-supplied
+%% staticPresence: host-dependent
+%% liveObserved: false
 flowchart TD
-  n0["no-git\npackages/adapter-codex/src/normalization/environment.ts:10-21\nThis adapter publishes cwd and does not publish git. The trace of the adapter signal stops here."]
-  n1["host-branch\npackages/monitor/src/backend/derive.ts:101-106\nderive can still show host.fallbackBranch or workspace.branch. That is not this adapter emitting git."]
-  n0 --> n1
-  n1 --> fallback["host.fallbackBranch"]
-  n1 --> looked["observed git present: its branch or null"]
-  n1 --> workspace["nothing looked: workspace.branch"]
+  producer["packages/monitor/src/backend/derive.ts:101-106\nprojectBranch"]
+  producer --> row["row property from that producer"]
+  row --> window["window-rows.ts:116-134 pass-through unless this field is stale or profileSet"]
+  window --> reader["rendererRead direct"]

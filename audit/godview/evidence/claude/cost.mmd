@@ -1,17 +1,20 @@
-%% field: field.cost
+%% field: field.cost.usd
 %% adapter: claude
-%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
+%% forensic: source-read; liveObserved false
 flowchart TD
-  n0["provider-costUsd\npackages/adapter-claude/src/observation/otel/usage.ts:37-69\nValid nonnegative cost_usd, including zero, is copied. Missing cost leaves costUsd unset."]
-  n1["price-before-reduce\npackages/runtime/src/services/monitor-service.ts:418-425\nReported costUsd wins. Otherwise complete Anthropic buckets can be catalog-priced. This runs before reduce."]
-  n0 --> n1
-  n2["reduce-after-price\npackages/core/src/monitor/reduce.ts:1049-1073\nThe reducer copies the already priced costUsd. It does not consult the catalog."]
-  n1 --> n2
-  n3["row-cost\npackages/monitor/src/backend/backend.ts:197-205\nA priced total becomes field.cost complete or partial. No priced total omits the object: cost_missing, not a present unavailable coverage."]
-  n2 --> n3
-  n3 --> complete["priced and unpriced zero: coverage complete"]
-  n3 --> partial["priced and unpriced both positive: coverage partial"]
-  n3 --> missing["no priced total: omit field.cost"]
-  complete --> flames["working observed body: flame tiers are conditional"]
-  partial --> flames
+  signal["packages/adapter-claude/src/observation/otel/usage.ts:37-69\ncostUsd"]
+  signal --> price["monitor-service.ts:418-425 priceUsageUpdates before reduce"]
+  price --> reduce["reduce.ts:1049-1073 copies the priced costUsd"]
+  reduce --> project["project.ts:407-417 publishes usage"]
+  project --> costOf["backend.ts:197-205 costOf"]
+  costOf --> complete["priced and unpriced zero: complete"]
+  costOf --> partial["priced and unpriced both positive: partial"]
+  costOf --> missing["no priced total: omit field.cost"]
+  costOf --> derive["derive.ts:277 copies cost or omits it"]
+  derive --> replica["replica.ts:337-372 spreads the row; cost unchanged"]
+  replica --> window["window-rows.ts:116-134 does not recompute cost"]
+  window --> swarm["bubble-model.ts:469-477 priced flame or unpriced flame"]
+  window --> spend["spend-series.ts:34-38 spendOf"]
+  complete --> swarm
+  partial --> swarm
   missing --> unpriced["working observed body: burn_unpriced"]

@@ -51,9 +51,11 @@
     "symbol": "indirect"
   },
   "applicability": {
-    "states": "model-axes",
+    "states": [
+      "state.dead_hidden"
+    ],
     "views": "all-monitor-views",
-    "notes": "rendererRead=indirect. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=no is this adapter's value path, not the existence of a global reader. Alternate producer: agentAlive at packages/monitor/src/backend/derive.ts:78-81. No source-permitted field-domain state is claimed. Excluded from applicability: state.failed_retained, state.dead_hidden. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=common-runtime. sourceRef=packages/monitor/src/backend/derive.ts:78-81 agentAlive. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=indirect. adapterEmittable=no. uiReachable=no. A global reader does not make this value reachable. Field domain: state.dead_hidden. Reachable subset: state.dead_hidden."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -72,6 +74,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=indirect. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=no is this adapter's value path, not the existence of a global reader. Alternate producer: agentAlive at packages/monitor/src/backend/derive.ts:78-81. No source-permitted field-domain state is claimed. Excluded from applicability: state.failed_retained, state.dead_hidden. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=common-runtime. sourceRef=packages/monitor/src/backend/derive.ts:78-81 agentAlive. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=indirect. adapterEmittable=no. uiReachable=no. A global reader does not make this value reachable. Field domain: state.dead_hidden. Reachable subset: state.dead_hidden."
   }
 }

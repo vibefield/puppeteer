@@ -19,26 +19,79 @@
   "producer": {
     "kind": "core-reducer",
     "name": "resolveProfileSet",
-    "ingestedFrom": "alternate producer packages/monitor/src/backend/derive.ts:62"
+    "ingestedFrom": "derive.ts:62-66"
   },
   "transforms": [
     {
       "order": 0,
-      "name": "not-an-adapter-signal",
-      "effect": "This row property is not an adapter emission. The cited host or replica function supplies it.",
+      "name": "resolve",
+      "effect": "host.profileSet, else the persona set for profileId, else native.",
       "source": {
         "repo": "puppeteer",
         "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
         "path": "packages/monitor/src/backend/derive.ts",
         "lineStart": 62,
-        "lineEnd": 65,
+        "lineEnd": 66,
         "symbol": "resolveProfileSet"
+      }
+    },
+    {
+      "order": 1,
+      "name": "apply",
+      "effect": "The agent fold always passes that string.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/monitor/src/backend/backend.ts",
+        "lineStart": 433,
+        "lineEnd": 433,
+        "symbol": "resolveProfileSet applied"
+      }
+    },
+    {
+      "order": 2,
+      "name": "peer-drop",
+      "effect": "window-rows keeps it on this device and drops it for other-device rows.",
+      "source": {
+        "repo": "vibefield",
+        "sha": "433505fd0f224f4cda540d642661b13848c0ef82",
+        "path": "packages/field-app/src/godview/monitor/window-rows.ts",
+        "lineStart": 116,
+        "lineEnd": 134,
+        "symbol": "window row patch"
       }
     }
   ],
   "merge": {
     "strategy": "defaulted",
-    "defaults": []
+    "defaults": [
+      {
+        "when": "host.profileSet is set",
+        "presence": "present",
+        "literal": "host.profileSet",
+        "source": {
+          "repo": "puppeteer",
+          "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+          "path": "packages/monitor/src/backend/derive.ts",
+          "lineStart": 62,
+          "lineEnd": 66,
+          "symbol": "resolveProfileSet"
+        }
+      },
+      {
+        "when": "neither host.profileSet nor host.profileId is set",
+        "presence": "present",
+        "literal": "native",
+        "source": {
+          "repo": "puppeteer",
+          "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+          "path": "packages/monitor/src/backend/derive.ts",
+          "lineStart": 62,
+          "lineEnd": 66,
+          "symbol": "resolveProfileSet"
+        }
+      }
+    ]
   },
   "transport": {
     "channel": "in-process",
@@ -57,7 +110,7 @@
     "views": [
       "view.swarm"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: resolveProfileSet at packages/monitor/src/backend/derive.ts:62-65. No source-permitted field-domain state is claimed. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=common-runtime. sourceRef=packages/monitor/src/backend/derive.ts:62-66 resolveProfileSet. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this common-runtime producer. resolveProfileSet uses host.profileSet, else the persona set for profileId, else native. ACP has no profiles service, so the unbound result is native. window-rows keeps profileSet on this device and removes it for other-device rows. That is not a global absence. Field domain is empty. applicability.states=model-axes is the envelope token for a field with no state predicates. It is not a reachable set and it does not claim any other field's states."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -76,6 +129,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: resolveProfileSet at packages/monitor/src/backend/derive.ts:62-65. No source-permitted field-domain state is claimed. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=common-runtime. sourceRef=packages/monitor/src/backend/derive.ts:62-66 resolveProfileSet. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this common-runtime producer. resolveProfileSet uses host.profileSet, else the persona set for profileId, else native. ACP has no profiles service, so the unbound result is native. window-rows keeps profileSet on this device and removes it for other-device rows. That is not a global absence. Field domain is empty. applicability.states=model-axes is the envelope token for a field with no state predicates. It is not a reachable set and it does not claim any other field's states."
   }
 }

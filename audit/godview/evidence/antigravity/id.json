@@ -11,6 +11,14 @@
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 253,
+      "lineEnd": 253,
+      "symbol": "row id"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
       "lineStart": 251,
       "lineEnd": 253,
       "symbol": "row id from host"
@@ -65,7 +73,7 @@
       "view.spend",
       "view.timeline"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: row id from host at packages/monitor/src/backend/derive.ts:251-253. No source-permitted field-domain state is claimed. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=host-supplied. sourceRef=packages/monitor/src/backend/derive.ts:253-253 row id. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this host-supplied producer. Field domain is empty. applicability.states=model-axes is the envelope token for a field with no state predicates. It is not a reachable set and it does not claim any other field's states."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -84,6 +92,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: row id from host at packages/monitor/src/backend/derive.ts:251-253. No source-permitted field-domain state is claimed. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=host-supplied. sourceRef=packages/monitor/src/backend/derive.ts:253-253 row id. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this host-supplied producer. Field domain is empty. applicability.states=model-axes is the envelope token for a field with no state predicates. It is not a reachable set and it does not claim any other field's states."
   }
 }

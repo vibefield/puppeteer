@@ -10,6 +10,14 @@
     {
       "repo": "puppeteer",
       "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 91,
+      "lineEnd": 95,
+      "symbol": "projectName"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
       "path": "packages/adapter-acp/src/driver.ts",
       "lineStart": 242,
       "lineEnd": 244,
@@ -86,7 +94,7 @@
       "view.spend",
       "view.timeline"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. No source-permitted field-domain state is claimed. Excluded from applicability: state.branch_unknown, state.branch_none, state.branch_named. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=common-runtime. sourceRef=packages/monitor/src/backend/derive.ts:91-95 projectName. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this common-runtime producer. Field domain is empty. applicability.states=model-axes is the envelope token for a field with no state predicates. It is not a reachable set and it does not claim any other field's states."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -99,12 +107,12 @@
   },
   "classification": {
     "modelSupported": "yes",
-    "adapterEmittable": "yes",
+    "adapterEmittable": "no",
     "uiReachable": "yes"
   },
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=conditional. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. The value is conditional and was not observed in a live session. No source-permitted field-domain state is claimed. Excluded from applicability: state.branch_unknown, state.branch_none, state.branch_named. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=common-runtime. sourceRef=packages/monitor/src/backend/derive.ts:91-95 projectName. staticPresence=always-on-row. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this common-runtime producer. Field domain is empty. applicability.states=model-axes is the envelope token for a field with no state predicates. It is not a reachable set and it does not claim any other field's states."
   }
 }

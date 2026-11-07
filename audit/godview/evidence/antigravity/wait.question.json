@@ -71,7 +71,7 @@
       "view.spend",
       "view.timeline"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=no is this adapter's value path, not the existence of a global reader. The adapter path does not provide the value. The trace stops at the omission. Applicable states: state.blocked_permission, state.blocked_question, state.blocked_failure, state.working_with_blockers, state.wait_multiple. Excluded from applicability: state.failed_retained, state.blocked_unknown_kind. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=absent. sourceRef=packages/adapter-antigravity/src/normalization/pipeline.ts:21-107 no interaction. staticPresence=omitted. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=no. A global reader does not make this value reachable. Field domain: state.blocked_permission, state.blocked_question, state.blocked_failure, state.working_with_blockers, state.wait_multiple, state.failed_retained, state.blocked_unknown_kind. Reachable subset: state.blocked_permission, state.blocked_question, state.blocked_failure, state.working_with_blockers, state.wait_multiple. In the domain but not reachable on this path: state.failed_retained, state.blocked_unknown_kind."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -79,7 +79,7 @@
     "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
   },
   "observation": {
-    "presence": "absent",
+    "presence": "unknown",
     "synthetic": false
   },
   "classification": {
@@ -90,6 +90,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=no is this adapter's value path, not the existence of a global reader. The adapter path does not provide the value. The trace stops at the omission. Applicable states: state.blocked_permission, state.blocked_question, state.blocked_failure, state.working_with_blockers, state.wait_multiple. Excluded from applicability: state.failed_retained, state.blocked_unknown_kind. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=absent. sourceRef=packages/adapter-antigravity/src/normalization/pipeline.ts:21-107 no interaction. staticPresence=omitted. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=no. A global reader does not make this value reachable. Field domain: state.blocked_permission, state.blocked_question, state.blocked_failure, state.working_with_blockers, state.wait_multiple, state.failed_retained, state.blocked_unknown_kind. Reachable subset: state.blocked_permission, state.blocked_question, state.blocked_failure, state.working_with_blockers, state.wait_multiple. In the domain but not reachable on this path: state.failed_retained, state.blocked_unknown_kind."
   }
 }

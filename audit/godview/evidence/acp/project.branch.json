@@ -78,7 +78,11 @@
     "symbol": "direct"
   },
   "applicability": {
-    "states": "model-axes",
+    "states": [
+      "state.branch_unknown",
+      "state.branch_none",
+      "state.branch_named"
+    ],
     "views": [
       "view.list",
       "view.rain",
@@ -86,7 +90,7 @@
       "view.spend",
       "view.timeline"
     ],
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: host fallback or workspace branch at packages/monitor/src/backend/derive.ts:101-106. No source-permitted field-domain state is claimed. Excluded from applicability: state.branch_unknown, state.branch_none, state.branch_named. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=host-supplied. sourceRef=packages/monitor/src/backend/derive.ts:101-106 projectBranch. staticPresence=host-dependent. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this host-supplied producer. Field domain: state.branch_unknown, state.branch_none, state.branch_named. Reachable subset: state.branch_unknown, state.branch_none, state.branch_named."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -105,6 +109,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "rendererRead=direct. adapterPathProvidesValue=no. missingStateVisible=no. uiReachable=yes is this adapter's value path, not the existence of a global reader. Alternate producer: host fallback or workspace branch at packages/monitor/src/backend/derive.ts:101-106. No source-permitted field-domain state is claimed. Excluded from applicability: state.branch_unknown, state.branch_none, state.branch_named. Shared map 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf is attribution for the common continuation, not a substitute for these handler citations."
+    "notes": "sourceScope=host-supplied. sourceRef=packages/monitor/src/backend/derive.ts:101-106 projectBranch. staticPresence=host-dependent. liveObserved=false. observation.presence=unknown because this audit did not live-sample the value. staticPresence is the source result and is independent of that. rendererRead=direct. adapterEmittable=no. uiReachable=yes. The value reaches a direct reader from this host-supplied producer. Field domain: state.branch_unknown, state.branch_none, state.branch_named. Reachable subset: state.branch_unknown, state.branch_none, state.branch_named."
   }
 }
