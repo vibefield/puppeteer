@@ -85,6 +85,14 @@ export function createPendingControlSession(
   const startedTurns = new Set<string>();
   /** Rail starts waiting for the log to end the turn before them, in Grok's order. */
   const heldStarts: GrokObservedEvent[] = [];
+  /**
+   * The log is replaying history: a replayed turn was seen and replay.settled was not. A replay spans reads and polls,
+   * and the rail hears what Grok runs meanwhile, so those starts wait for the settle. Only a replayed turn arms it: a
+   * log with nothing to replay flips with no replay.settled, so an earlier hold could wait for good. A frame the rail
+   * delivers before the replay shows a turn, such as one buffered before adoption, still starts at once; a replayed
+   * end retracts its activity, and the log's own replayed end of it ends it.
+   */
+  let replaying = false;
   /** Each listed prompt's text, from the last own-session queue frame. */
   let queuedTexts = new Map<string, string>();
   const prompts = new GrokPromptService({
@@ -113,6 +121,12 @@ export function createPendingControlSession(
     reopenedTurn = undefined;
   }
 
+  /** The first held start's wait is over: Grok already runs that prompt, so its turn starts in this tick. */
+  function startHeld(): void {
+    const held = heldStarts.shift();
+    if (held) applyObserved(held, true);
+  }
+
   function applyObserved(observed: GrokObservedEvent, monitorAlreadyObserved = false): void {
     // A Grok session is durable across terminal attachments. Replaying the
     // previous pane's session_end would incorrectly terminate the newly
@@ -130,11 +144,19 @@ export function createPendingControlSession(
       }
     }
     const turnEnd = observed.event.type === 'turn:completed' || observed.event.type === 'turn:failed';
+    // A replayed turn is history, whichever read brings it: its start never makes the open turn, its end ends only the
+    // rail's start of that same prompt (below), and until the replay settles the rail's starts wait, so no later
+    // replayed end retracts one.
+    const replayedTurn = observed.phase === 'bootstrap' && (turnEnd || observed.event.type === 'turn:started');
+    if (replayedTurn) replaying = true;
+    const replaySettled =
+      observed.event.type === 'adapter:native-event' && observed.event.nativeType === GROK_REPLAY_SETTLED;
     const observedAt = observed.timestamp ?? new Date().toISOString();
     if (observed.reopened && observed.promptId !== undefined) {
       // The settle ended this turn and it runs on, with no second start: it is the open turn, already started. The
-      // settle's end retracted its `turn` activity, so the monitor holds it working between its records.
-      if (activeTurnId === undefined) {
+      // settle's end retracted its `turn` activity, so the monitor holds it working between its records. A rail start
+      // heard before the replay may have made it the open turn already: the settle's end retracted that start's.
+      if (activeTurnId === undefined || (activeTurnId === observed.promptId && reopenedTurn === undefined)) {
         activeTurnId = observed.promptId;
         startedTurns.add(observed.promptId);
         reopenedTurn = observed.promptId;
@@ -151,7 +173,7 @@ export function createPendingControlSession(
       emitMonitorBatch(monitorEvidence.observedBatch(observed, observedAt));
     }
     // The log's replay ended. The observer settled its own open work; the monitor settles what only a replay showed.
-    if (observed.event.type === 'adapter:native-event' && observed.event.nativeType === GROK_REPLAY_SETTLED) {
+    if (replaySettled) {
       emitMonitorBatch(monitorEvidence.settleReplayBatch(new Date().toISOString()));
     }
     const observedTurnId =
@@ -161,7 +183,7 @@ export function createPendingControlSession(
       observed.event.type === 'turn:failed'
         ? observed.event.turnId
         : undefined);
-    if (observed.event.type === 'turn:started') setActiveTurn(observedTurnId, observedAt);
+    if (observed.event.type === 'turn:started' && !replayedTurn) setActiveTurn(observedTurnId, observedAt);
     publish(observed.event, {
       promptId: observed.promptId,
       turnId: observedTurnId,
@@ -171,21 +193,35 @@ export function createPendingControlSession(
       replay: observed.phase === 'bootstrap',
       nativeEvent: observed.nativeEvent,
     });
-    if (turnEnd) {
+    if (replaySettled) {
+      replaying = false;
+      // What Grok ran while the log replayed starts now, after every replayed end and the settle's. A start held behind
+      // a live turn waits for that turn's end.
+      if (activeTurnId === undefined) startHeld();
+    }
+    if (turnEnd && !replayedTurn) {
       setActiveTurn(undefined, observedAt);
       // Grok already runs the next prompt: its turn starts in this tick, so the row never reads idle between them.
-      const held = heldStarts.shift();
-      if (held) applyObserved(held, true);
+      startHeld();
+    }
+    if (turnEnd && replayedTurn && observed.source !== 'runtime' && observedTurnId !== undefined) {
+      // The log's own end, replayed: Grok ended this prompt before the first stat. A turn the rail started for it is
+      // over, and a start held for it has nothing to start; what waits starts at the settle. The settle's own ends are
+      // derived, the runtime's: they leave the open turn open.
+      if (activeTurnId === observedTurnId) setActiveTurn(undefined, observedAt);
+      const held = heldStarts.findIndex(({ promptId }) => promptId === observedTurnId);
+      if (held >= 0) heldStarts.splice(held, 1);
     }
   }
 
   /**
    * A turn's end is the log's, and the rail hears the next turn first. The root's activity is keyed by actor, not by
    * turn, so the earlier turn's end would retract this one's: the start waits for that end. A reopened turn is an
-   * earlier turn like any other.
+   * earlier turn like any other. So is every replayed one, and a replay spans reads and polls: while the log replays, a
+   * start waits for replay.settled, and starts there, unless the replay shows that prompt's own end.
    */
   function startFromRail(start: GrokObservedEvent): void {
-    if (activeTurnId === undefined || activeTurnId === start.promptId) applyObserved(start, true);
+    if (activeTurnId === start.promptId || (activeTurnId === undefined && !replaying)) applyObserved(start, true);
     else if (!heldStarts.some(({ promptId }) => promptId === start.promptId)) heldStarts.push(start);
   }
 
@@ -193,7 +229,7 @@ export function createPendingControlSession(
    * An own-session, live `_x.ai/queue/changed`. With the log observer attached, the prompt Grok now runs starts its
    * turn here, at Grok's acceptance and under the native id the log's records carry; the log alone shows it only at
    * its first model output. The receipt names the turn the binding publishes or will publish, which is on the monitor
-   * before the receipt only when the prompt runs at once with no earlier turn open.
+   * before the receipt only when the prompt runs at once, with no earlier turn open and the log not replaying.
    */
   function observeQueue(queue: GrokQueueChanged, candidate: AdapterEventCandidate): void {
     const running = queue.running;

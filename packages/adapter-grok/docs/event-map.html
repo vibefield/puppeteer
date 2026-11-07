@@ -1755,7 +1755,7 @@ createGrokBackend → grok agent leader
       a spawned child's usage and running turn ⇒ its subagent actor (monitor, by child_session_id)
   → ACP frames with _meta.isReplay (session/load history) ⇒ published as replay
   → own-session live _x.ai/queue/changed runningPromptId ⇒ turn:started (native prompt id), held until the log
-      ends any earlier turn; the receipt follows the frame
+      ends any earlier turn and settles the replay it is reading; the receipt follows the frame
   → log owns turns/tools/messages/lifecycle (a turn either rail starts is published once)
   → log replay ⇒ bootstrap up to the first stat's size, its open work settled, then replay.settled
   → observationLevel: native-log</pre>
@@ -1801,7 +1801,8 @@ createGrokBackend → grok agent leader
               first rail wins. Only the log ends a turn, and the rail hears the next turn first. The root's activity
               is keyed by actor, not by turn, so the earlier turn's end would retract the new turn's: a running frame
               waits for the log's end of the turn before it, and the new turn starts in the same tick, so the row
-              never reads idle between them.
+              never reads idle between them. Every replayed turn is an earlier turn, so while the log replays, a
+              running frame waits for <code>replay.settled</code> (below).
             </li>
             <li>
               A launch or resume replay is a baseline, not work. A record whose first byte lies before the log&rsquo;s
@@ -1830,8 +1831,21 @@ createGrokBackend → grok agent leader
               replay left waiting is dropped. Then
               <code>replay.settled</code> settles the monitor: the pending interactions, actors and compaction only a
               replay showed, from either rail, including
-              <code>session/load</code>&rsquo;s. Only an attach keeps open work. Grok offers none yet; a future attach
-              skips the settle, as Claude&rsquo;s <code>attached</code> does.
+              <code>session/load</code>&rsquo;s. A replay longer than one read (64 KiB) spans awaited reads, and
+              past 4 MiB polls, and the rail can name a running prompt between any two. A replayed turn is history:
+              its start never makes the open turn, and its end ends only the rail&rsquo;s start of that same prompt.
+              From the first replayed turn until <code>replay.settled</code> a running frame waits, then starts in
+              that tick, after every replayed end and the settle&rsquo;s. Otherwise one replayed end could release it
+              and a later one retract it, since the activity is the actor&rsquo;s, not the turn&rsquo;s. A log with
+              nothing to replay sends no <code>replay.settled</code>, and nothing waits for one. A frame the rail
+              delivers before the replay shows a turn, such as one buffered between <code>session/load</code> and
+              adoption, still starts at once, and a replayed end retracts its activity. The log&rsquo;s own replayed
+              end of that prompt ends it, since Grok ended it before the first stat, and a frame still waiting for a
+              prompt whose end the replay shows starts nothing. The settle&rsquo;s own ends are derived and leave the
+              open turn open: a turn the rail started and the replay left open is still the one Grok runs, and its
+              next live record holds it working as a reopened turn; until then it reads idle. Only an attach keeps
+              open work. Grok offers none yet; a future attach skips the settle, as Claude&rsquo;s
+              <code>attached</code> does.
             </li>
             <li>
               The observer stats before it reads. <code>signals.json</code> and <code>summary.json</code> are read only
@@ -1845,8 +1859,9 @@ createGrokBackend → grok agent leader
               What a receipt means. <code>confirmed</code>: Grok listed the prompt under a new id with the submitted
               text and runs it, or lists it while another prompt runs. Its <code>turnId</code> names the turn the
               binding publishes or will publish: Grok's id with the observer, adapter-acp's <code>acp-turn-N</code>
-              without. That turn is on the monitor before the receipt only when the prompt runs at once with no earlier
-              turn open. An id listed before the submission is never ours. <code>uncertain</code>: no such acceptance
+              without. That turn is on the monitor before the receipt only when the prompt runs at once, with no
+              earlier turn open and the log not replaying. An id listed before the submission is never ours.
+              <code>uncertain</code>: no such acceptance
               within the bound (<code>confirmationTimeoutMs</code>, 5 s), or the rail closed or the binding was disposed
               first, or the request failed with no answer from Grok. A closing connection rejects what is in flight
               with a plain Error, normally before <code>transport.closed</code>, and the leader may hold that prompt, so

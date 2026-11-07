@@ -396,12 +396,16 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
     its row idle (the user echo carries no `promptId`). A turn either rail starts is published once, the
     first rail winning, as `session:started` is. Only the log ends a turn, and the rail hears the next turn
     first, so a running frame waits for the log's end of the turn before it: the root's activity is keyed
-    by actor, and that end would otherwise retract the new turn's. `services/prompt.ts` confirms a receipt
+    by actor, and that end would otherwise retract the new turn's. While the log replays turns, which spans
+    64 KiB reads and, past 4 MiB, polls, it waits for the replay's settle instead: a replayed turn's start
+    never makes the open turn, and its end ends only the rail's start of that same prompt, since Grok ended
+    it before the first stat. `services/prompt.ts` confirms a receipt
     only when Grok lists the prompt under a new id with the submitted text and then runs it (or lists it
     while another prompt runs). adapter-acp's own 'confirmed' came before Grok had accepted anything. The
     receipt names the turn the binding publishes or will publish: Grok's id with the observer, adapter-acp's
-    turn without. That turn is on the monitor before the receipt only when the prompt runs at once with no
-    earlier turn open. No acceptance within the submission's bound (5 s) answers 'uncertain'. Replaying
+    turn without. That turn is on the monitor before the receipt only when the prompt runs at once, with no
+    earlier turn open and the log not replaying. No acceptance within the submission's bound (5 s) answers
+    'uncertain'. Replaying
     `viewer-session` with a stub observer confirms under `a11a5ed0-6f6f-40a0-8790-e989034dc9ff`, its turn
     already published (`services/control-session.test.ts`).
   - (review fix, 2026-11-07) A dead control rail refuses: after the transport closes, a submission answers
