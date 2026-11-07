@@ -87,6 +87,7 @@ function fakeObserver() {
     },
     onError: () => () => undefined,
     poll: async () => undefined,
+    wake: () => undefined,
     stop: () => {
       stopped = true;
     },

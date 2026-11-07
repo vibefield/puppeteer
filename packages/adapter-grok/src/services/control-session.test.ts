@@ -82,6 +82,7 @@ function stubObserver() {
     },
     onError: () => () => undefined,
     poll: async () => undefined,
+    wake: () => undefined,
     stop: () => undefined,
   };
   return { observer, emit: (event: GrokObservedEvent) => listeners.forEach((listener) => listener(event)) };
@@ -450,6 +451,26 @@ describe('Grok receipts on a failing control rail', () => {
       });
     } finally {
       projection.dispose();
+      await binding.dispose();
+    }
+  });
+});
+
+describe('The control rail and the durable-log observer', () => {
+  it('wakes the observer for a live own-session candidate, never for a child’s or a replay’s', async () => {
+    const acp = fakeAcp();
+    const wake = vi.fn();
+    const observer = { ...stubObserver().observer, wake };
+    const binding = createPendingControlSession(acp.binding.sessionId, 'rt', () => acp.binding, observer);
+    const event: AgentEvent = { type: 'adapter:native-event', adapter: 'grok', nativeType: 'response_completed' };
+    const update = { sessionUpdate: 'response_completed' };
+    try {
+      acp.emit(event, { sessionId: 'child-session', update }, 'native-protocol');
+      acp.emit(event, { sessionId: 'grok-session', update, _meta: { isReplay: true } }, 'native-protocol');
+      expect(wake).not.toHaveBeenCalled();
+      acp.emit(event, { sessionId: 'grok-session', update }, 'native-protocol');
+      expect(wake).toHaveBeenCalledTimes(1);
+    } finally {
       await binding.dispose();
     }
   });
