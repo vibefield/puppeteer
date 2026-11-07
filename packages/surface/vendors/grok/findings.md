@@ -353,12 +353,13 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
 - **Control path (`services/control-session.ts`).**
   - ACP candidates whose params carry `_meta.isReplay` (session/load history) are published as replay.
   - ACP frames under another sessionId (a subagent child) keep only their raw native events; the control
-    path publishes none of their normalized events on the root. One leak predates this and is outside the
-    Grok adapter: `adapter-acp`'s session-unscoped assistant-text buffer takes in the child's
-    `agent_message_chunk` text before the control path sees it, so in a composition without the durable
-    observer the root's later `conversation:assistant-message` and `turn:completed.lastAssistantMessage`
-    carry it (open item below). The default driver always attaches the observer, which filters those events
-    out. (follow-up) Their monitor evidence goes to the subagent actor
+    path publishes none of their normalized events on the root. (review fix, 2026-11-07) The child's text no
+    longer reaches the root through `adapter-acp` either. Its driver keeps one normalizer per notification
+    sessionId and feeds only its own session's events to the prompt service, and the assistant-message
+    buffers start empty at every prompt (a submit, or a `user_message_chunk` of that session), so a message
+    never spans two turns. Replaying `captures/grok@1.0.70/subagent/acp-controller.jsonl` with no observer,
+    the root's first `turn:completed` carries the root's 2 text chunks, not 4
+    (`services/control-session.test.ts`). (follow-up) Their monitor evidence goes to the subagent actor
     that `subagent_spawned` names for that `child_session_id`: the child's live `response_completed` and
     `turn_completed` usage (actor-attributed, keyed by the child session and prompt), and its running turn
     (`_x.ai/queue/changed` `runningPromptId` until its `turn_completed`) as the actor's activity. Any other
@@ -473,17 +474,6 @@ Deferred design-level work, each with its evidence:
     context, or model evidence (none captured on a child) is dropped from the root, not attributed.
   - A frame a child sends before its `subagent_spawned` is dropped (its later `turn_completed` still
     carries the turn total), and a grandchild that a child spawns is never registered.
-  - Child conversation text reaches the root through `adapter-acp`, without the durable observer only.
-    `AcpConversationNormalizer` and `AcpPromptService` are session-unscoped, and Grok's
-    `agent_message_chunk` has no `messageId`. Every chunk, a child's included, therefore joins one
-    `acp-msg` buffer, which becomes the root turn's `lastAssistantMessage` and later
-    `conversation:assistant-message` text. The control path drops only the child's own candidates. The same
-    buffer also grows across turns: each turn's message repeats every earlier turn's text. Replaying
-    `captures/grok@1.0.70/subagent/acp-controller.jsonl` with no observer gives the root's first
-    `turn:completed` 4 text chunks where the root sent 2 (the other 2 are under the child sessionId). The fix
-    belongs in `adapter-acp`, shared with the other ACP adapters: ignore or scope foreign-session
-    notifications in its normalizer and prompt service, and reset the buffer for each turn. The default
-    driver always attaches the observer, whose allowlist excludes these events.
 - **Response usage, residual edges.** Unsigned responses are now identified by session, running native
   prompt, and ordinal (Adapter section). An ordinal cannot deduplicate a re-delivered notification; none
   was observed on one controller connection. A signed response with no known native prompt (the 1.0.0

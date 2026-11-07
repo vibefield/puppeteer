@@ -52,9 +52,11 @@ export class GrokConversationNormalizer {
     if (segment) segment.interrupted = true;
   }
 
+  /** The turn's final message; a completed turn's text is not kept. */
   complete(promptId: string, observed: GrokObservedFactory): { events: GrokObservedEvent[]; text?: string } {
     const segment = this.segments.get(promptId);
     if (!segment) return { events: [] };
+    this.segments.delete(promptId);
     return { text: segment.text, events: [assistantMessage(segment, promptId, true, observed)] };
   }
 }

@@ -18,7 +18,7 @@ const GROK_NORMALIZED_UPDATE_METHOD_SET = new Set<string>(GROK_NORMALIZED_UPDATE
 
 /**
  * The tool events that end a thought stream: adapter-acp's driver closes reasoning at these (its
- * `closesReasoning` set), and at an assistant message, which this pipeline's own branch owns.
+ * `CLOSES_REASONING` set), and at an assistant message, which this pipeline's own branch owns.
  */
 const TOOL_EVENT_TYPES: ReadonlySet<string> = new Set([
   'tool:requested',

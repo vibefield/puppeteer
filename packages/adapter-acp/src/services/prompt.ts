@@ -14,6 +14,8 @@ export interface AcpPromptServiceOptions {
     prompt: [{ type: 'text'; text: string }];
   }): PromptResponse | PromiseLike<PromptResponse>;
   completeReasoning(): { active: boolean; reasoningId?: string };
+  /** A submitted prompt opens a turn: the session's assistant message starts empty, echo or none. */
+  beginTurn(): void;
   settleElicitations(outcome: 'failed' | 'superseded', nativeEvent: unknown): void;
   /** Turn end: settle permission requests left to another client that no native evidence resolved. */
   settleApprovals?(nativeEvent: unknown): void;
@@ -51,6 +53,7 @@ export class AcpPromptService {
     const turnId = `acp-turn-${++this.turnCounter}`;
     this.turnId = turnId;
     this.assistantText = '';
+    this.options.beginTurn();
     this.options.publish({ type: 'turn:started', turnId, prompt: submission.text }, 'native-hook');
 
     void Promise.resolve(

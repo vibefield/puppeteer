@@ -2250,7 +2250,9 @@
                 </div>
                 <h5>Puppeteer</h5>
                 <p class="hook-usage">
-                  <strong>Puppeteer:</strong> Dropped — driver already emitted turn:started with our prompt text.
+                  <strong>Puppeteer:</strong> Dropped — driver already emitted turn:started with our prompt text. It
+                  still opens a turn: that session's assistant-message buffers start empty, whether the echo is this
+                  client's prompt, another client's, or one <code>session/load</code> replays.
                 </p>
               </div>
             </article>
@@ -2302,6 +2304,16 @@
                 <h5>Puppeteer</h5>
                 <p class="hook-usage">
                   <strong>Puppeteer:</strong> Accumulate content.text → conversation:assistant-message (final:false).
+                </p>
+                <p class="hook-usage">
+                  <strong>Scope: one session, one prompt.</strong> Text accumulates per messageId; chunks without one
+                  share the <code>acp-msg</code> buffer. Every notification sessionId has its own normalizer, so a
+                  session the agent forwards to this client (Grok's subagent child) keeps its own buffers and is
+                  published as before, but only the driver's own session feeds the turn's
+                  <code>lastAssistantMessage</code> and closes its reasoning. The buffers start empty at every
+                  <code>user_message_chunk</code> of the session and at every prompt the driver submits, so no message
+                  spans two prompts, for agents that echo no prompt too; <code>session/load</code>'s sealed message is
+                  the last replayed turn's text.
                 </p>
               </div>
             </article>
@@ -2897,7 +2909,7 @@ initialize → session/new|load
                 </tr>
                 <tr>
                   <td class="m">user_message_chunk</td>
-                  <td>dropped</td>
+                  <td>dropped (the session's next assistant message starts empty)</td>
                 </tr>
                 <tr>
                   <td class="m">other updates</td>
