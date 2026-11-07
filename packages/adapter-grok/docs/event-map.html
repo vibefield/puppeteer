@@ -1745,7 +1745,9 @@ createGrokBackend → grok agent leader
   → ACP frames under another sessionId (a subagent child) ⇒ raw native events only, no root state;
       a spawned child's usage and running turn ⇒ its subagent actor (monitor, by child_session_id)
   → ACP frames with _meta.isReplay (session/load history) ⇒ published as replay
-  → log owns turns/tools/messages/lifecycle
+  → own-session live _x.ai/queue/changed runningPromptId ⇒ turn:started (native prompt id), held until the log
+      ends any earlier turn; the receipt follows the frame
+  → log owns turns/tools/messages/lifecycle (a turn either rail starts is published once)
   → observationLevel: native-log</pre>
           <h5>Grok 1.0.70 notes</h5>
           <ul>
@@ -1780,6 +1782,27 @@ createGrokBackend → grok agent leader
               <code>session/new|load</code> start is admitted once per binding.
             </li>
             <li>
+              A turn starts at Grok's acceptance. <code>_x.ai/queue/changed</code> lists a prompt in
+              <code>entries</code>, then runs it as <code>runningPromptId</code>, the native id the log's
+              <code>_meta.promptId</code> and <code>turn_completed.prompt_id</code> carry. With the log observer
+              attached, that running frame starts the root turn. Its prompt is the submitted text when the prompt is
+              ours, else the text Grok listed. The log echoes the user's text with no <code>promptId</code>, so on its
+              own it shows the turn only at the first model chunk. A turn either rail starts is published once: the
+              first rail wins. Only the log ends a turn, and the rail hears the next turn first. The root's activity
+              is keyed by actor, not by turn, so the earlier turn's end would retract the new turn's: a running frame
+              waits for the log's end of the turn before it, and the new turn starts in the same tick, so the row
+              never reads idle between them.
+            </li>
+            <li>
+              What a receipt means. <code>confirmed</code>: Grok listed the prompt under a new id with the submitted
+              text and runs it, or lists it while another prompt runs. Its <code>turnId</code> names the turn the
+              binding publishes or will publish: Grok's id with the observer, adapter-acp's <code>acp-turn-N</code>
+              without. That turn is on the monitor before the receipt only when the prompt runs at once with no earlier
+              turn open. An id listed before the submission is never ours. <code>uncertain</code>: no such acceptance
+              within the bound (<code>confirmationTimeoutMs</code>, 5 s), or the rail closed or the binding was disposed
+              first.
+            </li>
+            <li>
               Durable <code>timestamp</code> is Unix seconds; <code>signals.json</code> is written asynchronously after the
               prompt result, so a context sample can trail <code>turn:completed</code>.
             </li>
@@ -1812,8 +1835,12 @@ createGrokBackend → grok agent leader
                   <td class="m">session:exited</td>
                 </tr>
                 <tr>
+                  <td class="m">_x.ai/queue/changed runningPromptId (ACP, observer attached)</td>
+                  <td class="m">turn:started (native prompt id) · the prompt receipt</td>
+                </tr>
+                <tr>
                   <td class="m">user_message_chunk</td>
-                  <td class="m">turn:started (TUI-visible)</td>
+                  <td class="m">turn:started (TUI-visible; once, whichever rail is first)</td>
                 </tr>
                 <tr>
                   <td class="m">agent_message_chunk</td>

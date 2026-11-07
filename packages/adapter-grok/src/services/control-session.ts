@@ -8,8 +8,10 @@ import {
 } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { GrokMonitorEvidence, type GrokConfiguredIntent } from '../normalization/monitor.js';
+import { decodeGrokQueueChanged, GROK_QUEUE_CHANGED_METHOD, type GrokQueueChanged } from '../normalization/queue.js';
 import type { GrokObservedEvent, GrokSessionObserver } from '../normalization/types.js';
 import { GrokEventSource, type GrokEventPublication } from './event-source.js';
+import { GrokPromptService } from './prompt.js';
 
 type Params = Record<string, unknown>;
 
@@ -21,6 +23,11 @@ function isRecord(value: unknown): value is Params {
 function controlParams(nativeEvent: unknown): Params | undefined {
   if (!isRecord(nativeEvent)) return undefined;
   return typeof nativeEvent.method === 'string' && isRecord(nativeEvent.params) ? nativeEvent.params : nativeEvent;
+}
+
+/** The method of the extension frame behind a control candidate. */
+function controlMethod(nativeEvent: unknown): string | undefined {
+  return isRecord(nativeEvent) && typeof nativeEvent.method === 'string' ? nativeEvent.method : undefined;
 }
 
 /** Grok marks the history it replays over ACP during session/load with `_meta.isReplay`. */
@@ -65,6 +72,18 @@ export function createPendingControlSession(
   // ACP's own session/new|load start is admitted; whichever rail reports a live
   // start first wins and later live starts of this binding are duplicates.
   let liveSessionStarted = false;
+  // The same rule for a prompt's turn: the control rail starts it when Grok runs
+  // it, and the durable log at a configured user_prompt_submit hook or at the
+  // first model chunk. Whichever rail starts it first wins.
+  const startedTurns = new Set<string>();
+  /** Rail starts waiting for the log to end the turn before them, in Grok's order. */
+  const heldStarts: GrokObservedEvent[] = [];
+  /** Each listed prompt's text, from the last own-session queue frame. */
+  let queuedTexts = new Map<string, string>();
+  const prompts = new GrokPromptService({
+    control: () => (control ? Promise.resolve(control) : controlReady.catch(() => undefined)),
+    turnIds: observer ? 'native-prompt' : 'acp-turn',
+  });
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
     if (!batch) return;
@@ -88,6 +107,13 @@ export function createPendingControlSession(
       if (liveSessionStarted) return;
       liveSessionStarted = true;
     }
+    if (observed.event.type === 'turn:started' && observed.phase !== 'bootstrap') {
+      const turnId = observed.event.turnId ?? observed.promptId;
+      if (turnId !== undefined) {
+        if (startedTurns.has(turnId)) return;
+        startedTurns.add(turnId);
+      }
+    }
     if (!monitorAlreadyObserved) {
       emitMonitorBatch(monitorEvidence.observedBatch(observed, observed.timestamp ?? new Date().toISOString()));
     }
@@ -108,7 +134,48 @@ export function createPendingControlSession(
       replay: observed.phase === 'bootstrap',
       nativeEvent: observed.nativeEvent,
     });
-    if (observed.event.type === 'turn:completed' || observed.event.type === 'turn:failed') activeTurnId = undefined;
+    if (observed.event.type === 'turn:completed' || observed.event.type === 'turn:failed') {
+      activeTurnId = undefined;
+      // Grok already runs the next prompt: its turn starts in this tick, so the row never reads idle between them.
+      const held = heldStarts.shift();
+      if (held) applyObserved(held, true);
+    }
+  }
+
+  /**
+   * A turn's end is the log's, and the rail hears the next turn first. The root's activity is keyed by actor, not by
+   * turn, so the earlier turn's end would retract this one's: the start waits for that end.
+   */
+  function startFromRail(start: GrokObservedEvent): void {
+    if (activeTurnId === undefined || activeTurnId === start.promptId) applyObserved(start, true);
+    else if (!heldStarts.some(({ promptId }) => promptId === start.promptId)) heldStarts.push(start);
+  }
+
+  /**
+   * An own-session, live `_x.ai/queue/changed`. With the log observer attached, the prompt Grok now runs starts its
+   * turn here, at Grok's acceptance and under the native id the log's records carry; the log alone shows it only at
+   * its first model output. The receipt names the turn the binding publishes or will publish, which is on the monitor
+   * before the receipt only when the prompt runs at once with no earlier turn open.
+   */
+  function observeQueue(queue: GrokQueueChanged, candidate: AdapterEventCandidate): void {
+    const running = queue.running;
+    if (observer && running && (running.kind === undefined || running.kind === 'prompt')) {
+      startFromRail({
+        event: {
+          type: 'turn:started',
+          turnId: running.promptId,
+          prompt: prompts.textOf(running.promptId) ?? queuedTexts.get(running.promptId) ?? running.text,
+        },
+        promptId: running.promptId,
+        timestamp: candidate.timestamp,
+        phase: 'live',
+        source: 'native-protocol',
+        confidence: 'authoritative',
+        nativeEvent: candidate.nativeEvent,
+      });
+    }
+    queuedTexts = new Map(queue.entries.flatMap(({ id, text }) => (text === undefined ? [] : [[id, text] as const])));
+    prompts.observeQueue(queue);
   }
 
   function degradeControl(error: unknown, code: 'grok-control-attach-failed' | 'grok-control-closed'): void {
@@ -175,6 +242,15 @@ export function createPendingControlSession(
       ) {
         degradeControl(new Error('Grok ACP control transport closed'), 'grok-control-closed');
         return;
+      }
+      if (!foreign && phase === 'live') {
+        const method = controlMethod(candidate.nativeEvent);
+        const queue = method === GROK_QUEUE_CHANGED_METHOD ? decodeGrokQueueChanged(params) : undefined;
+        if (queue) observeQueue(queue, candidate);
+        // adapter-acp publishes its turn inside its submit call: that turn is the submitted prompt's.
+        if (candidate.event.type === 'turn:started' && candidate.event.turnId) {
+          prompts.bindAcpTurn(candidate.event.turnId);
+        }
       }
       // The native log owns TUI conversation and lifecycle. ACP remains the
       // live authority for host-side permissions and adds standard context
@@ -256,16 +332,16 @@ export function createPendingControlSession(
     },
     services: {
       prompt: {
-        async submit(submission: PromptSubmission): Promise<PromptReceipt> {
-          const acp = control ?? (await controlReady.catch(() => undefined));
-          if (!acp) return { status: 'rejected', reason: 'grok control client not attached' };
-          return acp.services.prompt.submit(submission);
+        submit(submission: PromptSubmission): Promise<PromptReceipt> {
+          return prompts.submit(submission);
         },
       },
     },
     async dispose() {
       if (disposed) return;
       disposed = true;
+      // A waiting receipt settles before its rail goes.
+      prompts.dispose();
       unsubscribeControl?.();
       unsubscribeObserver?.();
       unsubscribeObserverError?.();

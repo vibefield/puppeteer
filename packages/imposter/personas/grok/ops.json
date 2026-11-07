@@ -76,6 +76,25 @@
   "turn.start": [
     {
       "channel": "jsonrpc",
+      "event": "_x.ai/queue/changed",
+      "with": {
+        "sessionId": "$sessionId",
+        "entries": [{ "id": "$uuid:prompt", "version": 0, "kind": "prompt", "text": "$op.text", "position": 0 }]
+      }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/queue/changed",
+      "with": {
+        "sessionId": "$sessionId",
+        "entries": [],
+        "runningPromptId": "$uuid:prompt",
+        "runningText": "$op.text",
+        "runningKind": "prompt"
+      }
+    },
+    {
+      "channel": "jsonrpc",
       "event": "session/update",
       "with": {
         "sessionId": "$sessionId",
@@ -367,6 +386,11 @@
           }
         }
       }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/queue/changed",
+      "with": { "sessionId": "$sessionId", "entries": [] }
     },
     {
       "channel": "jsonrpc",

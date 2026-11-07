@@ -12,6 +12,7 @@ import type {
 } from '@vibefield/puppeteer-core/monitor-spi';
 import type { GrokObservedEvent } from './types.js';
 import { GROK_CONTRACT, GROK_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
+import { decodeGrokQueueChanged, GROK_QUEUE_CHANGED_METHOD } from './queue.js';
 import { GrokUsageEvidence, type GrokResponseIdentity } from './usage.js';
 
 export { GROK_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
@@ -246,8 +247,8 @@ export class GrokMonitorEvidence {
    */
   private observeRunningPrompt(sessionId: string, frame: { method?: string; params: Record<string, unknown> }): void {
     const running =
-      frame.method === '_x.ai/queue/changed'
-        ? str(frame.params.runningPromptId)
+      frame.method === GROK_QUEUE_CHANGED_METHOD
+        ? decodeGrokQueueChanged(frame.params)?.running?.promptId
         : frame.method === undefined || frame.method === 'session/update'
           ? str(rec(frame.params._meta)?.promptId)
           : undefined;
@@ -286,8 +287,8 @@ export class GrokMonitorEvidence {
     const kind = str(update?.sessionUpdate);
     const updates: MonitorFamilyUpdate[] = [];
     let promptId: string | undefined;
-    if (frame.method === '_x.ai/queue/changed') {
-      promptId = str(frame.params.runningPromptId);
+    if (frame.method === GROK_QUEUE_CHANGED_METHOD) {
+      promptId = decodeGrokQueueChanged(frame.params)?.running?.promptId;
       if (promptId && this.childTurns.get(childSessionId) !== promptId) {
         this.childTurns.set(childSessionId, promptId);
         updates.push(

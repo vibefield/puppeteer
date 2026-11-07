@@ -382,6 +382,21 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
     total equal to the turn totals; restoring the old identity makes it fail.
   - ACP's `session/new|load` `session:started` is admitted once when the observer is active, deduplicated
     against a live hook-derived start.
+  - (review fix, 2026-11-07) A turn starts at Grok's acceptance, and a receipt means it. With the observer
+    attached, an own-session live `_x.ai/queue/changed` that names a `runningPromptId` (kind `prompt`)
+    starts that turn under the native id, with the submitted text when the prompt is ours, else the text
+    Grok listed for it. The log used to start it only at the first model chunk, so a confirmed prompt left
+    its row idle (the user echo carries no `promptId`). A turn either rail starts is published once, the
+    first rail winning, as `session:started` is. Only the log ends a turn, and the rail hears the next turn
+    first, so a running frame waits for the log's end of the turn before it: the root's activity is keyed
+    by actor, and that end would otherwise retract the new turn's. `services/prompt.ts` confirms a receipt
+    only when Grok lists the prompt under a new id with the submitted text and then runs it (or lists it
+    while another prompt runs). adapter-acp's own 'confirmed' came before Grok had accepted anything. The
+    receipt names the turn the binding publishes or will publish: Grok's id with the observer, adapter-acp's
+    turn without. That turn is on the monitor before the receipt only when the prompt runs at once with no
+    earlier turn open. No acceptance within the submission's bound (5 s) answers 'uncertain'. Replaying
+    `viewer-session` with a stub observer confirms under `a11a5ed0-6f6f-40a0-8790-e989034dc9ff`, its turn
+    already published (`services/control-session.test.ts`).
 - **`--continue`/`resumeLatest`** skips sessions whose `summary.json` says `session_kind: "subagent"`.
 - **Live test support.**
   - The provider answers `GET /` as an origin probe kept apart from model calls.
@@ -394,8 +409,9 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
 - **`groundtruth-map.json` review.**
   - Semantic: `session/update` and `_x.ai/session/update` (the durable pipeline), and
     `_x.ai/session_notification` (`normalization/interaction.ts` reads its `turn_completed` cancellation
-    category to settle a deferred approval). (follow-up) `_x.ai/queue/changed`: `normalization/monitor.ts`
-    reads its `runningPromptId` as a session's running native prompt.
+    category to settle a deferred approval). (follow-up) `_x.ai/queue/changed`: `normalization/queue.ts`
+    is its one reader. `normalization/monitor.ts` takes `runningPromptId` as a session's running native
+    prompt, the control path starts the root turn there, and `services/prompt.ts` confirms a receipt on it.
   - Observed or controlled: `initialize`, `signals.json`, `summary.json`, and now `_x.ai/auth/info`
     (`services/profiles.ts`).
   - The 16 unmapped events are accepted as listed. The other `_x.ai/*` notifications are consumed
@@ -408,7 +424,9 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
     result); `session/list` and `_x.ai/auth/info` handlers; the four permission options with their native
     ids, kinds, and order, bracketed by `pending_interaction`/`interaction_resolved`; snake_case
     `response_completed` usage without a signature; no chunk `messageId`; durable user chunks without a
-    `promptId`; and `prompt_complete`.
+    `promptId`; `prompt_complete`; and (2026-11-07) `_x.ai/queue/changed` around each prompt: listed, then
+    running under the turn's `$uuid:prompt`, then emptied after `response_completed` and before
+    `turn_completed`, in the 1.0.70 order.
   - Store and timing: the durable `timestamp` is Unix seconds and `_meta.eventId` is `<sessionId>-<n>`
     (persona-scoped native-store options; Codex keeps the legacy millisecond envelope). `signals.json` is
     written after the prompt result, with the full 1.0.70 key set and an integer-percent
@@ -474,6 +492,12 @@ Deferred design-level work, each with its evidence:
     context, or model evidence (none captured on a child) is dropped from the root, not attributed.
   - A frame a child sends before its `subagent_spawned` is dropped (its later `turn_completed` still
     carries the turn total), and a grandchild that a child spawns is never registered.
+- **Queue text witness (owed before the release).** A receipt and the rail's turn start match a submission
+  to Grok's queue entry by its text, and the turn's prompt is that text. The sanitizer redacts the entry
+  `text`, `runningText`, and the `session/prompt` text alike, so the captures cannot show they are equal. If
+  Grok's queue text is a truncated or rewritten preview, every managed submission answers 'uncertain'. Owed:
+  on a signed-in host, a long, multi-line, marked prompt (`Vela (your spark) on your behalf:\n…`), with the
+  hashes of the submitted text, the entry text, `runningText`, and the log's user echo compared.
 - **Response usage, residual edges.** Unsigned responses are now identified by session, running native
   prompt, and ordinal (Adapter section). An ordinal cannot deduplicate a re-delivered notification; none
   was observed on one controller connection. A signed response with no known native prompt (the 1.0.0
@@ -524,9 +548,6 @@ Deferred design-level work, each with its evidence:
   - The served `session/prompt` result's `_meta.promptId` is bound per request and is not the stream's
     per-turn `$uuid:prompt`.
   - `modelUsage` uses the persona's default model id as its key.
-  - The persona emits no `_x.ai/queue/changed`, so an Imposter-backed composition correlates its unsigned
-    `response_completed` only through the `_meta.promptId` its chunks carry (the same `$uuid:prompt` as
-    its `turn_completed`), not through `runningPromptId` as 1.0.70 does.
   - The §6.1 scenario set is still partial: compaction, team, configured hooks, and remote ambient only.
 
 ## Reproduce
