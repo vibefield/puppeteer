@@ -3,7 +3,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { createAcpSession } from '@vibefield/puppeteer-adapter-acp';
-import type { AgentEventEnvelope } from '@vibefield/puppeteer-core';
+import {
+  createAdapterEventCandidate,
+  type AdapterEventCandidate,
+  type AgentAdapterBinding,
+  type AgentEvent,
+  type AgentEventEnvelope,
+  type AgentEventSource,
+} from '@vibefield/puppeteer-core';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
@@ -74,6 +81,53 @@ function stubObserver() {
     stop: () => undefined,
   };
   return { observer, emit: (event: GrokObservedEvent) => listeners.forEach((listener) => listener(event)) };
+}
+
+/** Let a submission reach adapter-acp: microtasks only. */
+async function flush(): Promise<void> {
+  for (let tick = 0; tick < 10; tick += 1) await Promise.resolve();
+}
+
+/** adapter-acp as Grok's control composition sees it: its turn starts inside submit, and it confirms at once. */
+function fakeAcp(sessionId = 'grok-session') {
+  const listeners = new Set<(candidate: AdapterEventCandidate) => void>();
+  const submitted: string[] = [];
+  const emit = (event: AgentEvent, nativeEvent?: unknown, source: AgentEventSource = 'native-hook') => {
+    const candidate = createAdapterEventCandidate({
+      sessionId,
+      nativeSessionId: sessionId,
+      timestamp: new Date().toISOString(),
+      monotonicTime: 0,
+      source,
+      confidence: 'authoritative',
+      event,
+      nativeEvent,
+    });
+    for (const listener of listeners) listener(candidate);
+  };
+  const binding: AgentAdapterBinding = {
+    sessionId,
+    runtimeSessionId: sessionId,
+    observationLevel: () => 'structured',
+    events: {
+      onCandidate(listener) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    },
+    services: {
+      prompt: {
+        async submit({ text }) {
+          submitted.push(text);
+          const turnId = `acp-turn-${submitted.length}`;
+          emit({ type: 'turn:started', turnId, prompt: text });
+          return { status: 'confirmed', turnId };
+        },
+      },
+    },
+    dispose: async () => undefined,
+  };
+  return { binding, submitted, emit };
 }
 
 function startedTurnIds(envelopes: readonly AgentEventEnvelope[]): (string | undefined)[] {
@@ -329,6 +383,46 @@ describe('Grok prompt receipts and rail-started turns over the 1.0.70 captures',
         'turn:started next',
       ]);
       expect(projection.state.activeTurn?.id).toBe('next');
+    } finally {
+      projection.dispose();
+      await binding.dispose();
+    }
+  });
+});
+
+describe('Grok receipts on a failing control rail', () => {
+  it('refuses a prompt once the control rail closed, without writing it', async () => {
+    for (const observer of [undefined, stubObserver().observer]) {
+      const acp = fakeAcp();
+      const binding = createPendingControlSession(acp.binding.sessionId, 'rt', () => acp.binding, observer);
+      const closed: AgentEvent = { type: 'adapter:native-event', adapter: 'acp', nativeType: 'transport.closed' };
+      acp.emit(closed, { code: 1 }, 'runtime');
+      await expect(binding.services.prompt.submit({ text: 'hello', confirmationTimeoutMs: 20 })).resolves.toEqual({
+        status: 'rejected',
+        reason: 'grok control rail unavailable',
+      });
+      expect(acp.submitted).toEqual([]);
+      await binding.dispose();
+    }
+  });
+
+  it('rejects a prompt whose request fails before Grok lists it, keeping the failure off the turn', async () => {
+    const acp = fakeAcp();
+    const log = stubObserver();
+    const binding = createPendingControlSession(acp.binding.sessionId, 'rt', () => acp.binding, log.observer);
+    const projection = projectAgentEvents(binding);
+    try {
+      const receipt = binding.services.prompt.submit({ text: 'hello', confirmationTimeoutMs: 1_000 });
+      await flush();
+      expect(acp.submitted).toEqual(['hello']);
+      // adapter-acp's session/prompt request was refused: it fails its own turn.
+      acp.emit({ type: 'turn:failed', turnId: 'acp-turn-1', error: 'rate limited' });
+      await expect(receipt).resolves.toEqual({ status: 'rejected', reason: 'rate limited' });
+      expect(projection.envelopes.some(({ event }) => event.type === 'turn:failed')).toBe(false);
+      expect(projection.state.diagnostics.at(-1)).toMatchObject({
+        code: 'grok-control-prompt-failed',
+        message: 'rate limited',
+      });
     } finally {
       projection.dispose();
       await binding.dispose();

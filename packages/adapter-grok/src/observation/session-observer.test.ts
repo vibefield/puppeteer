@@ -276,6 +276,30 @@ describe('GrokUpdateNormalizer', () => {
     ]);
   });
 
+  it('fails a turn whose turn_completed names an error_kind, whatever its stop_reason', () => {
+    const normalizer = new GrokUpdateNormalizer();
+    const turn = (promptId: string, end: Record<string, unknown>) => [
+      record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'partial' } }, promptId),
+      record({ sessionUpdate: 'turn_completed', prompt_id: promptId, stop_reason: 'end_turn', ...end }),
+    ];
+    const records = [
+      ...turn('p1', { error_kind: 'rate_limit' }),
+      ...turn('p2', {}),
+      ...turn('p3', { error_kind: null }),
+      ...turn('p4', { error_kind: '' }),
+    ];
+    const events = records.flatMap((entry) => normalizer.normalize(entry)).map(({ event }) => event);
+
+    expect(events.filter(({ type }) => type === 'turn:completed' || type === 'turn:failed')).toEqual([
+      { type: 'turn:failed', turnId: 'p1', error: 'rate_limit' },
+      expect.objectContaining({ type: 'turn:completed', turnId: 'p2', stopReason: 'end_turn' }),
+      expect.objectContaining({ type: 'turn:completed', turnId: 'p3', stopReason: 'end_turn' }),
+      expect.objectContaining({ type: 'turn:completed', turnId: 'p4', stopReason: 'end_turn' }),
+    ]);
+    // The answer a refused turn streamed is still its final message.
+    expect(events.filter((event) => event.type === 'conversation:assistant-message' && event.final)).toHaveLength(4);
+  });
+
   it('correlates a user echo even when no user-prompt hook supplies the UUID', () => {
     const normalizer = new GrokUpdateNormalizer();
     expect(
