@@ -95,7 +95,7 @@ afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
-function record(update: Record<string, unknown>, promptId?: string): unknown {
+function record(update: Record<string, unknown>, promptId?: string, meta: Record<string, unknown> = {}): unknown {
   return {
     timestamp: 1_784_669_125_000,
     method:
@@ -105,7 +105,7 @@ function record(update: Record<string, unknown>, promptId?: string): unknown {
     params: {
       sessionId: 'grok-session',
       update,
-      _meta: promptId ? { promptId, agentTimestampMs: 1_784_669_125_000 } : undefined,
+      _meta: promptId ? { promptId, agentTimestampMs: 1_784_669_125_000, ...meta } : undefined,
     },
   };
 }
@@ -217,6 +217,61 @@ describe('GrokUpdateNormalizer', () => {
       { type: 'reasoning:completed', reasoningId: 'p1' },
       { type: 'reasoning:started', reasoningId: 'p1' },
       { type: 'reasoning:completed', reasoningId: 'p1' },
+    ]);
+  });
+
+  it('frames each stream segment of a turn as its own message and ends the turn with the last one', () => {
+    // Synthetic records: the committed captures sanitise every `_meta.streamStartMs` to one value.
+    const normalizer = new GrokUpdateNormalizer();
+    const s1 = { streamStartMs: 1 };
+    const s2 = { streamStartMs: 2 };
+    const records = [
+      record({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'plan' } }, 'p1', s1),
+      record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Let me look.' } }, 'p1', s1),
+      record({ sessionUpdate: 'tool_call', toolCallId: 'T', kind: 'read', status: 'in_progress' }, 'p1', s1),
+      record({ sessionUpdate: 'tool_call_update', toolCallId: 'T', status: 'completed' }, 'p1', s1),
+      record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Done: 3 files.' } }, 'p1', s2),
+      record({ sessionUpdate: 'turn_completed', prompt_id: 'p1', stop_reason: 'end_turn' }),
+    ];
+    const events = records.flatMap((entry) => normalizer.normalize(entry)).map(({ event }) => event);
+    const messages = events.flatMap((event) => (event.type === 'conversation:assistant-message' ? [event] : []));
+
+    expect(messages.map(({ messageId, text, final }) => [messageId, text, final])).toEqual([
+      ['grok-assistant:p1', 'Let me look.', false],
+      ['grok-assistant:p1:1', 'Done: 3 files.', false],
+      ['grok-assistant:p1:1', 'Done: 3 files.', true],
+    ]);
+    expect(events.find(({ type }) => type === 'turn:completed')).toMatchObject({
+      lastAssistantMessage: 'Done: 3 files.',
+    });
+  });
+
+  it('opens a segment at a new stream, and appends within one stream or when the record names none', () => {
+    const normalizer = new GrokUpdateNormalizer();
+    const message = (text: string, promptId: string, streamStartMs?: number) =>
+      record(
+        { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } },
+        promptId,
+        streamStartMs === undefined ? {} : { streamStartMs },
+      );
+    const records = [
+      message('one', 'p1', 1),
+      message(' more', 'p1', 1),
+      message('two', 'p1', 2),
+      message('three', 'p2'),
+      message(' more', 'p2', 5),
+      message(' still', 'p2'),
+    ];
+    const events = records.flatMap((entry) => normalizer.normalize(entry)).map(({ event }) => event);
+    const messages = events.flatMap((event) => (event.type === 'conversation:assistant-message' ? [event] : []));
+
+    expect(messages.map(({ messageId, text }) => [messageId, text])).toEqual([
+      ['grok-assistant:p1', 'one'],
+      ['grok-assistant:p1', 'one more'],
+      ['grok-assistant:p1:1', 'two'],
+      ['grok-assistant:p2', 'three'],
+      ['grok-assistant:p2', 'three more'],
+      ['grok-assistant:p2', 'three more still'],
     ]);
   });
 
