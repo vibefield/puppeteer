@@ -4,8 +4,9 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createGrokSessionObserver } from './session-observer.js';
 import { grokExtensionEvents } from '../normalization/adapter.js';
+import { GrokConversationNormalizer } from '../normalization/conversation.js';
 import { GrokUpdateNormalizer } from '../normalization/pipeline.js';
-import type { GrokObservedEvent } from '../normalization/types.js';
+import type { GrokObservedEvent, GrokObservedFactory } from '../normalization/types.js';
 import { grokUpdatesPath, latestGrokSessionId } from './session-discovery.js';
 
 const temporaryDirectories: string[] = [];
@@ -345,6 +346,18 @@ describe('GrokUpdateNormalizer', () => {
         }),
       ),
     );
+  });
+});
+
+describe('GrokConversationNormalizer', () => {
+  it('keeps no text of a turn it completed', () => {
+    const conversation = new GrokConversationNormalizer();
+    const observed: GrokObservedFactory = (event, promptId) => ({ event, promptId, nativeEvent: undefined });
+    const update = { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'answer' } };
+    conversation.append(update, 'p1', observed);
+
+    expect(conversation.complete('p1', observed).text).toBe('answer');
+    expect(conversation.complete('p1', observed)).toEqual({ events: [] });
   });
 });
 

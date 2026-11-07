@@ -191,6 +191,50 @@ describe('createAcpSession', () => {
     }
   });
 
+  it('bounds an id-less assistant message to its own prompt when the agent echoes no prompt', async () => {
+    const replies = [
+      ['first ', 'answer'],
+      ['second ', 'answer'],
+    ];
+    let client!: Client;
+    const connector: AcpConnector = (toClient) => {
+      const agent = {
+        async initialize() {
+          return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: {} };
+        },
+        async newSession() {
+          return { sessionId: SID };
+        },
+        async prompt() {
+          // No user_message_chunk echo and no messageId: only the driver's submit can open the message.
+          for (const text of replies.shift() ?? []) {
+            await client.sessionUpdate({
+              sessionId: SID,
+              update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } },
+            });
+          }
+          return { stopReason: 'end_turn' as const };
+        },
+        async cancel() {},
+      };
+      client = toClient(agent as unknown as Agent);
+      return { agent: agent as unknown as Agent, onClose() {}, close() {} };
+    };
+    const session = await createAcpSession({ cwd: '/x', connector });
+    const ends: (string | undefined)[] = [];
+    const off = session.events.onCandidate(({ event }) => {
+      if (event.type === 'turn:completed') ends.push(event.lastAssistantMessage);
+    });
+    try {
+      await driveTurn(session, 'first');
+      await driveTurn(session, 'second');
+      expect(ends).toEqual(['first answer', 'second answer']);
+    } finally {
+      off();
+      await session.dispose();
+    }
+  });
+
   it('ends a cancelled prompt as an interrupted turn and keeps the native stop reason', async () => {
     for (const stopReason of ['end_turn', 'cancelled'] as const) {
       const connector: AcpConnector = (toClient) => {

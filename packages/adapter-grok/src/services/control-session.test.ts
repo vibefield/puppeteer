@@ -56,9 +56,10 @@ async function replayControl(frames: readonly CapturedAcpFrame[], prompts: numbe
   }
   await replay.drain();
   const batches = [...projection.monitorBatches];
+  const envelopes = [...projection.envelopes];
   projection.dispose();
   await binding.dispose();
-  return { sessionId: acp.sessionId, batches };
+  return { sessionId: acp.sessionId, batches, envelopes };
 }
 
 function monitor(batches: readonly AdapterMonitorObservationBatch[]) {
@@ -155,6 +156,14 @@ describe('Grok control path over the 1.0.70 captures', () => {
       value: { kind: 'activity', active: true, actor: { nativeSessionId: childSessionId } },
     });
     expect(statusUpdates).toContainEqual({ family: 'status', operation: 'retract', key: childTurn!.key });
+  });
+
+  it('ends the root’s turn with the root’s own assistant text, never its child’s (subagent)', async () => {
+    const { envelopes } = await replayControl(capture('subagent'), 1);
+    const ends = envelopes.flatMap(({ event }) => (event.type === 'turn:completed' ? [event] : []));
+    // acp-controller.jsonl: the root streams two message chunks (lines 33–34); before its prompt answers
+    // (line 50) the leader forwards the child's two (lines 42–43) under the child's sessionId.
+    expect(ends.map(({ lastAssistantMessage }) => lastAssistantMessage)).toEqual(['<redacted:text>'.repeat(2)]);
   });
 
   it('keeps replayed session/load history out of live usage (subagent resume)', async () => {
