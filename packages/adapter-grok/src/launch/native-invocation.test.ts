@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AgentNativeInvocation } from '@vibefield/puppeteer-core';
 import {
   captureGrokContinuationState,
@@ -17,6 +17,12 @@ const invocation = (argv: string[], over: Partial<AgentNativeInvocation> = {}): 
 });
 
 const sessionId = '019a2b3c-4d5e-7f60-8a9b-0c1d2e3f4a5b';
+/** Composes no helper environment, so its helpers inherit this process's own. */
+const inheritingHost = {};
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('Grok native invocation normalization', () => {
   it('normalizes latest/exact resume and supported safety intent', () => {
@@ -49,6 +55,7 @@ describe('Grok native invocation normalization', () => {
   });
 
   it('owns the leader-wide environment and continuation state', () => {
+    vi.stubEnv('GROK_HOME', '');
     const imposterRoot = resolve('/tmp/grok-imposter');
     expect(
       normalizeGrokNativeInvocation(
@@ -68,7 +75,12 @@ describe('Grok native invocation normalization', () => {
         },
       },
     });
-    const state = captureGrokContinuationState({ appServerEnv: { GROK_HOME: '../grok-home' } }, resolve('/repo'), {});
+    expect(captureGrokContinuationState(undefined, resolve('/repo'), inheritingHost)).toBeUndefined();
+    const state = captureGrokContinuationState(
+      { appServerEnv: { GROK_HOME: '../grok-home' } },
+      resolve('/repo'),
+      inheritingHost,
+    );
     expect(restoreGrokContinuationState(state)).toEqual({ appServerEnv: { GROK_HOME: resolve('/grok-home') } });
     const imposterState = captureGrokContinuationState(
       {
@@ -79,7 +91,7 @@ describe('Grok native invocation normalization', () => {
         },
       },
       resolve('/repo'),
-      {},
+      inheritingHost,
     );
     expect(restoreGrokContinuationState(imposterState, { imposterExecutable: resolve('/opt/ai') })).toEqual({
       executable: resolve('/opt/ai'),

@@ -5,6 +5,7 @@
 
 import { validateAgentBriefing } from '@vibefield/puppeteer-core';
 import { GROK_BRIEFING_CAPABILITIES } from './launch/briefing.js';
+import { grokHelperEnvironment } from './launch/environment.js';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -47,11 +48,8 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
     childExtras.PUPPETEER_IMPOSTER_HOME = imposterHome;
     childExtras.GROK_HOME = imposterHome;
   }
-  // The leader runs the agent's turns and tools: under a host that composes a helper environment
-  // it and its ACP controller get the agent's, never this process's own. The observer reads the
-  // home they run under.
-  const childEnv: NodeJS.ProcessEnv | undefined =
-    host.helperEnvironment?.(childExtras ?? {}) ?? (childExtras ? { ...process.env, ...childExtras } : undefined);
+  // The observer reads the home the leader and its ACP controller run under.
+  const childEnv = grokHelperEnvironment(host, childExtras);
   const grokHome = grokHomeIn(childEnv ?? process.env);
   const leader = createGrokLeaderService({ executable, env: childEnv });
   let disposed = false;

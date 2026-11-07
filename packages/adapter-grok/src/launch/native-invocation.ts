@@ -1,7 +1,8 @@
 import { resolve } from 'node:path';
+import { grokHelperEnvironment } from './environment.js';
 import { readInvocation } from './invocation-grammar.js';
 import { z } from 'zod';
-import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibefield/puppeteer-core';
+import type { AgentHost, AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibefield/puppeteer-core';
 
 const ContinuationPathSchema = z.string().trim().min(1).max(8_192);
 const GrokContinuationStateSchema = z.union([
@@ -101,13 +102,14 @@ export function normalizeGrokNativeInvocation(
   };
 }
 
+/** Records the home the backend's helpers run under, read from the environment they are given. */
 export function captureGrokContinuationState(
   options: GrokNativeInvocationOptions | undefined,
   cwd: string,
-  processEnvironment: NodeJS.ProcessEnv = process.env,
+  host: Pick<AgentHost, 'helperEnvironment'>,
 ): string | undefined {
   const environment = options?.appServerEnv;
-  const home = environment?.GROK_HOME ?? processEnvironment.GROK_HOME;
+  const home = (grokHelperEnvironment(host, environment) ?? process.env).GROK_HOME;
   const imposterRoot = environment?.PUPPETEER_IMPOSTER_HOME;
   if (!home?.trim() && !imposterRoot?.trim()) return undefined;
   return JSON.stringify({
