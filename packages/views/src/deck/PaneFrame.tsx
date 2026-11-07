@@ -278,9 +278,12 @@ export function PaneFrame({ pane, session, agent, remote, color, fallbackCwd, zo
     setPausing(false);
   }, [session.id]);
 
-  // Session termination stays pending even when the turn becomes idle.
+  // Session termination stays pending even when the turn becomes idle. It ends with the session, the process or the
+  // agent's row: a run typed in a shell is withdrawn with its shell still live, and a stop held past that would refuse
+  // the next run's verbs. `agent?.alive` leaves `true` with the row, so the list sees the agent go.
   useEffect(() => {
-    if (endsSession ? session.exited || agent?.alive === false : status !== 'working') setStopping(false);
+    if (endsSession ? session.exited || agent === undefined || agent.alive === false : status !== 'working')
+      setStopping(false);
   }, [status, endsSession, session.exited, agent?.alive]);
   useEffect(() => {
     if (!stopping) return;

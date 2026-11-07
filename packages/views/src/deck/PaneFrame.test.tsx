@@ -1,11 +1,15 @@
+// @vitest-environment happy-dom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
-import { PaneFrameChrome, type PaneFrameVerbs } from './PaneFrame.js';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PaneFrame, PaneFrameChrome, STOPPING_TIMEOUT_MS, type PaneFrameVerbs } from './PaneFrame.js';
 import { paneFrameModel, type PaneFrameAgent, type PaneFrameSession } from './pane-frame.js';
 
 // The frame's MARKUP, statically: the badge, the readout, the verbs a host
-// lends, the meter — what a host's rows and a screen reader reach. The
-// portal needs a pane element and is the host's smoke to witness.
+// lends, the meter — what a host's rows and a screen reader reach. The stopping
+// state is the portal's own, so the last rows mount `PaneFrame` into a pane
+// element; a real pane's layout stays the host's smoke to witness.
 
 const NOW = Date.parse('2026-09-10T12:00:00.000Z');
 const ALL_VERBS: PaneFrameVerbs = {
@@ -168,5 +172,85 @@ describe('PaneFrameChrome', () => {
     const html = markup({ session: session(), remote: 'studio' });
     expect(html).toContain('class="vf-pane-os"');
     expect(html).toContain('title="rosetta on studio"');
+  });
+});
+
+describe('PaneFrame', () => {
+  const SESSION_VERBS: PaneFrameVerbs = {
+    stop: () => ({ accepted: true }),
+    stopKind: 'session',
+    pause: () => ({ accepted: true }),
+  };
+  const cleanups: (() => void)[] = [];
+
+  beforeAll(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  });
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    for (const cleanup of cleanups.splice(0).reverse()) cleanup();
+    vi.useRealTimers();
+  });
+
+  /** The frame as a host mounts it, on a fake clock: only a row's own `advance` reaches STOPPING_TIMEOUT_MS. */
+  function mounted(verbs: PaneFrameVerbs = SESSION_VERBS) {
+    const container = document.createElement('main');
+    const pane = document.createElement('section');
+    document.body.append(container, pane);
+    const root = createRoot(container);
+    cleanups.push(() => {
+      act(() => root.unmount());
+      container.remove();
+      pane.remove();
+    });
+    const verb = (kind: 'stop' | 'pause') => pane.querySelector<HTMLButtonElement>(`.vf-pane-verb.is-${kind}`)!;
+    return {
+      verb,
+      stopping: () => pane.querySelector('.vf-pane-frame')!.classList.contains('is-stopping'),
+      render: (running: PaneFrameAgent | undefined) =>
+        act(async () => {
+          root.render(
+            <PaneFrame pane={pane} session={session()} agent={running} zoomed={false} nowMs={NOW} verbs={verbs} />,
+          );
+        }),
+      pressStop: () => act(async () => verb('stop').click()),
+      advance: (ms: number) => act(async () => vi.advanceTimersByTime(ms)),
+    };
+  }
+
+  it('lets go of stopping when the agent is gone, with its session live and no exit heard', async () => {
+    const test = mounted();
+    await test.render(agent());
+    await test.pressStop();
+    expect(test.stopping()).toBe(true);
+    await test.render(undefined);
+    expect(test.stopping()).toBe(false);
+  });
+
+  it('gives the next run in that shell a live Stop and Pause before the timer would have let go', async () => {
+    const stop = vi.fn(() => ({ accepted: true }));
+    const test = mounted({ ...SESSION_VERBS, stop });
+    await test.render(agent());
+    await test.pressStop();
+    await test.render(undefined);
+    await test.render(agent());
+    expect(test.verb('stop').disabled).toBe(false);
+    expect(test.verb('stop').getAttribute('aria-label')).toBe('Stop agent');
+    expect(test.verb('pause').disabled).toBe(false);
+    await test.pressStop();
+    expect(stop).toHaveBeenCalledTimes(2);
+  });
+
+  it('holds stopping through an idle turn while the agent stays, until the timer lets go', async () => {
+    const test = mounted();
+    await test.render(agent());
+    await test.pressStop();
+    await test.render(agent({ status: 'idle' }));
+    await test.advance(STOPPING_TIMEOUT_MS - 1);
+    expect(test.stopping()).toBe(true);
+    await test.advance(1);
+    expect(test.stopping()).toBe(false);
   });
 });
