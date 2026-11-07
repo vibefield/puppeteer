@@ -187,6 +187,39 @@ describe('GrokUpdateNormalizer', () => {
     expect(events.some(({ event }) => event.type === 'reasoning:summary')).toBe(false);
   });
 
+  it('closes reasoning at the first message or tool record after a thought, and reopens it at a later one', () => {
+    const normalizer = new GrokUpdateNormalizer();
+    const thought = record({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'private' } }, 'p1');
+    const records = [
+      thought,
+      record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Let me look.' } }, 'p1'),
+      thought,
+      record({ sessionUpdate: 'tool_call', toolCallId: 't1', kind: 'read', status: 'in_progress' }, 'p1'),
+      record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Done.' } }, 'p1'),
+      record({ sessionUpdate: 'turn_completed', prompt_id: 'p1', stop_reason: 'end_turn' }),
+    ];
+    const events = records.flatMap((entry) => normalizer.normalize(entry)).map(({ event }) => event);
+
+    // Core ranks reasoning above responding: a thought left open labels the answer and the tool as reasoning.
+    expect(events.map(({ type }) => type)).toEqual([
+      'reasoning:started',
+      'reasoning:completed',
+      'conversation:assistant-message',
+      'reasoning:started',
+      'reasoning:completed',
+      'tool:started',
+      'conversation:assistant-message',
+      'conversation:assistant-message',
+      'turn:completed',
+    ]);
+    expect(events.filter(({ type }) => type.startsWith('reasoning:'))).toEqual([
+      { type: 'reasoning:started', reasoningId: 'p1' },
+      { type: 'reasoning:completed', reasoningId: 'p1' },
+      { type: 'reasoning:started', reasoningId: 'p1' },
+      { type: 'reasoning:completed', reasoningId: 'p1' },
+    ]);
+  });
+
   it('correlates a user echo even when no user-prompt hook supplies the UUID', () => {
     const normalizer = new GrokUpdateNormalizer();
     expect(
