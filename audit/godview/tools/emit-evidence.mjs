@@ -4,6 +4,7 @@
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { resolveField, resolveState } from './resolve.mjs';
 
 const SHA = '748d015a7e393112e0a91dad80111fdf5abe6583';
 const VIBEFIELD = '433505fd0f224f4cda540d642661b13848c0ef82';
@@ -1535,25 +1536,27 @@ function envelope(adapter, field) {
   };
 }
 
-function mermaid(adapter, field, meta) {
+function mermaid(adapter, field, meta, resolved) {
   const raw = meta.rawPresent ? meta.rawProperty : 'no raw adapter write found';
   const cite = meta.source.lineStart
     ? `${meta.source.path}:${meta.source.lineStart}-${meta.source.lineEnd}`
     : meta.source.path;
   const lines = [
+    `%% graph_ref: ${resolved.graphRef}`,
+    `%% adapter: ${adapter}`,
+    `%% field: ${field.id}`,
+    '%% forensic: source-read at 748d015; not a live sample',
     'flowchart LR',
-    `  src["${adapter} source ${cite}"]`,
+    `  src["${cite}"]`,
     `  raw["${String(raw).replaceAll('"', "'")}"]`,
-    `  row["UNRESOLVED ${field.id} row mapping"]`,
-    '  ui["UNRESOLVED UI reachability"]',
-    '  states["UNRESOLVED downstream state predicates"]',
-    '  src --> raw --> row',
-    '  row --> ui',
-    '  row --> states',
+    `  shared["${resolved.graphRef}"]`,
+    `  row["${field.id} ${resolved.adapterEmittable}"]`,
+    `  ui["UI ${resolved.uiReachable}"]`,
+    '  src --> raw --> shared --> row --> ui',
   ];
-  if (!meta.rowField) {
-    lines.push('  leaf["SDK contract leaf, not a row field"]');
-    lines.push('  raw --> leaf');
+  if (resolved.adapterEmittable === 'unknown' || resolved.uiReachable === 'unknown') {
+    lines.push('  open["UNRESOLVED where this verdict is unknown"]');
+    lines.push('  row --> open');
   }
   return `${lines.join('\n')}\n`;
 }
@@ -1566,12 +1569,24 @@ const joins = [];
 for (const adapter of OWNED) {
   for (const field of [...audit.fields, ...audit.contractFields]) {
     const { record, meta } = envelope(adapter, field);
+    const resolved = resolveField(adapter, field.id, meta);
+    record.classification.adapterEmittable = resolved.adapterEmittable;
+    record.classification.uiReachable = resolved.uiReachable;
+    record.observation.presence = resolved.presence;
+    record.verification.notes = `${resolved.verdict} ${record.verification.notes}`;
+    record.applicability.notes = record.verification.notes;
+    if (resolved.views.length) {
+      record.renderer.viewIds = resolved.views;
+      record.renderer.component = resolved.component;
+      record.renderer.symbol = resolved.symbol;
+      record.applicability.views = resolved.views;
+    }
     const fieldPath = field.id.slice('field.'.length);
     const relativePath = join('audit/godview/evidence', adapter, `${fieldPath}.json`);
     const absolute = join(ROOT, relativePath);
     mkdirSync(dirname(absolute), { recursive: true });
     writeFileSync(absolute, `${JSON.stringify(record, null, 2)}\n`);
-    writeFileSync(absolute.replace(/\.json$/u, '.mmd'), mermaid(adapter, field, meta));
+    writeFileSync(absolute.replace(/\.json$/u, '.mmd'), mermaid(adapter, field, meta, resolved));
     index.push({
       id: record.recordId,
       adapterId: record.adapterId,
@@ -1619,14 +1634,19 @@ const fragmentPath = join(ROOT, 'audit/godview/plan/matrix-fragments/GV-AUDIT3.j
 mkdirSync(dirname(fragmentPath), { recursive: true });
 writeFileSync(fragmentPath, `${JSON.stringify(fragment, null, 2)}\n`);
 const stateReachability = OWNED.flatMap((adapter) =>
-  audit.states.map((state) => ({
-    adapterId: `adapter.${adapter}`,
-    stateId: state.id,
-    adapterEmitsPredicate: false,
-    downstream: 'unknown',
-    impossible: false,
-    note: 'The adapter not emitting this view predicate is expected. It is not an unreachable conclusion. History, timeline, git branch, cost, and burn predicates stay pending for GV-AUDIT2.',
-  })),
+  audit.states.map((state) => {
+    const resolved = resolveState(adapter, state.id);
+    return {
+      adapterId: `adapter.${adapter}`,
+      stateId: state.id,
+      verdict: resolved.verdict,
+      impossible: resolved.impossible,
+      graphRef: resolved.graphRef,
+      forensic: 'source-read',
+      liveObserved: false,
+      note: resolved.note,
+    };
+  }),
 );
 const handoff = {
   pins: PINS,
@@ -1635,7 +1655,8 @@ const handoff = {
   provenanceComplete: false,
   schemaAcceptanceIsNotProvenance: true,
   downstreamOwner: 'GV-AUDIT2',
-  downstreamVerdict: 'pending',
+  costTraceCommit: '25c215a2a53f363e1076210b3f6fce2155dfdc0b',
+  downstreamVerdict: 'partial: cost row predicates integrated from that trace; other shared anchors remain for GV2 to fill',
   counts: {
     rowFields: audit.fields.length,
     rowRecords: joins.length,
@@ -1649,41 +1670,69 @@ const handoff = {
       source: 'packages/adapter-claude/src/observation/otel/usage.ts:37-69',
       writesFieldCostUsd: false,
       burnRateWritten: false,
-      continuation: 'packages/core/src/monitor/reduce.ts:1049-1073 copies event.costUsd onto a monitor usage value. Whether that becomes field.cost.usd, cost_missing, cost_unavailable, complete, or partial is a GV-AUDIT2 verdict, not this audit.',
+      continuation: 'reduce.ts:1049-1073 copies event.costUsd. usage-pricing.ts can also catalog-price complete buckets. GV2 25c215a2a53f363e1076210b3f6fce2155dfdc0b: normal backend emits complete or partial, not a present cost_unavailable object. cost_missing remains possible before a priced total. Not live-observed.',
     },
     'adapter.codex': {
       rawProperty: null,
       source: 'packages/adapter-codex/src/normalization/monitor.ts:503-527',
       writesFieldCostUsd: false,
       burnRateWritten: false,
-      continuation: 'Usage pricing is token deltas or a gap. No costUsd. A unit test reads a projected burnRatePerMin, including 0. That is not an adapter emission and not a row burn state.',
+      continuation: 'No adapter costUsd. pricing deltas can be catalog-priced by usage-pricing.ts. GV2 25c215a: complete after a zero baseline and a valid delta; partial when a gap or positive baseline mixes with a priced delta. Flames are conditional. Not live-observed.',
     },
     'adapter.acp': {
       rawProperty: null,
       source: 'packages/adapter-acp/src/normalization/monitor.ts:216-228',
       writesFieldCostUsd: false,
       burnRateWritten: false,
-      continuation: 'usage_update is context occupancy. No costUsd and no burn rate.',
+      continuation: 'No costUsd. GV2 25c215a: row is cost_missing and an observed working body is burn_unpriced, not cost_unavailable. Not impossible if a later producer adds cost.',
     },
     'adapter.antigravity': {
       rawProperty: null,
       source: 'packages/adapter-antigravity/src/normalization/monitor-capabilities.ts:15-23',
       writesFieldCostUsd: false,
       burnRateWritten: false,
-      continuation: 'No costUsd symbol in this adapter.',
+      continuation: 'No costUsd symbol. Same row result as ACP: cost_missing and burn_unpriced, not normal cost_unavailable. GV2 25c215a.',
     },
     'adapter.copilot': {
       rawProperty: null,
       source: 'packages/adapter-copilot/src/normalization/monitor-capabilities.ts:15-23',
       writesFieldCostUsd: false,
       burnRateWritten: false,
-      continuation: 'No costUsd symbol. Compaction token counts are context, not cost.',
+      continuation: 'No costUsd. Compaction tokens are context. Same row result as ACP: cost_missing and burn_unpriced. GV2 25c215a.',
     },
   },
   rowJoins: joins,
   stateReachability,
 };
 writeFileSync(join(ROOT, 'audit/godview/plan/gv-audit3-join.json'), `${JSON.stringify(handoff, null, 2)}\n`);
+const graphs = join(ROOT, 'audit/godview/plan/graphs');
+mkdirSync(graphs, { recursive: true });
+const shared = {
+  'cost-priced.mmd': `flowchart TD
+  raw[Adapter usage or pricing] --> price[usage-pricing.ts priceUsageUpdates]
+  price --> ledger[cost.ts buildUsageCostLedger]
+  ledger --> row[backend.ts costOf complete or partial]
+  row --> flames[bubble-model.ts flame ladder conditional]
+  note[GV2 25c215a not a live sample] --> row`,
+  'cost-missing.mmd': `flowchart TD
+  raw[No priced costUsd] --> core[Core coverage unavailable]
+  core --> omit[backend.ts omits field.cost]
+  omit --> missing[state.cost_missing]
+  omit --> hollow[state.burn_unpriced on observed working body]
+  not[state.cost_unavailable is not this row] --> omit`,
+  'status.mmd': `flowchart LR
+  events[turn tool permission events] --> transitions[transitions.ts status]
+  transitions --> derive[derive.ts agentStatus]
+  derive --> views[list rain swarm spend]`,
+  'context-percent.mmd': `flowchart LR
+  tokens[context tokens] --> reduce[reduce.ts derived percent]
+  reduce --> row[derive.ts usedPercent]
+  row --> views[list rain swarm]`,
+  'branch.mmd': `flowchart LR
+  git[adapter git or host branch] --> derive[derive.ts projectBranch]
+  derive --> views[list rain swarm]`,
+};
+for (const [name, body] of Object.entries(shared)) writeFileSync(join(graphs, name), `${body}\n`);
 console.log(JSON.stringify({
   records: index.length,
   rowJoins: joins.length,
