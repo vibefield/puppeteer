@@ -1,13 +1,9 @@
-%% graph_ref: shared.runtime-supplied
-%% adapter: claude
-%% field: field.stale
-%% forensic: source-read at 748d015; not a live sample
+%% graph_ref: path.freshness
+%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
 flowchart LR
-  src["packages/view-sdk/src/model.ts:137-137"]
-  raw["no raw adapter write found"]
-  shared["shared.runtime-supplied"]
-  row["field.stale no"]
-  ui["UI unknown"]
-  src --> raw --> shared --> row --> ui
-  open["UNRESOLVED where this verdict is unknown"]
-  row --> open
+  n0["packages/view-sdk/src/model.ts:137-137"]
+  n1["packages/core/src/monitor/project.ts:259-316"]
+  n0 --> n1
+  n2["packages/views/src/views/list/AgentList.tsx:144-199"]
+  n1 --> n2

@@ -75,7 +75,7 @@
   "producer": {
     "kind": "unknown",
     "name": "not-adapter-produced",
-    "ingestedFrom": "not adapter-produced; PENDING DOWNSTREAM MAPPING into the row"
+    "ingestedFrom": "not adapter-produced; shared continuation is joined; not a live sample"
   },
   "transforms": [
     {
@@ -106,20 +106,17 @@
       "view.rain",
       "view.swarm"
     ],
-    "component": "bubble-model / AgentList / rain-streams",
-    "symbol": "usedPercent"
+    "component": "direct reader",
+    "symbol": "confirmed"
   },
   "applicability": {
-    "states": [
-      "state.context_missing",
-      "state.context_hot"
-    ],
+    "states": "model-axes",
     "views": [
       "view.list",
       "view.rain",
       "view.swarm"
     ],
-    "notes": "No context occupancy producer in the current antigravity sources. The row omits field.context. Readers exist. Not impossible if a later producer appears. Not live-observed. ROW FIELD field.context. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns adapter output to row predicates, including cost, burn rate, history, timeline, and git branch. This audit does not give that verdict. Schema acceptance is not complete provenance. verification.status source-read is a static reading. observation.presence unknown means no live sample was taken. It does not mean the row value is missing. classification.adapterEmittable and uiReachable stay unknown. A raw adapter property is not the row field, and a catalog consumer is not a proven UI path.   Declared unsupported. That does not forbid field.context from another producer. The adapter does not write this MonitorAgentRow property. That is the architecture, not a conclusion that the row predicate is unreachable. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration unsupported from none-in-antigravity-transcript. declaration only; supported does not guarantee availability/value; degraded is not unreachable No raw adapter signal does not rule out the row value from host, runtime, history, or another producer. Raw source literals, not live samples: adapter.antigravity.upstream.context.absent=\"absent\" (transcript normalizer) Graph: evidence/antigravity/context.mmd. Continuation anchors, not a reachability verdict: MonitorService.consume, core reduce and project, deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. Current producers do not produce this row field. A later or host producer is not ruled out. Direct readers: view.list, view.rain, view.swarm. No source-permitted predicate from this field domain is claimed for this adapter. Not claimed, and not listed as applicable: state.context_missing, state.context_hot. No field-domain predicate is claimed as source-permitted here."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -138,6 +135,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "No context occupancy producer in the current antigravity sources. The row omits field.context. Readers exist. Not impossible if a later producer appears. Not live-observed. ROW FIELD field.context. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns adapter output to row predicates, including cost, burn rate, history, timeline, and git branch. This audit does not give that verdict. Schema acceptance is not complete provenance. verification.status source-read is a static reading. observation.presence unknown means no live sample was taken. It does not mean the row value is missing. classification.adapterEmittable and uiReachable stay unknown. A raw adapter property is not the row field, and a catalog consumer is not a proven UI path.   Declared unsupported. That does not forbid field.context from another producer. The adapter does not write this MonitorAgentRow property. That is the architecture, not a conclusion that the row predicate is unreachable. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration unsupported from none-in-antigravity-transcript. declaration only; supported does not guarantee availability/value; degraded is not unreachable No raw adapter signal does not rule out the row value from host, runtime, history, or another producer. Raw source literals, not live samples: adapter.antigravity.upstream.context.absent=\"absent\" (transcript normalizer) Graph: evidence/antigravity/context.mmd. Continuation anchors, not a reachability verdict: MonitorService.consume, core reduce and project, deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. Current producers do not produce this row field. A later or host producer is not ruled out. Direct readers: view.list, view.rain, view.swarm. No source-permitted predicate from this field domain is claimed for this adapter. Not claimed, and not listed as applicable: state.context_missing, state.context_hot. No field-domain predicate is claimed as source-permitted here."
   }
 }

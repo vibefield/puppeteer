@@ -1,13 +1,9 @@
-%% graph_ref: shared.branch
-%% adapter: antigravity
-%% field: field.project.branch
-%% forensic: source-read at 748d015; not a live sample
+%% graph_ref: path.environment
+%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
 flowchart LR
-  src["packages/view-sdk/src/model.ts:106-106"]
-  raw["no raw adapter write found"]
-  shared["shared.branch"]
-  row["field.project.branch unknown"]
-  ui["UI yes"]
-  src --> raw --> shared --> row --> ui
-  open["UNRESOLVED where this verdict is unknown"]
-  row --> open
+  n0["packages/view-sdk/src/model.ts:106-106"]
+  n1["packages/core/src/monitor/reduce.ts:100-117"]
+  n0 --> n1
+  n2["packages/views/src/views/list/AgentList.tsx:144-199"]
+  n1 --> n2

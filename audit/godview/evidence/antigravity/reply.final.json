@@ -86,18 +86,14 @@
     "contract": "AgentEvent or monitor:batch"
   },
   "renderer": {
-    "viewIds": [
-      "view.swarm"
-    ],
-    "component": "bubble-model",
-    "symbol": "latestMessage"
+    "viewIds": [],
+    "component": "no direct reader",
+    "symbol": "no direct builtin reader"
   },
   "applicability": {
     "states": "model-axes",
-    "views": [
-      "view.swarm"
-    ],
-    "notes": "Assistant messages reduce to lastAssistantMessage and derive.ts:188-195 copies non-blank text. Conditional. Swarm reads a message. List and rain were not verified for field.reply. Not live-observed. ROW FIELD field.reply.final. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns adapter output to row predicates, including cost, burn rate, history, timeline, and git branch. This audit does not give that verdict. Schema acceptance is not complete provenance. verification.status source-read is a static reading. observation.presence unknown means no live sample was taken. It does not mean the row value is missing. classification.adapterEmittable and uiReachable stay unknown. A raw adapter property is not the row field, and a catalog consumer is not a proven UI path.   conversation is undeclared. final true is set by the helper, not by a provider final flag. No reply timestamp is copied onto the event. The adapter does not write this MonitorAgentRow property. That is the architecture, not a conclusion that the row predicate is unreachable. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration unknown from no capability cell.  Declared support does not match the producer channel. That mismatch is not a runtime impossibility. Raw source literals, not live samples: adapter.antigravity.upstream.reply.final=true (planner content is a string); adapter.antigravity.upstream.reply.absent=\"no message\" (planner content is not a string) Graph: evidence/antigravity/reply.final.mmd. Continuation anchors, not a reachability verdict: MonitorService.consume, core reduce and project, deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "views": "all-monitor-views",
+    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. No direct or indirect builtin reader was found for this row field. No source-permitted predicate from this field domain is claimed for this adapter. No field-domain predicate is claimed as source-permitted here."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -111,11 +107,11 @@
   "classification": {
     "modelSupported": "yes",
     "adapterEmittable": "yes",
-    "uiReachable": "unknown"
+    "uiReachable": "no"
   },
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "Assistant messages reduce to lastAssistantMessage and derive.ts:188-195 copies non-blank text. Conditional. Swarm reads a message. List and rain were not verified for field.reply. Not live-observed. ROW FIELD field.reply.final. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns adapter output to row predicates, including cost, burn rate, history, timeline, and git branch. This audit does not give that verdict. Schema acceptance is not complete provenance. verification.status source-read is a static reading. observation.presence unknown means no live sample was taken. It does not mean the row value is missing. classification.adapterEmittable and uiReachable stay unknown. A raw adapter property is not the row field, and a catalog consumer is not a proven UI path.   conversation is undeclared. final true is set by the helper, not by a provider final flag. No reply timestamp is copied onto the event. The adapter does not write this MonitorAgentRow property. That is the architecture, not a conclusion that the row predicate is unreachable. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration unknown from no capability cell.  Declared support does not match the producer channel. That mismatch is not a runtime impossibility. Raw source literals, not live samples: adapter.antigravity.upstream.reply.final=true (planner content is a string); adapter.antigravity.upstream.reply.absent=\"no message\" (planner content is not a string) Graph: evidence/antigravity/reply.final.mmd. Continuation anchors, not a reachability verdict: MonitorService.consume, core reduce and project, deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. The traced source path can produce this row field. That is conditional and is not a live sample. No direct or indirect builtin reader was found for this row field. No source-permitted predicate from this field domain is claimed for this adapter. No field-domain predicate is claimed as source-permitted here."
   }
 }

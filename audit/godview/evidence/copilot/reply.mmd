@@ -1,13 +1,9 @@
-%% graph_ref: shared.reply
-%% adapter: copilot
-%% field: field.reply
-%% forensic: source-read at 748d015; not a live sample
+%% graph_ref: path.conversation
+%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
 flowchart LR
-  src["packages/adapter-copilot/src/normalization/conversation.ts:4-19"]
-  raw["conversation:assistant-message final true"]
-  shared["shared.reply"]
-  row["field.reply yes"]
-  ui["UI unknown"]
-  src --> raw --> shared --> row --> ui
-  open["UNRESOLVED where this verdict is unknown"]
-  row --> open
+  n0["packages/adapter-copilot/src/normalization/conversation.ts:4-19"]
+  n1["packages/core/src/monitor/reduce.ts:742-746"]
+  n0 --> n1
+  n2["packages/view-sdk/src/toolkit/words.ts:64-84"]
+  n1 --> n2

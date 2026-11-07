@@ -1,13 +1,9 @@
-%% graph_ref: shared.status
-%% adapter: claude
-%% field: field.wait.question
-%% forensic: source-read at 748d015; not a live sample
+%% graph_ref: path.status
+%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
 flowchart LR
-  src["packages/adapter-claude/src/normalization/interaction.ts:51-83"]
-  raw["adapter signal, see transforms"]
-  shared["shared.status"]
-  row["field.wait.question yes"]
-  ui["UI unknown"]
-  src --> raw --> shared --> row --> ui
-  open["UNRESOLVED where this verdict is unknown"]
-  row --> open
+  n0["packages/adapter-claude/src/normalization/interaction.ts:51-83"]
+  n1["packages/core/src/monitor/transitions.ts:93-170"]
+  n0 --> n1
+  n2["packages/view-sdk/src/toolkit/words.ts:64-84"]
+  n1 --> n2

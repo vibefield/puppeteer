@@ -1,11 +1,10 @@
-%% graph_ref: shared.cost.priced
-%% adapter: claude
-%% field: field.cost.series.stepMs
-%% forensic: source-read at 748d015; not a live sample
+%% graph_ref: path.usage
+%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
 flowchart LR
-  src["packages/adapter-claude/src/observation/otel/usage.ts:37-69"]
-  raw["usage:tokens-used.costUsd"]
-  shared["shared.cost.priced"]
-  row["field.cost.series.stepMs yes"]
-  ui["UI yes"]
-  src --> raw --> shared --> row --> ui
+  raw["adapter usage or pricing"] --> price["priceUsageUpdates BEFORE reduce monitor-service.ts:418-425"]
+  price --> rules["usage-pricing.ts:19-78 reported USD or catalog"]
+  rules --> red["reduce.ts:1049-1073 copies costUsd"]
+  red --> led["cost.ts priced or skipped"]
+  led --> row["backend.ts:197-205 costOf complete or partial"]
+  row --> view["bubble-model.ts:469-477 and spend-series.ts:35-150"]

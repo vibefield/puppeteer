@@ -1,13 +1,10 @@
-%% graph_ref: shared.tokens
-%% adapter: claude
-%% field: field.tokens.total
-%% forensic: source-read at 748d015; not a live sample
+%% graph_ref: path.usage
+%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
 flowchart LR
-  src["packages/adapter-claude/src/observation/otel/usage.ts:28-87"]
-  raw["usage:tokens-used"]
-  shared["shared.tokens"]
-  row["field.tokens.total unknown"]
-  ui["UI unknown"]
-  src --> raw --> shared --> row --> ui
-  open["UNRESOLVED where this verdict is unknown"]
-  row --> open
+  raw["otel usage.ts:28-79 totalTokens"] --> ingest["monitor-service.ts:227-253 then reduce.ts:1049-1073"]
+  ingest --> contrib["usage-index.ts:110-124 totalContribution"]
+  contrib --> fold["usage-index.ts:345-366 cumulativeTokens"]
+  fold --> pub["usage-index.ts:545-550"]
+  pub --> row["derive.ts:198-207 tokens.total"]
+  row --> ui["no direct builtin reader"]

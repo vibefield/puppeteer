@@ -54,12 +54,44 @@
       "lineStart": 62,
       "lineEnd": 82,
       "symbol": "usage-ledger.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/runtime/src/services/monitor-service.ts",
+      "lineStart": 418,
+      "lineEnd": 425,
+      "symbol": "priceUsageUpdates before reduce"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/runtime/src/services/usage-pricing.ts",
+      "lineStart": 19,
+      "lineEnd": 78,
+      "symbol": "catalog and provider costUsd"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/reduce.ts",
+      "lineStart": 1049,
+      "lineEnd": 1073,
+      "symbol": "usage:tokens-used case"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/backend.ts",
+      "lineStart": 197,
+      "lineEnd": 205,
+      "symbol": "costOf omits unpaid total"
     }
   ],
   "producer": {
     "kind": "unknown",
     "name": "not-adapter-produced",
-    "ingestedFrom": "not adapter-produced; PENDING DOWNSTREAM MAPPING into the row"
+    "ingestedFrom": "not adapter-produced; shared continuation is joined; not a live sample"
   },
   "transforms": [
     {
@@ -74,6 +106,58 @@
         "lineEnd": 23,
         "symbol": "usage capability"
       }
+    },
+    {
+      "order": 1,
+      "name": "runtime-priceUsageUpdates-before-reduce",
+      "effect": "Runtime priceUsageUpdates runs before reduceMonitorAccumulator. Reported nonnegative costUsd, including zero, wins. Otherwise exact catalog pricing. A failed estimate writes no costUsd.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/runtime/src/services/monitor-service.ts",
+        "lineStart": 418,
+        "lineEnd": 425,
+        "symbol": "priceUsageUpdates before reduce"
+      }
+    },
+    {
+      "order": 2,
+      "name": "catalog-or-provider-cost",
+      "effect": "Live/correction allowed-origin usage upserts with canonical/pricing/costUsd: valid reported nonnegative USD incl zero wins; otherwise exact request model/catalog/buckets/tier pricing. Missing metadata is not reconstructed from row/session model. Failed estimate has no USD.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/runtime/src/services/usage-pricing.ts",
+        "lineStart": 19,
+        "lineEnd": 78,
+        "symbol": "catalog and provider costUsd"
+      }
+    },
+    {
+      "order": 3,
+      "name": "core-reduce-copies-costUsd",
+      "effect": "After pricing, reduce copies costUsd onto the monitor usage value. It does not price.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/core/src/monitor/reduce.ts",
+        "lineStart": 1049,
+        "lineEnd": 1073,
+        "symbol": "usage:tokens-used case"
+      }
+    },
+    {
+      "order": 4,
+      "name": "backend-costOf",
+      "effect": "costOf returns no cost object when history.total is undefined. That is cost_missing, not a present coverage of unavailable.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/monitor/src/backend/backend.ts",
+        "lineStart": 197,
+        "lineEnd": 205,
+        "symbol": "costOf omits unpaid total"
+      }
     }
   ],
   "merge": {
@@ -86,29 +170,20 @@
   },
   "renderer": {
     "viewIds": [
-      "view.swarm",
       "view.spend"
     ],
-    "component": "bubble-model",
-    "symbol": "burn_unpriced"
+    "component": "direct reader",
+    "symbol": "confirmed"
   },
   "applicability": {
     "states": [
-      "state.cost_complete",
-      "state.cost_partial",
-      "state.cost_unavailable",
       "state.cost_missing",
-      "state.burn_flames_0",
-      "state.burn_flames_1",
-      "state.burn_flames_2",
-      "state.burn_flames_3",
-      "state.burn_flames_4"
+      "state.burn_unpriced"
     ],
     "views": [
-      "view.swarm",
       "view.spend"
     ],
-    "notes": "Current producers supply no priced total, so the normal backend omits field.cost. The row state is state.cost_missing, and an observed working Swarm body is state.burn_unpriced. This is not state.cost_unavailable, and it is not an impossibility if another producer later supplies costUsd. Not live-observed. Attribution: Vibefield audit/godview-model 25c215a2a53f363e1076210b3f6fce2155dfdc0b. ROW FIELD field.cost.series.stepMs. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns adapter output to row predicates, including cost, burn rate, history, timeline, and git branch. This audit does not give that verdict. Schema acceptance is not complete provenance. verification.status source-read is a static reading. observation.presence unknown means no live sample was taken. It does not mean the row value is missing. classification.adapterEmittable and uiReachable stay unknown. A raw adapter property is not the row field, and a catalog consumer is not a proven UI path.  This record does not emit state.cost_complete, state.cost_partial, state.cost_unavailable, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, or state.burn_unpriced. Those predicates stay downstream. PENDING DOWNSTREAM MAPPING. costUsd is absent. No burn rate is written. Declared usage unsupported matches the search. That does not create state.cost_missing and does not forbid a later ledger. The adapter does not write this MonitorAgentRow property. That is the architecture, not a conclusion that the row predicate is unreachable. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration unsupported from copilot-assistant-and-shutdown-usage. declaration only; supported does not guarantee availability/value; degraded is not unreachable No raw adapter signal does not rule out the row value from host, runtime, history, or another producer. Raw source literals, not live samples: adapter.copilot.upstream.costUsd.absent=\"absent\" (adapter sources) Graph: evidence/copilot/cost.series.stepMs.mmd. Continuation anchors, not a reachability verdict: MonitorService.consume, core reduce and project, deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. Current producers do not produce this row field. A later or host producer is not ruled out. Direct readers: view.spend. Runtime priceUsageUpdates runs before reduce. The normal backend omits field.cost when there is no priced total, so a present coverage of unavailable is not the row result. Reachable predicates for this adapter path: state.cost_missing, state.burn_unpriced. Not claimed, and not listed as applicable: state.cost_complete, state.cost_partial, state.cost_unavailable, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -122,11 +197,11 @@
   "classification": {
     "modelSupported": "yes",
     "adapterEmittable": "no",
-    "uiReachable": "no"
+    "uiReachable": "yes"
   },
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": "Current producers supply no priced total, so the normal backend omits field.cost. The row state is state.cost_missing, and an observed working Swarm body is state.burn_unpriced. This is not state.cost_unavailable, and it is not an impossibility if another producer later supplies costUsd. Not live-observed. Attribution: Vibefield audit/godview-model 25c215a2a53f363e1076210b3f6fce2155dfdc0b. ROW FIELD field.cost.series.stepMs. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns adapter output to row predicates, including cost, burn rate, history, timeline, and git branch. This audit does not give that verdict. Schema acceptance is not complete provenance. verification.status source-read is a static reading. observation.presence unknown means no live sample was taken. It does not mean the row value is missing. classification.adapterEmittable and uiReachable stay unknown. A raw adapter property is not the row field, and a catalog consumer is not a proven UI path.  This record does not emit state.cost_complete, state.cost_partial, state.cost_unavailable, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, or state.burn_unpriced. Those predicates stay downstream. PENDING DOWNSTREAM MAPPING. costUsd is absent. No burn rate is written. Declared usage unsupported matches the search. That does not create state.cost_missing and does not forbid a later ledger. The adapter does not write this MonitorAgentRow property. That is the architecture, not a conclusion that the row predicate is unreachable. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration unsupported from copilot-assistant-and-shutdown-usage. declaration only; supported does not guarantee availability/value; degraded is not unreachable No raw adapter signal does not rule out the row value from host, runtime, history, or another producer. Raw source literals, not live samples: adapter.copilot.upstream.costUsd.absent=\"absent\" (adapter sources) Graph: evidence/copilot/cost.series.stepMs.mmd. Continuation anchors, not a reachability verdict: MonitorService.consume, core reduce and project, deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "Shared continuation resolved-shared-continuation from Vibefield audit/godview-model 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf, input join 5195c56. Source-read at Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583. Not a live session. Map counts are not proof; the cited hops were re-read. Current producers do not produce this row field. A later or host producer is not ruled out. Direct readers: view.spend. Runtime priceUsageUpdates runs before reduce. The normal backend omits field.cost when there is no priced total, so a present coverage of unavailable is not the row result. Reachable predicates for this adapter path: state.cost_missing, state.burn_unpriced. Not claimed, and not listed as applicable: state.cost_complete, state.cost_partial, state.cost_unavailable, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4."
   }
 }

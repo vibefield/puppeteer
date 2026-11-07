@@ -1,13 +1,9 @@
-%% graph_ref: shared.tokens.absent
-%% adapter: antigravity
-%% field: field.tokens.total
-%% forensic: source-read at 748d015; not a live sample
+%% graph_ref: path.usage
+%% shared_map: 07e71c9bcb9532fc181e3f667f2d0ed2e7c9afaf
+%% forensic: source-read 748d015a7e393112e0a91dad80111fdf5abe6583; not a live sample
 flowchart LR
-  src["packages/adapter-antigravity/src/normalization/monitor-capabilities.ts:15-23"]
-  raw["no raw adapter write found"]
-  shared["shared.tokens.absent"]
-  row["field.tokens.total no"]
-  ui["UI unknown"]
-  src --> raw --> shared --> row --> ui
-  open["UNRESOLVED where this verdict is unknown"]
-  row --> open
+  n0["packages/adapter-antigravity/src/normalization/monitor-capabilities.ts:15-23"]
+  n1["packages/runtime/src/services/usage-pricing.ts:19-78"]
+  n0 --> n1
+  n2["no direct builtin reader"]
+  n1 --> n2
