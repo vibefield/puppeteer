@@ -56,7 +56,23 @@ describe('spawn-through gateway', () => {
     expect(handle).toHaveBeenCalledWith(request);
   });
 
-  it('answers a wrong bearer, a malformed request, an oversize one and a throwing handler with fallback', async () => {
+  it('hands the host a request the shim had to bound, marked', async () => {
+    const handle = vi.fn(async (): Promise<SpawnThroughResponse> => ({
+      action: 'fallback',
+      code: 'passthrough',
+      reason: 'a one-shot',
+    }));
+    gateway = await startSpawnThroughGateway({ token: 'secret', handle });
+
+    await expect(ask(gateway.port, line({ ...request, bounded: true }))).resolves.toEqual({
+      action: 'fallback',
+      code: 'passthrough',
+      reason: 'a one-shot',
+    });
+    expect(handle).toHaveBeenCalledWith({ ...request, bounded: true });
+  });
+
+  it('answers a bad bearer, an unreadable request, an oversize one and a throwing handler with fallback', async () => {
     const handle = vi.fn(async (): Promise<SpawnThroughResponse> => {
       throw new Error('the runtime is disposed');
     });
@@ -68,9 +84,20 @@ describe('spawn-through gateway', () => {
       reason: 'spawn-through authentication failed',
     };
     await expect(ask(gateway.port, line({ ...request, token: 'guess' }))).resolves.toEqual(unauthenticated);
-    await expect(ask(gateway.port, line({ ...request, unknown: true }))).resolves.toEqual(unauthenticated);
-    // A line that is not JSON at all tells the caller no more than a wrong bearer does.
+    await expect(ask(gateway.port, line({ ...request, token: 7 }))).resolves.toEqual(unauthenticated);
+    // A caller without the bearer learns nothing about the shape: a wrong shape under a wrong bearer reads the same.
+    await expect(ask(gateway.port, line({ ...request, token: 'guess', unknown: true }))).resolves.toEqual(
+      unauthenticated,
+    );
+    // A line that is not JSON at all, or not a request object, tells the caller no more than a wrong bearer does.
     await expect(ask(gateway.port, 'not json\n')).resolves.toEqual(unauthenticated);
+    await expect(ask(gateway.port, line([request]))).resolves.toEqual(unauthenticated);
+    // The bearer's holder speaking a shape this gateway cannot read: a shim of another version.
+    await expect(ask(gateway.port, line({ ...request, unknown: true }))).resolves.toEqual({
+      action: 'fallback',
+      code: 'invalid-request',
+      reason: 'spawn-through request could not be read',
+    });
     expect(handle).not.toHaveBeenCalled();
     await expect(ask(gateway.port, `${'x'.repeat(64 * 1024 + 1)}`)).resolves.toEqual({
       action: 'fallback',
@@ -99,6 +126,14 @@ describe('spawn-through gateway', () => {
       message: 'not started, because it could not be run as a managed session: spawn-through authentication failed',
       placed: false,
       // The gateway's own refusals are the kit's sentence: the shim names the command before it.
+      kitSentence: true,
+    });
+    await expect(ask(gateway.port, line({ ...request, unknown: true }))).resolves.toEqual({
+      action: 'refuse',
+      code: 'invalid-request',
+      reason: 'spawn-through request could not be read',
+      message: 'not started, because it could not be run as a managed session: spawn-through request could not be read',
+      placed: false,
       kitSentence: true,
     });
     await expect(ask(gateway.port, `${'x'.repeat(64 * 1024 + 1)}`)).resolves.toMatchObject({

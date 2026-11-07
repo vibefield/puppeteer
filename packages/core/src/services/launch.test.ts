@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  AGENT_NATIVE_INVOCATION_LIMITS,
   AgentContinuationSchema,
   AgentLaunchProviderSchema,
   AgentLaunchRefusedError,
+  AgentNativeInvocationIntentSchema,
   AgentNativeInvocationPassthroughKindSchema,
   AgentNativeInvocationSchema,
   isAgentLaunchRefusedError,
@@ -101,6 +103,31 @@ describe('agent launch contracts', () => {
     expect(
       AgentNativeInvocationSchema.safeParse({ ...invocation, environment: { 'INVALID-NAME': 'value' } }).success,
     ).toBe(false);
+  });
+
+  it('holds a shell intent to the limits it publishes: exactly at each one parses, one past it does not', () => {
+    // One authority: a sender that must stay inside them (the spawn-through shim) reads these, never a copy.
+    expect(AGENT_NATIVE_INVOCATION_LIMITS).toEqual({
+      argumentLength: 8_192,
+      arguments: 256,
+      environmentEntries: 32,
+      environmentValueLength: 8_192,
+    });
+    const limits = AGENT_NATIVE_INVOCATION_LIMITS;
+    const intent = { providerId: 'example', cwd: '/repo', argv: [], environment: {} };
+    const parses = (overrides: { argv?: string[]; environment?: Record<string, string> }): boolean =>
+      AgentNativeInvocationIntentSchema.safeParse({ ...intent, ...overrides }).success;
+    const environment = (entries: number, valueLength = 1): Record<string, string> =>
+      Object.fromEntries(Array.from({ length: entries }, (_, index) => [`NAME_${index}`, 'x'.repeat(valueLength)]));
+
+    expect(parses({ argv: ['x'.repeat(limits.argumentLength)] })).toBe(true);
+    expect(parses({ argv: ['x'.repeat(limits.argumentLength + 1)] })).toBe(false);
+    expect(parses({ argv: Array.from({ length: limits.arguments }, () => 'x') })).toBe(true);
+    expect(parses({ argv: Array.from({ length: limits.arguments + 1 }, () => 'x') })).toBe(false);
+    expect(parses({ environment: environment(limits.environmentEntries) })).toBe(true);
+    expect(parses({ environment: environment(limits.environmentEntries + 1) })).toBe(false);
+    expect(parses({ environment: environment(1, limits.environmentValueLength) })).toBe(true);
+    expect(parses({ environment: environment(1, limits.environmentValueLength + 1) })).toBe(false);
   });
 });
 
