@@ -1094,17 +1094,17 @@
                       <tr>
                         <td class="m">agent_thought_chunk</td>
                         <td>content</td>
-                        <td>→ reasoning:*</td>
+                        <td>→ reasoning:started / progress</td>
                       </tr>
                       <tr>
                         <td class="m">tool_call / tool_call_update</td>
                         <td>ACP tool fields</td>
-                        <td>→ tool:* via shared mapper</td>
+                        <td>→ tool:* via shared mapper; reasoning:completed first if a thought is open</td>
                       </tr>
                       <tr>
                         <td class="m">turn_completed</td>
                         <td>stop_reason, …</td>
-                        <td>→ turn:completed + reasoning:completed</td>
+                        <td>→ turn:completed (+ reasoning:completed if a thought is still open)</td>
                       </tr>
                       <tr>
                         <td class="m">hook_execution</td>
@@ -1352,7 +1352,11 @@
                 </table>
               </div>
               <h5>Puppeteer</h5>
-              <p class="hook-usage">Log → reasoning:started / progress</p>
+              <p class="hook-usage">
+                Log → reasoning:started / progress (reasoningId = the prompt id). The prompt's next message or tool
+                record completes it (reasoning:completed, where adapter-acp's driver closes it too); a later thought
+                starts it again; <code>turn_completed</code> completes one still open.
+              </p>
             </div>
           </article>
 
@@ -1705,7 +1709,7 @@
                 </table>
               </div>
               <h5>Puppeteer</h5>
-              <p class="hook-usage">→ reasoning:completed + turn:completed</p>
+              <p class="hook-usage">→ reasoning:completed (only if a thought is still open) + turn:completed</p>
             </div>
           </article>
         </div>
