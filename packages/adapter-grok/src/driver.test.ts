@@ -135,11 +135,32 @@ describe('createPendingControlSession', () => {
 
   it('waits for attach before delegating prompt submission', async () => {
     const control = fakeControl();
+    const method = '_x.ai/queue/changed';
+    const queueChanged = (params: Record<string, unknown>): AdapterEventCandidate => ({
+      ...candidate({ type: 'adapter:native-event', adapter: 'grok', nativeType: method }, 'native-protocol'),
+      nativeEvent: { method, params: { sessionId: 'sid', ...params } },
+    });
+    // adapter-acp starts its turn inside submit; Grok then lists the prompt and runs it.
+    const accepting: AgentAdapterBinding = {
+      ...control.session,
+      services: {
+        prompt: {
+          async submit({ text }) {
+            const listed = { entries: [{ id: 'p1', version: 0, kind: 'prompt', text, position: 0 }] };
+            const running = { entries: [], runningPromptId: 'p1', runningText: text, runningKind: 'prompt' };
+            control.emit(candidate({ type: 'turn:started', turnId: 't1', prompt: text }));
+            control.emit(queueChanged(listed));
+            control.emit(queueChanged(running));
+            return { status: 'confirmed', turnId: 't1' };
+          },
+        },
+      },
+    };
     const pending = deferred<AgentAdapterBinding>();
     const session = createPendingControlSession('sid', 'rt', () => pending.promise);
 
     const receiptPending = session.services.prompt.submit({ text: 'hi' });
-    pending.resolve(control.session);
+    pending.resolve(accepting);
     await expect(receiptPending).resolves.toEqual({ status: 'confirmed', turnId: 't1' });
   });
 

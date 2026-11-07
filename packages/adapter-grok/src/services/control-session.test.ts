@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { createAcpSession } from '@vibefield/puppeteer-adapter-acp';
+import type { AgentEventEnvelope } from '@vibefield/puppeteer-core';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
@@ -12,6 +13,7 @@ import {
 } from '@vibefield/puppeteer-core/monitor-spi';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { readAcpCapture, replayAcpCapture, type CapturedAcpFrame } from '../test-support/acp-capture-replay.js';
+import type { GrokObservedEvent, GrokSessionObserver } from '../normalization/types.js';
 import { grokControlOptions } from './acp-control.js';
 import { createPendingControlSession } from './control-session.js';
 
@@ -37,8 +39,18 @@ function notifications(frames: readonly CapturedAcpFrame[], sessionUpdate: strin
   });
 }
 
-/** The adapter's real control composition over a replayed capture: adapter-acp, Grok options, and the control path. */
-async function replayControl(frames: readonly CapturedAcpFrame[], prompts: number, resume?: string) {
+/** The text of each session/prompt request the captured controller sent, in order. */
+function promptTexts(frames: readonly CapturedAcpFrame[]): string[] {
+  return frames.flatMap(({ direction, message }) => {
+    const text = (message.params?.prompt as Array<{ text?: unknown }> | undefined)?.[0]?.text;
+    return direction === 'client-to-agent' && message.method === 'session/prompt' && typeof text === 'string'
+      ? [text]
+      : [];
+  });
+}
+
+/** adapter-acp with Grok's control options over a replayed capture, as the driver opens it. */
+async function replayedAcp(frames: readonly CapturedAcpFrame[], resume?: string) {
   const replay = replayAcpCapture(frames);
   const acp = await createAcpSession({
     cwd: '/workspace',
@@ -46,12 +58,39 @@ async function replayControl(frames: readonly CapturedAcpFrame[], prompts: numbe
     ...(resume ? { resume } : {}),
     ...grokControlOptions({ onApproval: () => 'approved' }, { viewer: 'attached' }),
   });
+  return { replay, acp };
+}
+
+/** A durable-log observer that reads nothing: what the composition publishes comes from the control rail alone. */
+function stubObserver() {
+  const listeners = new Set<(event: GrokObservedEvent) => void>();
+  const observer: GrokSessionObserver = {
+    onEvent(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    onError: () => () => undefined,
+    poll: async () => undefined,
+    stop: () => undefined,
+  };
+  return { observer, emit: (event: GrokObservedEvent) => listeners.forEach((listener) => listener(event)) };
+}
+
+function startedTurnIds(envelopes: readonly AgentEventEnvelope[]): (string | undefined)[] {
+  return envelopes.flatMap(({ event }) => (event.type === 'turn:started' ? [event.turnId] : []));
+}
+
+/** The adapter's real control composition over a replayed capture: adapter-acp, Grok options, and the control path. */
+async function replayControl(frames: readonly CapturedAcpFrame[], prompts: number, resume?: string) {
+  const { replay, acp } = await replayedAcp(frames, resume);
   const binding = createPendingControlSession(acp.sessionId, 'rt', () => acp);
   const projection = projectAgentEvents(binding);
   const turnsEnded = () =>
     projection.envelopes.filter(({ event }) => event.type === 'turn:completed' || event.type === 'turn:failed').length;
+  const texts = promptTexts(frames);
   for (let turn = 1; turn <= prompts; turn += 1) {
-    await binding.services.prompt.submit({ text: 'replayed prompt' });
+    // The capture's own request text: Grok's queue lists the prompt under it.
+    await binding.services.prompt.submit({ text: texts[turn - 1]! });
     await vi.waitFor(() => expect(turnsEnded()).toBeGreaterThanOrEqual(turn));
   }
   await replay.drain();
@@ -174,5 +213,125 @@ describe('Grok control path over the 1.0.70 captures', () => {
     const { batches } = await replayControl(capture('subagent', 'acp-resume.jsonl'), 0, sessionId.sessionId);
     expect(usageUpserts(batches)).toEqual([]);
     expect(monitor(batches).usage.cumulativeTokens).toBeUndefined();
+  });
+});
+
+describe('Grok prompt receipts and rail-started turns over the 1.0.70 captures', () => {
+  it('confirms a prompt when Grok runs it, its turn already started under Grok’s id (viewer-session)', async () => {
+    const frames = capture('viewer-session');
+    const { acp } = await replayedAcp(frames);
+    const binding = createPendingControlSession(acp.sessionId, 'rt', () => acp, stubObserver().observer);
+    const projection = projectAgentEvents(binding);
+    try {
+      // acp-controller.jsonl: Grok lists the prompt (line 20), then runs it (line 21), before any model output.
+      const receipt = await binding.services.prompt.submit({ text: promptTexts(frames)[0]! });
+      const startedWhenConfirmed = startedTurnIds(projection.envelopes);
+      expect(receipt).toEqual({ status: 'confirmed', turnId: 'a11a5ed0-6f6f-40a0-8790-e989034dc9ff' });
+      expect(startedWhenConfirmed).toEqual(['a11a5ed0-6f6f-40a0-8790-e989034dc9ff']);
+      expect(projection.envelopes.find(({ event }) => event.type === 'turn:started')).toMatchObject({
+        source: 'native-protocol',
+        event: { prompt: promptTexts(frames)[0] },
+      });
+    } finally {
+      projection.dispose();
+      await binding.dispose();
+    }
+  });
+
+  it('starts a prompt the person typed at Grok’s running frame (viewer-prompt)', async () => {
+    const { replay, acp } = await replayedAcp(capture('viewer-prompt'));
+    const binding = createPendingControlSession(acp.sessionId, 'rt', () => acp, stubObserver().observer);
+    const projection = projectAgentEvents(binding);
+    try {
+      await replay.drain();
+      // acp-controller.jsonl: the viewer's prompt is listed (line 19), then runs (line 20).
+      expect(startedTurnIds(projection.envelopes)).toEqual(['a11a5ed0-58e7-45bb-a104-68d5e51d0b0b']);
+      expect(projection.envelopes.find(({ event }) => event.type === 'turn:started')).toMatchObject({
+        source: 'native-protocol',
+        event: { prompt: '<redacted:text>' },
+      });
+    } finally {
+      projection.dispose();
+      await binding.dispose();
+    }
+  });
+
+  it('publishes a prompt’s turn once, whichever rail starts it first (viewer-prompt)', async () => {
+    const promptId = 'a11a5ed0-58e7-45bb-a104-68d5e51d0b0b';
+    for (const logFirst of [true, false]) {
+      const { replay, acp } = await replayedAcp(capture('viewer-prompt'));
+      const log = stubObserver();
+      const binding = createPendingControlSession(acp.sessionId, 'rt', () => acp, log.observer);
+      const projection = projectAgentEvents(binding);
+      // The durable log starts the turn at a configured user_prompt_submit hook, or at the first model chunk.
+      const logStart: GrokObservedEvent = {
+        event: { type: 'turn:started', turnId: promptId, prompt: '<redacted:text>' },
+        promptId,
+        phase: 'live',
+        source: 'native-transcript',
+        confidence: 'authoritative',
+        nativeEvent: {},
+      };
+      try {
+        if (logFirst) log.emit(logStart);
+        await replay.drain();
+        if (!logFirst) log.emit(logStart);
+        expect(startedTurnIds(projection.envelopes), logFirst ? 'the log first' : 'the rail first').toEqual([promptId]);
+      } finally {
+        projection.dispose();
+        await binding.dispose();
+      }
+    }
+  });
+
+  it('starts a running prompt when the log ends the turn before it, in Grok’s order (viewer-prompt)', async () => {
+    const promptId = 'a11a5ed0-58e7-45bb-a104-68d5e51d0b0b';
+    // acp-controller.jsonl up to the frame that runs the viewer's prompt (line 20), said twice, then one more prompt.
+    const frames = capture('viewer-prompt').slice(0, 20);
+    const running = frames.at(-1)!;
+    const next: CapturedAcpFrame = {
+      ...running,
+      message: { ...running.message, params: { ...running.message.params, runningPromptId: 'next' } },
+    };
+    const { replay, acp } = await replayedAcp([...frames, running, next]);
+    const log = stubObserver();
+    const binding = createPendingControlSession(acp.sessionId, 'rt', () => acp, log.observer);
+    const projection = projectAgentEvents(binding);
+    const logged = (event: GrokObservedEvent['event'], turnId: string): GrokObservedEvent => ({
+      event,
+      promptId: turnId,
+      phase: 'live',
+      source: 'native-transcript',
+      confidence: 'authoritative',
+      nativeEvent: {},
+    });
+    const turnEvents = () =>
+      projection.envelopes.flatMap(({ event }) =>
+        event.type === 'turn:started' || event.type === 'turn:completed' ? [`${event.type} ${event.turnId}`] : [],
+      );
+    try {
+      log.emit(logged({ type: 'turn:started', turnId: 'earlier', prompt: 'earlier' }, 'earlier'));
+      await replay.drain();
+      // Grok is ahead of the log: it ended 'earlier' and ran on before a poll read that end.
+      expect(turnEvents()).toEqual(['turn:started earlier']);
+      log.emit(logged({ type: 'turn:completed', turnId: 'earlier' }, 'earlier'));
+      // The end retracts the root's activity, so the next start lands after it, in the same tick.
+      expect(turnEvents()).toEqual(['turn:started earlier', 'turn:completed earlier', `turn:started ${promptId}`]);
+      expect(projection.state.activeTurn?.id).toBe(promptId);
+      // The log reaches the prompt's own start, which the rail already published, then its end.
+      log.emit(logged({ type: 'turn:started', turnId: promptId, prompt: '<redacted:text>' }, promptId));
+      log.emit(logged({ type: 'turn:completed', turnId: promptId }, promptId));
+      expect(turnEvents()).toEqual([
+        'turn:started earlier',
+        'turn:completed earlier',
+        `turn:started ${promptId}`,
+        `turn:completed ${promptId}`,
+        'turn:started next',
+      ]);
+      expect(projection.state.activeTurn?.id).toBe('next');
+    } finally {
+      projection.dispose();
+      await binding.dispose();
+    }
   });
 });
