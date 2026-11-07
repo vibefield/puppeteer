@@ -199,9 +199,19 @@ framework) cannot put the real executable ahead of the launcher; another `precmd
 hook then stands aside. A non-interactive `zsh -c` is not integrated, and neither is an interactive shell a person
 starts inside an integrated one: it reads only the person's own files.
 
+The hook also forgets zsh's command hash when the set of launchers changes. zsh remembers where it found each name
+(`HASH_CMDS`) and, with `HASH_DIRS`, how far down PATH it has read, and only a PATH assignment or `rehash` clears
+either: without it, a launcher written after a shell's birth — the host's first start, an agent offered later — would
+never be found by a name the shell had already run, nor past a directory its search had already read. Each prompt
+globs the shim directory, and `rehash` runs only when the launchers differ from the last set the hook saw, so a
+launcher written after a shell's birth is found at its next prompt. A shell reads the integration once, at its birth:
+one born before the host upgraded the kit keeps the hook it was born with for its life.
+
 The tests prove this in a real zsh with a throwaway `HOME` and `ZDOTDIR`: `ZDOTDIR` restored or unset, the person's
-files read, the history file theirs, the hook present only when interactive, and a piped `zsh -i` resolving `<name>` to
-the launcher at its first prompt and again after `export PATH=<real dir>:$PATH`.
+files read, the history file theirs, the hook present only when interactive, a piped `zsh -i` resolving `<name>` to
+the launcher at its first prompt and again after `export PATH=<real dir>:$PATH`, and a launcher moved in during the
+shell's life found at the next prompt — by a name the shell had already run, and past a directory its last search had
+already read.
 
 ### bash, fish and the rest — not yet integrated
 
