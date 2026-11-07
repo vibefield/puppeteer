@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
-import { createAcpSession } from '@vibefield/puppeteer-adapter-acp';
+import { createAcpSession, createStdioAcpConnector, type AcpConnector } from '@vibefield/puppeteer-adapter-acp';
 import {
   createAdapterEventCandidate,
   type AdapterEventCandidate,
@@ -71,6 +71,71 @@ async function replayedAcp(frames: readonly CapturedAcpFrame[], resume?: string)
     ...grokControlOptions({ onApproval: () => 'approved' }, { viewer: 'attached' }),
   });
   return { replay, acp };
+}
+
+/**
+ * adapter-acp, real, over a connection its row drives: session/prompt stays in flight until the row rejects it.
+ * `written` counts the requests adapter-acp wrote.
+ */
+async function railInFlight() {
+  let rejectPrompt!: (error: Error) => void;
+  let closeTransport!: () => void;
+  let written = 0;
+  const connector: AcpConnector = (toClient) => {
+    const agent = {
+      initialize: async () => ({ protocolVersion: 1, agentCapabilities: {} }),
+      newSession: async () => ({ sessionId: 'grok-session' }),
+      prompt: () => {
+        written += 1;
+        return new Promise<never>((_resolve, reject) => {
+          rejectPrompt = reject;
+        });
+      },
+      cancel: async () => undefined,
+    };
+    toClient(agent as never);
+    return {
+      agent: agent as never,
+      onClose: (handler) => {
+        closeTransport = () => handler({ code: 1, signal: null });
+      },
+      close: () => undefined,
+    };
+  };
+  const acp = await createAcpSession({
+    cwd: '/workspace',
+    connector,
+    ...grokControlOptions({ onApproval: () => 'approved' }, { viewer: 'attached' }),
+  });
+  return {
+    acp,
+    written: () => written,
+    rejectPrompt: (error: Error) => rejectPrompt(error),
+    close: () => closeTransport(),
+  };
+}
+
+/**
+ * adapter-acp on its real stdio connection and the real SDK, to a stand-in agent process whose session/prompt handler
+ * is `onPrompt`: only the SDK makes a RequestError, and this package does not depend on it.
+ */
+function stdioAcp(onPrompt: string) {
+  const script = `
+    const answer = (id, reply) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, ...reply }) + '\\n');
+    require('node:readline')
+      .createInterface({ input: process.stdin })
+      .on('line', (line) => {
+        const { id, method } = JSON.parse(line);
+        if (method === 'initialize') answer(id, { result: { protocolVersion: 1, agentCapabilities: {} } });
+        if (method === 'session/new') answer(id, { result: { sessionId: 'grok-session' } });
+        if (method === 'session/prompt') { ${onPrompt} }
+      });
+  `;
+  return createAcpSession({
+    cwd: '/workspace',
+    connector: createStdioAcpConnector({ executable: process.execPath, args: ['-e', script] }),
+    ...grokControlOptions({ onApproval: () => 'approved' }, { viewer: 'attached' }),
+  });
 }
 
 /** A durable-log observer that reads nothing: what the composition publishes comes from the control rail alone. */
@@ -443,8 +508,11 @@ describe('Grok receipts on a failing control rail', () => {
       const receipt = binding.services.prompt.submit({ text: 'hello', confirmationTimeoutMs: 1_000 });
       await flush();
       expect(acp.submitted).toEqual(['hello']);
-      // adapter-acp's session/prompt request was refused: it fails its own turn.
-      acp.emit({ type: 'turn:failed', turnId: 'acp-turn-1', error: 'rate limited' });
+      // adapter-acp's session/prompt request was refused: it fails its own turn, and says Grok answered.
+      acp.emit(
+        { type: 'turn:failed', turnId: 'acp-turn-1', error: 'rate limited' },
+        { method: 'session/prompt', outcome: 'failed', answered: true },
+      );
       await expect(receipt).resolves.toEqual({ status: 'rejected', reason: 'rate limited' });
       expect(projection.envelopes.some(({ event }) => event.type === 'turn:failed')).toBe(false);
       expect(projection.state.diagnostics.at(-1)).toMatchObject({
@@ -456,6 +524,92 @@ describe('Grok receipts on a failing control rail', () => {
       await binding.dispose();
     }
   });
+
+  const noAnswer = { status: 'uncertain', reason: 'the grok control rail closed before Grok accepted the prompt' };
+
+  it('answers uncertain when a request in flight fails with no answer and then the rail closes', async () => {
+    for (const observer of [undefined, stubObserver().observer]) {
+      const rail = await railInFlight();
+      const binding = createPendingControlSession(rail.acp.sessionId, 'rt', () => rail.acp, observer);
+      try {
+        const receipt = binding.services.prompt.submit({ text: 'hello', confirmationTimeoutMs: 1_000 });
+        await flush();
+        // The SDK's close() rejects what is in flight before stdio's close reaches the rail, and the leader runs on.
+        rail.rejectPrompt(new Error('ACP connection closed'));
+        await flush();
+        rail.close();
+        await expect(receipt).resolves.toEqual(noAnswer);
+      } finally {
+        await binding.dispose();
+      }
+    }
+  });
+
+  it('answers uncertain once when the rail closes first and the request fails after it', async () => {
+    const rail = await railInFlight();
+    const binding = createPendingControlSession(rail.acp.sessionId, 'rt', () => rail.acp, stubObserver().observer);
+    const projection = projectAgentEvents(binding);
+    try {
+      const receipt = binding.services.prompt.submit({ text: 'hello', confirmationTimeoutMs: 1_000 });
+      await flush();
+      rail.close();
+      await expect(receipt).resolves.toEqual(noAnswer);
+      rail.rejectPrompt(new Error('ACP connection closed'));
+      await flush();
+      // The late failure settles nothing: it stays one diagnostic, and the turn stays the log's.
+      const codes = projection.state.diagnostics.map(({ code }) => code);
+      expect(codes.filter((code) => code === 'grok-control-prompt-failed')).toHaveLength(1);
+      expect(projection.envelopes.some(({ event }) => event.type === 'turn:failed')).toBe(false);
+    } finally {
+      projection.dispose();
+      await binding.dispose();
+    }
+  });
+
+  it('refuses every later prompt for good once a request failed with no answer, without writing it', async () => {
+    for (const observer of [undefined, stubObserver().observer]) {
+      const rail = await railInFlight();
+      const binding = createPendingControlSession(rail.acp.sessionId, 'rt', () => rail.acp, observer);
+      try {
+        const first = binding.services.prompt.submit({ text: 'hello', confirmationTimeoutMs: 1_000 });
+        await flush();
+        // The SDK closed: it rejects what is in flight and writes nothing more, whether or not the rail hears it.
+        rail.rejectPrompt(new Error('ACP connection closed'));
+        await flush();
+        await expect(binding.services.prompt.submit({ text: 'again', confirmationTimeoutMs: 20 })).resolves.toEqual({
+          status: 'rejected',
+          reason: 'grok control rail unavailable',
+          retryable: false,
+        });
+        expect(rail.written()).toBe(1);
+        await expect(first).resolves.toEqual(noAnswer);
+      } finally {
+        await binding.dispose();
+      }
+    }
+  });
+
+  it('answers rejected, with Grok’s message, when Grok answers the request with an error', async () => {
+    const acp = await stdioAcp(`answer(id, { error: { code: -32000, message: 'rate limited' } });`);
+    const binding = createPendingControlSession(acp.sessionId, 'rt', () => acp, stubObserver().observer);
+    try {
+      const receipt = binding.services.prompt.submit({ text: 'hello', confirmationTimeoutMs: 15_000 });
+      await expect(receipt).resolves.toEqual({ status: 'rejected', reason: 'rate limited' });
+    } finally {
+      await binding.dispose();
+    }
+  }, 20_000);
+
+  it('answers uncertain when the agent process dies with the request in flight, in whichever order', async () => {
+    const acp = await stdioAcp('process.exit(1);');
+    const binding = createPendingControlSession(acp.sessionId, 'rt', () => acp, stubObserver().observer);
+    try {
+      const receipt = binding.services.prompt.submit({ text: 'hello', confirmationTimeoutMs: 15_000 });
+      await expect(receipt).resolves.toEqual(noAnswer);
+    } finally {
+      await binding.dispose();
+    }
+  }, 20_000);
 });
 
 describe('The control rail and the durable-log observer', () => {

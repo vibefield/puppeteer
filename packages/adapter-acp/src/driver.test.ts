@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { safeParseAgentEvent, type AdapterEventCandidate } from '@vibefield/puppeteer-core';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
-import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
+import { PROTOCOL_VERSION, RequestError } from '@agentclientprotocol/sdk';
 import type { Agent, Client, ClientCapabilities, RequestPermissionResponse } from '@agentclientprotocol/sdk';
 import type { AcpConnector } from './transport/connection.js';
 import { createAcpSession } from './driver.js';
@@ -263,6 +263,44 @@ describe('createAcpSession', () => {
             ? { type: 'turn:completed', turnId: 'acp-turn-1', stopReason, outcome: 'interrupted' }
             : { type: 'turn:completed', turnId: 'acp-turn-1', stopReason },
         ]);
+      } finally {
+        off();
+        await session.dispose();
+      }
+    }
+  });
+
+  it('says in a failed prompt’s native event whether the agent answered, its turn:failed as it was', async () => {
+    for (const [failure, answered] of [
+      [new RequestError(-32000, 'rate limited'), true],
+      [new Error('ACP connection closed'), false],
+    ] as const) {
+      const connector: AcpConnector = (toClient) => {
+        const agent = {
+          async initialize() {
+            return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: {} };
+          },
+          async newSession() {
+            return { sessionId: SID };
+          },
+          async prompt() {
+            throw failure;
+          },
+          async cancel() {},
+        };
+        toClient(agent as unknown as Agent);
+        return { agent: agent as unknown as Agent, onClose() {}, close() {} };
+      };
+      const session = await createAcpSession({ cwd: '/x', connector });
+      const events: AdapterEventCandidate[] = [];
+      const off = session.events.onCandidate((candidate) => events.push(candidate));
+      try {
+        await driveTurn(session, 'hello');
+        const failed = events.filter(({ event }) => event.type === 'turn:failed');
+        expect(failed.map(({ event }) => event)).toEqual([
+          { type: 'turn:failed', turnId: 'acp-turn-1', error: failure.message },
+        ]);
+        expect(failed[0]?.nativeEvent).toEqual({ method: 'session/prompt', outcome: 'failed', answered });
       } finally {
         off();
         await session.dispose();

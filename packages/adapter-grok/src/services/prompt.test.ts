@@ -35,6 +35,7 @@ function fakeAcp(inside: (turnId: string) => void = () => undefined) {
 }
 
 const railRefused = { status: 'rejected', reason: 'grok control rail unavailable', retryable: false };
+const railClosed = { status: 'uncertain', reason: 'the grok control rail closed before Grok accepted the prompt' };
 const listed = (id: string, text: string): GrokQueueChanged => ({ entries: [{ id, text, kind: 'prompt' }] });
 const running = (id: string, text: string, entries: GrokQueueChanged['entries'] = []): GrokQueueChanged => ({
   entries,
@@ -140,21 +141,37 @@ describe('GrokPromptService', () => {
     await expect(receipt).resolves.toEqual({ status: 'uncertain', reason: expect.stringContaining('250ms') });
   });
 
-  it('rejects with the error when the request fails before Grok listed the prompt', async () => {
+  it('rejects with the error when Grok answers the request with it before listing the prompt', async () => {
     let prompts!: GrokPromptService;
     const acp = fakeAcp((acpTurnId) => prompts.bindAcpTurn(acpTurnId));
     prompts = service(acp.binding);
     const refused = prompts.submit({ text: 'hello' });
     await flush();
-    prompts.requestFailed('acp-turn-1', 'rate limited');
+    prompts.requestFailed('acp-turn-1', 'rate limited', true);
     await expect(refused).resolves.toEqual({ status: 'rejected', reason: 'rate limited' });
 
     // Once Grok runs it, a failure of the request is the turn's, never the receipt's.
     const accepted = prompts.submit({ text: 'again' });
     await flush();
     prompts.observeQueue(running('q2', 'again'));
-    prompts.requestFailed('acp-turn-2', 'transport closed');
+    prompts.requestFailed('acp-turn-2', 'transport closed', false);
     await expect(accepted).resolves.toEqual({ status: 'confirmed', turnId: 'q2' });
+  });
+
+  it('answers uncertain once when a request fails with no answer, whichever comes first, it or the close', async () => {
+    vi.useFakeTimers();
+    for (const closesFirst of [false, true]) {
+      let prompts!: GrokPromptService;
+      const acp = fakeAcp((acpTurnId) => prompts.bindAcpTurn(acpTurnId));
+      prompts = service(acp.binding);
+      const inFlight = prompts.submit({ text: 'hello' });
+      await flush();
+      if (closesFirst) prompts.transportClosed();
+      prompts.requestFailed('acp-turn-1', 'ACP connection closed', false);
+      if (!closesFirst) prompts.transportClosed();
+      await expect(inFlight).resolves.toEqual(railClosed);
+      expect(vi.getTimerCount()).toBe(0);
+    }
   });
 
   it('refuses for good while the control rail is down and once disposed, without asking adapter-acp', async () => {
