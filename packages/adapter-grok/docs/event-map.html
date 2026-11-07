@@ -1821,6 +1821,14 @@ createGrokBackend → grok agent leader
               skips the settle, as Claude&rsquo;s <code>attached</code> does.
             </li>
             <li>
+              The observer stats before it reads. <code>signals.json</code> and <code>summary.json</code> are read only
+              when their mtime, size or inode differ from the last successful parse, so a partial rewrite is read
+              again, and <code>updates.jsonl</code> only when its size differs from the read offset. It polls every
+              75 ms while a file changed or the live rail woke it within the last second, and every second otherwise,
+              Claude&rsquo;s transcript cadence. Every live own-session frame wakes it, and it never polls once per
+              frame. With the control rail down, the first record after an idle second is seen within a second.
+            </li>
+            <li>
               What a receipt means. <code>confirmed</code>: Grok listed the prompt under a new id with the submitted
               text and runs it, or lists it while another prompt runs. Its <code>turnId</code> names the turn the
               binding publishes or will publish: Grok's id with the observer, adapter-acp's <code>acp-turn-N</code>

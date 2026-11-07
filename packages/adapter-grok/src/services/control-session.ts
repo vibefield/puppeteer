@@ -276,6 +276,8 @@ export function createPendingControlSession(
         return;
       }
       if (!foreign && phase === 'live') {
+        // The rail hears every update of the session: the log is about to move.
+        observer?.wake();
         const method = controlMethod(candidate.nativeEvent);
         const queue = method === GROK_QUEUE_CHANGED_METHOD ? decodeGrokQueueChanged(params) : undefined;
         if (queue) observeQueue(queue, candidate);

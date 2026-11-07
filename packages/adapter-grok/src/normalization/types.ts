@@ -52,6 +52,8 @@ export interface GrokSessionObserver {
   onEvent(listener: (event: GrokObservedEvent) => void): () => void;
   onError(listener: (error: Error) => void): () => void;
   poll(): Promise<void>;
+  /** The live rail saw this session move: look soon. However often it is called, polls keep the fast cadence. */
+  wake(): void;
   stop(): void;
 }
 
