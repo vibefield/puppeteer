@@ -36,6 +36,7 @@ import {
 import { MAX_REFUSAL_MESSAGE_LENGTH } from './host/spawn-through/protocol.js';
 import { parseProfileRegistrySnapshot } from './profiles/registry.js';
 import { createAgentRuntime } from './runtime.js';
+import { AgentStateService } from './services/state-service.js';
 import { installArgv } from './distribution/install.js';
 import type { UpdateCommandRunner } from './distribution/update.js';
 import type {
@@ -1014,6 +1015,53 @@ describe('createAgentRuntime', () => {
         git: { value: { branch: 'feature/environment' }, source: 'runtime', confidence: 'derived' },
       });
     });
+    await runtime.dispose();
+  });
+
+  it('dispatch never copies the session state for an event', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-dispatch-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [fakeProvider('dispatch-provider', handles)],
+    });
+    const created = await runtime.createSession({ agent: 'dispatch-provider', cwd: root });
+    if ('error' in created) throw new Error('unexpected create failure');
+    const emit = handles.get(created.runtimeSessionId)!.emit;
+    const envelope = (sequence: number, event: AgentEventEnvelope['event']): AgentEventEnvelope =>
+      testEnvelope(event, { sequence, sessionId: created.sessionId });
+    // The application getter `agent.state` deep-copies the whole session (tools, permissions, diagnostics) for
+    // callers outside the runtime. Dispatch is synchronous inside emit and nothing here reads sessionState, so any
+    // copy taken below is dispatch's own.
+    const snapshot = vi.spyOn(AgentStateService.prototype, 'snapshot');
+    try {
+      snapshot.mockClear();
+      for (let sequence = 1; sequence <= 50; sequence += 1) {
+        emit(envelope(sequence, { type: 'model:updated', model: { id: `model-${sequence}` } }));
+      }
+      emit(
+        envelope(51, {
+          type: 'tool:started',
+          toolCallId: 'tool-1',
+          tool: 'command',
+          presentation: { kind: 'command', title: 'Running command' },
+        }),
+      );
+      emit(
+        envelope(52, {
+          type: 'tool:completed',
+          toolCallId: 'tool-1',
+          tool: 'command',
+          presentation: { kind: 'command', title: 'Ran command' },
+        }),
+      );
+      expect(snapshot).not.toHaveBeenCalled();
+    } finally {
+      snapshot.mockRestore();
+    }
+    expect(runtime.sessionState(created.runtimeSessionId)?.environment.model?.value.id).toBe('model-50');
+    expect(runtime.sessionState(created.runtimeSessionId)?.counters).toMatchObject({ toolsCompleted: 1 });
     await runtime.dispose();
   });
 
