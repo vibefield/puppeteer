@@ -49,6 +49,10 @@ No hook fires when a person answers a permission prompt: `PostToolUse` arrives w
 
 Workflow journal observation was removed on 2026-09-11. The adapter does not discover or read workflow journals, reconstruct membership, or infer completion from idle time. The public workflow and team models were also removed on 2026-09-12. OTLP workflow IDs/names and name-only teammate hints remain native evidence; proven child identities contribute only unified child metrics and activity.
 
+## Grok's durable log
+
+A launch or resume replay of `updates.jsonl` is a baseline; only an attach keeps open work. The observer closes what the replay left open before the first live record (`adapter-grok/docs/event-map.html` states the boundary and the closers), so a resumed session never shows a dead process's turn, tools, subagents, pending interactions or compaction. Grok offers no attach yet; one that arrives passes `attached`, as Claude's does, and skips the settle.
+
 ## Usage rules learned from the burn-rate probe
 
 The shared live-only usage boundary and USD accounting path are specified in

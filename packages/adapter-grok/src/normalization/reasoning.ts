@@ -10,6 +10,11 @@ export class GrokReasoningNormalizer {
     return observed({ type, reasoningId: promptId }, promptId);
   }
 
+  /** The prompts whose thought is still open. */
+  openPrompts(): string[] {
+    return [...this.activePrompts];
+  }
+
   complete(promptId: string, observed: GrokObservedFactory): GrokObservedEvent[] {
     return this.activePrompts.delete(promptId)
       ? [observed({ type: 'reasoning:completed', reasoningId: promptId }, promptId)]

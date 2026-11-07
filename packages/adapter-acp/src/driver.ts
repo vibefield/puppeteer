@@ -86,9 +86,22 @@ export interface CreateAcpSessionOptions extends AgentRunBriefing {
 /** No adapter-specific extras yet; the shared contract is the whole surface. */
 export type AcpSession = AgentAdapterBinding;
 
+/** The normalized events at which a prompt's open reasoning ends: its first answer or tool. */
+const CLOSES_REASONING: ReadonlySet<string> = new Set([
+  'conversation:assistant-message',
+  'tool:requested',
+  'tool:started',
+  'tool:completed',
+  'tool:failed',
+]);
+
 export async function createAcpSession(options: CreateAcpSessionOptions): Promise<AcpSession> {
   const mcpServers = acpBriefingServers(options);
-  const normalizer = new AcpNotificationNormalizer();
+  // One normalizer per notification sessionId. One client can hear several sessions: Grok's leader
+  // forwards a subagent child's traffic to the parent's controller under the child's sessionId. Each
+  // session's events are normalized on its own buffers and published; only this session's own feed
+  // its prompt (the turn's assistant text and its reasoning close).
+  const normalizers = new Map<string, AcpNotificationNormalizer>();
   let sessionId = options.resume ?? '';
   let disposed = false;
   let disposal: Promise<void> | undefined;
@@ -118,6 +131,15 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
     apply({ type: 'monitor:batch', batch }, 'native-protocol', { nativeEvent: batch });
   }
 
+  function sessionNormalizer(id: string): AcpNotificationNormalizer {
+    let normalizer = normalizers.get(id);
+    if (!normalizer) {
+      normalizer = new AcpNotificationNormalizer();
+      normalizers.set(id, normalizer);
+    }
+    return normalizer;
+  }
+
   const elicitations = new AcpElicitationService({
     respond: options.onElicitation,
     publish: (event, nativeEvent) => apply(event, 'native-hook', { nativeEvent }),
@@ -131,7 +153,8 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
   prompts = new AcpPromptService({
     sessionId: () => sessionId,
     request: (params) => connection.agent.prompt(params),
-    completeReasoning: () => normalizer.completeReasoning(),
+    completeReasoning: () => sessionNormalizer(sessionId).completeReasoning(),
+    beginTurn: () => sessionNormalizer(sessionId).beginTurn(),
     settleElicitations: (outcome, nativeEvent) => elicitations.settlePending(outcome, nativeEvent),
     // A deferred request still open when its prompt ends had no native outcome.
     settleApprovals: (nativeEvent) => approvals.settleAll('unknown', nativeEvent, sessionId),
@@ -146,16 +169,14 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
       emitMonitorBatch(monitorEvidence.sessionUpdateBatch(params, observedAt, bootstrapping ? 'bootstrap' : 'live'));
       // A deferred request's resolution precedes the tool progress that proves it.
       approvals.observe('session/update', params as unknown as Record<string, unknown>);
-      const normalized = normalizer.normalize(params);
-      const closesReasoning = normalized.events.some((event) =>
-        ['conversation:assistant-message', 'tool:requested', 'tool:started', 'tool:completed', 'tool:failed'].includes(
-          event.type,
-        ),
-      );
+      // A notification without a sessionId is this session's own.
+      const own = !params.sessionId || params.sessionId === sessionId;
+      const normalized = sessionNormalizer(own ? sessionId : params.sessionId).normalize(params);
+      const closesReasoning = own && normalized.events.some(({ type }) => CLOSES_REASONING.has(type));
       if (closesReasoning) prompts.closeReasoning(params);
 
       for (const event of normalized.events) {
-        prompts.observe(event);
+        if (own) prompts.observe(event);
         const source =
           event.type.startsWith('context-window:') ||
           ['environment:updated', 'model:updated', 'effort:updated', 'mode:updated'].includes(event.type)
