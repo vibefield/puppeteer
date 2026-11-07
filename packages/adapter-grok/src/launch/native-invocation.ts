@@ -29,6 +29,12 @@ export interface RestoreGrokContinuationOptions {
 }
 
 const REJECTED = 'custom arguments are not compatible with the managed Grok launch';
+/**
+ * Grok's own rule for `--resume` (`grok help`): a UUID-shaped value always means an id, and any other value matches
+ * session titles. The managed launch resolves no title, and ACP's session/load takes ids alone.
+ */
+const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const RESUME_BY_TITLE = 'a managed session resumes a session by its id, not by its name, yet';
 
 /** Grok owns native argv plus its leader, ACP, terminal, and durable-log topology. */
 export function normalizeGrokNativeInvocation(
@@ -52,6 +58,7 @@ export function normalizeGrokNativeInvocation(
       if (resume || options.resumeLatest) return { status: 'rejected', reason: REJECTED, argument };
       const value = argv[index + 1];
       if (value && !value.startsWith('-')) {
+        if (!SESSION_ID.test(value)) return { status: 'rejected', reason: RESUME_BY_TITLE, argument: value };
         resume = value;
         index += 1;
       } else {
