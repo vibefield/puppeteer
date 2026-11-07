@@ -26,7 +26,11 @@ interface PendingPrompt {
   timer?: ReturnType<typeof setTimeout> | undefined;
 }
 
-const RAIL_UNAVAILABLE: PromptReceipt = { status: 'rejected', reason: 'grok control rail unavailable' };
+const RAIL_UNAVAILABLE: PromptReceipt = {
+  status: 'rejected',
+  reason: 'grok control rail unavailable',
+  retryable: false,
+};
 
 /**
  * What a Grok prompt receipt means. adapter-acp answers 'confirmed' as soon as it writes the session/prompt request,
@@ -38,7 +42,8 @@ const RAIL_UNAVAILABLE: PromptReceipt = { status: 'rejected', reason: 'grok cont
  *   binding disposed first (CP2-D2).
  * - A request that fails before Grok listed the prompt answers 'rejected' with its error. After Grok listed it, the
  *   turn is Grok's, and the durable log tells how it ended.
- * - A closed rail or a disposed binding refuses every later submission: nothing would carry it.
+ * - A closed rail or a disposed binding refuses every later submission for good (`retryable: false`), as a control
+ *   that never attached does: nothing would carry it.
  */
 export class GrokPromptService {
   private readonly pending: PendingPrompt[] = [];
@@ -54,9 +59,8 @@ export class GrokPromptService {
   async submit(submission: PromptSubmission): Promise<PromptReceipt> {
     if (this.railClosed || this.disposed) return RAIL_UNAVAILABLE;
     const acp = await this.options.control();
-    // The rail can close, or the binding go, while the attach is awaited.
-    if (this.railClosed || this.disposed) return RAIL_UNAVAILABLE;
-    if (!acp) return { status: 'rejected', reason: 'grok control client not attached' };
+    // The rail can close, or the binding go, while the attach is awaited. No control means one of them already did.
+    if (this.railClosed || this.disposed || !acp) return RAIL_UNAVAILABLE;
 
     let resolveReceipt!: (receipt: PromptReceipt) => void;
     const receipt = new Promise<PromptReceipt>((resolve) => {
