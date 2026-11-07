@@ -322,6 +322,12 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
   `authoritative`. That includes `subagent_spawned`/`subagent_finished` →
   `delegation:subagent-started|stopped`. Mirror- and serde-only kinds stay `inferred`.
   `normalization/adapter.test.ts` holds both sets to this ground truth.
+- **Refused turns (review fix, 2026-11-07; unwitnessed).** A `turn_completed` whose `error_kind` is a
+  non-empty string ends the turn as `turn:failed {error: error_kind}`, whatever its `stop_reason` says, with
+  the final message kept. A null or absent one completes it. The kind passes through verbatim. No census turn
+  was refused, so the mapping rests on the public enum and the 1.0.70 model (string or null). A refused-turn
+  capture carrying `error_kind` is owed, and its groundtruth confidence stays unverified. Downstream a refusal
+  now reads failed rather than idle.
 - **Invocation grammar 1.0.70.**
   - Fixtures are the exact artifact's `grok help` (long form) and nested helps.
   - The census reads `[aliases: …]` lines, so `--effort` and `--ref` need no special case, and checks arity.
@@ -397,6 +403,12 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
     earlier turn open. No acceptance within the submission's bound (5 s) answers 'uncertain'. Replaying
     `viewer-session` with a stub observer confirms under `a11a5ed0-6f6f-40a0-8790-e989034dc9ff`, its turn
     already published (`services/control-session.test.ts`).
+  - (review fix, 2026-11-07) A dead control rail refuses: after the transport closes, a submission answers
+    'rejected' (`grok control rail unavailable`) without reaching adapter-acp, and receipts still waiting
+    answer 'uncertain'. adapter-acp's request failure decides only the receipt. Before Grok listed the
+    prompt it answers 'rejected' with the error; with the observer it stays a `control.prompt-failed`
+    diagnostic and is never republished as the turn's end. The log's `turn_completed` is the one end of a
+    Grok turn, and the leader runs on when a controller's transport closes mid-turn.
 - **`--continue`/`resumeLatest`** skips sessions whose `summary.json` says `session_kind: "subagent"`.
 - **Live test support.**
   - The provider answers `GET /` as an origin probe kept apart from model calls.

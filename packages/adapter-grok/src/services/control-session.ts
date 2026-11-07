@@ -199,6 +199,34 @@ export function createPendingControlSession(
     );
     if (!observer) observation = 'terminal-only';
     emitMonitorBatch(monitorEvidence.controlUnavailableBatch(timestamp, observer !== undefined));
+    // A dead rail is dead for this binding: waiting receipts are uncertain, later prompts refused.
+    prompts.transportClosed();
+  }
+
+  /**
+   * adapter-acp's session/prompt request failed. Before Grok listed the prompt the receipt is rejected with the
+   * error. The turn itself is the durable log's: its turn_completed is the one end of a Grok turn, and a transport
+   * that closes mid-turn leaves the leader running it. So with the observer attached the failure stays a diagnostic.
+   */
+  function promptFailed(acpTurnId: string, error: string | undefined, timestamp: string): void {
+    prompts.requestFailed(acpTurnId, error);
+    if (!observer) return;
+    const code = 'grok-control-prompt-failed';
+    const message = error ?? 'session/prompt failed';
+    publish(
+      {
+        type: 'adapter:native-event',
+        adapter: 'grok',
+        nativeType: 'control.prompt-failed',
+        diagnostic: { code, message },
+      },
+      {
+        timestamp,
+        source: 'runtime',
+        confidence: 'derived',
+        nativeEvent: { code, message, turnId: acpTurnId },
+      },
+    );
   }
 
   function bindControl(acp: AgentAdapterBinding): AgentAdapterBinding | undefined {
@@ -250,6 +278,9 @@ export function createPendingControlSession(
         // adapter-acp publishes its turn inside its submit call: that turn is the submitted prompt's.
         if (candidate.event.type === 'turn:started' && candidate.event.turnId) {
           prompts.bindAcpTurn(candidate.event.turnId);
+        }
+        if (candidate.event.type === 'turn:failed' && candidate.event.turnId) {
+          promptFailed(candidate.event.turnId, candidate.event.error, candidate.timestamp);
         }
       }
       // The native log owns TUI conversation and lifecycle. ACP remains the

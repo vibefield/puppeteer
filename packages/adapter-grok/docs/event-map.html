@@ -1718,11 +1718,20 @@
                       <td>string?</td>
                       <td>Turn correlation</td>
                     </tr>
+                    <tr>
+                      <td class="m">error_kind</td>
+                      <td>string | null</td>
+                      <td>Set on a refused turn (public TurnCompleted); no census turn carries one yet</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
               <h5>Puppeteer</h5>
-              <p class="hook-usage">→ reasoning:completed (only if a thought is still open) + turn:completed</p>
+              <p class="hook-usage">
+                → reasoning:completed (only if a thought is still open) + turn:completed; a non-empty
+                <code>error_kind</code> → turn:failed {error: error_kind} instead, whatever <code>stop_reason</code>
+                says (the final message stays)
+              </p>
             </div>
           </article>
         </div>
@@ -1801,6 +1810,10 @@ createGrokBackend → grok agent leader
               turn open. An id listed before the submission is never ours. <code>uncertain</code>: no such acceptance
               within the bound (<code>confirmationTimeoutMs</code>, 5 s), or the rail closed or the binding was disposed
               first.
+              <code>rejected</code>: adapter-acp's request failed before Grok listed the prompt (its error is the
+              reason), or the rail is down (<code>grok control rail unavailable</code>, for the binding's life). After
+              Grok listed it, a request failure is never the turn's end: with the observer it stays a
+              <code>control.prompt-failed</code> diagnostic, and the log's <code>turn_completed</code> ends the turn.
             </li>
             <li>
               Durable <code>timestamp</code> is Unix seconds; <code>signals.json</code> is written asynchronously after the
@@ -1856,7 +1869,7 @@ createGrokBackend → grok agent leader
                 </tr>
                 <tr>
                   <td class="m">turn_completed</td>
-                  <td class="m">turn:completed</td>
+                  <td class="m">turn:completed · turn:failed (non-empty error_kind)</td>
                 </tr>
                 <tr>
                   <td class="m">token / compaction signals</td>

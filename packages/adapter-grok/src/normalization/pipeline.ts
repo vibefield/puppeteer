@@ -86,13 +86,17 @@ export class GrokUpdateNormalizer {
       events.push(...this.reasoning.complete(completedPromptId, observed));
       const assistant = this.conversation.complete(completedPromptId, observed);
       events.push(...assistant.events);
+      // A named error_kind fails the turn whatever its stop_reason says; null, empty or absent completes it.
+      const errorKind = typeof update.error_kind === 'string' ? update.error_kind : '';
       events.push(
         observed(
-          this.turn.completionEvent(
-            completedPromptId,
-            typeof update.stop_reason === 'string' ? update.stop_reason : undefined,
-            assistant.text,
-          ),
+          errorKind
+            ? this.turn.failureEvent(completedPromptId, errorKind)
+            : this.turn.completionEvent(
+                completedPromptId,
+                typeof update.stop_reason === 'string' ? update.stop_reason : undefined,
+                assistant.text,
+              ),
           completedPromptId,
         ),
       );

@@ -15,6 +15,8 @@ export interface GrokUpdate {
   toolCallId?: string;
   prompt_id?: string;
   stop_reason?: string;
+  /** Set on a refused turn (public TurnCompleted, Option<String>); null or absent otherwise. */
+  error_kind?: string | null;
   event_name?: string;
   reason?: string;
   subagent_id?: string;

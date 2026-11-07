@@ -80,6 +80,11 @@ export class GrokTurnNormalizer {
     };
   }
 
+  /** Grok's only failure carrier: a `turn_completed` that names an `error_kind`, passed through verbatim. */
+  failureEvent(promptId: string, errorKind: string) {
+    return { type: 'turn:failed' as const, turnId: promptId, error: errorKind };
+  }
+
   materializePendingUser(promptId: string): GrokObservedEvent[] {
     const pending = this.pendingUser;
     if (!pending) return [];
