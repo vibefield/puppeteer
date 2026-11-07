@@ -1,0 +1,206 @@
+{
+  "recordId": "prov.acp.wait.tool",
+  "pins": {
+    "vibefield": "433505fd0f224f4cda540d642661b13848c0ef82",
+    "puppeteer": "748d015a7e393112e0a91dad80111fdf5abe6583"
+  },
+  "adapterId": "adapter.acp",
+  "fieldId": "field.wait.tool",
+  "sources": [
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-acp/src/services/approvals.ts",
+      "lineStart": 135,
+      "lineEnd": 257,
+      "symbol": "AcpApprovalService"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-acp/src/services/elicitation.ts",
+      "lineStart": 24,
+      "lineEnd": 83,
+      "symbol": "AcpElicitationService"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/runtime/src/services/monitor-service.ts",
+      "lineStart": 176,
+      "lineEnd": 187,
+      "symbol": "MonitorService.consume"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/reduce.ts",
+      "lineStart": 974,
+      "lineEnd": 1024,
+      "symbol": "permission and question cases"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/view-sdk/src/model.ts",
+      "lineStart": 53,
+      "lineEnd": 53,
+      "symbol": "model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 130,
+      "lineEnd": 161,
+      "symbol": "derive.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/transitions.ts",
+      "lineStart": 71,
+      "lineEnd": 71,
+      "symbol": "transitions.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/transitions.ts",
+      "lineStart": 159,
+      "lineEnd": 170,
+      "symbol": "transitions.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/transitions.ts",
+      "lineStart": 369,
+      "lineEnd": 371,
+      "symbol": "transitions.ts"
+    }
+  ],
+  "producer": {
+    "kind": "adapter",
+    "name": "acp normalization",
+    "ingestedFrom": "adapter event or monitor batch"
+  },
+  "transforms": [
+    {
+      "order": 0,
+      "name": "adapter-step-0",
+      "effect": "requestPermission publishes interaction:permission-requested. presentation is native-tui only when there is no decide handler and unhandled is defer; otherwise host-ui.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-acp/src/services/approvals.ts",
+        "lineStart": 135,
+        "lineEnd": 257,
+        "symbol": "AcpApprovalService"
+      }
+    },
+    {
+      "order": 1,
+      "name": "adapter-step-1",
+      "effect": "Host approved becomes allowed and denied becomes denied. No handler and not defer resolves denied immediately.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-acp/src/services/elicitation.ts",
+        "lineStart": 24,
+        "lineEnd": 83,
+        "symbol": "AcpElicitationService"
+      }
+    },
+    {
+      "order": 2,
+      "name": "adapter-step-2",
+      "effect": "tool_call_update in_progress or completed settles that call as allowed. Prompt end, transport close, dispose, and a repeated request settle unknown.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/runtime/src/services/monitor-service.ts",
+        "lineStart": 176,
+        "lineEnd": 187,
+        "symbol": "MonitorService.consume"
+      }
+    },
+    {
+      "order": 3,
+      "name": "adapter-step-3",
+      "effect": "Elicitation publishes question-requested. Accept on a non-url form publishes answered. URL accept waits for complete. decline and cancel publish cancelled. Missing responder defaults to decline. Other actions and throws publish failed. Prompt success settles pending URL elicitations as superseded; prompt failure settles failed.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/core/src/monitor/reduce.ts",
+        "lineStart": 974,
+        "lineEnd": 1024,
+        "symbol": "permission and question cases"
+      }
+    }
+  ],
+  "merge": {
+    "strategy": "unknown",
+    "defaults": []
+  },
+  "transport": {
+    "channel": "in-process",
+    "name": "MonitorService.consume",
+    "contract": "AgentEvent or monitor:batch"
+  },
+  "renderer": {
+    "viewIds": [
+      "view.list",
+      "view.rain",
+      "view.swarm",
+      "view.spend"
+    ],
+    "component": "view.list,view.rain,view.swarm,view.spend",
+    "symbol": "model-slice-consumer"
+  },
+  "applicability": {
+    "states": [
+      "state.idle",
+      "state.working",
+      "state.blocked",
+      "state.blocked_permission",
+      "state.blocked_question",
+      "state.blocked_failure",
+      "state.wait_multiple",
+      "state.activity_starting",
+      "state.activity_responding",
+      "state.activity_reasoning",
+      "state.activity_tool",
+      "state.activity_other",
+      "state.stale",
+      "state.fresh",
+      "state.failed_retained"
+    ],
+    "views": [
+      "view.list",
+      "view.rain",
+      "view.swarm",
+      "view.spend"
+    ],
+    "notes": " The permission schema also allows dismissed. This package does not hardcode dismissed; a composing adapter can pass it through deferredEvidence. field.wait is not written by the adapter. Which blocker becomes field.wait.kind is pending. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from acp-turn-tool-permission-and-elicitation. declaration only; supported does not guarantee availability/value; degraded is not unreachable Declared support does not match the producer channel. Unsupported or degraded does not make a later runtime combination impossible. Upstream states: adapter.acp.upstream.permission.allowed=\"allowed\" (approved decision or tool progress); adapter.acp.upstream.permission.denied=\"denied\" (denied decision or default unhandled deny); adapter.acp.upstream.permission.unknown=\"unknown\" (supersede, prompt end, transport close, dispose); adapter.acp.upstream.permission.host-ui=\"host-ui\" (decide handler present or unhandled is not defer); adapter.acp.upstream.permission.native-tui=\"native-tui\" (no decide handler and unhandled defer); adapter.acp.upstream.question.answered=\"answered\" (form accept or URL complete); adapter.acp.upstream.question.cancelled=\"cancelled\" (decline, cancel, or missing responder); adapter.acp.upstream.question.failed=\"failed\" (other action, throw, or prompt failure); adapter.acp.upstream.question.superseded=\"superseded\" (prompt success settles pending URL elicitations) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  },
+  "absence": {
+    "onMissing": "omit-field",
+    "onStale": "unknown",
+    "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
+  },
+  "observation": {
+    "presence": "present",
+    "synthetic": false
+  },
+  "classification": {
+    "modelSupported": "yes",
+    "adapterEmittable": "yes",
+    "uiReachable": "yes"
+  },
+  "verification": {
+    "status": "source-read",
+    "owner": "GV-AUDIT3",
+    "notes": " The permission schema also allows dismissed. This package does not hardcode dismissed; a composing adapter can pass it through deferredEvidence. field.wait is not written by the adapter. Which blocker becomes field.wait.kind is pending. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from acp-turn-tool-permission-and-elicitation. declaration only; supported does not guarantee availability/value; degraded is not unreachable Declared support does not match the producer channel. Unsupported or degraded does not make a later runtime combination impossible. Upstream states: adapter.acp.upstream.permission.allowed=\"allowed\" (approved decision or tool progress); adapter.acp.upstream.permission.denied=\"denied\" (denied decision or default unhandled deny); adapter.acp.upstream.permission.unknown=\"unknown\" (supersede, prompt end, transport close, dispose); adapter.acp.upstream.permission.host-ui=\"host-ui\" (decide handler present or unhandled is not defer); adapter.acp.upstream.permission.native-tui=\"native-tui\" (no decide handler and unhandled defer); adapter.acp.upstream.question.answered=\"answered\" (form accept or URL complete); adapter.acp.upstream.question.cancelled=\"cancelled\" (decline, cancel, or missing responder); adapter.acp.upstream.question.failed=\"failed\" (other action, throw, or prompt failure); adapter.acp.upstream.question.superseded=\"superseded\" (prompt success settles pending URL elicitations) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  }
+}

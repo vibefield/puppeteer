@@ -1,0 +1,122 @@
+{
+  "recordId": "prov.copilot.cost.series.lastStepAt",
+  "pins": {
+    "vibefield": "433505fd0f224f4cda540d642661b13848c0ef82",
+    "puppeteer": "748d015a7e393112e0a91dad80111fdf5abe6583"
+  },
+  "adapterId": "adapter.copilot",
+  "fieldId": "field.cost.series.lastStepAt",
+  "sources": [
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-copilot/src/normalization/monitor-capabilities.ts",
+      "lineStart": 15,
+      "lineEnd": 23,
+      "symbol": "usage capability"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 240,
+      "lineEnd": 286,
+      "symbol": "deriveAgentRow"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/view-sdk/src/model.ts",
+      "lineStart": 31,
+      "lineEnd": 31,
+      "symbol": "model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/backend.ts",
+      "lineStart": 189,
+      "lineEnd": 207,
+      "symbol": "backend.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/usage-ledger.ts",
+      "lineStart": 62,
+      "lineEnd": 82,
+      "symbol": "usage-ledger.ts"
+    }
+  ],
+  "producer": {
+    "kind": "unknown",
+    "name": "not-adapter-produced",
+    "ingestedFrom": "not adapter-produced; row value, if any, is downstream of this adapter and the mapping is pending"
+  },
+  "transforms": [
+    {
+      "order": 0,
+      "name": "no-adapter-producer-0",
+      "effect": "No usage:tokens-used event was found. Compaction token counts are context occupancy, not a burn ledger.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-copilot/src/normalization/monitor-capabilities.ts",
+        "lineStart": 15,
+        "lineEnd": 23,
+        "symbol": "usage capability"
+      }
+    }
+  ],
+  "merge": {
+    "strategy": "none",
+    "defaults": []
+  },
+  "transport": {
+    "channel": "unknown",
+    "name": "not-adapter-produced"
+  },
+  "renderer": {
+    "viewIds": [
+      "view.spend"
+    ],
+    "component": "view.spend",
+    "symbol": "model-slice-consumer"
+  },
+  "applicability": {
+    "states": [
+      "state.cost_complete",
+      "state.cost_partial",
+      "state.cost_unavailable",
+      "state.cost_missing",
+      "state.burn_flames_0",
+      "state.burn_flames_1",
+      "state.burn_flames_2",
+      "state.burn_flames_3",
+      "state.burn_flames_4"
+    ],
+    "views": [
+      "view.spend"
+    ],
+    "notes": " The declaration says durable transcript usage is excluded and no live usage rail is integrated. The searched producers match that. It does not make field.tokens impossible from another source. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration unsupported from copilot-assistant-and-shutdown-usage. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.copilot.upstream.tokens.absent=\"absent\" (usage family) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  },
+  "absence": {
+    "onMissing": "record-unsupported",
+    "onStale": "unknown",
+    "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
+  },
+  "observation": {
+    "presence": "unsupported",
+    "synthetic": false
+  },
+  "classification": {
+    "modelSupported": "yes",
+    "adapterEmittable": "no",
+    "uiReachable": "yes"
+  },
+  "verification": {
+    "status": "source-read",
+    "owner": "GV-AUDIT3",
+    "notes": " The declaration says durable transcript usage is excluded and no live usage rail is integrated. The searched producers match that. It does not make field.tokens impossible from another source. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration unsupported from copilot-assistant-and-shutdown-usage. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.copilot.upstream.tokens.absent=\"absent\" (usage family) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  }
+}

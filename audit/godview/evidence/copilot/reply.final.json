@@ -1,0 +1,117 @@
+{
+  "recordId": "prov.copilot.reply.final",
+  "pins": {
+    "vibefield": "433505fd0f224f4cda540d642661b13848c0ef82",
+    "puppeteer": "748d015a7e393112e0a91dad80111fdf5abe6583"
+  },
+  "adapterId": "adapter.copilot",
+  "fieldId": "field.reply.final",
+  "sources": [
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-copilot/src/normalization/conversation.ts",
+      "lineStart": 4,
+      "lineEnd": 19,
+      "symbol": "normalizeCopilotAssistantMessage"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-copilot/src/normalization/pipeline.ts",
+      "lineStart": 127,
+      "lineEnd": 152,
+      "symbol": "assistant.message"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/runtime/src/services/monitor-service.ts",
+      "lineStart": 176,
+      "lineEnd": 187,
+      "symbol": "MonitorService.consume"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/reduce.ts",
+      "lineStart": 864,
+      "lineEnd": 938,
+      "symbol": "turn and conversation cases"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/view-sdk/src/model.ts",
+      "lineStart": 81,
+      "lineEnd": 81,
+      "symbol": "model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 188,
+      "lineEnd": 196,
+      "symbol": "derive.ts"
+    }
+  ],
+  "producer": {
+    "kind": "adapter",
+    "name": "copilot normalization",
+    "ingestedFrom": "conversation:assistant-message final true"
+  },
+  "transforms": [
+    {
+      "order": 0,
+      "name": "adapter-step-0",
+      "effect": "assistant.message with a non-empty string content emits conversation:assistant-message final true. Empty content emits nothing. messageId falls back to the log entry id.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-copilot/src/normalization/conversation.ts",
+        "lineStart": 4,
+        "lineEnd": 19,
+        "symbol": "normalizeCopilotAssistantMessage"
+      }
+    }
+  ],
+  "merge": {
+    "strategy": "unknown",
+    "defaults": []
+  },
+  "transport": {
+    "channel": "in-process",
+    "name": "MonitorService.consume",
+    "contract": "AgentEvent or monitor:batch"
+  },
+  "renderer": {
+    "viewIds": [],
+    "component": "not-established",
+    "symbol": "no-consumer-recorded"
+  },
+  "applicability": {
+    "states": "model-axes",
+    "views": "all-monitor-views",
+    "notes": " conversation is undeclared. final is always true on this helper. No reply.at is set. The log timestamp stays on the normalized record, not inside the event. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration unknown from no capability cell.  Declared support does not match the producer channel. Unsupported or degraded does not make a later runtime combination impossible. Upstream states: adapter.copilot.upstream.reply.final=true (non-empty assistant content); adapter.copilot.upstream.reply.absent=\"no event\" (content missing or empty) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  },
+  "absence": {
+    "onMissing": "omit-field",
+    "onStale": "unknown",
+    "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
+  },
+  "observation": {
+    "presence": "present",
+    "synthetic": false
+  },
+  "classification": {
+    "modelSupported": "yes",
+    "adapterEmittable": "yes",
+    "uiReachable": "unknown"
+  },
+  "verification": {
+    "status": "source-read",
+    "owner": "GV-AUDIT3",
+    "notes": " conversation is undeclared. final is always true on this helper. No reply.at is set. The log timestamp stays on the normalized record, not inside the event. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration unknown from no capability cell.  Declared support does not match the producer channel. Unsupported or degraded does not make a later runtime combination impossible. Upstream states: adapter.copilot.upstream.reply.final=true (non-empty assistant content); adapter.copilot.upstream.reply.absent=\"no event\" (content missing or empty) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  }
+}

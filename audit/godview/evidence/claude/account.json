@@ -1,0 +1,104 @@
+{
+  "recordId": "prov.claude.account",
+  "pins": {
+    "vibefield": "433505fd0f224f4cda540d642661b13848c0ef82",
+    "puppeteer": "748d015a7e393112e0a91dad80111fdf5abe6583"
+  },
+  "adapterId": "adapter.claude",
+  "fieldId": "field.account",
+  "sources": [
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-claude/src/driver.ts",
+      "lineStart": 996,
+      "lineEnd": 998,
+      "symbol": "status line account comment"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 240,
+      "lineEnd": 286,
+      "symbol": "deriveAgentRow"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/view-sdk/src/model.ts",
+      "lineStart": 156,
+      "lineEnd": 156,
+      "symbol": "model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 273,
+      "lineEnd": 273,
+      "symbol": "derive.ts"
+    }
+  ],
+  "producer": {
+    "kind": "unknown",
+    "name": "not-adapter-produced",
+    "ingestedFrom": "not adapter-produced; row value, if any, is downstream of this adapter and the mapping is pending"
+  },
+  "transforms": [
+    {
+      "order": 0,
+      "name": "no-adapter-producer-0",
+      "effect": "The status-line callback calls observeClaudeStatusLineAccountUsage and the comment says account usage is process-global subscription quota, not session state.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-claude/src/driver.ts",
+        "lineStart": 996,
+        "lineEnd": 998,
+        "symbol": "status line account comment"
+      }
+    }
+  ],
+  "merge": {
+    "strategy": "none",
+    "defaults": []
+  },
+  "transport": {
+    "channel": "unknown",
+    "name": "not-adapter-produced"
+  },
+  "renderer": {
+    "viewIds": [
+      "view.list"
+    ],
+    "component": "view.list",
+    "symbol": "model-slice-consumer"
+  },
+  "applicability": {
+    "states": "model-axes",
+    "views": [
+      "view.list"
+    ],
+    "notes": " field.account is not filled from this session monitor path. GV2 already marks the row account producer as not established. This audit does not add one. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.claude.upstream.account.not-session=\"not session monitor state\" (status line callback) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  },
+  "absence": {
+    "onMissing": "record-absent",
+    "onStale": "unknown",
+    "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
+  },
+  "observation": {
+    "presence": "absent",
+    "synthetic": false
+  },
+  "classification": {
+    "modelSupported": "yes",
+    "adapterEmittable": "no",
+    "uiReachable": "yes"
+  },
+  "verification": {
+    "status": "source-read",
+    "owner": "GV-AUDIT3",
+    "notes": " field.account is not filled from this session monitor path. GV2 already marks the row account producer as not established. This audit does not add one. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.claude.upstream.account.not-session=\"not session monitor state\" (status line callback) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  }
+}

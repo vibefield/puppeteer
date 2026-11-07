@@ -1,0 +1,165 @@
+{
+  "recordId": "prov.copilot.context",
+  "pins": {
+    "vibefield": "433505fd0f224f4cda540d642661b13848c0ef82",
+    "puppeteer": "748d015a7e393112e0a91dad80111fdf5abe6583"
+  },
+  "adapterId": "adapter.copilot",
+  "fieldId": "field.context",
+  "sources": [
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-copilot/src/normalization/compaction.ts",
+      "lineStart": 4,
+      "lineEnd": 39,
+      "symbol": "normalizeCopilotCompaction"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-copilot/src/normalization/types.ts",
+      "lineStart": 29,
+      "lineEnd": 30,
+      "symbol": "copilotNumber"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/runtime/src/services/monitor-service.ts",
+      "lineStart": 176,
+      "lineEnd": 187,
+      "symbol": "MonitorService.consume"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/reduce.ts",
+      "lineStart": 1075,
+      "lineEnd": 1103,
+      "symbol": "context-window cases"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/view-sdk/src/model.ts",
+      "lineStart": 157,
+      "lineEnd": 157,
+      "symbol": "model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 247,
+      "lineEnd": 247,
+      "symbol": "derive.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 274,
+      "lineEnd": 274,
+      "symbol": "derive.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/views/src/views/swarm/bubble-model.ts",
+      "lineStart": 328,
+      "lineEnd": 330,
+      "symbol": "bubble-model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/views/src/views/rain/rain-streams.ts",
+      "lineStart": 89,
+      "lineEnd": 117,
+      "symbol": "rain-streams.ts"
+    }
+  ],
+  "producer": {
+    "kind": "adapter",
+    "name": "copilot normalization",
+    "ingestedFrom": "context-window:updated"
+  },
+  "transforms": [
+    {
+      "order": 0,
+      "name": "adapter-step-0",
+      "effect": "session.compaction_start emits context-window:updated only when currentTokens and tokenLimit are finite and >= 0 and tokenLimit > 0.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-copilot/src/normalization/compaction.ts",
+        "lineStart": 4,
+        "lineEnd": 39,
+        "symbol": "normalizeCopilotCompaction"
+      }
+    },
+    {
+      "order": 1,
+      "name": "adapter-step-1",
+      "effect": "There is no other continuous context sample. That matches the degraded declaration.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-copilot/src/normalization/types.ts",
+        "lineStart": 29,
+        "lineEnd": 30,
+        "symbol": "copilotNumber"
+      }
+    }
+  ],
+  "merge": {
+    "strategy": "unknown",
+    "defaults": []
+  },
+  "transport": {
+    "channel": "in-process",
+    "name": "MonitorService.consume",
+    "contract": "AgentEvent or monitor:batch"
+  },
+  "renderer": {
+    "viewIds": [
+      "view.list",
+      "view.rain",
+      "view.swarm"
+    ],
+    "component": "view.list,view.rain,view.swarm",
+    "symbol": "model-slice-consumer"
+  },
+  "applicability": {
+    "states": [
+      "state.context_missing",
+      "state.context_hot"
+    ],
+    "views": [
+      "view.list",
+      "view.rain",
+      "view.swarm"
+    ],
+    "notes": " Declared degraded because values exist around compaction, not continuously. The source contains that producer. Degraded is not the same as unreachable. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration degraded from copilot-compaction-events. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.copilot.upstream.context.present=\"used and capacity tokens\" (compaction_start with both counts and capacity > 0); adapter.copilot.upstream.context.zero-used=0 (currentTokens is 0 and capacity > 0); adapter.copilot.upstream.context.absent=\"no context event\" (counts missing or capacity is 0) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  },
+  "absence": {
+    "onMissing": "omit-field",
+    "onStale": "unknown",
+    "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
+  },
+  "observation": {
+    "presence": "present",
+    "synthetic": false
+  },
+  "classification": {
+    "modelSupported": "yes",
+    "adapterEmittable": "yes",
+    "uiReachable": "yes"
+  },
+  "verification": {
+    "status": "source-read",
+    "owner": "GV-AUDIT3",
+    "notes": " Declared degraded because values exist around compaction, not continuously. The source contains that producer. Degraded is not the same as unreachable. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration degraded from copilot-compaction-events. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.copilot.upstream.context.present=\"used and capacity tokens\" (compaction_start with both counts and capacity > 0); adapter.copilot.upstream.context.zero-used=0 (currentTokens is 0 and capacity > 0); adapter.copilot.upstream.context.absent=\"no context event\" (counts missing or capacity is 0) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  }
+}

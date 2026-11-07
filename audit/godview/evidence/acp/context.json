@@ -1,0 +1,191 @@
+{
+  "recordId": "prov.acp.context",
+  "pins": {
+    "vibefield": "433505fd0f224f4cda540d642661b13848c0ef82",
+    "puppeteer": "748d015a7e393112e0a91dad80111fdf5abe6583"
+  },
+  "adapterId": "adapter.acp",
+  "fieldId": "field.context",
+  "sources": [
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-acp/src/normalization/monitor.ts",
+      "lineStart": 216,
+      "lineEnd": 228,
+      "symbol": "usage_update context upsert"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-acp/src/normalization/context-window.ts",
+      "lineStart": 6,
+      "lineEnd": 19,
+      "symbol": "normalizeAcpContextWindow"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/runtime/src/services/monitor-service.ts",
+      "lineStart": 176,
+      "lineEnd": 187,
+      "symbol": "MonitorService.consume"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/reduce.ts",
+      "lineStart": 1075,
+      "lineEnd": 1103,
+      "symbol": "context-window cases"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/view-sdk/src/model.ts",
+      "lineStart": 157,
+      "lineEnd": 157,
+      "symbol": "model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 247,
+      "lineEnd": 247,
+      "symbol": "derive.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 274,
+      "lineEnd": 274,
+      "symbol": "derive.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/views/src/views/swarm/bubble-model.ts",
+      "lineStart": 328,
+      "lineEnd": 330,
+      "symbol": "bubble-model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/views/src/views/rain/rain-streams.ts",
+      "lineStart": 89,
+      "lineEnd": 117,
+      "symbol": "rain-streams.ts"
+    }
+  ],
+  "producer": {
+    "kind": "adapter",
+    "name": "acp normalization",
+    "ingestedFrom": "context-window:updated usedTokens and capacityTokens"
+  },
+  "transforms": [
+    {
+      "order": 0,
+      "name": "adapter-step-0",
+      "effect": "usage_update.used and size are context occupancy, not usage-family tokens.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-acp/src/normalization/monitor.ts",
+        "lineStart": 216,
+        "lineEnd": 228,
+        "symbol": "usage_update context upsert"
+      }
+    },
+    {
+      "order": 1,
+      "name": "adapter-step-1",
+      "effect": "finiteNonNegative keeps 0 and drops NaN and negatives. capacityTokens is kept only when size > 0.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-acp/src/normalization/context-window.ts",
+        "lineStart": 6,
+        "lineEnd": 19,
+        "symbol": "normalizeAcpContextWindow"
+      }
+    },
+    {
+      "order": 2,
+      "name": "adapter-step-2",
+      "effect": "The monitor upsert is emitted when either used or positive size is present. percentageSource is derived only when both are present, otherwise unavailable.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/runtime/src/services/monitor-service.ts",
+        "lineStart": 176,
+        "lineEnd": 187,
+        "symbol": "MonitorService.consume"
+      }
+    },
+    {
+      "order": 3,
+      "name": "adapter-step-3",
+      "effect": "The pipeline emits context-window:updated only when both used >= 0 and size > 0. Otherwise it emits adapter:native-event.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/core/src/monitor/reduce.ts",
+        "lineStart": 1075,
+        "lineEnd": 1103,
+        "symbol": "context-window cases"
+      }
+    }
+  ],
+  "merge": {
+    "strategy": "unknown",
+    "defaults": []
+  },
+  "transport": {
+    "channel": "in-process",
+    "name": "MonitorService.consume",
+    "contract": "AgentEvent or monitor:batch"
+  },
+  "renderer": {
+    "viewIds": [
+      "view.list",
+      "view.rain",
+      "view.swarm"
+    ],
+    "component": "view.list,view.rain,view.swarm",
+    "symbol": "model-slice-consumer"
+  },
+  "applicability": {
+    "states": [
+      "state.context_missing",
+      "state.context_hot"
+    ],
+    "views": [
+      "view.list",
+      "view.rain",
+      "view.swarm"
+    ],
+    "notes": " The two producers disagree when only one of used or size is valid. Units are tokens. There is no adapter poll; each usage_update is pushed. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from acp-usage-update. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.acp.upstream.context.used=\"non-negative number including 0\" (used parses); adapter.acp.upstream.context.used.omitted=\"usedTokens omitted\" (used missing or invalid while size > 0 still emits on the monitor path); adapter.acp.upstream.context.capacity=\"positive number\" (size > 0); adapter.acp.upstream.context.percentageSource.derived=\"derived\" (both sides present); adapter.acp.upstream.context.percentageSource.unavailable=\"unavailable\" (only one side present) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  },
+  "absence": {
+    "onMissing": "omit-field",
+    "onStale": "unknown",
+    "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
+  },
+  "observation": {
+    "presence": "present",
+    "synthetic": false
+  },
+  "classification": {
+    "modelSupported": "yes",
+    "adapterEmittable": "yes",
+    "uiReachable": "yes"
+  },
+  "verification": {
+    "status": "source-read",
+    "owner": "GV-AUDIT3",
+    "notes": " The two producers disagree when only one of used or size is valid. Units are tokens. There is no adapter poll; each usage_update is pushed. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from acp-usage-update. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.acp.upstream.context.used=\"non-negative number including 0\" (used parses); adapter.acp.upstream.context.used.omitted=\"usedTokens omitted\" (used missing or invalid while size > 0 still emits on the monitor path); adapter.acp.upstream.context.capacity=\"positive number\" (size > 0); adapter.acp.upstream.context.percentageSource.derived=\"derived\" (both sides present); adapter.acp.upstream.context.percentageSource.unavailable=\"unavailable\" (only one side present) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  }
+}

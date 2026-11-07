@@ -1,0 +1,134 @@
+{
+  "recordId": "prov.claude.tokens.perMinute",
+  "pins": {
+    "vibefield": "433505fd0f224f4cda540d642661b13848c0ef82",
+    "puppeteer": "748d015a7e393112e0a91dad80111fdf5abe6583"
+  },
+  "adapterId": "adapter.claude",
+  "fieldId": "field.tokens.perMinute",
+  "sources": [
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-claude/src/observation/otel/usage.ts",
+      "lineStart": 42,
+      "lineEnd": 68,
+      "symbol": "no per-minute field"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-claude/src/normalization/monitor-capabilities.ts",
+      "lineStart": 19,
+      "lineEnd": 20,
+      "symbol": "no intra-response delta"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/rate.ts",
+      "lineStart": 7,
+      "lineEnd": 20,
+      "symbol": "projectMonitorUsageLedger"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/rate.ts",
+      "lineStart": 7,
+      "lineEnd": 20,
+      "symbol": "projectMonitorUsageLedger"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/project.ts",
+      "lineStart": 232,
+      "lineEnd": 232,
+      "symbol": "burnRatePerMin on projected subagents"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/view-sdk/src/model.ts",
+      "lineStart": 99,
+      "lineEnd": 99,
+      "symbol": "model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 198,
+      "lineEnd": 208,
+      "symbol": "derive.ts"
+    }
+  ],
+  "producer": {
+    "kind": "unknown",
+    "name": "not-adapter-produced",
+    "ingestedFrom": "not adapter-produced; row value, if any, is downstream of this adapter and the mapping is pending"
+  },
+  "transforms": [
+    {
+      "order": 0,
+      "name": "no-adapter-producer-0",
+      "effect": "The usage event has no burn rate, delta window, or per-minute property.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-claude/src/observation/otel/usage.ts",
+        "lineStart": 42,
+        "lineEnd": 68,
+        "symbol": "no per-minute field"
+      }
+    }
+  ],
+  "merge": {
+    "strategy": "none",
+    "defaults": []
+  },
+  "transport": {
+    "channel": "unknown",
+    "name": "not-adapter-produced"
+  },
+  "renderer": {
+    "viewIds": [],
+    "component": "not-established",
+    "symbol": "no-consumer-recorded"
+  },
+  "applicability": {
+    "states": [
+      "state.cost_complete",
+      "state.cost_partial",
+      "state.cost_unavailable",
+      "state.cost_missing",
+      "state.burn_flames_0",
+      "state.burn_flames_1",
+      "state.burn_flames_2",
+      "state.burn_flames_3",
+      "state.burn_flames_4"
+    ],
+    "views": "all-monitor-views",
+    "notes": " field.tokens.perMinute would be a downstream projection of usage samples. This adapter does not emit it. The capability text says there is no sanctioned intra-response token delta. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from claude-otlp-logs. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.claude.upstream.burn.absent=\"absent\" (OTLP usage event) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  },
+  "absence": {
+    "onMissing": "record-absent",
+    "onStale": "unknown",
+    "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
+  },
+  "observation": {
+    "presence": "absent",
+    "synthetic": false
+  },
+  "classification": {
+    "modelSupported": "yes",
+    "adapterEmittable": "no",
+    "uiReachable": "unknown"
+  },
+  "verification": {
+    "status": "source-read",
+    "owner": "GV-AUDIT3",
+    "notes": " field.tokens.perMinute would be a downstream projection of usage samples. This adapter does not emit it. The capability text says there is no sanctioned intra-response token delta. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from claude-otlp-logs. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.claude.upstream.burn.absent=\"absent\" (OTLP usage event) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  }
+}

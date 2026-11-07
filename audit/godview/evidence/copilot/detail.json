@@ -1,0 +1,190 @@
+{
+  "recordId": "prov.copilot.detail",
+  "pins": {
+    "vibefield": "433505fd0f224f4cda540d642661b13848c0ef82",
+    "puppeteer": "748d015a7e393112e0a91dad80111fdf5abe6583"
+  },
+  "adapterId": "adapter.copilot",
+  "fieldId": "field.detail",
+  "sources": [
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-copilot/src/normalization/monitor.ts",
+      "lineStart": 25,
+      "lineEnd": 66,
+      "symbol": "empty monitor updates"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-copilot/src/normalization/pipeline.ts",
+      "lineStart": 100,
+      "lineEnd": 228,
+      "symbol": "turn correlation"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-copilot/src/observation/session-observer.ts",
+      "lineStart": 118,
+      "lineEnd": 118,
+      "symbol": "default poll 100ms"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/runtime/src/services/monitor-service.ts",
+      "lineStart": 176,
+      "lineEnd": 187,
+      "symbol": "MonitorService.consume"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/reduce.ts",
+      "lineStart": 864,
+      "lineEnd": 938,
+      "symbol": "turn and conversation cases"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/view-sdk/src/model.ts",
+      "lineStart": 146,
+      "lineEnd": 146,
+      "symbol": "model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 84,
+      "lineEnd": 89,
+      "symbol": "derive.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 312,
+      "lineEnd": 312,
+      "symbol": "derive.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/view-sdk/src/toolkit/words.ts",
+      "lineStart": 64,
+      "lineEnd": 84,
+      "symbol": "words.ts"
+    }
+  ],
+  "producer": {
+    "kind": "adapter",
+    "name": "copilot normalization",
+    "ingestedFrom": "adapter event or monitor batch"
+  },
+  "transforms": [
+    {
+      "order": 0,
+      "name": "adapter-step-0",
+      "effect": "Monitor updates stay empty. Status is declared supported, but no status family update is written.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-copilot/src/normalization/monitor.ts",
+        "lineStart": 25,
+        "lineEnd": 66,
+        "symbol": "empty monitor updates"
+      }
+    },
+    {
+      "order": 1,
+      "name": "adapter-step-1",
+      "effect": "user.message starts a turn at interactionId. assistant.turn_start only records an internal id and emits no event.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-copilot/src/normalization/pipeline.ts",
+        "lineStart": 100,
+        "lineEnd": 228,
+        "symbol": "turn correlation"
+      }
+    },
+    {
+      "order": 2,
+      "name": "adapter-step-2",
+      "effect": "assistant.turn_end completes the interaction only when that internal turn was marked terminal, which happens when an assistant message had no tool requests. Otherwise the end emits nothing.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-copilot/src/observation/session-observer.ts",
+        "lineStart": 118,
+        "lineEnd": 118,
+        "symbol": "default poll 100ms"
+      }
+    },
+    {
+      "order": 3,
+      "name": "adapter-step-3",
+      "effect": "abort and session.error fail the current interaction when one exists, and emit no turn event when none exists.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/runtime/src/services/monitor-service.ts",
+        "lineStart": 176,
+        "lineEnd": 187,
+        "symbol": "MonitorService.consume"
+      }
+    }
+  ],
+  "merge": {
+    "strategy": "unknown",
+    "defaults": []
+  },
+  "transport": {
+    "channel": "in-process",
+    "name": "MonitorService.consume",
+    "contract": "AgentEvent or monitor:batch"
+  },
+  "renderer": {
+    "viewIds": [
+      "view.list",
+      "view.rain",
+      "view.swarm",
+      "view.spend"
+    ],
+    "component": "view.list,view.rain,view.swarm,view.spend",
+    "symbol": "model-slice-consumer"
+  },
+  "applicability": {
+    "states": "model-axes",
+    "views": [
+      "view.list",
+      "view.rain",
+      "view.swarm",
+      "view.spend"
+    ],
+    "notes": " The correlation is stateful and the record confidence is authoritative. The declaration says the log separates response cycles from user interactions and the adapter joins them by interactionId. That join is derived even though the record confidence is authoritative. Poll default is 100ms. Durable history is replayed by the observer; this audit does not call replay a second live signal. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. Declared support does not match the producer channel. Unsupported or degraded does not make a later runtime combination impossible. Upstream states: adapter.copilot.upstream.turn.started=\"turn:started\" (user.message); adapter.copilot.upstream.turn.completed=\"turn:completed\" (terminal assistant.turn_end); adapter.copilot.upstream.turn.failed=\"turn:failed\" (abort or session.error with a current interaction); adapter.copilot.upstream.turn.ignored-end=\"no event\" (turn_end that is not the terminal internal turn) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  },
+  "absence": {
+    "onMissing": "omit-field",
+    "onStale": "unknown",
+    "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
+  },
+  "observation": {
+    "presence": "present",
+    "synthetic": false
+  },
+  "classification": {
+    "modelSupported": "yes",
+    "adapterEmittable": "yes",
+    "uiReachable": "yes"
+  },
+  "verification": {
+    "status": "source-read",
+    "owner": "GV-AUDIT3",
+    "notes": " The correlation is stateful and the record confidence is authoritative. The declaration says the log separates response cycles from user interactions and the adapter joins them by interactionId. That join is derived even though the record confidence is authoritative. Poll default is 100ms. Durable history is replayed by the observer; this audit does not call replay a second live signal. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. Declared support does not match the producer channel. Unsupported or degraded does not make a later runtime combination impossible. Upstream states: adapter.copilot.upstream.turn.started=\"turn:started\" (user.message); adapter.copilot.upstream.turn.completed=\"turn:completed\" (terminal assistant.turn_end); adapter.copilot.upstream.turn.failed=\"turn:failed\" (abort or session.error with a current interaction); adapter.copilot.upstream.turn.ignored-end=\"no event\" (turn_end that is not the terminal internal turn) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  }
+}

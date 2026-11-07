@@ -1,0 +1,191 @@
+{
+  "recordId": "prov.claude.context.usedPercent",
+  "pins": {
+    "vibefield": "433505fd0f224f4cda540d642661b13848c0ef82",
+    "puppeteer": "748d015a7e393112e0a91dad80111fdf5abe6583"
+  },
+  "adapterId": "adapter.claude",
+  "fieldId": "field.context.usedPercent",
+  "sources": [
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-claude/src/observation/status-channel.ts",
+      "lineStart": 188,
+      "lineEnd": 210,
+      "symbol": "provider percentage"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-claude/src/normalization/monitor.ts",
+      "lineStart": 281,
+      "lineEnd": 284,
+      "symbol": "monitor percentageSource"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/reduce.ts",
+      "lineStart": 1075,
+      "lineEnd": 1103,
+      "symbol": "context-window cases"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 240,
+      "lineEnd": 286,
+      "symbol": "deriveAgentRow"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/view-sdk/src/model.ts",
+      "lineStart": 157,
+      "lineEnd": 157,
+      "symbol": "model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 247,
+      "lineEnd": 247,
+      "symbol": "derive.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 274,
+      "lineEnd": 274,
+      "symbol": "derive.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/views/src/views/swarm/bubble-model.ts",
+      "lineStart": 328,
+      "lineEnd": 330,
+      "symbol": "bubble-model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/views/src/views/rain/rain-streams.ts",
+      "lineStart": 89,
+      "lineEnd": 117,
+      "symbol": "rain-streams.ts"
+    }
+  ],
+  "producer": {
+    "kind": "adapter",
+    "name": "claude normalization",
+    "ingestedFrom": "usedPercentage only when the provider percentage is valid"
+  },
+  "transforms": [
+    {
+      "order": 0,
+      "name": "adapter-step-0",
+      "effect": "A provider used_percentage in 0..100 is copied. Else a remaining_percentage in 0..100 becomes 100 minus that value, source provider.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-claude/src/observation/status-channel.ts",
+        "lineStart": 188,
+        "lineEnd": 210,
+        "symbol": "provider percentage"
+      }
+    },
+    {
+      "order": 1,
+      "name": "adapter-step-1",
+      "effect": "Without a valid provider percentage, the event sets percentageSource derived and omits usedPercentage. The monitor batch then also omits usedPercentage and sets percentageSource derived.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-claude/src/normalization/monitor.ts",
+        "lineStart": 281,
+        "lineEnd": 284,
+        "symbol": "monitor percentageSource"
+      }
+    },
+    {
+      "order": 2,
+      "name": "adapter-step-2",
+      "effect": "The empty-window event omits both, and the monitor batch still sets percentageSource derived because usedPercentage is undefined.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/core/src/monitor/reduce.ts",
+        "lineStart": 1075,
+        "lineEnd": 1103,
+        "symbol": "context-window cases"
+      }
+    },
+    {
+      "order": 3,
+      "name": "adapter-step-3",
+      "effect": "The adapter does not clamp or floor a row percent.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/monitor/src/backend/derive.ts",
+        "lineStart": 240,
+        "lineEnd": 286,
+        "symbol": "deriveAgentRow"
+      }
+    }
+  ],
+  "merge": {
+    "strategy": "unknown",
+    "defaults": []
+  },
+  "transport": {
+    "channel": "in-process",
+    "name": "MonitorService.consume",
+    "contract": "AgentEvent or monitor:batch"
+  },
+  "renderer": {
+    "viewIds": [
+      "view.list",
+      "view.rain",
+      "view.swarm"
+    ],
+    "component": "view.list,view.rain,view.swarm",
+    "symbol": "model-slice-consumer"
+  },
+  "applicability": {
+    "states": [
+      "state.context_missing",
+      "state.context_hot"
+    ],
+    "views": [
+      "view.list",
+      "view.rain",
+      "view.swarm"
+    ],
+    "notes": " percentageSource derived here means the provider did not supply a percentage. It is not a computed field.context.usedPercent. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration degraded from claude-status-channels. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.claude.upstream.percent.provider=\"provider\" (used_percentage or complement of remaining_percentage is inside 0..100); adapter.claude.upstream.percent.omitted=\"usedPercentage omitted\" (no valid provider percentage); adapter.claude.upstream.percent.derived-label=\"derived\" (monitor percentageSource without a number) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  },
+  "absence": {
+    "onMissing": "omit-field",
+    "onStale": "unknown",
+    "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
+  },
+  "observation": {
+    "presence": "present",
+    "synthetic": false
+  },
+  "classification": {
+    "modelSupported": "yes",
+    "adapterEmittable": "yes",
+    "uiReachable": "yes"
+  },
+  "verification": {
+    "status": "source-read",
+    "owner": "GV-AUDIT3",
+    "notes": " percentageSource derived here means the provider did not supply a percentage. It is not a computed field.context.usedPercent. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration degraded from claude-status-channels. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.claude.upstream.percent.provider=\"provider\" (used_percentage or complement of remaining_percentage is inside 0..100); adapter.claude.upstream.percent.omitted=\"usedPercentage omitted\" (no valid provider percentage); adapter.claude.upstream.percent.derived-label=\"derived\" (monitor percentageSource without a number) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  }
+}

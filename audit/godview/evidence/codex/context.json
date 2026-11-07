@@ -1,0 +1,215 @@
+{
+  "recordId": "prov.codex.context",
+  "pins": {
+    "vibefield": "433505fd0f224f4cda540d642661b13848c0ef82",
+    "puppeteer": "748d015a7e393112e0a91dad80111fdf5abe6583"
+  },
+  "adapterId": "adapter.codex",
+  "fieldId": "field.context",
+  "sources": [
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-codex/src/normalization/monitor.ts",
+      "lineStart": 477,
+      "lineEnd": 542,
+      "symbol": "thread/tokenUsage/updated context"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-codex/src/normalization/monitor.ts",
+      "lineStart": 391,
+      "lineEnd": 414,
+      "symbol": "contextBootstrapBatch"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-codex/src/observation/rollout-context.ts",
+      "lineStart": 14,
+      "lineEnd": 51,
+      "symbol": "readLastCodexContextWindow"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-codex/src/observation/observer.ts",
+      "lineStart": 381,
+      "lineEnd": 385,
+      "symbol": "rollout context publish"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/adapter-codex/src/normalization/context-window.ts",
+      "lineStart": 19,
+      "lineEnd": 46,
+      "symbol": "CodexContextWindowNormalizer"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/runtime/src/services/monitor-service.ts",
+      "lineStart": 176,
+      "lineEnd": 187,
+      "symbol": "MonitorService.consume"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/core/src/monitor/reduce.ts",
+      "lineStart": 1075,
+      "lineEnd": 1103,
+      "symbol": "context-window cases"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/view-sdk/src/model.ts",
+      "lineStart": 157,
+      "lineEnd": 157,
+      "symbol": "model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 247,
+      "lineEnd": 247,
+      "symbol": "derive.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/monitor/src/backend/derive.ts",
+      "lineStart": 274,
+      "lineEnd": 274,
+      "symbol": "derive.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/views/src/views/swarm/bubble-model.ts",
+      "lineStart": 328,
+      "lineEnd": 330,
+      "symbol": "bubble-model.ts"
+    },
+    {
+      "repo": "puppeteer",
+      "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+      "path": "packages/views/src/views/rain/rain-streams.ts",
+      "lineStart": 89,
+      "lineEnd": 117,
+      "symbol": "rain-streams.ts"
+    }
+  ],
+  "producer": {
+    "kind": "adapter",
+    "name": "codex normalization",
+    "ingestedFrom": "context usedTokens and capacityTokens"
+  },
+  "transforms": [
+    {
+      "order": 0,
+      "name": "adapter-step-0",
+      "effect": "Live and bootstrap notifications upsert root context from last.totalTokens and modelContextWindow. percentageSource is the literal derived. usedPercentage is not set.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-codex/src/normalization/monitor.ts",
+        "lineStart": 477,
+        "lineEnd": 542,
+        "symbol": "thread/tokenUsage/updated context"
+      }
+    },
+    {
+      "order": 1,
+      "name": "adapter-step-1",
+      "effect": "modelContextWindow null retracts root context. Child occupancy is not upserted.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-codex/src/normalization/monitor.ts",
+        "lineStart": 391,
+        "lineEnd": 414,
+        "symbol": "contextBootstrapBatch"
+      }
+    },
+    {
+      "order": 2,
+      "name": "adapter-step-2",
+      "effect": "The rollout tail reads the same two counts from the last token_count record and does not set a percentage. contextBootstrapBatch would copy usedPercentage if the event had one. The only caller does not set it, so that branch is unreachable from the wired producer.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-codex/src/observation/rollout-context.ts",
+        "lineStart": 14,
+        "lineEnd": 51,
+        "symbol": "readLastCodexContextWindow"
+      }
+    },
+    {
+      "order": 3,
+      "name": "adapter-step-3",
+      "effect": "Usage samples are separate and are not emitted for bootstrap phase.",
+      "source": {
+        "repo": "puppeteer",
+        "sha": "748d015a7e393112e0a91dad80111fdf5abe6583",
+        "path": "packages/adapter-codex/src/observation/observer.ts",
+        "lineStart": 381,
+        "lineEnd": 385,
+        "symbol": "rollout context publish"
+      }
+    }
+  ],
+  "merge": {
+    "strategy": "unknown",
+    "defaults": []
+  },
+  "transport": {
+    "channel": "in-process",
+    "name": "MonitorService.consume",
+    "contract": "AgentEvent or monitor:batch"
+  },
+  "renderer": {
+    "viewIds": [
+      "view.list",
+      "view.rain",
+      "view.swarm"
+    ],
+    "component": "view.list,view.rain,view.swarm",
+    "symbol": "model-slice-consumer"
+  },
+  "applicability": {
+    "states": [
+      "state.context_missing",
+      "state.context_hot"
+    ],
+    "views": [
+      "view.list",
+      "view.rain",
+      "view.swarm"
+    ],
+    "notes": " Only root context is projected, matching the declaration. Rollout context is history. It is not billed as burn. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from codex-thread-token-usage-and-rollout-tail. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.codex.upstream.context.live=\"last total and positive window\" (thread/tokenUsage/updated for the root); adapter.codex.upstream.context.retract=\"retract root\" (modelContextWindow is null, compaction completes, or model reroute); adapter.codex.upstream.context.rollout=\"history tail\" (readLastCodexContextWindow); adapter.codex.upstream.context.child=\"not projected\" (child thread tokenUsage); adapter.codex.upstream.context.percentageSource=\"derived\" (live monitor context upsert) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  },
+  "absence": {
+    "onMissing": "omit-field",
+    "onStale": "unknown",
+    "zeroPolicy": "unknown-unsupported-and-absent-are-not-zero"
+  },
+  "observation": {
+    "presence": "present",
+    "synthetic": false
+  },
+  "classification": {
+    "modelSupported": "yes",
+    "adapterEmittable": "yes",
+    "uiReachable": "yes"
+  },
+  "verification": {
+    "status": "source-read",
+    "owner": "GV-AUDIT3",
+    "notes": " Only root context is projected, matching the declaration. Rollout context is history. It is not billed as burn. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from codex-thread-token-usage-and-rollout-tail. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.codex.upstream.context.live=\"last total and positive window\" (thread/tokenUsage/updated for the root); adapter.codex.upstream.context.retract=\"retract root\" (modelContextWindow is null, compaction completes, or model reroute); adapter.codex.upstream.context.rollout=\"history tail\" (readLastCodexContextWindow); adapter.codex.upstream.context.child=\"not projected\" (child thread tokenUsage); adapter.codex.upstream.context.percentageSource=\"derived\" (live monitor context upsert) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+  }
+}
