@@ -1,7 +1,7 @@
 /**
- * GV2 account/profile host scopes (vibefield audit/godview-model 08b5d849).
- * Envelope uiReachable for field.account is the Vibefield consumer only.
- * The Puppeteer Godview host is a separate scope, not a global absence.
+ * Superseded by apply-semantics.mjs, which records the same account host
+ * scopes together with sourceScope, staticPresence, and field domains.
+ * Do not run this after apply-semantics.mjs.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
