@@ -25,7 +25,7 @@ import { projectAgentEvents, type TestAgentProjection } from '@vibefield/puppete
 import { readAcpCapture, replayAcpCapture, type CapturedAcpFrame } from '../test-support/acp-capture-replay.js';
 import { GROK_QUEUE_CHANGED_METHOD } from '../normalization/queue.js';
 import type { GrokObservedEvent, GrokSessionObserver } from '../normalization/types.js';
-import { createGrokSessionObserver } from '../observation/session-observer.js';
+import { createGrokSessionObserver, type GrokSessionObserverOptions } from '../observation/session-observer.js';
 import { grokControlOptions } from './acp-control.js';
 import { createPendingControlSession } from './control-session.js';
 
@@ -643,15 +643,21 @@ describe('A launch or resume replay of the durable log', () => {
   const thoughtLine = line({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'plan' } }, 'p1');
   const messageLine = line({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'done' } }, 'p1');
   const endLine = line({ sessionUpdate: 'turn_completed', prompt_id: 'p1', stop_reason: 'end_turn' });
+  const thought2Line = line({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'plan' } }, 'p2');
+  const end2Line = line({ sessionUpdate: 'turn_completed', prompt_id: 'p2', stop_reason: 'end_turn' });
 
   const turnEvents = ({ envelopes }: TestAgentProjection) =>
     envelopes.flatMap(({ event }) =>
       event.type === 'turn:started' || event.type === 'turn:completed' ? [`${event.type} ${event.turnId}`] : [],
     );
 
+  /** The observer's options, and `beforeReplay`: the frames the rail delivers at adoption, before a byte is read. */
+  type OverLogOptions = GrokSessionObserverOptions & { beforeReplay?: (railRuns: (promptId: string) => void) => void };
+
   /**
-   * The real observer and composition over a log, past its replay. `append` writes live records and reads them.
-   * `railRuns` is Grok's running frame for a prompt, as the rail hears it.
+   * The real observer and composition over a log, past its first poll: the whole replay, unless `options` caps a poll.
+   * `append` writes live records and reads them; with none, it reads on, as the next poll does. `railRuns` is Grok's
+   * running frame for a prompt, as the rail hears it.
    */
   async function overLog(
     records: string[],
@@ -660,12 +666,13 @@ describe('A launch or resume replay of the durable log', () => {
       append: (...live: string[]) => Promise<void>,
       railRuns: (promptId: string) => void,
     ) => Promise<void>,
+    { beforeReplay, ...options }: OverLogOptions = {},
   ): Promise<void> {
     const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-replay-control-'));
     const updatesPath = join(directory, 'updates.jsonl');
     await writeFile(updatesPath, records.join(''));
     const acp = fakeAcp();
-    const observer = createGrokSessionObserver(updatesPath, { pollIntervalMs: 60_000 });
+    const observer = createGrokSessionObserver(updatesPath, { pollIntervalMs: 60_000, ...options });
     const binding = createPendingControlSession(acp.binding.sessionId, 'rt', () => acp.binding, observer);
     const projection = projectAgentEvents(binding);
     const railRuns = (promptId: string) =>
@@ -678,6 +685,8 @@ describe('A launch or resume replay of the durable log', () => {
         'native-protocol',
       );
     try {
+      // The binding's first poll is in flight and has read nothing: a frame buffered before adoption lands here.
+      beforeReplay?.(railRuns);
       await observer.poll();
       await check(
         projection,
@@ -884,6 +893,135 @@ describe('A launch or resume replay of the durable log', () => {
       await append(endLine, thoughtLine);
       railRuns('q1');
       expect(turnEvents(projection).at(-1)).toBe('turn:started q1');
+    });
+  });
+
+  it('starts what Grok runs during a replay that spans polls at its settle, after every replayed end', async () => {
+    // A poll reads P1's start and no further. A long log's replay spans awaited 64 KiB reads, and past 4 MiB polls,
+    // and the rail can speak between any two: here, between polls.
+    const perPoll = Buffer.byteLength(userLine + thoughtLine);
+    const replays: [name: string, records: string[], running: string, replayed: string[]][] = [
+      [
+        'two ended turns',
+        [userLine, thoughtLine, endLine, userLine, thought2Line, end2Line],
+        'q1',
+        ['turn:started p1', 'turn:completed p1', 'turn:started p2', 'turn:completed p2'],
+      ],
+      [
+        'two dead turns',
+        [userLine, thoughtLine, userLine, thought2Line],
+        'q1',
+        ['turn:started p1', 'turn:started p2', 'turn:completed p2', 'turn:completed p1'],
+      ],
+      ['its own dead turn', [userLine, thoughtLine, messageLine], 'p1', ['turn:started p1', 'turn:completed p1']],
+    ];
+    for (const [name, records, running, replayed] of replays) {
+      const replayBytes = Buffer.byteLength(records.join(''));
+      await overLog(
+        records,
+        async (projection, append, railRuns) => {
+          // Grok runs a prompt, and the rail says so while the log is still replaying.
+          railRuns(running);
+          expect(turnEvents(projection), name).toEqual(['turn:started p1']);
+          for (let read = perPoll; read < replayBytes; read += perPoll) await append();
+          // The replay's turns are history: the running prompt starts after every one of their ends, at the settle.
+          expect(turnEvents(projection), name).toEqual([...replayed, `turn:started ${running}`]);
+          expect(projection.state.activeTurn?.id, name).toBe(running);
+          expect(monitorOf(projection.envelopes), name).toMatchObject({ status: 'working' });
+        },
+        { readChunkBytes: perPoll, maxBytesPerPoll: perPoll },
+      );
+    }
+  });
+
+  it('starts nothing for a rail start heard during a replay that goes on to that prompt’s own end', async () => {
+    const perPoll = Buffer.byteLength(userLine + thoughtLine);
+    await overLog(
+      [userLine, thoughtLine, endLine],
+      async (projection, append, railRuns) => {
+        // A stale frame names P while the log replays it, and the replay goes on to P's own end, which Grok wrote
+        // before the first stat: P is over, and its start has nothing to start at the settle.
+        railRuns('p1');
+        await append();
+        expect(turnEvents(projection)).toEqual(['turn:started p1', 'turn:completed p1']);
+        expect(projection.state.activeTurn).toBeUndefined();
+        expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'idle', blockers: [] });
+      },
+      { readChunkBytes: perPoll, maxBytesPerPoll: perPoll },
+    );
+  });
+
+  it('ends a turn the rail started at adoption at its replayed end, so the next one starts at once', async () => {
+    await overLog(
+      [userLine, thoughtLine, endLine],
+      async (projection, _append, railRuns) => {
+        // Grok ended P before the first stat: the next prompt it runs is not held behind P.
+        railRuns('q1');
+        expect(turnEvents(projection).at(-1)).toBe('turn:started q1');
+        expect(projection.state.activeTurn?.id).toBe('q1');
+        expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working' });
+      },
+      // The leader named P running at session/load, and the binding hears that frame at adoption.
+      { beforeReplay: (railRuns) => railRuns('p1') },
+    );
+  });
+
+  it('starts nothing at the settle for a start held at adoption whose turn the replay ended', async () => {
+    const thoughtQLine = line({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'plan' } }, 'q1');
+    const endQLine = line({ sessionUpdate: 'turn_completed', prompt_id: 'q1', stop_reason: 'end_turn' });
+    await overLog(
+      [userLine, thoughtLine, endLine, userLine, thought2Line, end2Line],
+      async (projection, append, railRuns) => {
+        // The frame started P1 at adoption, and the replay shows its start again. P1 and P2 both ended before the
+        // first stat, so nothing the rail named runs, and Q is the next turn.
+        const replayed = [
+          'turn:started p1',
+          'turn:started p1',
+          'turn:completed p1',
+          'turn:started p2',
+          'turn:completed p2',
+        ];
+        expect(turnEvents(projection)).toEqual(replayed);
+        railRuns('q1');
+        await append(userLine, thoughtQLine, endQLine);
+        expect(turnEvents(projection)).toEqual([...replayed, 'turn:started q1', 'turn:completed q1']);
+        expect(projection.state.activeTurn).toBeUndefined();
+        expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'idle', blockers: [] });
+      },
+      // The leader ran P1 and then P2, and the binding hears both frames at adoption: P2's start waits behind P1.
+      {
+        beforeReplay: (railRuns) => {
+          railRuns('p1');
+          railRuns('p2');
+        },
+      },
+    );
+  });
+
+  it('reads a turn the rail started at adoption as working between its records past the settle', async () => {
+    const toolOpen = line({ sessionUpdate: 'tool_call', toolCallId: 't1', kind: 'read', status: 'in_progress' }, 'p1');
+    const toolDone = line({ sessionUpdate: 'tool_call_update', toolCallId: 't1', status: 'completed' }, 'p1');
+    await overLog(
+      [userLine, thoughtLine],
+      async (projection, append, railRuns) => {
+        // The log left P open and Grok runs on with it. The settle's end leaves P the open turn, but it retracted the
+        // frame's activity: P's live work holds it working, as it holds any reopened turn.
+        await append(toolOpen, toolDone);
+        expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working' });
+        railRuns('q1');
+        await append(endLine);
+        expect(turnEvents(projection).slice(-2)).toEqual(['turn:completed p1', 'turn:started q1']);
+        expect(projection.state.activeTurn?.id).toBe('q1');
+      },
+      { beforeReplay: (railRuns) => railRuns('p1') },
+    );
+  });
+
+  it('starts what Grok runs at once over a log with nothing to replay, which no settle follows', async () => {
+    await overLog([], async (projection, _append, railRuns) => {
+      railRuns('q1');
+      expect(turnEvents(projection)).toEqual(['turn:started q1']);
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working' });
     });
   });
 });
