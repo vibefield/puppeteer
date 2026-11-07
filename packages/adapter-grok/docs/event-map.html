@@ -1837,9 +1837,22 @@ createGrokBackend → grok agent leader
               within the bound (<code>confirmationTimeoutMs</code>, 5 s), or the rail closed or the binding was disposed
               first.
               <code>rejected</code>: adapter-acp's request failed before Grok listed the prompt (its error is the
-              reason), or the rail is down (<code>grok control rail unavailable</code>, for the binding's life). After
-              Grok listed it, a request failure is never the turn's end: with the observer it stays a
-              <code>control.prompt-failed</code> diagnostic, and the log's <code>turn_completed</code> ends the turn.
+              reason), or the rail is down (<code>grok control rail unavailable</code>). A failed attach, a closed rail
+              and a disposed binding all last for the binding's life, so that refusal carries
+              <code>retryable: false</code>. After Grok listed it, a request failure is never the turn's end: with the
+              observer it stays a <code>control.prompt-failed</code> diagnostic, and the log's
+              <code>turn_completed</code> ends the turn.
+            </li>
+            <li>
+              Limit: a durable record over 1 MiB is dropped whole. <code>maxRecordBytes</code> is the observer's memory
+              bound, and the record's only trace is one <code>updates-log-error</code> diagnostic. If that record is a
+              tool's terminal <code>tool_call_update</code>, nothing else closes the tool: the control path filters
+              ACP's tool events and <code>turn:completed</code> retracts no tool, so the row reads working until the
+              run ends. A resume's settle closes it with the rest of the replay. Reaching 1 MiB takes a non-default
+              config: the review read the default <code>output_byte_limit</code> as keeping a completed Bash record
+              near 180 KB, which leaves a raised limit, or a large write whose diff carries the whole file, and neither
+              is witnessed. A sweep at <code>turn_completed</code> would bound this to the turn; it waits for the census
+              owed in <code>findings.md</code>, on whether a background shell's tool outlives the turn.
             </li>
             <li>
               Durable <code>timestamp</code> is Unix seconds; <code>signals.json</code> is written asynchronously after the

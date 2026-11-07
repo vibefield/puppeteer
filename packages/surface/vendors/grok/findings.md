@@ -406,10 +406,12 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
     already published (`services/control-session.test.ts`).
   - (review fix, 2026-11-07) A dead control rail refuses: after the transport closes, a submission answers
     'rejected' (`grok control rail unavailable`) without reaching adapter-acp, and receipts still waiting
-    answer 'uncertain'. adapter-acp's request failure decides only the receipt. Before Grok listed the
-    prompt it answers 'rejected' with the error; with the observer it stays a `control.prompt-failed`
-    diagnostic and is never republished as the turn's end. The log's `turn_completed` is the one end of a
-    Grok turn, and the leader runs on when a controller's transport closes mid-turn.
+    answer 'uncertain'. That refusal carries `retryable: false`, as a failed attach and a disposed binding
+    do: each lasts for the binding's life, and a host queue must not retry it. adapter-acp's request
+    failure decides only the receipt. Before Grok listed the prompt it answers 'rejected' with the error;
+    with the observer it stays a `control.prompt-failed` diagnostic and is never republished as the turn's
+    end. The log's `turn_completed` is the one end of a Grok turn, and the leader runs on when a
+    controller's transport closes mid-turn.
 - **`--continue`/`resumeLatest`** skips sessions whose `summary.json` says `session_kind: "subagent"`.
 - **Live test support.**
   - The provider answers `GET /` as an origin probe kept apart from model calls.
@@ -511,6 +513,25 @@ Deferred design-level work, each with its evidence:
   Grok's queue text is a truncated or rewritten preview, every managed submission answers 'uncertain'. Owed:
   on a signed-in host, a long, multi-line, marked prompt (`Vela (your spark) on your behalf:\n…`), with the
   hashes of the submitted text, the entry text, `runningText`, and the log's user echo compared.
+- **A durable record over 1 MiB (a recorded limit, 2026-11-07; its census is owed).** The observer drops an
+  `updates.jsonl` line over `maxRecordBytes` (1 MiB) whole and reports one `updates-log-error`. The bound is
+  its memory, and it stays. If the line is a tool's terminal `tool_call_update`, nothing else closes the tool:
+  the control path filters ACP's tool events and `turn:completed` retracts no tool, so the row reads working
+  until the run ends (a resume's settle closes it with the rest of the replay). The review read the default
+  `output_byte_limit` (20000) as keeping a completed Bash record near 180 KB, so reaching 1 MiB takes a raised
+  limit or a large write whose ACP diff carries whole `oldText`/`newText`. Neither is witnessed. Census owed,
+  on a signed-in host:
+  - the terminal `tool_call_update` record's size for a write of a file of 1 MiB or more, and with
+    `[toolset.bash] output_byte_limit` raised past 300 KB;
+  - whether a backgrounded shell leaves its `tool_call` open past `turn_completed`.
+    `--background-shell-timeout` says a shell can run past the turn's end (`completions.fish`). No capture
+    shows one: the `subagent` capture's `run_in_background` is a Task, not a shell.
+
+  A sweep at `turn_completed`, closing the prompt's open root tools with a derived `tool:failed` on the replay
+  ledger, would bound the harm to one turn. It is not built: it would read a background shell as failed if
+  Grok keeps one open past the turn. If the second row shows that tools never outlive `turn_completed`, it is
+  taken. Reading the fields from the head of an oversized line depends on serde's field order, and admitting
+  ACP's terminal update makes a second authority on tool state.
 - **Response usage, residual edges.** Unsigned responses are now identified by session, running native
   prompt, and ordinal (Adapter section). An ordinal cannot deduplicate a re-delivered notification; none
   was observed on one controller connection. A signed response with no known native prompt (the 1.0.0
