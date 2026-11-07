@@ -23,6 +23,7 @@ import {
 } from '@vibefield/puppeteer-core/monitor-spi';
 import { projectAgentEvents, type TestAgentProjection } from '@vibefield/puppeteer-testing';
 import { readAcpCapture, replayAcpCapture, type CapturedAcpFrame } from '../test-support/acp-capture-replay.js';
+import { GROK_QUEUE_CHANGED_METHOD } from '../normalization/queue.js';
 import type { GrokObservedEvent, GrokSessionObserver } from '../normalization/types.js';
 import { createGrokSessionObserver } from '../observation/session-observer.js';
 import { grokControlOptions } from './acp-control.js';
@@ -486,11 +487,25 @@ describe('A launch or resume replay of the durable log', () => {
     }) + '\n';
   const userLine = line({ sessionUpdate: 'user_message_chunk', content: { type: 'text', text: 'hello' } });
   const thoughtLine = line({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'plan' } }, 'p1');
+  const messageLine = line({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'done' } }, 'p1');
+  const endLine = line({ sessionUpdate: 'turn_completed', prompt_id: 'p1', stop_reason: 'end_turn' });
 
-  /** The real observer and composition over a log, past its replay. `append` writes live records and reads them. */
+  const turnEvents = ({ envelopes }: TestAgentProjection) =>
+    envelopes.flatMap(({ event }) =>
+      event.type === 'turn:started' || event.type === 'turn:completed' ? [`${event.type} ${event.turnId}`] : [],
+    );
+
+  /**
+   * The real observer and composition over a log, past its replay. `append` writes live records and reads them.
+   * `railRuns` is Grok's running frame for a prompt, as the rail hears it.
+   */
   async function overLog(
     records: string[],
-    check: (projection: TestAgentProjection, append: (...live: string[]) => Promise<void>) => Promise<void>,
+    check: (
+      projection: TestAgentProjection,
+      append: (...live: string[]) => Promise<void>,
+      railRuns: (promptId: string) => void,
+    ) => Promise<void>,
   ): Promise<void> {
     const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-replay-control-'));
     const updatesPath = join(directory, 'updates.jsonl');
@@ -499,12 +514,25 @@ describe('A launch or resume replay of the durable log', () => {
     const observer = createGrokSessionObserver(updatesPath, { pollIntervalMs: 60_000 });
     const binding = createPendingControlSession(acp.binding.sessionId, 'rt', () => acp.binding, observer);
     const projection = projectAgentEvents(binding);
+    const railRuns = (promptId: string) =>
+      acp.emit(
+        { type: 'adapter:native-event', adapter: 'grok', nativeType: GROK_QUEUE_CHANGED_METHOD },
+        {
+          method: GROK_QUEUE_CHANGED_METHOD,
+          params: { sessionId: acp.binding.sessionId, entries: [], runningPromptId: promptId, runningText: promptId },
+        },
+        'native-protocol',
+      );
     try {
       await observer.poll();
-      await check(projection, async (...live) => {
-        await appendFile(updatesPath, live.join(''));
-        await observer.poll();
-      });
+      await check(
+        projection,
+        async (...live) => {
+          await appendFile(updatesPath, live.join(''));
+          await observer.poll();
+        },
+        railRuns,
+      );
     } finally {
       projection.dispose();
       await binding.dispose();
@@ -560,6 +588,103 @@ describe('A launch or resume replay of the durable log', () => {
         ['p1', 'done', false],
       ]);
       expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'idle', blockers: [] });
+    });
+  });
+
+  it('holds a rail start behind a settled turn that runs on, and its own end releases it', async () => {
+    const liveWork: [name: string, work: string, ...closers: string[]][] = [
+      ['message', messageLine],
+      ['thought', thoughtLine],
+      [
+        'tool',
+        line({ sessionUpdate: 'tool_call', toolCallId: 't1', kind: 'read', status: 'in_progress' }, 'p1'),
+        line({ sessionUpdate: 'tool_call_update', toolCallId: 't1', status: 'completed' }, 'p1'),
+      ],
+    ];
+    for (const [name, work, ...closers] of liveWork) {
+      await overLog([userLine, thoughtLine], async (projection, append, railRuns) => {
+        const settled = ['turn:started p1', 'turn:completed p1'];
+        await append(work);
+        expect(monitorOf(projection.envelopes), name).toMatchObject({ status: 'working' });
+        railRuns('q1');
+        // No second start says P runs, and Q waits for P's end all the same.
+        expect(turnEvents(projection), name).toEqual(settled);
+        expect(monitorOf(projection.envelopes), name).toMatchObject({ status: 'working' });
+        await append(...closers, endLine);
+        expect(turnEvents(projection), name).toEqual([...settled, 'turn:completed p1', 'turn:started q1']);
+        expect(projection.state.activeTurn?.id, name).toBe('q1');
+        expect(monitorOf(projection.envelopes), name).toMatchObject({ status: 'working' });
+      });
+    }
+  });
+
+  it('reads a reopened turn as working between its records, with a rail start held behind it', async () => {
+    const toolOpen = line({ sessionUpdate: 'tool_call', toolCallId: 't1', kind: 'read', status: 'in_progress' }, 'p1');
+    const toolDone = line({ sessionUpdate: 'tool_call_update', toolCallId: 't1', status: 'completed' }, 'p1');
+    await overLog([userLine, thoughtLine], async (projection, append, railRuns) => {
+      const settled = ['turn:started p1', 'turn:completed p1'];
+      await append(toolOpen);
+      railRuns('q1');
+      // Grok ran a tool and goes on with the turn: no record of P holds anything open between them, and P still runs.
+      await append(toolDone);
+      expect(turnEvents(projection)).toEqual(settled);
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working' });
+      await append(endLine);
+      expect(turnEvents(projection)).toEqual([...settled, 'turn:completed p1', 'turn:started q1']);
+      expect(projection.state.activeTurn?.id).toBe('q1');
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working' });
+    });
+  });
+
+  it('starts nothing when the rail says again that a reopened turn runs', async () => {
+    await overLog([userLine, thoughtLine], async (projection, append, railRuns) => {
+      await append(thoughtLine);
+      // Grok repeats its running prompt at every queue change, as when a prompt is listed behind it.
+      railRuns('p1');
+      expect(turnEvents(projection)).toEqual(['turn:started p1', 'turn:completed p1']);
+      await append(endLine);
+      expect(turnEvents(projection)).toEqual(['turn:started p1', 'turn:completed p1', 'turn:completed p1']);
+    });
+  });
+
+  it('holds nothing behind a reopened turn that ended, whatever record of it comes late', async () => {
+    await overLog([userLine, thoughtLine], async (projection, append, railRuns) => {
+      await append(thoughtLine, endLine, thoughtLine);
+      railRuns('q1');
+      expect(turnEvents(projection).at(-1)).toBe('turn:started q1');
+    });
+  });
+
+  it('keeps a running turn when the log shows a settled turn’s last records after the rail started it', async () => {
+    const refusedLine = line({ sessionUpdate: 'turn_completed', prompt_id: 'p1', error_kind: 'rate_limit' });
+    for (const end of [endLine, refusedLine]) {
+      await overLog([userLine, thoughtLine], async (projection, append, railRuns) => {
+        const started = ['turn:started p1', 'turn:completed p1', 'turn:started q1'];
+        // Grok ended P and runs Q, and the rail says so before a poll reads P's last records.
+        railRuns('q1');
+        expect(turnEvents(projection)).toEqual(started);
+        await append(messageLine);
+        await append(end);
+        // A rail start says every earlier prompt is over. P's end was the settle's, and what it opened still closes.
+        expect(turnEvents(projection)).toEqual(started);
+        expect(projection.envelopes.some(({ event }) => event.type === 'turn:failed')).toBe(false);
+        expect(projection.state.lastAssistantMessage).toBe('done');
+        expect(projection.state.diagnostics.map(({ code }) => code)).not.toContain('turn-mismatch');
+        expect(projection.state.activeTurn?.id).toBe('q1');
+        expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working', blockers: [] });
+      });
+    }
+  });
+
+  it('holds nothing behind a bare settled turn, and its late end stays a dropped duplicate', async () => {
+    await overLog([userLine, thoughtLine], async (projection, append, railRuns) => {
+      const started = ['turn:started p1', 'turn:completed p1', 'turn:started q1'];
+      railRuns('q1');
+      expect(turnEvents(projection)).toEqual(started);
+      await append(endLine);
+      expect(turnEvents(projection)).toEqual(started);
+      expect(projection.state.activeTurn?.id).toBe('q1');
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working' });
     });
   });
 });
