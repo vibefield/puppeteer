@@ -470,7 +470,7 @@ describe('createGrokSessionObserver', () => {
     expect(received.at(2)?.phase).toBe('live');
   });
 
-  it('settles what a replay left open before any live record, and gives a settled turn one end', async () => {
+  it('settles what a replay left open before any live record, and marks a settled turn’s own end', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-replay-'));
     temporaryDirectories.push(directory);
     const path = join(directory, 'updates.jsonl');
@@ -511,11 +511,15 @@ describe('createGrokSessionObserver', () => {
         ),
       );
       await observer.poll();
-      // The log's own end of the settled turn is a duplicate.
-      expect(received.slice(replayed).map(({ event, phase }) => [event.type, phase])).toEqual([
-        ['turn:started', 'live'],
-        ['reasoning:started', 'live'],
+      // The log's own end of the settled turn is the settle's duplicate, and comes alone and marked: control-session
+      // publishes it only where a running frame started that prompt again.
+      const live = received.slice(replayed);
+      expect(live.map(({ event, phase, settledEnd }) => [event.type, phase, settledEnd === true])).toEqual([
+        ['turn:started', 'live', false],
+        ['reasoning:started', 'live', false],
+        ['turn:completed', 'live', true],
       ]);
+      expect(live.at(-1)?.event).toEqual({ type: 'turn:completed', turnId: 'P1', stopReason: 'end_turn' });
     } finally {
       observer.stop();
     }

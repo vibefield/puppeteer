@@ -841,4 +841,49 @@ describe('A launch or resume replay of the durable log', () => {
       expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working' });
     });
   });
+
+  it('drops a bare settled turn’s late end when nothing runs: the settle already ended it', async () => {
+    await overLog([userLine, thoughtLine], async (projection, append) => {
+      await append(endLine);
+      expect(turnEvents(projection)).toEqual(['turn:started p1', 'turn:completed p1']);
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'idle', blockers: [] });
+    });
+  });
+
+  it('ends a bare settled turn the rail runs again by its own end, and reads idle after it', async () => {
+    await overLog([userLine, thoughtLine], async (projection, append, railRuns) => {
+      const restarted = ['turn:started p1', 'turn:completed p1', 'turn:started p1'];
+      // Grok still runs P through the resume, and says so before any live record of P: the frame starts it again.
+      railRuns('p1');
+      expect(turnEvents(projection)).toEqual(restarted);
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working' });
+      await append(endLine);
+      expect(turnEvents(projection)).toEqual([...restarted, 'turn:completed p1']);
+      expect(projection.state.activeTurn).toBeUndefined();
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'idle', blockers: [] });
+    });
+  });
+
+  it('starts a rail start held behind a bare settled turn the rail runs again, at that turn’s own end', async () => {
+    await overLog([userLine, thoughtLine], async (projection, append, railRuns) => {
+      const restarted = ['turn:started p1', 'turn:completed p1', 'turn:started p1'];
+      railRuns('p1');
+      railRuns('q1');
+      expect(turnEvents(projection)).toEqual(restarted);
+      await append(endLine);
+      expect(turnEvents(projection)).toEqual([...restarted, 'turn:completed p1', 'turn:started q1']);
+      expect(projection.state.activeTurn?.id).toBe('q1');
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working' });
+    });
+  });
+
+  it('holds nothing behind a bare settled turn the rail ran again and that ended, whatever comes late', async () => {
+    await overLog([userLine, thoughtLine], async (projection, append, railRuns) => {
+      railRuns('p1');
+      // Its own end took P off the settled turns: a late record of it reopens nothing.
+      await append(endLine, thoughtLine);
+      railRuns('q1');
+      expect(turnEvents(projection).at(-1)).toBe('turn:started q1');
+    });
+  });
 });
