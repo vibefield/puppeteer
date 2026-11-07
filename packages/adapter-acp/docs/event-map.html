@@ -3149,7 +3149,11 @@ flowchart LR
               <td class="m">reasoning:completed<br />turn:failed</td>
               <td>activeTurn cleared</td>
               <td><span class="tag t-live">idle</span></td>
-              <td>a failed turn is visually identical to a completed one</td>
+              <td>
+                a failed turn is visually identical to a completed one. Its native event's <code>answered</code> is true
+                for the agent's own JSON-RPC error (the SDK's <code>RequestError</code>) and false for a connection that
+                closed with the request in flight: no answer, and the agent may still hold the prompt
+              </td>
             </tr>
             <tr>
               <td class="m">session/request_permission</td>

@@ -5,7 +5,7 @@ import type {
   PromptReceipt,
   PromptSubmission,
 } from '@vibefield/puppeteer-core';
-import type { PromptResponse } from '@agentclientprotocol/sdk';
+import { RequestError, type PromptResponse } from '@agentclientprotocol/sdk';
 
 export interface AcpPromptServiceOptions {
   sessionId(): string;
@@ -76,12 +76,16 @@ export class AcpPromptService {
         );
       })
       .catch((error: unknown) => {
+        const failure = { method: 'session/prompt', outcome: 'failed' };
         this.closeReasoning();
-        this.options.settleElicitations('failed', { method: 'session/prompt', outcome: 'failed' });
-        this.options.settleApprovals?.({ method: 'session/prompt', outcome: 'failed' });
+        this.options.settleElicitations('failed', failure);
+        this.options.settleApprovals?.(failure);
         this.options.publish(
           { type: 'turn:failed', turnId, error: error instanceof Error ? error.message : String(error) },
           'native-hook',
+          // A RequestError is the agent's own answer. A closing connection rejects what is in flight with a plain
+          // Error: no answer, and the agent may still hold the prompt.
+          { ...failure, answered: error instanceof RequestError },
         );
       });
     return Promise.resolve({ status: 'confirmed', turnId });

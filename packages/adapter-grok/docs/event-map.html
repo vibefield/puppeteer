@@ -1844,9 +1844,17 @@ createGrokBackend → grok agent leader
               without. That turn is on the monitor before the receipt only when the prompt runs at once with no earlier
               turn open. An id listed before the submission is never ours. <code>uncertain</code>: no such acceptance
               within the bound (<code>confirmationTimeoutMs</code>, 5 s), or the rail closed or the binding was disposed
-              first.
-              <code>rejected</code>: adapter-acp's request failed before Grok listed the prompt (its error is the
-              reason), or the rail is down (<code>grok control rail unavailable</code>). A failed attach, a closed rail
+              first, or the request failed with no answer from Grok. A closing connection rejects what is in flight
+              with a plain Error, normally before <code>transport.closed</code>, and the leader may hold that prompt, so
+              both orders answer the same. That failure is also the rail&rsquo;s close: the SDK rejects a request with
+              anything but its <code>RequestError</code> only when it closes, and writes nothing after, so the rail is
+              down from there, even when <code>transport.closed</code> comes late or never (adapter-acp hears it at the
+              child process&rsquo;s <code>close</code>). One case stays: a submission made after the SDK closed, with
+              nothing in flight, is the first to hear it, and answers <code>uncertain</code> though nothing was
+              written.
+              <code>rejected</code>: Grok answered the request with an error before it listed the prompt (adapter-acp's
+              native event says <code>answered</code>, and Grok's message is the reason), or the rail is down and
+              nothing was written (<code>grok control rail unavailable</code>). A failed attach, a closed rail
               and a disposed binding all last for the binding's life, so that refusal carries
               <code>retryable: false</code>. After Grok listed it, a request failure is never the turn's end: with the
               observer it stays a <code>control.prompt-failed</code> diagnostic, and the log's

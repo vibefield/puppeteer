@@ -35,6 +35,11 @@ function replayedByGrok(params: Params | undefined): boolean {
   return isRecord(params?._meta) && params._meta.isReplay === true;
 }
 
+/** adapter-acp's native event of a failed session/prompt: did Grok itself answer with the error? Else, no answer. */
+function answeredByGrok(nativeEvent: unknown): boolean {
+  return isRecord(nativeEvent) && nativeEvent.answered === true;
+}
+
 /**
  * The leader forwards a subagent child session's traffic to the parent's
  * controller under the child's sessionId (Grok 1.0.0 and 1.0.70).
@@ -234,12 +239,18 @@ export function createPendingControlSession(
   }
 
   /**
-   * adapter-acp's session/prompt request failed. Before Grok listed the prompt the receipt is rejected with the
-   * error. The turn itself is the durable log's: its turn_completed is the one end of a Grok turn, and a transport
-   * that closes mid-turn leaves the leader running it. So with the observer attached the failure stays a diagnostic.
+   * adapter-acp's session/prompt request failed. Before Grok listed the prompt the receipt says what came back: Grok's
+   * own error is rejected, and no answer is uncertain, because the leader may hold the prompt. A closing connection
+   * rejects what is in flight, normally before transport.closed, and both orders answer the same. No answer is also the
+   * rail's close, so the rail degrades there: every later submission is refused, unwritten, even when transport.closed
+   * comes late or never. The turn itself is the durable log's: its turn_completed is the one end of a Grok turn, and a
+   * transport that closes mid-turn leaves the leader running it. So with the observer attached the failure stays a
+   * diagnostic.
    */
-  function promptFailed(acpTurnId: string, error: string | undefined, timestamp: string): void {
-    prompts.requestFailed(acpTurnId, error);
+  function promptFailed(acpTurnId: string, error: string | undefined, answered: boolean, timestamp: string): void {
+    prompts.requestFailed(acpTurnId, error, answered);
+    // SDK 1.2.1 rejects a pending request with a non-RequestError only through close(), and then writes nothing more.
+    if (!answered) degradeControl(new Error('Grok ACP control transport closed'), 'grok-control-closed');
     if (!observer) return;
     const code = 'grok-control-prompt-failed';
     const message = error ?? 'session/prompt failed';
@@ -312,7 +323,8 @@ export function createPendingControlSession(
           prompts.bindAcpTurn(candidate.event.turnId);
         }
         if (candidate.event.type === 'turn:failed' && candidate.event.turnId) {
-          promptFailed(candidate.event.turnId, candidate.event.error, candidate.timestamp);
+          const answered = answeredByGrok(candidate.nativeEvent);
+          promptFailed(candidate.event.turnId, candidate.event.error, answered, candidate.timestamp);
         }
       }
       // The native log owns TUI conversation and lifecycle. ACP remains the

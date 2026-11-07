@@ -32,6 +32,8 @@ const RAIL_UNAVAILABLE: PromptReceipt = {
   retryable: false,
 };
 
+const RAIL_CLOSED_REASON = 'the grok control rail closed before Grok accepted the prompt';
+
 /**
  * What a Grok prompt receipt means. adapter-acp answers 'confirmed' as soon as it writes the session/prompt request,
  * before Grok has accepted anything, so this service confirms only on Grok's own acceptance: `_x.ai/queue/changed`
@@ -40,10 +42,13 @@ const RAIL_UNAVAILABLE: PromptReceipt = {
  * is never this submission's, because a person typing in the TUI races every write.
  * - No acceptance within the submission's bound (default 5 s) answers 'uncertain', as does a rail that closes or a
  *   binding disposed first (CP2-D2).
- * - A request that fails before Grok listed the prompt answers 'rejected' with its error. After Grok listed it, the
- *   turn is Grok's, and the durable log tells how it ended.
+ * - A request Grok answers with an error before it listed the prompt answers 'rejected' with that error. After Grok
+ *   listed it, the turn is Grok's, and the durable log tells how it ended.
+ * - A request with no answer is 'uncertain', whichever the rail says first. A closing connection rejects what is in
+ *   flight, normally before the rail hears the close, and the leader may hold that prompt.
  * - A closed rail or a disposed binding refuses every later submission for good (`retryable: false`), as a control
- *   that never attached does: nothing would carry it.
+ *   that never attached does: nothing would carry it. A request with no answer closes the rail as well (the
+ *   composition calls transportClosed): the SDK has closed, whether or not the rail has heard it yet.
  */
 export class GrokPromptService {
   private readonly pending: PendingPrompt[] = [];
@@ -134,18 +139,21 @@ export class GrokPromptService {
     this.queuedIds = new Set(named.map(({ id }) => id));
   }
 
-  /** adapter-acp's request failed. Before Grok listed the prompt the receipt says so; after, the turn is Grok's. */
-  requestFailed(acpTurnId: string, error: string | undefined): void {
+  /**
+   * adapter-acp's request failed. Before Grok listed the prompt the receipt says what came back: Grok's own error is
+   * 'rejected', and no answer is what a closed rail answers. After, the turn is Grok's.
+   */
+  requestFailed(acpTurnId: string, error: string | undefined, answered: boolean): void {
     const entry = this.pending.find((candidate) => candidate.acpTurnId === acpTurnId);
-    if (entry && entry.promptId === undefined) {
-      this.settle(entry, { status: 'rejected', reason: error || 'grok control request failed' });
-    }
+    if (!entry || entry.promptId !== undefined) return;
+    if (answered) this.settle(entry, { status: 'rejected', reason: error || 'grok control request failed' });
+    else this.settle(entry, { status: 'uncertain', reason: RAIL_CLOSED_REASON });
   }
 
   /** The control rail closed: waiting prompts are uncertain, and nothing more can be submitted. */
   transportClosed(): void {
     this.railClosed = true;
-    this.settleAll('the grok control rail closed before Grok accepted the prompt');
+    this.settleAll(RAIL_CLOSED_REASON);
   }
 
   dispose(): void {

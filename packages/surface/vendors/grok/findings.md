@@ -408,10 +408,18 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
     'rejected' (`grok control rail unavailable`) without reaching adapter-acp, and receipts still waiting
     answer 'uncertain'. That refusal carries `retryable: false`, as a failed attach and a disposed binding
     do: each lasts for the binding's life, and a host queue must not retry it. adapter-acp's request
-    failure decides only the receipt. Before Grok listed the prompt it answers 'rejected' with the error;
-    with the observer it stays a `control.prompt-failed` diagnostic and is never republished as the turn's
-    end. The log's `turn_completed` is the one end of a Grok turn, and the leader runs on when a
-    controller's transport closes mid-turn.
+    failure decides only the receipt. 'rejected' means Grok answered: a JSON-RPC error (the SDK's
+    `RequestError`) before Grok listed the prompt answers 'rejected' with that error. No answer is
+    'uncertain', in either order, with the closed rail's reason. The SDK's `close()` rejects every request
+    in flight with a plain Error, and the rail's `child.once('close')` fires only after stdio has closed,
+    so the rejection normally comes first (read from SDK 1.2.1's `jsonrpc.js`), and the leader may hold
+    that prompt. That failure is also the rail's close: the SDK rejects a pending request with anything
+    but a `RequestError` only through `close()`, and writes nothing after it, so the binding refuses every
+    later submission from there, even when the child outlives its stdio and the rail never hears the
+    close. A submission made after the SDK closed, with nothing in flight, is the first to hear it and
+    still answers 'uncertain'. With the observer the failure stays a `control.prompt-failed` diagnostic
+    and is never republished as the turn's end. The log's `turn_completed` is the one end of a Grok turn,
+    and the leader runs on when a controller's transport closes mid-turn.
 - **`--continue`/`resumeLatest`** skips sessions whose `summary.json` says `session_kind: "subagent"`.
 - **Live test support.**
   - The provider answers `GET /` as an origin probe kept apart from model calls.
