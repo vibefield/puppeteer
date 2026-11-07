@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { appendFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
@@ -15,12 +17,14 @@ import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
+  translateAgentEventEnvelope,
   type AdapterMonitorObservationBatch,
   type MonitorFamilyUpdate,
 } from '@vibefield/puppeteer-core/monitor-spi';
-import { projectAgentEvents } from '@vibefield/puppeteer-testing';
+import { projectAgentEvents, type TestAgentProjection } from '@vibefield/puppeteer-testing';
 import { readAcpCapture, replayAcpCapture, type CapturedAcpFrame } from '../test-support/acp-capture-replay.js';
 import type { GrokObservedEvent, GrokSessionObserver } from '../normalization/types.js';
+import { createGrokSessionObserver } from '../observation/session-observer.js';
 import { grokControlOptions } from './acp-control.js';
 import { createPendingControlSession } from './control-session.js';
 
@@ -168,6 +172,26 @@ function monitor(batches: readonly AdapterMonitorObservationBatch[]) {
     state = reduceMonitorAccumulator(state, { ...batch, kind: 'semantic', runtimeRunId: 'run', runtimeEpoch: 1 }).state;
   }
   return projectAgentMonitorState(state, { asOf: batches.at(-1)!.observedAt });
+}
+
+/** The monitor as Runtime folds a binding: its batches and its agent events, one stream. */
+function monitorOf(envelopes: readonly AgentEventEnvelope[]) {
+  const identity = { runtimeRunId: 'run', runtimeEpoch: 1 };
+  let state = createMonitorAccumulatorState({
+    ...identity,
+    providerId: 'grok',
+    executionMode: 'native-tui',
+    observationLevel: 'native-log',
+    allocatedAt: envelopes[0]!.timestamp,
+  });
+  for (const envelope of envelopes) {
+    const input =
+      envelope.event.type === 'monitor:batch'
+        ? { ...envelope.event.batch, ...identity, kind: 'semantic' as const }
+        : translateAgentEventEnvelope({ ...identity, envelope });
+    state = reduceMonitorAccumulator(state, input).state;
+  }
+  return projectAgentMonitorState(state);
 }
 
 function usageUpserts(batches: readonly AdapterMonitorObservationBatch[]): UsageUpsert[] {
@@ -372,6 +396,7 @@ describe('Grok prompt receipts and rail-started turns over the 1.0.70 captures',
       // The end retracts the root's activity, so the next start lands after it, in the same tick.
       expect(turnEvents()).toEqual(['turn:started earlier', 'turn:completed earlier', `turn:started ${promptId}`]);
       expect(projection.state.activeTurn?.id).toBe(promptId);
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working' });
       // The log reaches the prompt's own start, which the rail already published, then its end.
       log.emit(logged({ type: 'turn:started', turnId: promptId, prompt: '<redacted:text>' }, promptId));
       log.emit(logged({ type: 'turn:completed', turnId: promptId }, promptId));
@@ -427,5 +452,92 @@ describe('Grok receipts on a failing control rail', () => {
       projection.dispose();
       await binding.dispose();
     }
+  });
+});
+
+describe('A launch or resume replay of the durable log', () => {
+  const line = (update: Record<string, unknown>, promptId?: string) =>
+    JSON.stringify({
+      timestamp: 1_784_669_125,
+      method: 'session/update',
+      params: { sessionId: 'grok-session', update, ...(promptId ? { _meta: { promptId } } : {}) },
+    }) + '\n';
+  const userLine = line({ sessionUpdate: 'user_message_chunk', content: { type: 'text', text: 'hello' } });
+  const thoughtLine = line({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'plan' } }, 'p1');
+
+  /** The real observer and composition over a log, past its replay. `append` writes live records and reads them. */
+  async function overLog(
+    records: string[],
+    check: (projection: TestAgentProjection, append: (...live: string[]) => Promise<void>) => Promise<void>,
+  ): Promise<void> {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-replay-control-'));
+    const updatesPath = join(directory, 'updates.jsonl');
+    await writeFile(updatesPath, records.join(''));
+    const acp = fakeAcp();
+    const observer = createGrokSessionObserver(updatesPath, { pollIntervalMs: 60_000 });
+    const binding = createPendingControlSession(acp.binding.sessionId, 'rt', () => acp.binding, observer);
+    const projection = projectAgentEvents(binding);
+    try {
+      await observer.poll();
+      await check(projection, async (...live) => {
+        await appendFile(updatesPath, live.join(''));
+        await observer.poll();
+      });
+    } finally {
+      projection.dispose();
+      await binding.dispose();
+      await rm(directory, { recursive: true, force: true });
+    }
+  }
+
+  it('projects a session its log left mid-turn idle: the replay is a baseline, not work', async () => {
+    await overLog(
+      [
+        userLine,
+        line({ sessionUpdate: 'tool_call', toolCallId: 't1', kind: 'read', status: 'in_progress' }, 'p1'),
+        line({ sessionUpdate: 'pending_interaction', tool_call_id: 'q1', kind: 'question' }, 'p1'),
+        line({ sessionUpdate: 'subagent_spawned', subagent_id: 's1', subagent_type: 'explore' }, 'p1'),
+        line({ sessionUpdate: 'auto_compact_started' }, 'p1'),
+        thoughtLine,
+      ],
+      async (projection) => {
+        expect(projection.state.activeTurn).toBeUndefined();
+        expect(monitorOf(projection.envelopes)).toMatchObject({
+          status: 'idle',
+          blockers: [],
+          subagents: [expect.objectContaining({ id: 's1', working: false })],
+          compaction: { active: false },
+        });
+      },
+    );
+  });
+
+  it('projects a session whose log ended in a refused turn idle: what refused it has gone', async () => {
+    const refused = {
+      sessionUpdate: 'turn_completed',
+      prompt_id: 'p1',
+      stop_reason: 'end_turn',
+      error_kind: 'rate_limit',
+    };
+    await overLog([userLine, thoughtLine, line(refused)], async (projection) => {
+      expect(projection.envelopes.some(({ event }) => event.type === 'turn:failed')).toBe(false);
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'idle', blockers: [] });
+    });
+  });
+
+  it('ends a turn the leader ran on through the resume by its own record, with its own message', async () => {
+    await overLog([userLine, thoughtLine], async (projection, append) => {
+      await append(line({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'done' } }, 'p1'));
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'working' });
+      await append(line({ sessionUpdate: 'turn_completed', prompt_id: 'p1', stop_reason: 'end_turn' }));
+      const ends = projection.envelopes.flatMap(({ event, replay }) =>
+        event.type === 'turn:completed' ? [[event.turnId, event.lastAssistantMessage, replay === true]] : [],
+      );
+      expect(ends).toEqual([
+        ['p1', undefined, true],
+        ['p1', 'done', false],
+      ]);
+      expect(monitorOf(projection.envelopes)).toMatchObject({ status: 'idle', blockers: [] });
+    });
   });
 });
