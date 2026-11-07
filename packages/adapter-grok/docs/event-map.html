@@ -1088,8 +1088,8 @@
                       </tr>
                       <tr>
                         <td class="m">agent_message_chunk</td>
-                        <td>content.text, messageId</td>
-                        <td>→ conversation:assistant-message</td>
+                        <td>content.text, messageId, _meta.streamStartMs</td>
+                        <td>→ conversation:assistant-message, one per stream segment</td>
                       </tr>
                       <tr>
                         <td class="m">agent_thought_chunk</td>
@@ -1220,7 +1220,7 @@
                     <tr>
                       <td class="m">messageId</td>
                       <td>MessageId | null</td>
-                      <td>Same id groups chunks into one message</td>
+                      <td>Same id groups chunks into one message; Grok 1.0.70 sends none</td>
                     </tr>
                     <tr>
                       <td class="m">_meta</td>
@@ -1251,6 +1251,11 @@
                       <td>object (required)</td>
                       <td>Above fields</td>
                     </tr>
+                    <tr>
+                      <td class="m">_meta.streamStartMs</td>
+                      <td>number (Grok)</td>
+                      <td>When the model stream that wrote the record began; one value per stream segment</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -1258,6 +1263,14 @@
               <p class="hook-usage">
                 When observer active: taken from <strong>log</strong> only (ACP path filtered out). →
                 conversation:assistant-message
+              </p>
+              <p class="hook-usage">
+                One message per stream segment. A message record opens a new message once the current one has text
+                and either a thought or tool record of the prompt came between, or both records carry
+                <code>_meta.streamStartMs</code> and the values differ. The first keeps
+                <code>grok-assistant:&lt;promptId&gt;</code>; later ones are
+                <code>grok-assistant:&lt;promptId&gt;:&lt;n&gt;</code>. The turn's last message is its final message and
+                <code>turn:completed.lastAssistantMessage</code>; messages are never joined.
               </p>
             </div>
           </article>

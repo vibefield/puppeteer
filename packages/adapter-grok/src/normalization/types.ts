@@ -1,6 +1,12 @@
 import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibefield/puppeteer-core';
 
-export type GrokUpdateMeta = { promptId?: string; agentTimestampMs?: number; totalTokens?: number };
+export type GrokUpdateMeta = {
+  promptId?: string;
+  agentTimestampMs?: number;
+  totalTokens?: number;
+  /** When the model stream that wrote this record began: one value per stream segment of a turn. */
+  streamStartMs?: number;
+};
 
 export interface GrokUpdate {
   sessionUpdate?: string;

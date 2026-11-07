@@ -66,6 +66,8 @@ export class GrokUpdateNormalizer {
     const promptId = this.turn.correlatedPromptId(update, params._meta);
     if (update.sessionUpdate === 'agent_thought_chunk') {
       if (!promptId) return [];
+      // The prompt's next message record starts a new message.
+      this.conversation.interrupt(promptId);
       return [...this.turn.materializePendingUser(promptId), this.reasoning.progress(promptId, observed)];
     }
     if (update.sessionUpdate === 'agent_message_chunk') {
@@ -74,7 +76,7 @@ export class GrokUpdateNormalizer {
       this.turn.setActive(promptId);
       // A thought stream ends where the answer starts; a later thought starts it again.
       events.push(...this.reasoning.complete(promptId, observed));
-      events.push(this.conversation.append(update, promptId, observed));
+      events.push(this.conversation.append(update, promptId, observed, params._meta));
       return events;
     }
     if (update.sessionUpdate === 'turn_completed') {
@@ -111,7 +113,9 @@ export class GrokUpdateNormalizer {
       observed(event, promptId, event.type.startsWith('context-window:') ? 'native-log' : 'native-transcript'),
     );
     if (!promptId || !events.some(({ type }) => TOOL_EVENT_TYPES.has(type))) return normalized;
-    // A tool record ends the prompt's thought stream; a later thought starts it again.
+    // A tool record ends the prompt's thought stream and its current message: a later thought starts
+    // reasoning again, and the next message record starts a new message.
+    this.conversation.interrupt(promptId);
     return [...this.reasoning.complete(promptId, observed), ...normalized];
   }
 }
