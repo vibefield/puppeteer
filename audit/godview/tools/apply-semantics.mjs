@@ -303,11 +303,14 @@ function step(order, name, effect, source) {
 function costTail() {
   return [
     step(4, 'project-usage', 'projectAgentMonitorState publishes usage from the priced index. This is the monitor usage object, not yet field.cost.', REF.projectUsage),
-    step(5, 'derive-cost', 'deriveAgentRow copies input.cost when costOf returned an object, and omits it when the ledger has no priced total.', REF.costCopy),
-    step(6, 'replica-passthrough', 'The replica join spreads the agent row. It does not recompute cost.', REF.replica),
-    step(7, 'window-passthrough', 'window-rows spreads the row. It rewrites peer stale and drops peer profileSet. It does not recompute cost.', REF.window),
-    step(8, 'swarm-reader', 'A working observed body reads cost coverage and burn to choose a priced flame or the unpriced flame.', REF.swarmCost),
-    step(9, 'spend-reader', 'spendOf reads cost.usd unless coverage is unavailable or the total is missing.', REF.spend),
+    step(5, 'ledger-counts', 'buildUsageCostLedger increments pricedCount for each finite nonnegative costUsd, including 0. A missing or invalid costUsd increments unpricedCount when canonical, pricing, or cost is present.', pup('packages/core/src/monitor/cost.ts', 21, 40, 'buildUsageCostLedger')),
+    step(6, 'coverage-decision', 'projectUsageCost: pricedCount > 0 and unpricedCount = 0 is complete, and the USD total may be 0. pricedCount > 0 and unpricedCount > 0 is partial. pricedCount = 0 omits costUsd and sets coverage unavailable.', pup('packages/core/src/monitor/cost.ts', 59, 101, 'projectUsageCost')),
+    step(7, 'history-aggregate', 'historyOf sums defined costUsd across runs before costOf. A pricedCount of 0 leaves history.total undefined.', pup('packages/monitor/src/backend/usage-ledger.ts', 62, 82, 'historyOf')),
+    step(8, 'derive-cost', 'deriveAgentRow copies input.cost when costOf returned an object, including a USD total of 0. It omits cost when history.total is undefined.', REF.costCopy),
+    step(9, 'replica-passthrough', 'The replica join spreads the agent row. It does not recompute cost.', REF.replica),
+    step(10, 'window-passthrough', 'window-rows spreads the row. It rewrites peer stale and drops peer profileSet. It does not recompute cost.', REF.window),
+    step(11, 'swarm-reader', 'A working observed body reads cost coverage and burn to choose a priced flame or the unpriced flame.', REF.swarmCost),
+    step(12, 'spend-reader', 'spendOf reads cost.usd unless coverage is unavailable or the total is missing.', REF.spend),
   ];
 }
 
@@ -348,11 +351,18 @@ flowchart TD
   signal --> price["monitor-service.ts:418-425 priceUsageUpdates before reduce"]
   price --> reduce["reduce.ts:1049-1073 copies the priced costUsd"]
   reduce --> project["project.ts:407-417 publishes usage"]
-  project --> costOf["backend.ts:197-205 costOf"]
-  costOf --> complete["priced and unpriced zero: complete"]
-  costOf --> partial["priced and unpriced both positive: partial"]
-  costOf --> missing["no priced total: omit field.cost"]
-  costOf --> derive["derive.ts:277 copies cost or omits it"]
+  project --> counts["cost.ts:21-40 buildUsageCostLedger: finite nonnegative costUsd, including 0, increments pricedCount; otherwise unpricedCount"]
+  counts --> decide["cost.ts:59-101 projectUsageCost"]
+  decide --> complete["pricedCount > 0 and unpricedCount = 0: costCoverage complete. USD total may be 0"]
+  decide --> partial["pricedCount > 0 and unpricedCount > 0: costCoverage partial"]
+  decide --> none["pricedCount = 0: costUsd omitted and costCoverage unavailable"]
+  complete --> agg["usage-ledger.ts:62-82 historyOf sums defined costUsd before costOf"]
+  partial --> agg
+  none --> agg
+  agg --> costOf["backend.ts:197-205 costOf after ledger.observe at backend.ts:410-435"]
+  costOf --> missing["pricedCount = 0 leaves history.total undefined: omit field.cost, state.cost_missing"]
+  costOf --> kept["pricedCount > 0: row keeps usd, which may be 0, and complete or partial coverage"]
+  kept --> derive["derive.ts:277 copies cost or omits it"]
   derive --> replica["replica.ts:337-372 spreads the row; cost unchanged"]
   replica --> window["window-rows.ts:116-134 does not recompute cost"]
   window --> swarm["bubble-model.ts:469-477 priced flame or unpriced flame"]

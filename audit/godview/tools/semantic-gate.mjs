@@ -148,9 +148,36 @@ for (const row of filled.rowJoins) {
   if (row.fieldId === 'field.status' && !graph.includes('window-rows.ts')) {
     failures.push(`${record.recordId} status graph omits window-rows`);
   }
-  if (row.fieldId === 'field.cost.usd' && ['adapter.claude', 'adapter.codex'].includes(row.adapterId)) {
-    for (const needle of ['project.ts', 'derive.ts', 'replica.ts', 'window-rows.ts', 'bubble-model.ts', 'spend-series.ts']) {
+  if (row.fieldId.startsWith('field.cost') && ['adapter.claude', 'adapter.codex'].includes(row.adapterId)) {
+    for (const needle of [
+      'pricedCount > 0 and unpricedCount = 0',
+      'pricedCount > 0 and unpricedCount > 0',
+      'pricedCount = 0',
+      'cost.ts:21-40',
+      'cost.ts:59-101',
+      'usage-ledger.ts:62-82',
+      'project.ts',
+      'derive.ts',
+      'replica.ts',
+      'window-rows.ts',
+      'bubble-model.ts',
+      'spend-series.ts',
+    ]) {
       if (!graph.includes(needle)) failures.push(`${record.recordId} cost graph omits ${needle}`);
+    }
+    const counts = graph.indexOf('cost.ts:21-40');
+    const decision = graph.indexOf('cost.ts:59-101');
+    const aggregate = graph.indexOf('usage-ledger.ts:62-82');
+    const costOf = graph.indexOf('backend.ts:197-205');
+    if (!(counts >= 0 && counts < decision && decision < aggregate && aggregate < costOf)) {
+      failures.push(`${record.recordId} ledger decision is not before costOf`);
+    }
+    if (/unpriced zero|both positive|no priced total/u.test(graph)) {
+      failures.push(`${record.recordId} cost graph confuses a zero USD total with unpriced count`);
+    }
+    const decisionStep = record.transforms.find((item) => item.name === 'coverage-decision');
+    if (!decisionStep || !/pricedCount > 0 and unpricedCount = 0/.test(decisionStep.effect) || !/pricedCount = 0/.test(decisionStep.effect)) {
+      failures.push(`${record.recordId} coverage transform lacks the count predicate`);
     }
   }
   if (row.fieldId.startsWith('field.cost') && ['adapter.acp', 'adapter.antigravity', 'adapter.copilot'].includes(row.adapterId)) {
@@ -158,5 +185,10 @@ for (const row of filled.rowJoins) {
   }
 }
 
+const pricedGraph = readFileSync(join(root, 'audit/godview/plan/graphs/cost-priced.mmd'), 'utf8');
+for (const needle of ['pricedCount > 0 and unpricedCount = 0', 'pricedCount > 0 and unpricedCount > 0', 'pricedCount = 0', 'cost.ts:21-40', 'usage-ledger.ts:62-82']) {
+  if (!pricedGraph.includes(needle)) failures.push(`cost-priced.mmd omits ${needle}`);
+}
+if (/unpriced zero|both positive|no priced total/u.test(pricedGraph)) failures.push('cost-priced.mmd confuses a zero USD total with unpriced count');
 console.log(JSON.stringify({ contradictions: failures.length, failures: failures.slice(0, 20) }, null, 2));
 process.exit(failures.length === 0 ? 0 : 1);

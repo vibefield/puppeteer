@@ -372,9 +372,9 @@ function mermaid(adapter, fieldId, list) {
     lines.push('  n4 --> terminal["terminal with window activity: recompute"]');
   }
   if (fam === 'cost' && P.has(adapter)) {
-    lines.push('  n3 --> complete["priced and unpriced zero: coverage complete"]');
-    lines.push('  n3 --> partial["priced and unpriced both positive: coverage partial"]');
-    lines.push('  n3 --> missing["no priced total: omit field.cost"]');
+    lines.push('  n3 --> complete["pricedCount > 0 and unpricedCount = 0: costCoverage complete. USD total may be 0"]');
+    lines.push('  n3 --> partial["pricedCount > 0 and unpricedCount > 0: costCoverage partial"]');
+    lines.push('  n3 --> missing["pricedCount = 0: omit field.cost, state.cost_missing"]');
     lines.push('  complete --> flames["working observed body: flame tiers are conditional"]');
     lines.push('  partial --> flames');
     lines.push('  missing --> unpriced["working observed body: burn_unpriced"]');
