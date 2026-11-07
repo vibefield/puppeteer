@@ -19,7 +19,7 @@
   "producer": {
     "kind": "contract",
     "name": "MonitorSpawnDevice",
-    "ingestedFrom": "not adapter-produced; type leaf in the model contract, mapping pending"
+    "ingestedFrom": "SDK contract leaf, not a row field; PENDING DOWNSTREAM MAPPING does not apply to a MonitorAgentRow property"
   },
   "transforms": [
     {
@@ -52,7 +52,7 @@
   "applicability": {
     "states": "model-axes",
     "views": "all-monitor-views",
-    "notes": " field.contract.MonitorSpawnDevice.profiles is not adapter-produced by acp. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. No upstream adapter literal was found. Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "SDK CONTRACT LEAF field.contract.MonitorSpawnDevice.profiles. NOT A ROW FIELD. Do not join this id to a MonitorAgentRow property such as field.cost or field.tokens. Canonical row ids do not use the field.contract prefix. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns the step from adapter output to the row. This audit does not perform it.   field.contract.MonitorSpawnDevice.profiles is not adapter-produced by acp. The adapter does not write the row property. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. No upstream adapter literal was found. Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -71,6 +71,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": " field.contract.MonitorSpawnDevice.profiles is not adapter-produced by acp. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. No upstream adapter literal was found. Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "SDK CONTRACT LEAF field.contract.MonitorSpawnDevice.profiles. NOT A ROW FIELD. Do not join this id to a MonitorAgentRow property such as field.cost or field.tokens. Canonical row ids do not use the field.contract prefix. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns the step from adapter output to the row. This audit does not perform it.   field.contract.MonitorSpawnDevice.profiles is not adapter-produced by acp. The adapter does not write the row property. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. No upstream adapter literal was found. Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
   }
 }

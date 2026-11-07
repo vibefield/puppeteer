@@ -477,7 +477,20 @@ put('antigravity', 'burn', up([
   steps: ['no samples', 'no rate'],
   notes: 'field.tokens.perMinute is not computed here.',
 }));
-put('antigravity', 'cost', N.antigravity.tokens);
+put('antigravity', 'cost', up([
+  span('packages/adapter-antigravity/src/normalization/monitor-capabilities.ts', 15, 23, 'usage capability'),
+  span('packages/adapter-antigravity/src/normalization/pipeline.ts', 21, 36, 'transcript normalizer'),
+], {
+  support: 'not-adapter-produced',
+  classifications: ['not-adapter-produced', 'absent'],
+  declaration_mismatch: false,
+  transforms: ['No costUsd, cost_usd, or cost property is read or written. A repository search of this adapter finds no such symbol.'],
+  emitted_as: { channel: 'none', row_property: 'not written', property: 'costUsd' },
+  states_present: [{ id: 'adapter.antigravity.upstream.costUsd.absent', value: 'absent', when: 'adapter sources' }],
+  anchors: [DERIVE],
+  steps: ['no costUsd symbol', 'no cost event'],
+  notes: 'costUsd is absent. No burn rate is written either. Declared usage unsupported matches the search. That does not create state.cost_missing and does not forbid a later ledger.',
+}));
 put('antigravity', 'project', up([
   span('packages/adapter-antigravity/src/driver.ts', 162, 165, 'environment:updated currentCwd'),
   span('packages/adapter-antigravity/src/driver.ts', 55, 55, '--project argv'),
@@ -1225,7 +1238,20 @@ put('copilot', 'burn', up([
   steps: ['no usage samples', 'no rate'],
   notes: 'field.tokens.perMinute is not an adapter field.',
 }));
-put('copilot', 'cost', N.copilot.tokens);
+put('copilot', 'cost', up([
+  span('packages/adapter-copilot/src/normalization/monitor-capabilities.ts', 15, 23, 'usage capability'),
+  span('packages/adapter-copilot/src/normalization/compaction.ts', 4, 25, 'compaction tokens are context, not cost'),
+], {
+  support: 'not-adapter-produced',
+  classifications: ['not-adapter-produced', 'absent'],
+  declaration_mismatch: false,
+  transforms: ['No costUsd or cost_usd symbol exists in this adapter. Compaction currentTokens and tokenLimit are context occupancy.'],
+  emitted_as: { channel: 'none', row_property: 'not written', property: 'costUsd' },
+  states_present: [{ id: 'adapter.copilot.upstream.costUsd.absent', value: 'absent', when: 'adapter sources' }],
+  anchors: [DERIVE],
+  steps: ['no costUsd symbol', 'context tokens are not cost'],
+  notes: 'costUsd is absent. No burn rate is written. Declared usage unsupported matches the search. That does not create state.cost_missing and does not forbid a later ledger.',
+}));
 
 put('copilot', 'project', up([
   span('packages/adapter-copilot/src/normalization/environment.ts', 4, 18, 'normalizeCopilotEnvironment'),
@@ -1380,16 +1406,30 @@ function envelope(adapter, field) {
     });
   }
   const fieldPath = field.id.slice('field.'.length);
+  const rowField = audit.fields.some((item) => item.id === field.id);
   const states = relatedStates(field);
   const views = viewsOf(field);
   const sinceNote =
     field.id === 'field.activity.since' || field.id === 'field.statusSince'
-      ? 'No adapter code writes activity.since or statusSince. Batch observedAt and event envelope timestamps are different clocks. Mapping is pending.'
+      ? 'No adapter code writes activity.since or statusSince. Batch observedAt and event envelope timestamps are different clocks.'
+      : '';
+  const classNote = rowField
+    ? `ROW FIELD ${field.id}. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf.`
+    : `SDK CONTRACT LEAF ${field.id}. NOT A ROW FIELD. Do not join this id to a MonitorAgentRow property such as field.cost or field.tokens. Canonical row ids do not use the field.contract prefix.`;
+  const costNote =
+    field.id.startsWith('field.cost') ||
+    field.id === 'field.tokens.perMinute' ||
+    field.id.startsWith('field.contract.MonitorCost') ||
+    field.id === 'field.contract.MonitorTokens.perMinute'
+      ? 'This record does not emit state.cost_complete, state.cost_partial, state.cost_unavailable, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, or state.burn_unpriced. Those predicates stay downstream. PENDING DOWNSTREAM MAPPING.'
       : '';
   const trace = [
+    classNote,
+    'PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns the step from adapter output to the row. This audit does not perform it.',
     sinceNote,
+    costNote,
     upstream?.notes ?? `${field.id} is not adapter-produced by ${adapter}.`,
-    'The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2.',
+    'The adapter does not write the row property.',
     'This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run.',
     declared
       ? `Declaration ${declared.declared_support ?? 'undeclared'} from ${declared.declared_source ?? 'no capability cell'}. ${declared.meaning ?? ''}`
@@ -1427,16 +1467,16 @@ function envelope(adapter, field) {
         ? {
             kind: 'contract',
             name: field.contract ?? 'model contract leaf',
-            ingestedFrom: 'not adapter-produced; type leaf in the model contract, mapping pending',
+            ingestedFrom: 'SDK contract leaf, not a row field; PENDING DOWNSTREAM MAPPING does not apply to a MonitorAgentRow property',
           }
         : {
             kind: 'unknown',
             name: 'not-adapter-produced',
-            ingestedFrom: 'not adapter-produced; row value, if any, is downstream of this adapter and the mapping is pending',
+            ingestedFrom: 'not adapter-produced; PENDING DOWNSTREAM MAPPING into the row',
           },
     transforms,
     merge: {
-      strategy: produced ? 'unknown' : 'none',
+      strategy: rowField ? 'unknown' : 'none',
       defaults: [],
     },
     transport: produced
@@ -1509,7 +1549,7 @@ const fragment = {
       id: `adapter.${adapter}`,
       status: 'satisfied',
       evidence: [`evidence/${adapter}/`],
-      notes: `${rows.length} provenance records at Puppeteer 748d015 only, newer than shipped 0.3.3, which was not audited. adapterEmittable yes: ${rows.filter((item) => item.adapterEmittable === 'yes').length}. not adapter-produced or absent/unsupported/unknown: ${rows.filter((item) => item.adapterEmittable === 'no').length}. Declaration mismatches: ${mismatches.join(', ') || 'none'}. Row mapping remains pending for GV-AUDIT2. States are joined on each record applicability.states.`,
+      notes: `74 canonical row-field records plus 86 SDK contract-leaf records (160 files). Only field ids without the field.contract prefix are row fields. Contract leaves must not be joined as row fields. Puppeteer 748d015 only, newer than shipped 0.3.3, which was not audited. adapterEmittable yes: ${rows.filter((item) => item.adapterEmittable === 'yes').length}. PENDING DOWNSTREAM MAPPING on every row field. Declaration mismatches: ${mismatches.join(', ') || 'none'}.`,
     };
   }),
 };

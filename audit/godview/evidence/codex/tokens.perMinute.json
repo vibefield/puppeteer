@@ -75,7 +75,7 @@
   "producer": {
     "kind": "unknown",
     "name": "not-adapter-produced",
-    "ingestedFrom": "not adapter-produced; row value, if any, is downstream of this adapter and the mapping is pending"
+    "ingestedFrom": "not adapter-produced; PENDING DOWNSTREAM MAPPING into the row"
   },
   "transforms": [
     {
@@ -93,7 +93,7 @@
     }
   ],
   "merge": {
-    "strategy": "none",
+    "strategy": "unknown",
     "defaults": []
   },
   "transport": {
@@ -118,7 +118,7 @@
       "state.burn_flames_4"
     ],
     "views": "all-monitor-views",
-    "notes": " An adapter unit test observes a projected burnRatePerMin, including 0 after a downward child correction. That number is the shared projector, not an adapter field. field.tokens.perMinute stays pending. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from codex-thread-token-usage. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.codex.upstream.burn.absent=\"absent\" (adapter usage value); adapter.codex.upstream.burn.test-projection=\"not an emission\" (monitor.test.ts reads project().usage.burnRatePerMin) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "ROW FIELD field.tokens.perMinute. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns the step from adapter output to the row. This audit does not perform it.  This record does not emit state.cost_complete, state.cost_partial, state.cost_unavailable, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, or state.burn_unpriced. Those predicates stay downstream. PENDING DOWNSTREAM MAPPING. An adapter unit test observes a projected burnRatePerMin, including 0 after a downward child correction. That number is the shared projector, not an adapter field. field.tokens.perMinute stays pending. The adapter does not write the row property. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from codex-thread-token-usage. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.codex.upstream.burn.absent=\"absent\" (adapter usage value); adapter.codex.upstream.burn.test-projection=\"not an emission\" (monitor.test.ts reads project().usage.burnRatePerMin) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
   },
   "absence": {
     "onMissing": "record-absent",
@@ -137,6 +137,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": " An adapter unit test observes a projected burnRatePerMin, including 0 after a downward child correction. That number is the shared projector, not an adapter field. field.tokens.perMinute stays pending. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from codex-thread-token-usage. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.codex.upstream.burn.absent=\"absent\" (adapter usage value); adapter.codex.upstream.burn.test-projection=\"not an emission\" (monitor.test.ts reads project().usage.burnRatePerMin) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "ROW FIELD field.tokens.perMinute. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns the step from adapter output to the row. This audit does not perform it.  This record does not emit state.cost_complete, state.cost_partial, state.cost_unavailable, state.cost_missing, state.burn_flames_0, state.burn_flames_1, state.burn_flames_2, state.burn_flames_3, state.burn_flames_4, or state.burn_unpriced. Those predicates stay downstream. PENDING DOWNSTREAM MAPPING. An adapter unit test observes a projected burnRatePerMin, including 0 after a downward child correction. That number is the shared projector, not an adapter field. field.tokens.perMinute stays pending. The adapter does not write the row property. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. Declaration supported from codex-thread-token-usage. declaration only; supported does not guarantee availability/value; degraded is not unreachable A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. Upstream states: adapter.codex.upstream.burn.absent=\"absent\" (adapter usage value); adapter.codex.upstream.burn.test-projection=\"not an emission\" (monitor.test.ts reads project().usage.burnRatePerMin) Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
   }
 }

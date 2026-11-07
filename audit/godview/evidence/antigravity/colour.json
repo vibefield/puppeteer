@@ -43,7 +43,7 @@
   "producer": {
     "kind": "unknown",
     "name": "not-adapter-produced",
-    "ingestedFrom": "not adapter-produced; row value, if any, is downstream of this adapter and the mapping is pending"
+    "ingestedFrom": "not adapter-produced; PENDING DOWNSTREAM MAPPING into the row"
   },
   "transforms": [
     {
@@ -61,7 +61,7 @@
     }
   ],
   "merge": {
-    "strategy": "none",
+    "strategy": "unknown",
     "defaults": []
   },
   "transport": {
@@ -88,7 +88,7 @@
       "view.spend",
       "view.timeline"
     ],
-    "notes": " field.colour is not adapter-produced by antigravity. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. No upstream adapter literal was found. Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "ROW FIELD field.colour. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns the step from adapter output to the row. This audit does not perform it.   field.colour is not adapter-produced by antigravity. The adapter does not write the row property. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. No upstream adapter literal was found. Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
   },
   "absence": {
     "onMissing": "record-unknown",
@@ -107,6 +107,6 @@
   "verification": {
     "status": "source-read",
     "owner": "GV-AUDIT3",
-    "notes": " field.colour is not adapter-produced by antigravity. The contract row is not written by the adapter. Mapping into MonitorAgentRow is pending and owned by GV-AUDIT2. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. No upstream adapter literal was found. Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
+    "notes": "ROW FIELD field.colour. PENDING DOWNSTREAM MAPPING into MonitorAgentRow. This is one of 74 canonical row fields. It is not an SDK contract leaf. PENDING DOWNSTREAM MAPPING: GV-AUDIT2 owns the step from adapter output to the row. This audit does not perform it.   field.colour is not adapter-produced by antigravity. The adapter does not write the row property. This trace is Puppeteer 748d015a7e393112e0a91dad80111fdf5abe6583 only. It is newer than shipped Vibefield 0.3.3 and does not describe that install. Package comparison was not re-run. No capability cell for this field. A missing or unsupported adapter signal does not rule out the row value from host, runtime, or another producer. No upstream adapter literal was found. Continuation: MonitorService.consume then core reduce and project, then deriveAgentRow. Vibefield AgentView and window-rows are not traced."
   }
 }
