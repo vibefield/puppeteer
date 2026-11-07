@@ -96,6 +96,11 @@ export class GrokMonitorEvidence {
   private readonly runningPrompts = new Map<string, string>();
   /** Per child session: the prompt whose turn is projected as the subagent's activity. */
   private readonly childTurns = new Map<string, string>();
+  /** Open work only a replay showed, from either rail. Anything live takes its item off. */
+  private readonly replayInteractions = new Set<string>();
+  /** Subagent id → child session id. */
+  private readonly replayActors = new Map<string, string | undefined>();
+  private replayCompaction = false;
 
   constructor(private readonly options: GrokMonitorEvidenceOptions) {
     this.epoch = options.epoch ?? `grok:${randomUUID()}`;
@@ -375,6 +380,7 @@ export class GrokMonitorEvidence {
     } else if (event.type === 'context-window:invalidated') {
       updates.push(retract('context', 'root'));
       if (event.reason === 'compacted') {
+        this.replayCompaction = false;
         updates.push(upsert('compaction', 'root', { kind: 'compaction', active: false, trigger: 'signals-counter' }));
         quality = 'strong';
       }
@@ -444,6 +450,8 @@ export class GrokMonitorEvidence {
       const interactionId = str(update.tool_call_id) ?? str(update.toolCallId);
       const nativeKind = str(update.kind);
       if (interactionId) {
+        if (phase === 'bootstrap') this.replayInteractions.add(interactionId);
+        else this.replayInteractions.delete(interactionId);
         updates.push(
           upsert('status', `interaction:${interactionId}`, {
             kind: 'interaction',
@@ -459,6 +467,7 @@ export class GrokMonitorEvidence {
     } else if (kind === 'interaction_resolved' && update) {
       const interactionId = str(update.tool_call_id) ?? str(update.toolCallId);
       if (interactionId) {
+        this.replayInteractions.delete(interactionId);
         updates.push(
           upsert('status', `interaction:${interactionId}`, {
             kind: 'interaction',
@@ -478,6 +487,7 @@ export class GrokMonitorEvidence {
         this.childTypes.set(childId, str(update.subagent_type));
         const childSessionId = str(update.child_session_id);
         if (childSessionId) this.childSessions.set(childSessionId, childId);
+        this.noteActor(childId, childSessionId, phase);
         const actor = this.actor(childId, childSessionId);
         updates.push(upsert('delegation', `actor:${actor.runKey}`, { kind: 'actor', actor, state: 'active' }));
         const modelId = str(update.model);
@@ -497,6 +507,7 @@ export class GrokMonitorEvidence {
     } else if (kind === 'subagent_progress' && update) {
       const childId = str(update.subagent_id) ?? str(update.child_session_id);
       if (childId) {
+        this.noteActor(childId, str(update.child_session_id), phase);
         const actor = this.actor(childId, str(update.child_session_id));
         updates.push(
           upsert('delegation', `actor:${actor.runKey}`, {
@@ -512,6 +523,7 @@ export class GrokMonitorEvidence {
     } else if (kind === 'subagent_finished' && update) {
       const childId = str(update.subagent_id) ?? str(update.child_session_id);
       if (childId) {
+        this.replayActors.delete(childId);
         const actor = this.actor(childId, str(update.child_session_id));
         updates.push(upsert('delegation', `actor:${actor.runKey}`, { kind: 'actor', actor, state: 'stopped' }));
       }
@@ -520,6 +532,7 @@ export class GrokMonitorEvidence {
     }
 
     if (kind === 'auto_compact_started' && update) {
+      this.replayCompaction = phase === 'bootstrap';
       updates.push(upsert('compaction', 'root', { kind: 'compaction', active: true, trigger: 'auto' }));
       const usedTokens = finiteNonNegative(update.tokens_used ?? update.tokensUsed);
       const capacityTokens = finiteNonNegative(update.context_window ?? update.contextWindow);
@@ -537,6 +550,7 @@ export class GrokMonitorEvidence {
       quality = 'unknown';
       provisional = true;
     } else if (kind === 'auto_compact_completed' && update) {
+      this.replayCompaction = false;
       updates.push(upsert('compaction', 'root', { kind: 'compaction', active: false, trigger: 'auto' }));
       const usedTokens = finiteNonNegative(update.tokens_after ?? update.tokensAfter);
       if (usedTokens !== undefined && this.contextCapacity !== undefined) {
@@ -554,6 +568,7 @@ export class GrokMonitorEvidence {
       quality = 'unknown';
       provisional = true;
     } else if (kind === 'auto_compact_failed' || kind === 'auto_compact_cancelled') {
+      this.replayCompaction = false;
       updates.push(
         upsert('compaction', 'root', {
           kind: 'compaction',
@@ -564,6 +579,7 @@ export class GrokMonitorEvidence {
       quality = 'unknown';
       provisional = true;
     } else if (kind === 'compaction_checkpoint') {
+      this.replayCompaction = false;
       updates.push(upsert('compaction', 'root', { kind: 'compaction', active: false, trigger: 'checkpoint' }));
       quality = 'unknown';
       provisional = true;
@@ -588,6 +604,38 @@ export class GrokMonitorEvidence {
       quality,
       provisional,
       evidence: this.evidence(evidenceId),
+    });
+  }
+
+  private noteActor(subagentId: string, childSessionId: string | undefined, phase: 'bootstrap' | 'live'): void {
+    if (phase === 'bootstrap') this.replayActors.set(subagentId, childSessionId ?? this.replayActors.get(subagentId));
+    else this.replayActors.delete(subagentId);
+  }
+
+  /**
+   * The replay is over: what only it showed open belongs to a process that is gone. Nobody can answer its interactions,
+   * and its actors and compaction stopped with it. Null when it left nothing open.
+   */
+  settleReplayBatch(observedAt: string): AdapterMonitorObservationBatch | null {
+    const updates: MonitorFamilyUpdate[] = [];
+    for (const interactionId of this.replayInteractions) {
+      updates.push(retract('status', `interaction:${interactionId}`));
+    }
+    for (const [subagentId, childSessionId] of this.replayActors) {
+      const actor = this.actor(subagentId, childSessionId);
+      updates.push(upsert('delegation', `actor:${actor.runKey}`, { kind: 'actor', actor, state: 'stopped' }));
+    }
+    if (this.replayCompaction) {
+      updates.push(upsert('compaction', 'root', { kind: 'compaction', active: false, trigger: 'cancelled' }));
+    }
+    this.replayInteractions.clear();
+    this.replayActors.clear();
+    this.replayCompaction = false;
+    if (updates.length === 0) return null;
+    return this.batch('replay-settled', observedAt, updates, {
+      phase: 'bootstrap',
+      quality: 'derived',
+      evidence: this.evidence('replay-settled'),
     });
   }
 

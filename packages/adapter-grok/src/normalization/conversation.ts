@@ -59,6 +59,11 @@ export class GrokConversationNormalizer {
     this.segments.delete(promptId);
     return { text: segment.text, events: [assistantMessage(segment, promptId, true, observed)] };
   }
+
+  /** A settled replay's unfinished messages are kept by no turn. */
+  clear(): void {
+    this.segments.clear();
+  }
 }
 
 function opensSegment(segment: GrokAssistantSegment, streamStartMs: number | undefined): boolean {

@@ -1728,9 +1728,9 @@
               </div>
               <h5>Puppeteer</h5>
               <p class="hook-usage">
-                → reasoning:completed (only if a thought is still open) + turn:completed; a non-empty
+                → reasoning:completed (only if a thought is still open) + turn:completed; a live, non-empty
                 <code>error_kind</code> → turn:failed {error: error_kind} instead, whatever <code>stop_reason</code>
-                says (the final message stays)
+                says (the final message stays). A replayed one completes the turn: what it refused has gone
               </p>
             </div>
           </article>
@@ -1757,6 +1757,7 @@ createGrokBackend → grok agent leader
   → own-session live _x.ai/queue/changed runningPromptId ⇒ turn:started (native prompt id), held until the log
       ends any earlier turn; the receipt follows the frame
   → log owns turns/tools/messages/lifecycle (a turn either rail starts is published once)
+  → log replay ⇒ bootstrap up to the first stat's size, its open work settled, then replay.settled
   → observationLevel: native-log</pre>
           <h5>Grok 1.0.70 notes</h5>
           <ul>
@@ -1801,6 +1802,23 @@ createGrokBackend → grok agent leader
               is keyed by actor, not by turn, so the earlier turn's end would retract the new turn's: a running frame
               waits for the log's end of the turn before it, and the new turn starts in the same tick, so the row
               never reads idle between them.
+            </li>
+            <li>
+              A launch or resume replay is a baseline, not work. A record whose first byte lies before the log&rsquo;s
+              size at the first stat is replay, and any other is live, so a record Grok appends during a long replay
+              is never settled. Before the first live record the observer ends what the log left open with derived
+              closers: <code>tool:failed</code> per open tool, <code>delegation:subagent-stopped</code> per open
+              subagent, <code>reasoning:completed</code>, and <code>turn:completed</code> with no stop reason or
+              message per open turn, never <code>turn:failed</code>, which would hold a resumed row&rsquo;s queue. A
+              replayed <code>turn_completed</code> that names an <code>error_kind</code> completes its turn for the
+              same reason, with its stop reason and message. The leader outlives a pane, so a resume can come in
+              mid-turn: a settled turn whose next thought, message or tool record is live is still running, and its
+              own <code>turn_completed</code> ends it. A bare one, with no live work before it, is the settle&rsquo;s
+              duplicate, so a late end never reaches a newer turn. The prompt the replay left waiting is dropped. Then
+              <code>replay.settled</code> settles the monitor: the pending interactions, actors and compaction only a
+              replay showed, from either rail, including
+              <code>session/load</code>&rsquo;s. Only an attach keeps open work. Grok offers none yet; a future attach
+              skips the settle, as Claude&rsquo;s <code>attached</code> does.
             </li>
             <li>
               What a receipt means. <code>confirmed</code>: Grok listed the prompt under a new id with the submitted
@@ -1869,7 +1887,7 @@ createGrokBackend → grok agent leader
                 </tr>
                 <tr>
                   <td class="m">turn_completed</td>
-                  <td class="m">turn:completed · turn:failed (non-empty error_kind)</td>
+                  <td class="m">turn:completed · turn:failed (live, non-empty error_kind)</td>
                 </tr>
                 <tr>
                   <td class="m">token / compaction signals</td>

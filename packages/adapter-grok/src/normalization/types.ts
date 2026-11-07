@@ -1,5 +1,8 @@
 import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibefield/puppeteer-core';
 
+/** The observer's marker: a launch or resume replay ended, and what it left open is settled. */
+export const GROK_REPLAY_SETTLED = 'replay.settled';
+
 export type GrokUpdateMeta = {
   promptId?: string;
   agentTimestampMs?: number;

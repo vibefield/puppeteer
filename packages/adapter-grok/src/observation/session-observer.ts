@@ -4,6 +4,7 @@ import { open, readdir, readFile, stat } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { GrokUpdateNormalizer } from '../normalization/pipeline.js';
 import {
+  GROK_REPLAY_SETTLED,
   grokRecordTimestamp,
   type GrokObservedEvent,
   type GrokSessionObserver,
@@ -64,12 +65,14 @@ export function createGrokSessionObserver(
   let stopped = false;
   let polling: Promise<void> | undefined;
   let bootstrap = true;
+  /** The log's size at the first stat: a record whose first byte lies before it is replay, and any other is live. */
   let bootstrapTargetOffset: number | undefined;
-  let bootstrapUpdatesComplete = false;
   const readChunkBytes = Math.max(1, Math.floor(options.readChunkBytes ?? 64 * 1024));
   const maxRecordBytes = Math.max(readChunkBytes, Math.floor(options.maxRecordBytes ?? 1024 * 1024));
   const maxBytesPerPoll = Math.max(readChunkBytes, Math.floor(options.maxBytesPerPoll ?? 4 * 1024 * 1024));
   let pendingUpdate = Buffer.alloc(0);
+  /** The file offset of the first byte of the record being read. */
+  let updateStartOffset = 0;
   let discardingOversizedUpdate = false;
 
   const report = (error: unknown): void => {
@@ -97,11 +100,31 @@ export function createGrokSessionObserver(
     report(new Error(`Grok update record exceeds the ${maxRecordBytes}-byte safety limit`));
   };
 
-  const normalizeUpdateLine = (line: Buffer): void => {
+  /**
+   * A replay is a baseline: a launch or resume process is not in the middle of what the log last shows. What it left
+   * open ends here, ahead of any live record, and a marker says so. A log with nothing to replay has neither.
+   */
+  const endReplay = (): void => {
+    if (!bootstrap) return;
+    if (bootstrapTargetOffset) {
+      for (const event of normalizer.settleReplay()) emit({ ...event, phase: 'bootstrap' });
+      emit({
+        event: { type: 'adapter:native-event', adapter: 'grok', nativeType: GROK_REPLAY_SETTLED },
+        phase: 'bootstrap',
+        source: 'runtime',
+        confidence: 'derived',
+        nativeEvent: { code: 'grok-replay-settled' },
+      });
+    }
+    bootstrap = false;
+  };
+
+  const normalizeUpdateLine = (line: Buffer, startOffset: number): void => {
     if (line.length === 0) return;
+    if (bootstrapTargetOffset !== undefined && startOffset >= bootstrapTargetOffset) endReplay();
     try {
       const record = JSON.parse(line.toString('utf8')) as GrokUpdateRecord;
-      for (const event of normalizer.normalize(record)) {
+      for (const event of normalizer.normalize(record, { replay: bootstrap })) {
         emit({ ...event, phase: bootstrap ? 'bootstrap' : 'live' });
       }
       // Grok writes signals.json at turn boundaries. During a long tool loop,
@@ -137,8 +160,8 @@ export function createGrokSessionObserver(
     }
   };
 
-  /** Consume arbitrary file chunks while retaining at most one bounded partial line. */
-  const consumeUpdateBytes = (chunk: Buffer): void => {
+  /** Consume arbitrary file chunks, read from `chunkOffset`, while retaining at most one bounded partial line. */
+  const consumeUpdateBytes = (chunk: Buffer, chunkOffset: number): void => {
     let cursor = 0;
     while (cursor < chunk.length) {
       if (discardingOversizedUpdate) {
@@ -146,6 +169,7 @@ export function createGrokSessionObserver(
         if (newline < 0) return;
         discardingOversizedUpdate = false;
         cursor = newline + 1;
+        updateStartOffset = chunkOffset + cursor;
         continue;
       }
 
@@ -161,10 +185,11 @@ export function createGrokSessionObserver(
       } else {
         const complete = pendingUpdate.length === 0 ? fragment : Buffer.concat([pendingUpdate, fragment]);
         pendingUpdate = Buffer.alloc(0);
-        normalizeUpdateLine(complete);
+        normalizeUpdateLine(complete, updateStartOffset);
       }
       if (newline < 0) return;
       cursor = newline + 1;
+      updateStartOffset = chunkOffset + cursor;
     }
   };
 
@@ -206,6 +231,7 @@ export function createGrokSessionObserver(
       bootstrapTargetOffset ??= info.size;
       if (info.size < offset) {
         offset = 0;
+        updateStartOffset = 0;
         pendingUpdate = Buffer.alloc(0);
         discardingOversizedUpdate = false;
       }
@@ -215,18 +241,13 @@ export function createGrokSessionObserver(
         const chunk = Buffer.allocUnsafe(requested);
         const { bytesRead } = await handle.read(chunk, 0, requested, offset);
         if (bytesRead === 0) break;
+        const chunkOffset = offset;
         offset += bytesRead;
         remaining -= bytesRead;
-        consumeUpdateBytes(chunk.subarray(0, bytesRead));
+        consumeUpdateBytes(chunk.subarray(0, bytesRead), chunkOffset);
       }
-      if (
-        bootstrapTargetOffset !== undefined &&
-        offset >= bootstrapTargetOffset &&
-        pendingUpdate.length === 0 &&
-        !discardingOversizedUpdate
-      ) {
-        bootstrapUpdatesComplete = true;
-      }
+      // Every replayed record is out once the next record, whole or not, starts at or past the first stat's size.
+      if (updateStartOffset >= bootstrapTargetOffset) endReplay();
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         await locateRelocatedSession();
@@ -238,7 +259,7 @@ export function createGrokSessionObserver(
               // No durable log existed at adoption, so any later file content
               // is live rather than replayed history.
               bootstrapTargetOffset = 0;
-              bootstrapUpdatesComplete = true;
+              endReplay();
             } else {
               report(relocatedError);
             }
@@ -385,9 +406,6 @@ export function createGrokSessionObserver(
     polling = pollSignals()
       .then(pollSummary)
       .then(pollUpdates)
-      .then(() => {
-        if (bootstrapUpdatesComplete) bootstrap = false;
-      })
       .finally(() => {
         polling = undefined;
       });

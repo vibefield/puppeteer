@@ -5,6 +5,8 @@ import { grokTextContent } from './types.js';
 export class GrokTurnNormalizer {
   private readonly startedPrompts = new Set<string>();
   private readonly completedPrompts = new Set<string>();
+  /** Turns only the replay's settle ended, until one shows live work. */
+  private readonly settledPrompts = new Set<string>();
   private activePrompt: string | undefined;
   private pendingPrompt: string | undefined;
   private pendingUser: { text: string; timestamp?: string | undefined; nativeEvent: unknown } | undefined;
@@ -83,6 +85,32 @@ export class GrokTurnNormalizer {
   /** Grok's only failure carrier: a `turn_completed` that names an `error_kind`, passed through verbatim. */
   failureEvent(promptId: string, errorKind: string) {
     return { type: 'turn:failed' as const, turnId: promptId, error: errorKind };
+  }
+
+  /**
+   * The replay ended. Its open turns end here, so no prompt carries into the next live turn, and the log's own
+   * `turn_completed` for one is a duplicate unless the turn shows live work first (`reopenSettled`). Newest first: the
+   * session's active turn is the last one started.
+   */
+  settleReplay(): string[] {
+    const open = [...this.startedPrompts].filter((promptId) => !this.completedPrompts.has(promptId)).reverse();
+    for (const promptId of open) {
+      this.completedPrompts.add(promptId);
+      this.settledPrompts.add(promptId);
+    }
+    this.activePrompt = undefined;
+    this.pendingPrompt = undefined;
+    this.pendingUser = undefined;
+    return open;
+  }
+
+  /**
+   * A record of live work names this prompt. The leader outlives a pane, so a resume can come in mid-turn: a settled
+   * turn that shows live work is still running, and its own `turn_completed` ends it. A bare one, with no live work
+   * before it, stays the settle's duplicate, so a late end never reaches a newer turn.
+   */
+  reopenSettled(promptId: string): void {
+    if (this.settledPrompts.delete(promptId)) this.completedPrompts.delete(promptId);
   }
 
   materializePendingUser(promptId: string): GrokObservedEvent[] {

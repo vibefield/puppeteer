@@ -322,9 +322,10 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
   `authoritative`. That includes `subagent_spawned`/`subagent_finished` →
   `delegation:subagent-started|stopped`. Mirror- and serde-only kinds stay `inferred`.
   `normalization/adapter.test.ts` holds both sets to this ground truth.
-- **Refused turns (review fix, 2026-11-07; unwitnessed).** A `turn_completed` whose `error_kind` is a
+- **Refused turns (review fix, 2026-11-07; unwitnessed).** A live `turn_completed` whose `error_kind` is a
   non-empty string ends the turn as `turn:failed {error: error_kind}`, whatever its `stop_reason` says, with
-  the final message kept. A null or absent one completes it. The kind passes through verbatim. No census turn
+  the final message kept. A null or absent one completes it, and so does a replayed one: what it refused has
+  gone, and a failure would hold a resumed row's queue. The kind passes through verbatim. No census turn
   was refused, so the mapping rests on the public enum and the 1.0.70 model (string or null). A refused-turn
   capture carrying `error_kind` is owed, and its groundtruth confidence stays unverified. Downstream a refusal
   now reads failed rather than idle.

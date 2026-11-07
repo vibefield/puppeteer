@@ -9,7 +9,7 @@ import {
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { GrokMonitorEvidence, type GrokConfiguredIntent } from '../normalization/monitor.js';
 import { decodeGrokQueueChanged, GROK_QUEUE_CHANGED_METHOD, type GrokQueueChanged } from '../normalization/queue.js';
-import type { GrokObservedEvent, GrokSessionObserver } from '../normalization/types.js';
+import { GROK_REPLAY_SETTLED, type GrokObservedEvent, type GrokSessionObserver } from '../normalization/types.js';
 import { GrokEventSource, type GrokEventPublication } from './event-source.js';
 import { GrokPromptService } from './prompt.js';
 
@@ -116,6 +116,10 @@ export function createPendingControlSession(
     }
     if (!monitorAlreadyObserved) {
       emitMonitorBatch(monitorEvidence.observedBatch(observed, observed.timestamp ?? new Date().toISOString()));
+    }
+    // The log's replay ended. The observer settled its own open work; the monitor settles what only a replay showed.
+    if (observed.event.type === 'adapter:native-event' && observed.event.nativeType === GROK_REPLAY_SETTLED) {
+      emitMonitorBatch(monitorEvidence.settleReplayBatch(new Date().toISOString()));
     }
     const observedTurnId =
       observed.promptId ??
