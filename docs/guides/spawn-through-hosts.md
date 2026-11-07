@@ -62,12 +62,16 @@ environment variables the adapter accepts from a shell. The host decides which o
 3. The shim reads `<home>/launch-providers.json` and `<home>/gateway.json`, finds the provider that owns `<name>` and
    the real executable, and sends one JSON line to the gateway: the provider, the cwd, the argv after the name, only the
    allow-listed variables, its own pid and its parent's, the name it was run as, and whether its input and output are a
-   terminal (`interactive`).
-4. The gateway checks the bearer and parses strictly; the host's handler calls `prepareSpawnThroughLaunch`. It asks the
-   runtime what the invocation is (`classifyInvocation`: the adapter's grammar, nothing prepared), asks the host which
-   terminal contains the pid, prepares the invocation (the adapter normalizes the argv and chooses its hooks, sockets
-   and logs), adopts the preparation in that terminal with that pid (cancelling it if adoption fails), lets the host
-   record the run, and answers `exec` with the adapter's recipe.
+   terminal (`interactive`). A shell execs far more than the gateway reads, so the shim holds the line to the
+   gateway's bounds (`boundSpawnThroughLaunch`: Core's `AGENT_NATIVE_INVOCATION_LIMITS`, 8,192 units an argument,
+   256 arguments, 32 variables of 8,192 units, and 64 KiB a line): it cuts what is over them, and a request it cut
+   says so (`bounded`). Only the request is cut: a fallback runs what was typed, whole.
+4. The gateway checks the bearer first, then parses strictly; the host's handler calls `prepareSpawnThroughLaunch`. It
+   asks the runtime what the invocation is (`classifyInvocation`: the adapter's grammar, nothing prepared), asks the
+   host which terminal contains the pid, prepares the invocation (the adapter normalizes the argv and chooses its hooks,
+   sockets and logs), adopts the preparation in that terminal with that pid (cancelling it if adoption fails), lets the
+   host record the run, and answers `exec` with the adapter's recipe. A session the shim had to cut is never prepared:
+   a managed launch would carry the cut (`request-too-large`, §7).
 5. The shim `execve`s the recipe in place. The agent starts managed, in the terminal the person typed into.
 
 Any other answer is a decline, with a code (§7): `fallback` execs the real executable with the original argv — a version
@@ -266,6 +270,7 @@ field reads as interactive.
 | in no terminal of the host's | runs as typed | runs as typed |
 | accepted, interactive, in the host's terminal | managed | managed |
 | rejected, interactive, in the host's terminal | runs as typed | refused, naming the argument |
+| a session whose request the shim had to cut to the gateway's bounds (`bounded`), interactive, in the host's terminal | runs as typed | refused (`request-too-large`) |
 | a launch the agent's own adapter refused, for a reason the person can act on (settings that turn every hook off, say), interactive, in the host's terminal | runs as typed | refused, in the adapter's words |
 | an agent the host cannot manage (unsupported, no imposter, a failed preparation or adoption), interactive, in the host's terminal | runs as typed | refused |
 
@@ -341,12 +346,14 @@ back.
 | `materializeShims({strict})`: the launcher's word while no rendezvous is readable | the shim's own, by its ancestry |
 
 A `refuse` answer carries `placed`. The shim obeys a placed refusal wherever it runs, and an unplaced one only under a
-listed shell: an argv over 64 KiB typed in one of the host's terminals is still refused; typed in an editor's terminal,
-it runs. When the gateway cannot be reached and an interactive launch is in one of the host's terminals, the shim
-retries with backoff (100 ms doubling to 1 s) for `retryMs`, says once that it waits, re-reads the rendezvous every
-try — a host that comes back is used — and then refuses with exit 75. A shim reads the host's latest readable
-rendezvous first; the launcher speaks only while none has been readable. A name with no row in the provider table, or
-a home with no table, is never refused: the table is the host's word on what it manages.
+listed shell: a request the gateway would not trust, typed in one of the host's terminals, is refused; typed in an
+editor's terminal, it runs. The shim cuts what the gateway cannot carry and says so: a cut one-shot runs whole, as
+typed, and a cut session in one of the host's terminals is refused, placed. When the gateway cannot be reached and an
+interactive launch is in one of the host's terminals, the shim retries with backoff (100 ms doubling to 1 s) for
+`retryMs`, says once that it waits, re-reads the rendezvous every try — a host that comes back is used — and then
+refuses with exit 75. A shim reads the host's latest readable rendezvous first; the launcher speaks only while none has
+been readable. A name with no row in the provider table, or a home with no table, is never refused: the table is the
+host's word on what it manages.
 
 ### A refusal's code, and the host's words
 
@@ -355,8 +362,9 @@ on the code, never on the reason's words:
 
 | Code | Where |
 | --- | --- |
-| `unauthenticated`, `request-too-large`, `handler-failed` | the gateway's own: a wrong bearer or a request of the wrong shape (one answer for both), over 64 KiB, a throwing handler |
-| `invalid-request` | the request's process identity or intent does not parse |
+| `unauthenticated`, `handler-failed` | the gateway's own: a wrong bearer, or a line that is not a request (one answer, whatever else the line says); a throwing handler |
+| `request-too-large` | a line over 64 KiB at the gateway (unplaced: only a shim from before `bounded`, or another program, sends one), or a session the shim had to cut to the gateway's bounds (placed) |
+| `invalid-request` | an authenticated request of the wrong shape (a shim of another version, at the gateway), or a process identity or intent that does not parse |
 | `passthrough`, `not-interactive` | not a session: the adapter's word, or its input or output is not a terminal |
 | `outside-host-terminals` | no terminal of the host's holds the process |
 | `unsupported-agent`, `invalid-invocation` | the runtime offers no managed invocation for it, or would not put it to the adapter |
@@ -418,9 +426,15 @@ recipe of the run it asked for, and nothing of any other run.
 - **The bearer is a file, never a variable.** It lives in `gateway.json` (0600, in a 0700 home), so no process
   inherits it. A same-user process can read the file, as it could read an environment: the file is not a stronger
   secret, it is a fresher one, and it never reaches an agent by inheritance.
-- **The gateway listens on 127.0.0.1 only**, parses every request strictly (unknown keys and unbounded strings are
-  refused; the intent is held to Core's schema), and gives a wrong bearer and a request of the wrong shape the same
-  answer.
+- **The gateway listens on 127.0.0.1 only**, reads a line's bearer before anything else of it, and parses every
+  request strictly (unknown keys and unbounded strings are refused; the intent is held to Core's schema). It tells a
+  caller without the bearer nothing about the shape: a wrong bearer, a line that is not JSON and a wrong shape under a
+  wrong bearer get one answer (`unauthenticated`). Only the bearer's holder hears that its request could not be read
+  (`invalid-request`): a shim of another version.
+  <!-- rv-el7-limits (1), ruled at its lean, A (James, 2026-11-06): the shim cuts its request to the bounds and marks it `bounded`; this sentence narrowed from "one answer for a wrong bearer and a wrong shape" -->
+- **The shim keeps its request inside the gateway's bounds** rather than the gateway reading more: the bounds stay
+  those of untrusted input from any process of the user, and a shell can exec far more than they carry. A request the
+  shim had to cut is marked `bounded`; its one-shot runs whole, as typed, and its session is never managed.
 - **A request's pid is self-asserted.** Anything that holds the bearer can name any pid. The host's `resolveTerminal`
   binds it: answer only for a terminal whose own evidence — the shell's pid, an ancestor walk — shows it contains that
   process. A caller can then ask only for runs in terminals where the named pid really lives; one active run per
@@ -702,6 +716,10 @@ control, so it was not retained.
   is not a terminal runs at once.
 - **Multiplexers** (§7): an agent inside tmux or screen in one of the host's terminals runs unmanaged.
 - **The pid is self-asserted** (§8): the host's `resolveTerminal` is the whole binding.
+- **A cut request is classified as it was cut** (§2). Past 256 arguments the adapter reads the first 256, so a
+  one-shot whose mode flag comes after them reads as a session, and a strict host refuses it in its own terminals. A
+  cut session is refused whatever was cut, an allow-listed variable's value among them, in the words for arguments
+  too long to carry.
 - **A slow preparation outlives the shim's patience.** The shim waits 28 s for an answer. If a preparation takes longer,
   the shim gives up — falling back, or refusing when strict — while the host may still adopt; a fallen-back pid then
   runs the real executable under a record that receives no events until it exits. Keep preparation well inside the

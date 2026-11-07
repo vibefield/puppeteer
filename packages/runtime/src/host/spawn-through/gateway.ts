@@ -1,6 +1,7 @@
 import { createServer, type Server, type Socket } from 'node:net';
 import {
   MAX_REQUEST_BYTES,
+  MAX_TOKEN_LENGTH,
   declineSpawnThrough,
   parseSpawnThroughRequest,
   type SpawnThroughDeclineCode,
@@ -35,6 +36,17 @@ function writeResponse(socket: Socket, response: SpawnThroughResponse): void {
   if (!socket.destroyed) socket.end(`${JSON.stringify(response)}\n`);
 }
 
+/**
+ * Whether a parsed line is a request object under this gateway's bearer — the
+ * one thing read before the shape, so a caller without the bearer learns
+ * nothing about the shape the gateway reads.
+ */
+function carriesBearer(line: unknown, token: string): boolean {
+  if (typeof line !== 'object' || line === null || Array.isArray(line)) return false;
+  const presented = (line as { token?: unknown }).token;
+  return typeof presented === 'string' && presented.length <= MAX_TOKEN_LENGTH && presented === token;
+}
+
 /** One loopback listener: one JSON line in, one JSON line out, per connection. */
 export async function startSpawnThroughGateway(options: SpawnThroughGatewayOptions): Promise<SpawnThroughGateway> {
   const { token, handle } = options;
@@ -63,19 +75,24 @@ export async function startSpawnThroughGateway(options: SpawnThroughGatewayOptio
       const newline = input.indexOf('\n');
       if (newline < 0) return;
       handled = true;
-      let request: SpawnThroughRequest | undefined;
+      let line: unknown;
       try {
-        request = parseSpawnThroughRequest(JSON.parse(input.slice(0, newline)));
+        line = JSON.parse(input.slice(0, newline));
       } catch {
-        request = undefined;
+        line = undefined;
       }
-      // A line that is not JSON, a malformed request and a wrong bearer get one
-      // answer: the gateway tells an unauthenticated caller nothing about its shape.
-      if (!request || request.token !== token) {
+      // The bearer first, and alone: a line that is not JSON, not a request
+      // object, or under another bearer gets one answer whatever else it says.
+      if (!carriesBearer(line, token)) {
         writeResponse(socket, declined('unauthenticated', 'spawn-through authentication failed'));
         return;
       }
-      const authenticated = request;
+      // The bearer's holder, in a shape this gateway cannot read: a shim of another version.
+      const authenticated = parseSpawnThroughRequest(line);
+      if (!authenticated) {
+        writeResponse(socket, declined('invalid-request', 'spawn-through request could not be read'));
+        return;
+      }
       void (async () => {
         try {
           writeResponse(socket, await handle(authenticated));
