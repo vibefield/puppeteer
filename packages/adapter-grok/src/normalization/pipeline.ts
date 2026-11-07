@@ -144,27 +144,31 @@ export class GrokUpdateNormalizer {
       return events;
     }
     if (update.sessionUpdate === 'turn_completed') {
+      // A live, named error_kind fails the turn whatever its stop_reason says; null, empty or absent completes it. So
+      // does a replayed one: what it refused has gone, and the failure would hold a resumed row's queue.
+      const errorKind = !replay && typeof update.error_kind === 'string' ? update.error_kind : '';
+      const end = (endedPromptId: string, lastAssistantMessage?: string) =>
+        observed(
+          errorKind
+            ? this.turn.failureEvent(endedPromptId, errorKind)
+            : this.turn.completionEvent(
+                endedPromptId,
+                typeof update.stop_reason === 'string' ? update.stop_reason : undefined,
+                lastAssistantMessage,
+              ),
+          endedPromptId,
+        );
+      // A bare settled prompt's own end comes alone: no live thought, message or tool record reopened it, so it has no
+      // thought or message to close.
+      const settledPromptId = this.turn.endSettled(update, params._meta);
+      if (settledPromptId) return [{ ...end(settledPromptId), settledEnd: true }];
       const completedPromptId = this.turn.beginCompletion(update, params._meta);
       if (!completedPromptId) return [];
       const events = this.turn.materializePendingUser(completedPromptId);
       events.push(...this.reasoning.complete(completedPromptId, observed));
       const assistant = this.conversation.complete(completedPromptId, observed);
       events.push(...assistant.events);
-      // A live, named error_kind fails the turn whatever its stop_reason says; null, empty or absent completes it. So
-      // does a replayed one: what it refused has gone, and the failure would hold a resumed row's queue.
-      const errorKind = !replay && typeof update.error_kind === 'string' ? update.error_kind : '';
-      events.push(
-        observed(
-          errorKind
-            ? this.turn.failureEvent(completedPromptId, errorKind)
-            : this.turn.completionEvent(
-                completedPromptId,
-                typeof update.stop_reason === 'string' ? update.stop_reason : undefined,
-                assistant.text,
-              ),
-          completedPromptId,
-        ),
-      );
+      events.push(end(completedPromptId, assistant.text));
       this.turn.finishCompletion(completedPromptId);
       return events;
     }

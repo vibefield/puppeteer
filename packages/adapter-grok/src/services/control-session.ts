@@ -144,6 +144,9 @@ export function createPendingControlSession(
       // is the turn's second: the settle published its first, and this one would retract the actor's running turn.
       if (turnEnd && activeTurnId !== observed.promptId) return;
     }
+    // A bare settled turn's own end. The settle published its end, so this one is a duplicate, unless a running frame
+    // named the prompt again before it: that frame started the turn a second time, and this is that start's end.
+    if (observed.settledEnd && activeTurnId !== observed.promptId) return;
     if (!monitorAlreadyObserved) {
       emitMonitorBatch(monitorEvidence.observedBatch(observed, observedAt));
     }

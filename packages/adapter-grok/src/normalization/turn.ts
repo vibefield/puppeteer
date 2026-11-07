@@ -92,8 +92,8 @@ export class GrokTurnNormalizer {
 
   /**
    * The replay ended. Its open turns end here, so no prompt carries into the next live turn, and the log's own
-   * `turn_completed` for one is a duplicate unless the turn shows live work first (`reopenSettled`). Newest first: the
-   * session's active turn is the last one started.
+   * `turn_completed` for one is a duplicate, marked by `endSettled`, unless the turn shows live work first
+   * (`reopenSettled`). Newest first: the session's active turn is the last one started.
    */
   settleReplay(): string[] {
     const open = [...this.startedPrompts].filter((promptId) => !this.completedPrompts.has(promptId)).reverse();
@@ -110,13 +110,25 @@ export class GrokTurnNormalizer {
   /**
    * A record of live work names this prompt. The leader outlives a pane, so a resume can come in mid-turn: a settled
    * turn that shows live work is still running, and its own `turn_completed` ends it. A bare one, with no live work
-   * before it, stays the settle's duplicate, so a late end never reaches a newer turn. A reopened turn gets no second
-   * `turn:started`: `isReopened` says it runs, from this record to its end, and the record's own events carry that.
+   * before it, stays the settle's duplicate (`endSettled`), so a late end never reaches a newer turn. A reopened turn
+   * gets no second `turn:started`: `isReopened` says it runs, from this record to its end, and the record's own events
+   * carry that.
    */
   reopenSettled(promptId: string): void {
     if (!this.settledPrompts.delete(promptId)) return;
     this.completedPrompts.delete(promptId);
     this.reopenedPrompts.add(promptId);
+  }
+
+  /**
+   * This end record names a bare settled prompt, whose turn the settle already ended. The log cannot say whether a
+   * running frame has started that prompt again since, so the end is kept, marked, and control-session publishes it
+   * only while that prompt is the open turn. The prompt stops being settled here: a later record of it reopens nothing,
+   * and a later end of it is a plain duplicate.
+   */
+  endSettled(update: GrokUpdate, meta: GrokUpdateMeta | undefined): string | undefined {
+    const promptId = this.correlatedPromptId(update, meta);
+    return promptId !== undefined && this.settledPrompts.delete(promptId) ? promptId : undefined;
   }
 
   isReopened(promptId: string | undefined): boolean {

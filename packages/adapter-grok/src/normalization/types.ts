@@ -47,6 +47,11 @@ export interface GrokObservedEvent {
   confidence?: AgentEventConfidence | undefined;
   /** The replay's settle ended this prompt's turn and live work reopened it. No `turn:started` says so; this does. */
   reopened?: boolean | undefined;
+  /**
+   * The log's own end of a turn the settle ended, with no live work of it first. It is the settle's duplicate unless a
+   * running frame started that prompt again, which only control-session knows.
+   */
+  settledEnd?: boolean | undefined;
   nativeEvent: unknown;
 }
 

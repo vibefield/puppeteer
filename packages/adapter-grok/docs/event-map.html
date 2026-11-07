@@ -1814,7 +1814,11 @@ createGrokBackend → grok agent leader
               same reason, with its stop reason and message. The leader outlives a pane, so a resume can come in
               mid-turn: a settled turn whose next thought, message or tool record is live is still running, and its
               own <code>turn_completed</code> ends it. A bare one, with no live work before it, is the settle&rsquo;s
-              duplicate, so a late end never reaches a newer turn. A reopened turn gets no second
+              duplicate, so a late end never reaches a newer turn. Grok can still be running a bare one, and its
+              running frame can name it before any live record does: that frame starts the turn again, so its own
+              end ends that start. The observer marks a bare one&rsquo;s end, and the binding publishes it only while
+              that prompt is the open turn; with nothing running, or behind a newer turn, it stays the dropped
+              duplicate. A reopened turn gets no second
               <code>turn:started</code>, but it is the open turn: a running frame waits for its end, and a frame that
               names it again starts nothing. The settle&rsquo;s end retracted its <code>turn</code> activity, so while it
               is the open turn the monitor holds it working by an activity of its own (<code>turn:reopened</code>), and
