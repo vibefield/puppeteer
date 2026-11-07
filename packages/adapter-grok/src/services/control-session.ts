@@ -64,6 +64,8 @@ export function createPendingControlSession(
   let observation: ObservationLevel = observer ? 'native-log' : 'structured';
   const monitorEvidence = new GrokMonitorEvidence({ nativeSessionId: () => sessionId });
   let activeTurnId: string | undefined;
+  /** A reopened turn while it is the open one. It has no `turn` activity left, so the monitor holds its own. */
+  let reopenedTurn: string | undefined;
   let unsubscribeControl: (() => void) | undefined;
   let unsubscribeObserver: (() => void) | undefined;
   let unsubscribeObserverError: (() => void) | undefined;
@@ -98,6 +100,14 @@ export function createPendingControlSession(
     events.publish(event, publication);
   }
 
+  /** The open turn moves. A reopened turn's own activity lasts only while that turn is the open one. */
+  function setActiveTurn(turnId: string | undefined, observedAt: string): void {
+    activeTurnId = turnId;
+    if (reopenedTurn === undefined || reopenedTurn === turnId) return;
+    emitMonitorBatch(monitorEvidence.reopenedTurnBatch(reopenedTurn, false, observedAt));
+    reopenedTurn = undefined;
+  }
+
   function applyObserved(observed: GrokObservedEvent, monitorAlreadyObserved = false): void {
     // A Grok session is durable across terminal attachments. Replaying the
     // previous pane's session_end would incorrectly terminate the newly
@@ -114,8 +124,23 @@ export function createPendingControlSession(
         startedTurns.add(turnId);
       }
     }
+    const turnEnd = observed.event.type === 'turn:completed' || observed.event.type === 'turn:failed';
+    const observedAt = observed.timestamp ?? new Date().toISOString();
+    if (observed.reopened && observed.promptId !== undefined) {
+      // The settle ended this turn and it runs on, with no second start: it is the open turn, already started. The
+      // settle's end retracted its `turn` activity, so the monitor holds it working between its records.
+      if (activeTurnId === undefined) {
+        activeTurnId = observed.promptId;
+        startedTurns.add(observed.promptId);
+        reopenedTurn = observed.promptId;
+        emitMonitorBatch(monitorEvidence.reopenedTurnBatch(observed.promptId, true, observedAt));
+      }
+      // A rail start says every earlier prompt is over, and the log shows them late. Behind that newer turn this end
+      // is the turn's second: the settle published its first, and this one would retract the actor's running turn.
+      if (turnEnd && activeTurnId !== observed.promptId) return;
+    }
     if (!monitorAlreadyObserved) {
-      emitMonitorBatch(monitorEvidence.observedBatch(observed, observed.timestamp ?? new Date().toISOString()));
+      emitMonitorBatch(monitorEvidence.observedBatch(observed, observedAt));
     }
     // The log's replay ended. The observer settled its own open work; the monitor settles what only a replay showed.
     if (observed.event.type === 'adapter:native-event' && observed.event.nativeType === GROK_REPLAY_SETTLED) {
@@ -128,7 +153,7 @@ export function createPendingControlSession(
       observed.event.type === 'turn:failed'
         ? observed.event.turnId
         : undefined);
-    if (observed.event.type === 'turn:started') activeTurnId = observedTurnId;
+    if (observed.event.type === 'turn:started') setActiveTurn(observedTurnId, observedAt);
     publish(observed.event, {
       promptId: observed.promptId,
       turnId: observedTurnId,
@@ -138,8 +163,8 @@ export function createPendingControlSession(
       replay: observed.phase === 'bootstrap',
       nativeEvent: observed.nativeEvent,
     });
-    if (observed.event.type === 'turn:completed' || observed.event.type === 'turn:failed') {
-      activeTurnId = undefined;
+    if (turnEnd) {
+      setActiveTurn(undefined, observedAt);
       // Grok already runs the next prompt: its turn starts in this tick, so the row never reads idle between them.
       const held = heldStarts.shift();
       if (held) applyObserved(held, true);
@@ -148,7 +173,8 @@ export function createPendingControlSession(
 
   /**
    * A turn's end is the log's, and the rail hears the next turn first. The root's activity is keyed by actor, not by
-   * turn, so the earlier turn's end would retract this one's: the start waits for that end.
+   * turn, so the earlier turn's end would retract this one's: the start waits for that end. A reopened turn is an
+   * earlier turn like any other.
    */
   function startFromRail(start: GrokObservedEvent): void {
     if (activeTurnId === undefined || activeTurnId === start.promptId) applyObserved(start, true);

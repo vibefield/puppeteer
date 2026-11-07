@@ -1814,7 +1814,16 @@ createGrokBackend → grok agent leader
               same reason, with its stop reason and message. The leader outlives a pane, so a resume can come in
               mid-turn: a settled turn whose next thought, message or tool record is live is still running, and its
               own <code>turn_completed</code> ends it. A bare one, with no live work before it, is the settle&rsquo;s
-              duplicate, so a late end never reaches a newer turn. The prompt the replay left waiting is dropped. Then
+              duplicate, so a late end never reaches a newer turn. A reopened turn gets no second
+              <code>turn:started</code>, but it is the open turn: a running frame waits for its end, and a frame that
+              names it again starts nothing. The settle&rsquo;s end retracted its <code>turn</code> activity, so while it
+              is the open turn the monitor holds it working by an activity of its own (<code>turn:reopened</code>), and
+              the row never reads idle between its records. Its end, or a newer turn&rsquo;s start, retracts that
+              activity. The rail can also be ahead of the log, saying a newer turn runs before the
+              log shows the reopened turn&rsquo;s last records. Those records still publish and close what they opened,
+              and only its end is dropped: a running frame says every earlier prompt is over, the settle already
+              published that end, and a second one would retract the running turn&rsquo;s activity. The prompt the
+              replay left waiting is dropped. Then
               <code>replay.settled</code> settles the monitor: the pending interactions, actors and compaction only a
               replay showed, from either rail, including
               <code>session/load</code>&rsquo;s. Only an attach keeps open work. Grok offers none yet; a future attach

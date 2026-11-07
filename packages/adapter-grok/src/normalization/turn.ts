@@ -7,6 +7,8 @@ export class GrokTurnNormalizer {
   private readonly completedPrompts = new Set<string>();
   /** Turns only the replay's settle ended, until one shows live work. */
   private readonly settledPrompts = new Set<string>();
+  /** Settled turns that showed live work, until their own end. */
+  private readonly reopenedPrompts = new Set<string>();
   private activePrompt: string | undefined;
   private pendingPrompt: string | undefined;
   private pendingUser: { text: string; timestamp?: string | undefined; nativeEvent: unknown } | undefined;
@@ -70,6 +72,7 @@ export class GrokTurnNormalizer {
 
   finishCompletion(promptId: string): void {
     if (this.activePrompt === promptId) this.activePrompt = undefined;
+    this.reopenedPrompts.delete(promptId);
   }
 
   completionEvent(promptId: string, stopReason: string | undefined, lastAssistantMessage: string | undefined) {
@@ -107,10 +110,17 @@ export class GrokTurnNormalizer {
   /**
    * A record of live work names this prompt. The leader outlives a pane, so a resume can come in mid-turn: a settled
    * turn that shows live work is still running, and its own `turn_completed` ends it. A bare one, with no live work
-   * before it, stays the settle's duplicate, so a late end never reaches a newer turn.
+   * before it, stays the settle's duplicate, so a late end never reaches a newer turn. A reopened turn gets no second
+   * `turn:started`: `isReopened` says it runs, from this record to its end, and the record's own events carry that.
    */
   reopenSettled(promptId: string): void {
-    if (this.settledPrompts.delete(promptId)) this.completedPrompts.delete(promptId);
+    if (!this.settledPrompts.delete(promptId)) return;
+    this.completedPrompts.delete(promptId);
+    this.reopenedPrompts.add(promptId);
+  }
+
+  isReopened(promptId: string | undefined): boolean {
+    return promptId !== undefined && this.reopenedPrompts.has(promptId);
   }
 
   materializePendingUser(promptId: string): GrokObservedEvent[] {

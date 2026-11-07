@@ -45,6 +45,8 @@ export interface GrokObservedEvent {
   phase?: 'bootstrap' | 'live' | undefined;
   source?: AgentEventSource | undefined;
   confidence?: AgentEventConfidence | undefined;
+  /** The replay's settle ended this prompt's turn and live work reopened it. No `turn:started` says so; this does. */
+  reopened?: boolean | undefined;
   nativeEvent: unknown;
 }
 

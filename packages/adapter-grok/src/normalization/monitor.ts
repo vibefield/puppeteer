@@ -639,6 +639,28 @@ export class GrokMonitorEvidence {
     });
   }
 
+  /**
+   * A turn the replay's settle ended runs on: live work reopened it, and no second start says so. The settle's end
+   * retracted the root's `turn` activity, so this one holds the root working while the turn stays the open one, and
+   * is retracted when it no longer is. Its key is its own, on this plane: a runtime end retracts `turn`, never it.
+   */
+  reopenedTurnBatch(promptId: string, open: boolean, observedAt: string): AdapterMonitorObservationBatch {
+    const key = 'turn:reopened';
+    const update = open
+      ? upsert('status', key, {
+          kind: 'activity',
+          activityKind: 'other',
+          active: true,
+          line: 'Working',
+          since: observedAt,
+        })
+      : retract('status', key);
+    return this.batch('turn-reopened', observedAt, [update], {
+      quality: 'derived',
+      evidence: this.evidence(`turn-reopened:${promptId}`),
+    });
+  }
+
   /** ACP/control loss degrades readiness but never claims that the native TUI died. */
   controlUnavailableBatch(observedAt: string, nativeObserverAvailable: boolean): AdapterMonitorObservationBatch {
     const affectedFamilies: MonitorMetricFamily[] = nativeObserverAvailable

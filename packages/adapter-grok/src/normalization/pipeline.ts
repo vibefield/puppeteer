@@ -108,7 +108,15 @@ export class GrokUpdateNormalizer {
       promptId = this.turn.promptId(update, params._meta),
       source = 'native-transcript',
       confidence = 'authoritative',
-    ) => ({ event, promptId, timestamp, source, confidence, nativeEvent: input });
+    ) => ({
+      event,
+      promptId,
+      timestamp,
+      source,
+      confidence,
+      nativeEvent: input,
+      ...(this.turn.isReopened(promptId) ? { reopened: true } : {}),
+    });
 
     if (update.sessionUpdate === 'hook_execution') {
       return [...normalizeGrokSessionHook(update, params.sessionId, observed), ...this.turn.normalizeHook(update)];
@@ -170,11 +178,12 @@ export class GrokUpdateNormalizer {
     // the surrounding Grok observation retains durable prompt correlation.
     const notification = params as unknown as Parameters<AcpNotificationNormalizer['normalize']>[0];
     const { events } = this.acp.normalize(notification);
+    const toolRecord = events.some(({ type }) => TOOL_EVENT_TYPES.has(type));
+    if (promptId && toolRecord) this.turn.reopenSettled(promptId);
     const normalized = events.map((event) =>
       observed(event, promptId, event.type.startsWith('context-window:') ? 'native-log' : 'native-transcript'),
     );
-    if (!promptId || !events.some(({ type }) => TOOL_EVENT_TYPES.has(type))) return normalized;
-    this.turn.reopenSettled(promptId);
+    if (!promptId || !toolRecord) return normalized;
     // A tool record ends the prompt's thought stream and its current message: a later thought starts
     // reasoning again, and the next message record starts a new message.
     this.conversation.interrupt(promptId);
