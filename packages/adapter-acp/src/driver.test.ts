@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { safeParseAgentEvent, type AdapterEventCandidate } from '@vibefield/puppeteer-core';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
-import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
+import { PROTOCOL_VERSION, RequestError } from '@agentclientprotocol/sdk';
 import type { Agent, Client, ClientCapabilities, RequestPermissionResponse } from '@agentclientprotocol/sdk';
 import type { AcpConnector } from './transport/connection.js';
 import { createAcpSession } from './driver.js';
@@ -191,6 +191,50 @@ describe('createAcpSession', () => {
     }
   });
 
+  it('bounds an id-less assistant message to its own prompt when the agent echoes no prompt', async () => {
+    const replies = [
+      ['first ', 'answer'],
+      ['second ', 'answer'],
+    ];
+    let client!: Client;
+    const connector: AcpConnector = (toClient) => {
+      const agent = {
+        async initialize() {
+          return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: {} };
+        },
+        async newSession() {
+          return { sessionId: SID };
+        },
+        async prompt() {
+          // No user_message_chunk echo and no messageId: only the driver's submit can open the message.
+          for (const text of replies.shift() ?? []) {
+            await client.sessionUpdate({
+              sessionId: SID,
+              update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } },
+            });
+          }
+          return { stopReason: 'end_turn' as const };
+        },
+        async cancel() {},
+      };
+      client = toClient(agent as unknown as Agent);
+      return { agent: agent as unknown as Agent, onClose() {}, close() {} };
+    };
+    const session = await createAcpSession({ cwd: '/x', connector });
+    const ends: (string | undefined)[] = [];
+    const off = session.events.onCandidate(({ event }) => {
+      if (event.type === 'turn:completed') ends.push(event.lastAssistantMessage);
+    });
+    try {
+      await driveTurn(session, 'first');
+      await driveTurn(session, 'second');
+      expect(ends).toEqual(['first answer', 'second answer']);
+    } finally {
+      off();
+      await session.dispose();
+    }
+  });
+
   it('ends a cancelled prompt as an interrupted turn and keeps the native stop reason', async () => {
     for (const stopReason of ['end_turn', 'cancelled'] as const) {
       const connector: AcpConnector = (toClient) => {
@@ -219,6 +263,44 @@ describe('createAcpSession', () => {
             ? { type: 'turn:completed', turnId: 'acp-turn-1', stopReason, outcome: 'interrupted' }
             : { type: 'turn:completed', turnId: 'acp-turn-1', stopReason },
         ]);
+      } finally {
+        off();
+        await session.dispose();
+      }
+    }
+  });
+
+  it('says in a failed prompt’s native event whether the agent answered, its turn:failed as it was', async () => {
+    for (const [failure, answered] of [
+      [new RequestError(-32000, 'rate limited'), true],
+      [new Error('ACP connection closed'), false],
+    ] as const) {
+      const connector: AcpConnector = (toClient) => {
+        const agent = {
+          async initialize() {
+            return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: {} };
+          },
+          async newSession() {
+            return { sessionId: SID };
+          },
+          async prompt() {
+            throw failure;
+          },
+          async cancel() {},
+        };
+        toClient(agent as unknown as Agent);
+        return { agent: agent as unknown as Agent, onClose() {}, close() {} };
+      };
+      const session = await createAcpSession({ cwd: '/x', connector });
+      const events: AdapterEventCandidate[] = [];
+      const off = session.events.onCandidate((candidate) => events.push(candidate));
+      try {
+        await driveTurn(session, 'hello');
+        const failed = events.filter(({ event }) => event.type === 'turn:failed');
+        expect(failed.map(({ event }) => event)).toEqual([
+          { type: 'turn:failed', turnId: 'acp-turn-1', error: failure.message },
+        ]);
+        expect(failed[0]?.nativeEvent).toEqual({ method: 'session/prompt', outcome: 'failed', answered });
       } finally {
         off();
         await session.dispose();

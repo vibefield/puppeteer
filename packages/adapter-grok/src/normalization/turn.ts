@@ -5,6 +5,10 @@ import { grokTextContent } from './types.js';
 export class GrokTurnNormalizer {
   private readonly startedPrompts = new Set<string>();
   private readonly completedPrompts = new Set<string>();
+  /** Turns only the replay's settle ended, until one shows live work. */
+  private readonly settledPrompts = new Set<string>();
+  /** Settled turns that showed live work, until their own end. */
+  private readonly reopenedPrompts = new Set<string>();
   private activePrompt: string | undefined;
   private pendingPrompt: string | undefined;
   private pendingUser: { text: string; timestamp?: string | undefined; nativeEvent: unknown } | undefined;
@@ -68,6 +72,7 @@ export class GrokTurnNormalizer {
 
   finishCompletion(promptId: string): void {
     if (this.activePrompt === promptId) this.activePrompt = undefined;
+    this.reopenedPrompts.delete(promptId);
   }
 
   completionEvent(promptId: string, stopReason: string | undefined, lastAssistantMessage: string | undefined) {
@@ -78,6 +83,56 @@ export class GrokTurnNormalizer {
       ...(stopReason === 'cancelled' ? { outcome: 'interrupted' as const } : {}),
       lastAssistantMessage,
     };
+  }
+
+  /** Grok's only failure carrier: a `turn_completed` that names an `error_kind`, passed through verbatim. */
+  failureEvent(promptId: string, errorKind: string) {
+    return { type: 'turn:failed' as const, turnId: promptId, error: errorKind };
+  }
+
+  /**
+   * The replay ended. Its open turns end here, so no prompt carries into the next live turn, and the log's own
+   * `turn_completed` for one is a duplicate, marked by `endSettled`, unless the turn shows live work first
+   * (`reopenSettled`). Newest first: the session's active turn is the last one started.
+   */
+  settleReplay(): string[] {
+    const open = [...this.startedPrompts].filter((promptId) => !this.completedPrompts.has(promptId)).reverse();
+    for (const promptId of open) {
+      this.completedPrompts.add(promptId);
+      this.settledPrompts.add(promptId);
+    }
+    this.activePrompt = undefined;
+    this.pendingPrompt = undefined;
+    this.pendingUser = undefined;
+    return open;
+  }
+
+  /**
+   * A record of live work names this prompt. The leader outlives a pane, so a resume can come in mid-turn: a settled
+   * turn that shows live work is still running, and its own `turn_completed` ends it. A bare one, with no live work
+   * before it, stays the settle's duplicate (`endSettled`), so a late end never reaches a newer turn. A reopened turn
+   * gets no second `turn:started`: `isReopened` says it runs, from this record to its end, and the record's own events
+   * carry that.
+   */
+  reopenSettled(promptId: string): void {
+    if (!this.settledPrompts.delete(promptId)) return;
+    this.completedPrompts.delete(promptId);
+    this.reopenedPrompts.add(promptId);
+  }
+
+  /**
+   * This end record names a bare settled prompt, whose turn the settle already ended. The log cannot say whether a
+   * running frame has started that prompt again since, so the end is kept, marked, and control-session publishes it
+   * only while that prompt is the open turn. The prompt stops being settled here: a later record of it reopens nothing,
+   * and a later end of it is a plain duplicate.
+   */
+  endSettled(update: GrokUpdate, meta: GrokUpdateMeta | undefined): string | undefined {
+    const promptId = this.correlatedPromptId(update, meta);
+    return promptId !== undefined && this.settledPrompts.delete(promptId) ? promptId : undefined;
+  }
+
+  isReopened(promptId: string | undefined): boolean {
+    return promptId !== undefined && this.reopenedPrompts.has(promptId);
   }
 
   materializePendingUser(promptId: string): GrokObservedEvent[] {

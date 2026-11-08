@@ -3008,6 +3008,10 @@ interface ObservedEnvironmentValue&lt;T&gt; {
             <div class="type-grid">
               <article class="type-card">
                 <h3>PromptSubmission / PromptReceipt</h3>
+                <p>
+                  A rejection with <span class="mono">retryable: false</span> is final: no later attempt can land.
+                  Absent, a later attempt may.
+                </p>
                 <pre><code>interface PromptSubmission {
   text: string;
   mode?: 'paste-and-submit' | 'paste-only';
@@ -3016,7 +3020,7 @@ interface ObservedEnvironmentValue&lt;T&gt; {
 
 type PromptReceipt =
   | { status: 'confirmed'; turnId?: string }
-  | { status: 'rejected'; reason: string }
+  | { status: 'rejected'; reason: string; retryable?: boolean }
   | { status: 'uncertain'; reason: string };</code></pre>
               </article>
 

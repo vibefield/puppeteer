@@ -4,8 +4,9 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createGrokSessionObserver } from './session-observer.js';
 import { grokExtensionEvents } from '../normalization/adapter.js';
+import { GrokConversationNormalizer } from '../normalization/conversation.js';
 import { GrokUpdateNormalizer } from '../normalization/pipeline.js';
-import type { GrokObservedEvent } from '../normalization/types.js';
+import type { GrokObservedEvent, GrokObservedFactory } from '../normalization/types.js';
 import { grokUpdatesPath, latestGrokSessionId } from './session-discovery.js';
 
 const temporaryDirectories: string[] = [];
@@ -95,7 +96,7 @@ afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
-function record(update: Record<string, unknown>, promptId?: string): unknown {
+function record(update: Record<string, unknown>, promptId?: string, meta: Record<string, unknown> = {}): unknown {
   return {
     timestamp: 1_784_669_125_000,
     method:
@@ -105,9 +106,22 @@ function record(update: Record<string, unknown>, promptId?: string): unknown {
     params: {
       sessionId: 'grok-session',
       update,
-      _meta: promptId ? { promptId, agentTimestampMs: 1_784_669_125_000 } : undefined,
+      _meta: promptId ? { promptId, agentTimestampMs: 1_784_669_125_000, ...meta } : undefined,
     },
   };
+}
+
+function jsonl(...records: unknown[]): string {
+  return records.map((entry) => `${JSON.stringify(entry)}\n`).join('');
+}
+
+function thoughtChunk(promptId: string): unknown {
+  return record({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'private' } }, promptId);
+}
+
+/** The log echoes a person's text with no prompt id, at its own time (Unix seconds). */
+function userChunk(text: string, timestamp: number): unknown {
+  return { ...(record({ sessionUpdate: 'user_message_chunk', content: { type: 'text', text } }) as object), timestamp };
 }
 
 function twoTurnRecords(): unknown[] {
@@ -187,6 +201,118 @@ describe('GrokUpdateNormalizer', () => {
     expect(events.some(({ event }) => event.type === 'reasoning:summary')).toBe(false);
   });
 
+  it('closes reasoning at the first message or tool record after a thought, and reopens it at a later one', () => {
+    const normalizer = new GrokUpdateNormalizer();
+    const thought = record({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'private' } }, 'p1');
+    const records = [
+      thought,
+      record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Let me look.' } }, 'p1'),
+      thought,
+      record({ sessionUpdate: 'tool_call', toolCallId: 't1', kind: 'read', status: 'in_progress' }, 'p1'),
+      record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Done.' } }, 'p1'),
+      record({ sessionUpdate: 'turn_completed', prompt_id: 'p1', stop_reason: 'end_turn' }),
+    ];
+    const events = records.flatMap((entry) => normalizer.normalize(entry)).map(({ event }) => event);
+
+    // Core ranks reasoning above responding: a thought left open labels the answer and the tool as reasoning.
+    expect(events.map(({ type }) => type)).toEqual([
+      'reasoning:started',
+      'reasoning:completed',
+      'conversation:assistant-message',
+      'reasoning:started',
+      'reasoning:completed',
+      'tool:started',
+      'conversation:assistant-message',
+      'conversation:assistant-message',
+      'turn:completed',
+    ]);
+    expect(events.filter(({ type }) => type.startsWith('reasoning:'))).toEqual([
+      { type: 'reasoning:started', reasoningId: 'p1' },
+      { type: 'reasoning:completed', reasoningId: 'p1' },
+      { type: 'reasoning:started', reasoningId: 'p1' },
+      { type: 'reasoning:completed', reasoningId: 'p1' },
+    ]);
+  });
+
+  it('frames each stream segment of a turn as its own message and ends the turn with the last one', () => {
+    // Synthetic records: the committed captures sanitise every `_meta.streamStartMs` to one value.
+    const normalizer = new GrokUpdateNormalizer();
+    const s1 = { streamStartMs: 1 };
+    const s2 = { streamStartMs: 2 };
+    const records = [
+      record({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'plan' } }, 'p1', s1),
+      record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Let me look.' } }, 'p1', s1),
+      record({ sessionUpdate: 'tool_call', toolCallId: 'T', kind: 'read', status: 'in_progress' }, 'p1', s1),
+      record({ sessionUpdate: 'tool_call_update', toolCallId: 'T', status: 'completed' }, 'p1', s1),
+      record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Done: 3 files.' } }, 'p1', s2),
+      record({ sessionUpdate: 'turn_completed', prompt_id: 'p1', stop_reason: 'end_turn' }),
+    ];
+    const events = records.flatMap((entry) => normalizer.normalize(entry)).map(({ event }) => event);
+    const messages = events.flatMap((event) => (event.type === 'conversation:assistant-message' ? [event] : []));
+
+    expect(messages.map(({ messageId, text, final }) => [messageId, text, final])).toEqual([
+      ['grok-assistant:p1', 'Let me look.', false],
+      ['grok-assistant:p1:1', 'Done: 3 files.', false],
+      ['grok-assistant:p1:1', 'Done: 3 files.', true],
+    ]);
+    expect(events.find(({ type }) => type === 'turn:completed')).toMatchObject({
+      lastAssistantMessage: 'Done: 3 files.',
+    });
+  });
+
+  it('opens a segment at a new stream, and appends within one stream or when the record names none', () => {
+    const normalizer = new GrokUpdateNormalizer();
+    const message = (text: string, promptId: string, streamStartMs?: number) =>
+      record(
+        { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } },
+        promptId,
+        streamStartMs === undefined ? {} : { streamStartMs },
+      );
+    const records = [
+      message('one', 'p1', 1),
+      message(' more', 'p1', 1),
+      message('two', 'p1', 2),
+      message('three', 'p2'),
+      message(' more', 'p2', 5),
+      message(' still', 'p2'),
+    ];
+    const events = records.flatMap((entry) => normalizer.normalize(entry)).map(({ event }) => event);
+    const messages = events.flatMap((event) => (event.type === 'conversation:assistant-message' ? [event] : []));
+
+    expect(messages.map(({ messageId, text }) => [messageId, text])).toEqual([
+      ['grok-assistant:p1', 'one'],
+      ['grok-assistant:p1', 'one more'],
+      ['grok-assistant:p1:1', 'two'],
+      ['grok-assistant:p2', 'three'],
+      ['grok-assistant:p2', 'three more'],
+      ['grok-assistant:p2', 'three more still'],
+    ]);
+  });
+
+  it('fails a turn whose turn_completed names an error_kind, whatever its stop_reason', () => {
+    const normalizer = new GrokUpdateNormalizer();
+    const turn = (promptId: string, end: Record<string, unknown>) => [
+      record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'partial' } }, promptId),
+      record({ sessionUpdate: 'turn_completed', prompt_id: promptId, stop_reason: 'end_turn', ...end }),
+    ];
+    const records = [
+      ...turn('p1', { error_kind: 'rate_limit' }),
+      ...turn('p2', {}),
+      ...turn('p3', { error_kind: null }),
+      ...turn('p4', { error_kind: '' }),
+    ];
+    const events = records.flatMap((entry) => normalizer.normalize(entry)).map(({ event }) => event);
+
+    expect(events.filter(({ type }) => type === 'turn:completed' || type === 'turn:failed')).toEqual([
+      { type: 'turn:failed', turnId: 'p1', error: 'rate_limit' },
+      expect.objectContaining({ type: 'turn:completed', turnId: 'p2', stopReason: 'end_turn' }),
+      expect.objectContaining({ type: 'turn:completed', turnId: 'p3', stopReason: 'end_turn' }),
+      expect.objectContaining({ type: 'turn:completed', turnId: 'p4', stopReason: 'end_turn' }),
+    ]);
+    // The answer a refused turn streamed is still its final message.
+    expect(events.filter((event) => event.type === 'conversation:assistant-message' && event.final)).toHaveLength(4);
+  });
+
   it('correlates a user echo even when no user-prompt hook supplies the UUID', () => {
     const normalizer = new GrokUpdateNormalizer();
     expect(
@@ -260,6 +386,18 @@ describe('GrokUpdateNormalizer', () => {
   });
 });
 
+describe('GrokConversationNormalizer', () => {
+  it('keeps no text of a turn it completed', () => {
+    const conversation = new GrokConversationNormalizer();
+    const observed: GrokObservedFactory = (event, promptId) => ({ event, promptId, nativeEvent: undefined });
+    const update = { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'answer' } };
+    conversation.append(update, 'p1', observed);
+
+    expect(conversation.complete('p1', observed).text).toBe('answer');
+    expect(conversation.complete('p1', observed)).toEqual({ events: [] });
+  });
+});
+
 describe('createGrokSessionObserver', () => {
   it('resolves bare --resume to the most recently updated cwd-scoped session', async () => {
     const home = await mkdtemp(join(tmpdir(), 'puppeteer-grok-home-'));
@@ -324,7 +462,186 @@ describe('createGrokSessionObserver', () => {
     expect(received).toHaveLength(firstCount);
     expect(received.filter(({ event }) => event.type === 'turn:started')).toHaveLength(2);
     expect(received.filter(({ event }) => event.type === 'turn:completed')).toHaveLength(2);
-    expect(received.every(({ phase }) => phase === 'bootstrap')).toBe(true);
+    // Only the record straddling the first stat's size was there to replay: what came after it is live.
+    expect(received.filter(({ phase }) => phase === 'bootstrap').map(({ event }) => event.type)).toEqual([
+      'session:started',
+      'adapter:native-event',
+    ]);
+    expect(received.at(2)?.phase).toBe('live');
+  });
+
+  it('settles what a replay left open before any live record, and marks a settled turn’s own end', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-replay-'));
+    temporaryDirectories.push(directory);
+    const path = join(directory, 'updates.jsonl');
+    await writeFile(
+      path,
+      jsonl(
+        userChunk('first', 1_784_669_125),
+        thoughtChunk('P1'),
+        record({ sessionUpdate: 'tool_call', toolCallId: 'T1', kind: 'read', status: 'in_progress' }, 'P1'),
+        record({ sessionUpdate: 'subagent_spawned', subagent_id: 'S1' }, 'P1'),
+        // A tool record ends a thought, so the one still open when the log stops comes after it.
+        thoughtChunk('P1'),
+      ),
+    );
+    const observer = createGrokSessionObserver(path, { pollIntervalMs: 60_000 });
+    const received: GrokObservedEvent[] = [];
+    observer.onEvent((event) => received.push(event));
+    try {
+      await observer.poll();
+      const derived = received.filter(({ confidence }) => confidence === 'derived');
+      expect(derived.map(({ event, promptId }) => [event, promptId])).toEqual([
+        [{ type: 'tool:failed', toolCallId: 'T1', error: 'the session ended before this tool finished' }, 'P1'],
+        [{ type: 'delegation:subagent-stopped', subagentId: 'S1' }, 'P1'],
+        [{ type: 'reasoning:completed', reasoningId: 'P1' }, 'P1'],
+        [{ type: 'turn:completed', turnId: 'P1' }, 'P1'],
+        [{ type: 'adapter:native-event', adapter: 'grok', nativeType: 'replay.settled' }, undefined],
+      ]);
+      expect(derived.every(({ phase, source }) => phase === 'bootstrap' && source === 'runtime')).toBe(true);
+      expect(received.at(-1)).toBe(derived.at(-1));
+
+      const replayed = received.length;
+      await appendFile(
+        path,
+        jsonl(
+          userChunk('next', 1_784_669_126),
+          thoughtChunk('P2'),
+          record({ sessionUpdate: 'turn_completed', prompt_id: 'P1', stop_reason: 'end_turn' }),
+        ),
+      );
+      await observer.poll();
+      // The log's own end of the settled turn is the settle's duplicate, and comes alone and marked: control-session
+      // publishes it only where a running frame started that prompt again.
+      const live = received.slice(replayed);
+      expect(live.map(({ event, phase, settledEnd }) => [event.type, phase, settledEnd === true])).toEqual([
+        ['turn:started', 'live', false],
+        ['reasoning:started', 'live', false],
+        ['turn:completed', 'live', true],
+      ]);
+      expect(live.at(-1)?.event).toEqual({ type: 'turn:completed', turnId: 'P1', stopReason: 'end_turn' });
+    } finally {
+      observer.stop();
+    }
+  });
+
+  it('gives a settled turn its own end once it shows live work, whichever record shows it', async () => {
+    const liveWork = {
+      message: record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'done' } }, 'P1'),
+      thought: thoughtChunk('P1'),
+      tool: record({ sessionUpdate: 'tool_call', toolCallId: 'T1', kind: 'read', status: 'in_progress' }, 'P1'),
+    };
+    for (const [name, work] of Object.entries(liveWork)) {
+      const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-replay-reopen-'));
+      temporaryDirectories.push(directory);
+      const path = join(directory, 'updates.jsonl');
+      await writeFile(path, jsonl(userChunk('first', 1_784_669_125), thoughtChunk('P1')));
+      const observer = createGrokSessionObserver(path, { pollIntervalMs: 60_000 });
+      const received: GrokObservedEvent[] = [];
+      observer.onEvent((event) => received.push(event));
+      try {
+        await observer.poll();
+        await appendFile(
+          path,
+          jsonl(work, record({ sessionUpdate: 'turn_completed', prompt_id: 'P1', stop_reason: 'end_turn' })),
+        );
+        await observer.poll();
+        const ends = received.flatMap(({ event, phase }) =>
+          event.type === 'turn:completed' ? [[event.stopReason, phase]] : [],
+        );
+        expect(ends, name).toEqual([
+          [undefined, 'bootstrap'],
+          ['end_turn', 'live'],
+        ]);
+      } finally {
+        observer.stop();
+      }
+    }
+  });
+
+  it('ends a replayed refused turn without failing it, and fails a live one', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-replay-refused-'));
+    temporaryDirectories.push(directory);
+    const path = join(directory, 'updates.jsonl');
+    const message = record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'sorry' } }, 'P1');
+    const refused = (prompt_id: string) =>
+      record({ sessionUpdate: 'turn_completed', prompt_id, stop_reason: 'end_turn', error_kind: 'rate_limit' });
+    await writeFile(path, jsonl(userChunk('old', 1_784_669_125), message, refused('P1')));
+    const observer = createGrokSessionObserver(path, { pollIntervalMs: 60_000 });
+    const received: GrokObservedEvent[] = [];
+    observer.onEvent((event) => received.push(event));
+    try {
+      await observer.poll();
+      await appendFile(path, jsonl(userChunk('new', 1_784_669_126), thoughtChunk('P2'), refused('P2')));
+      await observer.poll();
+      const ends = received.flatMap(({ event, phase }) =>
+        event.type === 'turn:completed' || event.type === 'turn:failed' ? [[event.type, event.turnId, phase]] : [],
+      );
+      expect(ends).toEqual([
+        ['turn:completed', 'P1', 'bootstrap'],
+        ['turn:failed', 'P2', 'live'],
+      ]);
+      expect(received.find(({ event }) => event.type === 'turn:completed')?.event).toMatchObject({
+        stopReason: 'end_turn',
+        lastAssistantMessage: 'sorry',
+      });
+    } finally {
+      observer.stop();
+    }
+  });
+
+  it('starts a live turn from its own prompt, never the unanswered one the replay ended on', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-replay-prompt-'));
+    temporaryDirectories.push(directory);
+    const path = join(directory, 'updates.jsonl');
+    await writeFile(path, jsonl(userChunk('old', 1_784_669_125)));
+    const observer = createGrokSessionObserver(path, { pollIntervalMs: 60_000 });
+    const received: GrokObservedEvent[] = [];
+    observer.onEvent((event) => received.push(event));
+    try {
+      await observer.poll();
+      await appendFile(path, jsonl(userChunk('new', 1_784_669_126), thoughtChunk('P2')));
+      await observer.poll();
+      expect(received.find(({ event }) => event.type === 'turn:started')).toMatchObject({
+        phase: 'live',
+        timestamp: new Date(1_784_669_126_000).toISOString(),
+        event: { turnId: 'P2', prompt: 'new' },
+      });
+    } finally {
+      observer.stop();
+    }
+  });
+
+  it('reads a record appended during a bounded replay as live, and never settles it', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-replay-bounded-'));
+    temporaryDirectories.push(directory);
+    const path = join(directory, 'updates.jsonl');
+    const tool = (toolCallId: string) =>
+      record({ sessionUpdate: 'tool_call', toolCallId, kind: 'read', status: 'in_progress' }, 'P1');
+    await writeFile(path, jsonl(tool('T1')));
+    const observer = createGrokSessionObserver(path, {
+      pollIntervalMs: 60_000,
+      readChunkBytes: 64,
+      maxBytesPerPoll: 64,
+    });
+    const received: GrokObservedEvent[] = [];
+    observer.onEvent((event) => received.push(event));
+    try {
+      await observer.poll();
+      expect(received).toEqual([]);
+      await appendFile(path, jsonl(tool('T2')));
+      for (let poll = 0; poll < 20; poll += 1) await observer.poll();
+      expect(received.map(({ event, phase }) => [event.type, phase])).toEqual([
+        ['tool:started', 'bootstrap'],
+        ['tool:failed', 'bootstrap'],
+        ['adapter:native-event', 'bootstrap'],
+        ['tool:started', 'live'],
+      ]);
+      expect(received.at(1)?.event).toMatchObject({ toolCallId: 'T1' });
+      expect(received.at(-1)?.event).toMatchObject({ toolCallId: 'T2' });
+    } finally {
+      observer.stop();
+    }
   });
 
   it('marks a log created after the initial observation boundary as live', async () => {
@@ -378,7 +695,7 @@ describe('createGrokSessionObserver', () => {
 
     expect(errors).toHaveLength(1);
     expect(errors[0]?.message).toContain('512-byte safety limit');
-    expect(received.map(({ event }) => event.type)).toEqual(['session:started']);
+    expect(received.map(({ event }) => event.type)).toEqual(['session:started', 'adapter:native-event']);
   });
 
   it('reads exact context usage from signals.json, retries partial rewrites, and deduplicates', async () => {
