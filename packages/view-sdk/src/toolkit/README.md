@@ -29,7 +29,7 @@ Two rules hold for everything here:
 | `mark-outline.ts` | A view's own mark, for its manifest (MV-D6): the host's bar FILLS `manifest.mark` in currentColor and never strokes it (ruled at MV-8: a stroked outline draws both edges). `strokeOutline(from, to)`, `strokesOutline(strokes)` and `ringOutline(cx, cy, r)` write the filled outline a monoline stroke paints on the bar's grid (`MARK_VIEW_BOX`, `MARK_STROKE` = 1.6, round caps) |
 | `marks-atlas.ts` | `MARKS_ATLAS_URL`, the swarm's SDF atlas as a data URL |
 | `canvas.ts` | `sizeCanvas` (device-pixel backing store, CSS-pixel element, writes only on change), `canvasRatio`, `watchDevicePixelRatio` |
-| `motion.ts` | `createMotionLoop(callback, { animations, reducedMotion, fps?, still? })`, which requests no frame at all while animations are off or motion is reduced, and re-evaluates on `loop.update(input.theme)`; stopped, `loop.requestStill()` asks for one still frame, merged with every request before it |
+| `motion.ts` | `createMotionLoop(callback, { animations, reducedMotion, hidden?, moving?, fps?, still? })`, which requests no frame at all while animations are off, motion is reduced, the stage is out of sight or the view has nothing moving, and re-evaluates on `loop.update(themeMotion(input.theme))`; stopped, `loop.requestStill()` asks for one still frame, merged with every request before it, and owed while the stage is out of sight. `themeMotion(theme)` reads an absent `hidden` as false; `motionAllowed(theme)` says whether a view may move at all |
 | `keys.ts` | `keyLegend(key)`: how a declared key is printed, as the keyboard's legend (`↵`, `↘`) or its character. The host's bar prints a view's keys in its tooltip with it, and a view prints the key of one of its own controls on that control, under its glyph (MV-D8, M177 ruling 4) |
 
 ## Ported, with identical output
@@ -63,17 +63,22 @@ replica with the theme's key. The function deals each sequence once per theme an
 with no `project.seq`. The replica re-colours rows only when the key changes, and views receive
 `AgentView.colour` ready. A view never calls `projectColour` itself.
 
-## The motion loop and `theme.animations`
+## The motion loop, `theme.animations` and `theme.hidden`
 
 ```ts
-const loop = createMotionLoop((time, deltaMs) => draw(time, deltaMs), input.theme);
+const loop = createMotionLoop((time, deltaMs) => draw(time, deltaMs), themeMotion(input.theme));
 // in update(input), and wherever else what the view shows changes (a worker's answer, focus):
-loop.update(input.theme); // starts or stops; keeps an fps given at creation
+loop.update(themeMotion(input.theme)); // starts or stops; keeps an fps given at creation
 loop.requestStill(); // stopped: one still frame, on the next frame; running: nothing, its next frame draws
 ```
 
-While either switch says no, the loop holds no `requestAnimationFrame` at all, which is the conformance rule
-(MV-W4: no loop when off). A stopped view still draws every change it shows, through `requestStill`:
+While any switch says no, the loop holds no `requestAnimationFrame` at all, which is the conformance rule
+(MV-W4: no loop when off). The theme's switches pass through `themeMotion`, never straight in: `update` changes
+only the keys it is given, and `themeMotion` reads an absent `hidden` as false, so a host that drops the key shows
+the stage again. A view's own eases, springs and tweens ask `motionAllowed(theme)`, the same three switches as one
+answer. `moving: false` is the view's own demand: nothing of it moves now (the spend's wave moves only while a head
+waits), so no frame is asked for even with motion allowed. A stopped view still draws every change it shows, through
+`requestStill`:
 - **One frame for a burst.** Requests merge until the still frame runs, so an update, the answer it starts and a
   focus that lands before the frame are drawn once. The request has a handle of its own; `running` reports only the
   loop.
@@ -84,6 +89,12 @@ While either switch says no, the loop holds no `requestAnimationFrame` at all, w
   for a view whose moving callback must not run with no time passed.
 - **Nothing while it runs, nothing once disposed.** A running loop's next frame draws anyway; a loop that starts,
   and `dispose`, drop a still frame owed.
+- **Owed out of sight.** While `hidden` (`MonitorTheme.hidden`: the host's chrome covers the stage, or its window is
+  hidden) a still frame asked for is never drawn, and one already asked for is taken back: it is owed. Shown with the
+  loop still stopped, it is drawn once on the next frame; shown with motion on, the loop's frames draw it. The host
+  delivers `hidden` at once rather than at its next frame, since a hidden page runs none; the view's own clocks and
+  timers rest with the loop. The conformance suite holds a view to it (MV-W4, `rests-when-hidden`): mounted out of
+  sight, it asks for no frame, not even for an update, and keeps no timer standing.
 
 ## Workers and bundlers (MV-D7)
 

@@ -96,6 +96,9 @@
   color: var(--mv-spend-t3);
 }
 
+/* The compact hero is one line. At narrow it runs from the plot's left edge to the list's column, and SpendView.tsx's
+   `heroRoom` measures it by these sizes and gaps (and the list's 10 px padding), as spend-words.ts's NARROW_HERO
+   names them, to cut its caption to fit; test/spend-sheet.test.ts fails if the two part. */
 .mv-spend .vf-monitor-spend-hero.is-compact {
   top: 10px;
   gap: 10px;
@@ -113,10 +116,6 @@
 
 .mv-spend .vf-monitor-spend-hero.is-narrow .vf-monitor-spend-big {
   font-size: 20px;
-}
-
-.mv-spend .vf-monitor-spend-hero.is-narrow .vf-monitor-spend-cap i {
-  display: none;
 }
 
 /* The chart's caption at the plot's top-left, where every line starts at $0 (the prototype's `.sv-colcap`): the

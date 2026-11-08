@@ -10,6 +10,7 @@ import {
   projectName,
   recedeTarget,
   sizeCanvas,
+  themeMotion,
   watchDevicePixelRatio,
   type MotionLoop,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
@@ -30,7 +31,9 @@ import { rainDataString, rainTailLength, reconcileRainColumns, type RainDrop } f
 //
 // On the SDK (MV-4) it reads only its input. Its loop is the toolkit's, which
 // asks for no frame while the host's animations are off or motion is reduced
-// (MV-W4); the field then stands still, drawn once per change.
+// (MV-W4); the field then stands still, drawn once per change, on one still
+// frame. With the stage out of sight (`theme.hidden`) nothing is drawn at all
+// until it is shown.
 
 interface Geometry {
   columns: number;
@@ -77,9 +80,9 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
   const hoveredRef = useRef<string | undefined>(undefined);
   const tooltipRef = useRef<HTMLElement>(null);
   const pointerRef = useRef({ x: 0, y: 0 });
-  const motionRef = useRef({ animations: theme.animations, reducedMotion: theme.reducedMotion });
+  const motionRef = useRef(themeMotion(theme));
   const loopRef = useRef<MotionLoop | null>(null);
-  /** Draws the field once where it stands: a stopped loop's frame, and a resize's at once. Set by the loop's effect. */
+  /** Draws a resized field at once where it stands, or, out of sight, owes it to the loop. Set by the loop's effect. */
   const stillRef = useRef<(() => void) | null>(null);
   /** The row under the pointer, by id: the tooltip reads the row as the input has it now. */
   const [hoveredId, setHoveredId] = useState<string>();
@@ -101,7 +104,8 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
    * drawn at once where it stands, whether or not the loop runs: a cleared canvas is never shown. A zoom can move the
    * stage's size and the ratio together and leave the backing store as it was (1000 CSS px at 2× and 800 at 2.5× are
    * both 2000 device pixels): nothing is cleared, but the columns and the transform are new, so that field is drawn
-   * at once too, as a held-still one has no next frame.
+   * at once too, as a held-still one has no next frame. Out of sight nothing is shown: the draw is owed to the loop,
+   * and made once the stage is shown.
    */
   const measure = useCallback((): void => {
     const canvas = canvasRef.current;
@@ -267,18 +271,25 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
       context2d.globalAlpha = 1;
     };
 
+    // A still frame draws the field where it stands, never the moving draw with no time passed: that would let the
+    // drops fall and the glyphs scramble.
+    const drawStill = (): void => draw(context, parametersRef.current);
     // Driven from rAF rather than setInterval so the loop stops with the window
     // instead of repainting behind other applications; the refresh rate is the
     // loop's cap, which keeps the deliberately chunky sub-60 cadence.
     const loop = createMotionLoop((_time, elapsed) => draw(context, parametersRef.current, elapsed), {
       ...motionRef.current,
       fps: parametersRef.current.refreshRate,
+      still: drawStill,
     });
     loopRef.current = loop;
-    stillRef.current = () => draw(context, parametersRef.current);
+    stillRef.current = () => {
+      if (motionRef.current.hidden) loop.requestStill();
+      else drawStill();
+    };
 
     // Measured once the still draw exists, so a canvas the measure clears is drawn at once. What a stopped loop shows
-    // of each change, the mount's among them, is the still effect's.
+    // of each change, the mount's among them, is the still effect's, on the loop's one still frame.
     const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(() => measure());
     observer?.observe(container);
     const stopWatchingRatio = watchDevicePixelRatio(() => measure());
@@ -292,15 +303,16 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
     };
   }, [measure]);
 
-  // The host's animations switch and the reduced-motion preference start or stop the loop; stopped, every change
-  // the field shows (its agents, their words, the palette, the parameters) is drawn once where it stands.
+  // The host's animations switch, the reduced-motion preference and the stage out of sight start or stop the loop;
+  // stopped, every change the field shows (its agents, their words, the palette, the parameters) is drawn once where
+  // it stands, on one still frame however many arrive before it, and out of sight once the stage is shown.
   useEffect(() => {
-    motionRef.current = { animations: theme.animations, reducedMotion: theme.reducedMotion };
+    motionRef.current = themeMotion(theme);
     loopRef.current?.update(motionRef.current);
-  }, [theme.animations, theme.reducedMotion]);
+  }, [theme.animations, theme.reducedMotion, theme.hidden]);
   useEffect(() => {
-    if (loopRef.current && !loopRef.current.running) stillRef.current?.();
-  }, [agents, palette, rain, theme.animations, theme.reducedMotion]);
+    loopRef.current?.requestStill();
+  }, [agents, palette, rain, theme.animations, theme.reducedMotion, theme.hidden]);
 
   /** Columns run the full height, so the pointer's row never matters. */
   const agentAt = useCallback((clientX: number): AgentView | undefined => {

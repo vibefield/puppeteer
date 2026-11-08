@@ -12,6 +12,10 @@ import type { SwarmPhysicsCommand } from './protocol.js';
 // There is no rAF here: a dedicated worker has none, and does not want one. It
 // steps on a timer and the accumulator absorbs the timer's jitter, which is the
 // same guard that already absorbed a stalled display.
+//
+// The clock sleeps while the host holds still: after every command the timer is
+// set to what the host says (`ticking`), so a swarm held still, out of sight, or
+// not yet given a world keeps no timer at all.
 
 /**
  * Wake this many times per physics step.
@@ -34,8 +38,16 @@ const host = createSwarmPhysicsHost({
   post: (message, transfer) => end.post(message, transfer),
 });
 
-function retimeIfNeeded(): void {
-  if (host.disposed) return;
+/**
+ * One timer while the host steps, none while it does not, retimed when the rate
+ * moves. A pause lets it go and a resume arms it again; the host reseeds its own
+ * clock on resume, so the time slept is never stepped through.
+ */
+function reconcileClock(): void {
+  if (!host.ticking) {
+    stop();
+    return;
+  }
   const period = Math.max(MIN_TIMER_MS, host.stepMs() / OVERSAMPLE);
   if (timer !== undefined && Math.abs(period - timerPeriod) < 0.5) return;
   if (timer !== undefined) clearInterval(timer);
@@ -64,5 +76,5 @@ const end = serveWorker<SwarmPhysicsCommand>((command) => {
     end.close();
     return;
   }
-  if (command.type === 'init' || command.type === 'updateParameters') retimeIfNeeded();
+  reconcileClock();
 });
