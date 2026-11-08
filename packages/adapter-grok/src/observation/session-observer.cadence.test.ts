@@ -116,8 +116,11 @@ describe('createGrokSessionObserver stat gating', () => {
 });
 
 describe('createGrokSessionObserver cadence', () => {
-  const updatesPath = '/grok/session/updates.jsonl';
-  const signalsPath = '/grok/session/signals.json';
+  // Joined, never literal: the observer joins signals.json and summary.json onto the updates path's directory, so on
+  // Windows a '/grok/session/…' literal is never the path it stats.
+  const sessionDirectory = join('/grok', 'session');
+  const updatesPath = join(sessionDirectory, 'updates.jsonl');
+  const signalsPath = join(sessionDirectory, 'signals.json');
   let observer: GrokSessionObserver | undefined;
 
   /** Every poll stats signals.json once. */
@@ -134,7 +137,7 @@ describe('createGrokSessionObserver cadence', () => {
     memory.files = new Map([
       [updatesPath, ''],
       [signalsPath, '{}'],
-      ['/grok/session/summary.json', '{}'],
+      [join(sessionDirectory, 'summary.json'), '{}'],
     ]);
   });
 
