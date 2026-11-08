@@ -9,6 +9,16 @@ export interface ClaudeHookPayload {
   [key: string]: unknown;
 }
 
+/** What the observer knows of a hook that its body does not say. */
+export interface ClaudeHookContext {
+  /**
+   * The observer rotated its native identity to this hook's session (an in-process `/clear` or `/resume`,
+   * session-selection.ts): a SessionStart that starts the observed session over. Its `source` alone never says so:
+   * a `fork` start may be a background copy, a `resume` one another conversation's.
+   */
+  rebind?: boolean | undefined;
+}
+
 export interface NormalizedHook {
   events: AgentEvent[];
   diagnostics: ClaudeHookDiagnostic[];

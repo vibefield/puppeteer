@@ -40,6 +40,12 @@ export interface SwarmPhysicsHost {
    * and draws nothing with it.
    */
   renderSurface(): SwarmRenderSurface | null;
+  /**
+   * A pump would step something: a world is given, it is not held still, and
+   * the host is not disposed. The worker's timer runs exactly while this is
+   * true, so a thread whose swarm holds still wakes for nothing.
+   */
+  readonly ticking: boolean;
   readonly disposed: boolean;
   dispose(): void;
 }
@@ -188,6 +194,9 @@ export function createSwarmPhysicsHost(options: SwarmPhysicsHostOptions): SwarmP
     pump,
     stepMs: () => physics?.stepMs ?? 1000 / 30,
     renderSurface: () => surface,
+    get ticking() {
+      return physics !== null && !paused && !disposed;
+    },
     get disposed() {
       return disposed;
     },

@@ -45,9 +45,9 @@ function frameOf(overrides: Partial<SwarmFrame> = {}): SwarmFrame {
   };
 }
 
-function pack(frame: SwarmFrame): Float32Array {
+function pack(frame: SwarmFrame, time = 12.5): Float32Array {
   const target = new Float32Array(FRAME_FLOATS).fill(Number.NaN);
-  packFrame(target, frame, { width: 800, height: 600, dpr: 2, time: 12.5 });
+  packFrame(target, frame, { width: 800, height: 600, dpr: 2, time });
   return target;
 }
 
@@ -103,6 +103,24 @@ describe('the frame uniform', () => {
     expect(data[FRAME_LAYOUT.params]).toBeCloseTo(0.9);
     expect(data[FRAME_LAYOUT.params + 1]).toBe(0);
     expect(data[FRAME_LAYOUT.params + 2]).toBe(24);
+  });
+
+  // Five days mounted, a float32 count of seconds steps by 1/32 s: the waves
+  // and breaths would stutter. The shaders take the clock wrapped at 42 s, the
+  // period every one of theirs divides, and the state glow's wave, whose speed
+  // is a tunable, as its phase in turns, taken from the f64 clock.
+  it('keeps the clock exact after days mounted, wrapped at the shaders’ common period', () => {
+    const time = 5 * 86400 + 0.123;
+    expect(pack(frameOf({ time }), time)[FRAME_LAYOUT.viewport + 3]).toBe(Math.fround(time % 42));
+  });
+
+  it('carries the state glow’s wave as count, phase (turns, from the f64 clock), depth', () => {
+    const time = 5 * 86400 + 0.123;
+    const stateGlow = { inner: 0.1, full: 0.9, strength: 0.8, count: 2, speed: 1.75, depth: 0.3 };
+    const data = pack(frameOf({ time, stateGlow }), time);
+    const turns = time * 1.75;
+    const wave = [...data.slice(FRAME_LAYOUT.glowWave, FRAME_LAYOUT.glowWave + 4)];
+    expect(wave).toEqual([2, Math.fround(turns - Math.floor(turns)), Math.fround(0.3), 0]);
   });
 
   it('carries the veil in params.w, clamped, and none by default', () => {

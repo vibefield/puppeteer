@@ -423,7 +423,18 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreClaudeContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      async createSession({ cwd, resume, title, host, agentOptions, profile, ingress, environment, ...briefing }) {
+      async createSession({
+        cwd,
+        resume,
+        title,
+        host,
+        agentOptions,
+        profile,
+        ingress,
+        environment,
+        stagingDir,
+        ...briefing
+      }) {
         const launch = withLaunchEnvironment(
           withProfileBinding(
             'claude',
@@ -456,6 +467,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           observeSubagentStatus: true,
           ingress,
           forwarderRuntime: host.forwarderRuntime,
+          stagingDir,
           ports: {
             spawn: (prepared) => host.spawnTerminal(prepared),
             automate: host.automateTerminal,
@@ -493,7 +505,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           automate: host.automateTerminal,
         });
       },
-      async prepareSession({ cwd, resume, title, host, agentOptions, profile, ingress, ...briefing }) {
+      async prepareSession({ cwd, resume, title, host, agentOptions, profile, ingress, stagingDir, ...briefing }) {
         // A typed launch is prepared, never created. What the person typed is read from the
         // invocation's own options: the profile binding normalizes an empty argv of its own, which
         // binds the environment and says nothing of the argv.
@@ -531,6 +543,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           automate: host.automateTerminal,
           ingress,
           forwarderRuntime: host.forwarderRuntime,
+          stagingDir,
         });
         const { command, args, cwd: launchCwd, env } = prepared.launch;
         return {

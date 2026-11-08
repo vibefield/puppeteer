@@ -21,8 +21,8 @@ import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { homedir, tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   AgentLaunchRefusedError,
   validateAgentBriefing,
@@ -32,6 +32,7 @@ import {
 import { ownScriptRunnerFacts, resolveScriptRunner, type ScriptRunner } from '@vibefield/puppeteer-native-observation';
 import { CLAUDE_FORWARDER_SOURCE } from '../generated/forwarder-source.js';
 import { CLAUDE_BRIEFING_CAPABILITIES, prepareClaudeBriefing } from './briefing.js';
+import { claudeConfigDirectory, claudeConfigRoot } from './config-root.js';
 import { CLAUDE_STATUS_LINE_FORWARDER_WORD, CLAUDE_STATUS_LINE_SUBAGENT } from './forwarder.js';
 import { generateHookSettings } from './settings.js';
 import { readClaudeHookSwitches, type ClaudeHookSwitches } from './hook-switches.js';
@@ -70,7 +71,7 @@ export interface PrepareClaudeSessionOptions extends AgentRunBriefing {
   effort?: string | undefined;
   /** Native settings layers passed to `--setting-sources` and used for delegate discovery. */
   settingSources?: readonly ClaudeSettingSource[] | undefined;
-  /** Override Claude's user configuration root; defaults to `CLAUDE_CONFIG_DIR` when set. */
+  /** Claude's user configuration root; else `env`'s `CLAUDE_CONFIG_DIR`, then this process's (config-root.ts). */
   configDir?: string | undefined;
   /** The home the user settings layer hangs off when no config root is set; the process home when absent. */
   home?: string | undefined;
@@ -111,7 +112,11 @@ export interface PrepareClaudeSessionOptions extends AgentRunBriefing {
    * person's) can take one for its value, and a prompt that starts with `-` stays a prompt.
    */
   prompt?: readonly string[] | undefined;
-  /** Override the settings-file directory (tests); default is an mkdtemp dir. */
+  /**
+   * The directory every launch file is written in, the caller's (a runtime's per-run staging directory, the driver's
+   * `stagingDir`): {@link cleanupClaudeSession} removes the files and never the directory. Default: a private mkdtemp
+   * directory under the OS temp directory, removed with the files.
+   */
   settingsDir?: string | undefined;
   /**
    * The program the host lends to run the builtin forwarder entry in the agent's process tree (core
@@ -284,11 +289,8 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   // On resume the session keeps its own id + transcript, so that id IS the
   // session id; otherwise reuse a caller-chosen id or mint one.
   const sessionId = options.resume ?? options.sessionId ?? randomUUID();
-  const rawClaudeConfigDir = (options.configDir ?? process.env.CLAUDE_CONFIG_DIR)?.trim() || undefined;
-  // Claude interprets a relative CLAUDE_CONFIG_DIR from the launched process's
-  // cwd. Resolve it at that same boundary before both discovery and spawn so
-  // an Electron/main-process cwd cannot select a different delegate.
-  const claudeConfigDir = rawClaudeConfigDir ? resolve(options.cwd, rawClaudeConfigDir) : undefined;
+  // The one root discovery, the spawn, a resume's check, an attach and the transcript pin read (config-root.ts).
+  const claudeConfigDir = claudeConfigDirectory(options);
   // The person's own settings layers, as the launch will read them. Their hook switches decide what
   // the managed settings must restate, and whether the launch may start at all, before anything is
   // written. The imposter reads none of them.
@@ -343,7 +345,7 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
       // provisional identity (a picker that was never answered, a session that
       // never took a turn) is the usual way a persisted continuation gets here.
       // Refuse before launch so the caller can fall back instead.
-      const root = options.env?.PUPPETEER_IMPOSTER_HOME ?? claudeConfigDir ?? join(homedir(), '.claude');
+      const root = claudeConfigRoot(options);
       if (!locateClaudeTranscript(sessionId, root)) throw new ClaudeConversationMissingError(sessionId, root);
     }
     const discoveredStatusChannels =
