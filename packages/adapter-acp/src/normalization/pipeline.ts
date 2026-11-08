@@ -40,6 +40,11 @@ export class AcpNotificationNormalizer {
     return this.conversation.assistantText(messageId);
   }
 
+  /** A prompt opens on this session (the agent may echo none): its assistant message starts empty. */
+  beginTurn(): void {
+    this.conversation.beginTurn();
+  }
+
   completeReasoning(): { active: boolean; reasoningId?: string } {
     return this.reasoning.complete();
   }

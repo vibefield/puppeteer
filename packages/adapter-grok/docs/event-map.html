@@ -1088,23 +1088,23 @@
                       </tr>
                       <tr>
                         <td class="m">agent_message_chunk</td>
-                        <td>content.text, messageId</td>
-                        <td>→ conversation:assistant-message</td>
+                        <td>content.text, messageId, _meta.streamStartMs</td>
+                        <td>→ conversation:assistant-message, one per stream segment</td>
                       </tr>
                       <tr>
                         <td class="m">agent_thought_chunk</td>
                         <td>content</td>
-                        <td>→ reasoning:*</td>
+                        <td>→ reasoning:started / progress</td>
                       </tr>
                       <tr>
                         <td class="m">tool_call / tool_call_update</td>
                         <td>ACP tool fields</td>
-                        <td>→ tool:* via shared mapper</td>
+                        <td>→ tool:* via shared mapper; reasoning:completed first if a thought is open</td>
                       </tr>
                       <tr>
                         <td class="m">turn_completed</td>
                         <td>stop_reason, …</td>
-                        <td>→ turn:completed + reasoning:completed</td>
+                        <td>→ turn:completed (+ reasoning:completed if a thought is still open)</td>
                       </tr>
                       <tr>
                         <td class="m">hook_execution</td>
@@ -1220,7 +1220,7 @@
                     <tr>
                       <td class="m">messageId</td>
                       <td>MessageId | null</td>
-                      <td>Same id groups chunks into one message</td>
+                      <td>Same id groups chunks into one message; Grok 1.0.70 sends none</td>
                     </tr>
                     <tr>
                       <td class="m">_meta</td>
@@ -1251,6 +1251,11 @@
                       <td>object (required)</td>
                       <td>Above fields</td>
                     </tr>
+                    <tr>
+                      <td class="m">_meta.streamStartMs</td>
+                      <td>number (Grok)</td>
+                      <td>When the model stream that wrote the record began; one value per stream segment</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -1258,6 +1263,14 @@
               <p class="hook-usage">
                 When observer active: taken from <strong>log</strong> only (ACP path filtered out). →
                 conversation:assistant-message
+              </p>
+              <p class="hook-usage">
+                One message per stream segment. A message record opens a new message once the current one has text
+                and either a thought or tool record of the prompt came between, or both records carry
+                <code>_meta.streamStartMs</code> and the values differ. The first keeps
+                <code>grok-assistant:&lt;promptId&gt;</code>; later ones are
+                <code>grok-assistant:&lt;promptId&gt;:&lt;n&gt;</code>. The turn's last message is its final message and
+                <code>turn:completed.lastAssistantMessage</code>; messages are never joined.
               </p>
             </div>
           </article>
@@ -1352,7 +1365,11 @@
                 </table>
               </div>
               <h5>Puppeteer</h5>
-              <p class="hook-usage">Log → reasoning:started / progress</p>
+              <p class="hook-usage">
+                Log → reasoning:started / progress (reasoningId = the prompt id). The prompt's next message or tool
+                record completes it (reasoning:completed, where adapter-acp's driver closes it too); a later thought
+                starts it again; <code>turn_completed</code> completes one still open.
+              </p>
             </div>
           </article>
 
@@ -1701,11 +1718,20 @@
                       <td>string?</td>
                       <td>Turn correlation</td>
                     </tr>
+                    <tr>
+                      <td class="m">error_kind</td>
+                      <td>string | null</td>
+                      <td>Set on a refused turn (public TurnCompleted); no census turn carries one yet</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
               <h5>Puppeteer</h5>
-              <p class="hook-usage">→ reasoning:completed + turn:completed</p>
+              <p class="hook-usage">
+                → reasoning:completed (only if a thought is still open) + turn:completed; a live, non-empty
+                <code>error_kind</code> → turn:failed {error: error_kind} instead, whatever <code>stop_reason</code>
+                says (the final message stays). A replayed one completes the turn: what it refused has gone
+              </p>
             </div>
           </article>
         </div>
@@ -1728,7 +1754,10 @@ createGrokBackend → grok agent leader
   → ACP frames under another sessionId (a subagent child) ⇒ raw native events only, no root state;
       a spawned child's usage and running turn ⇒ its subagent actor (monitor, by child_session_id)
   → ACP frames with _meta.isReplay (session/load history) ⇒ published as replay
-  → log owns turns/tools/messages/lifecycle
+  → own-session live _x.ai/queue/changed runningPromptId ⇒ turn:started (native prompt id), held until the log
+      ends any earlier turn and settles the replay it is reading; the receipt follows the frame
+  → log owns turns/tools/messages/lifecycle (a turn either rail starts is published once)
+  → log replay ⇒ bootstrap up to the first stat's size, its open work settled, then replay.settled
   → observationLevel: native-log</pre>
           <h5>Grok 1.0.70 notes</h5>
           <ul>
@@ -1763,6 +1792,105 @@ createGrokBackend → grok agent leader
               <code>session/new|load</code> start is admitted once per binding.
             </li>
             <li>
+              A turn starts at Grok's acceptance. <code>_x.ai/queue/changed</code> lists a prompt in
+              <code>entries</code>, then runs it as <code>runningPromptId</code>, the native id the log's
+              <code>_meta.promptId</code> and <code>turn_completed.prompt_id</code> carry. With the log observer
+              attached, that running frame starts the root turn. Its prompt is the submitted text when the prompt is
+              ours, else the text Grok listed. The log echoes the user's text with no <code>promptId</code>, so on its
+              own it shows the turn only at the first model chunk. A turn either rail starts is published once: the
+              first rail wins. Only the log ends a turn, and the rail hears the next turn first. The root's activity
+              is keyed by actor, not by turn, so the earlier turn's end would retract the new turn's: a running frame
+              waits for the log's end of the turn before it, and the new turn starts in the same tick, so the row
+              never reads idle between them. Every replayed turn is an earlier turn, so while the log replays, a
+              running frame waits for <code>replay.settled</code> (below).
+            </li>
+            <li>
+              A launch or resume replay is a baseline, not work. A record whose first byte lies before the log&rsquo;s
+              size at the first stat is replay, and any other is live, so a record Grok appends during a long replay
+              is never settled. Before the first live record the observer ends what the log left open with derived
+              closers: <code>tool:failed</code> per open tool, <code>delegation:subagent-stopped</code> per open
+              subagent, <code>reasoning:completed</code>, and <code>turn:completed</code> with no stop reason or
+              message per open turn, never <code>turn:failed</code>, which would hold a resumed row&rsquo;s queue. A
+              replayed <code>turn_completed</code> that names an <code>error_kind</code> completes its turn for the
+              same reason, with its stop reason and message. The leader outlives a pane, so a resume can come in
+              mid-turn: a settled turn whose next thought, message or tool record is live is still running, and its
+              own <code>turn_completed</code> ends it. A bare one, with no live work before it, is the settle&rsquo;s
+              duplicate, so a late end never reaches a newer turn. Grok can still be running a bare one, and its
+              running frame can name it before any live record does: that frame starts the turn again, so its own
+              end ends that start. The observer marks a bare one&rsquo;s end, and the binding publishes it only while
+              that prompt is the open turn; with nothing running, or behind a newer turn, it stays the dropped
+              duplicate. A reopened turn gets no second
+              <code>turn:started</code>, but it is the open turn: a running frame waits for its end, and a frame that
+              names it again starts nothing. The settle&rsquo;s end retracted its <code>turn</code> activity, so while it
+              is the open turn the monitor holds it working by an activity of its own (<code>turn:reopened</code>), and
+              the row never reads idle between its records. Its end, or a newer turn&rsquo;s start, retracts that
+              activity. The rail can also be ahead of the log, saying a newer turn runs before the
+              log shows the reopened turn&rsquo;s last records. Those records still publish and close what they opened,
+              and only its end is dropped: a running frame says every earlier prompt is over, the settle already
+              published that end, and a second one would retract the running turn&rsquo;s activity. The prompt the
+              replay left waiting is dropped. Then
+              <code>replay.settled</code> settles the monitor: the pending interactions, actors and compaction only a
+              replay showed, from either rail, including
+              <code>session/load</code>&rsquo;s. A replay longer than one read (64 KiB) spans awaited reads, and
+              past 4 MiB polls, and the rail can name a running prompt between any two. A replayed turn is history:
+              its start never makes the open turn, and its end ends only the rail&rsquo;s start of that same prompt.
+              From the first replayed turn until <code>replay.settled</code> a running frame waits, then starts in
+              that tick, after every replayed end and the settle&rsquo;s. Otherwise one replayed end could release it
+              and a later one retract it, since the activity is the actor&rsquo;s, not the turn&rsquo;s. A log with
+              nothing to replay sends no <code>replay.settled</code>, and nothing waits for one. A frame the rail
+              delivers before the replay shows a turn, such as one buffered between <code>session/load</code> and
+              adoption, still starts at once, and a replayed end retracts its activity. The log&rsquo;s own replayed
+              end of that prompt ends it, since Grok ended it before the first stat, and a frame still waiting for a
+              prompt whose end the replay shows starts nothing. The settle&rsquo;s own ends are derived and leave the
+              open turn open: a turn the rail started and the replay left open is still the one Grok runs, and its
+              next live record holds it working as a reopened turn; until then it reads idle. Only an attach keeps
+              open work. Grok offers none yet; a future attach skips the settle, as Claude&rsquo;s
+              <code>attached</code> does.
+            </li>
+            <li>
+              The observer stats before it reads. <code>signals.json</code> and <code>summary.json</code> are read only
+              when their mtime, size or inode differ from the last successful parse, so a partial rewrite is read
+              again, and <code>updates.jsonl</code> only when its size differs from the read offset. It polls every
+              75 ms while a file changed or the live rail woke it within the last second, and every second otherwise,
+              Claude&rsquo;s transcript cadence. Every live own-session frame wakes it, and it never polls once per
+              frame. With the control rail down, the first record after an idle second is seen within a second.
+            </li>
+            <li>
+              What a receipt means. <code>confirmed</code>: Grok listed the prompt under a new id with the submitted
+              text and runs it, or lists it while another prompt runs. Its <code>turnId</code> names the turn the
+              binding publishes or will publish: Grok's id with the observer, adapter-acp's <code>acp-turn-N</code>
+              without. That turn is on the monitor before the receipt only when the prompt runs at once, with no
+              earlier turn open and the log not replaying. An id listed before the submission is never ours.
+              <code>uncertain</code>: no such acceptance
+              within the bound (<code>confirmationTimeoutMs</code>, 5 s), or the rail closed or the binding was disposed
+              first, or the request failed with no answer from Grok. A closing connection rejects what is in flight
+              with a plain Error, normally before <code>transport.closed</code>, and the leader may hold that prompt, so
+              both orders answer the same. That failure is also the rail&rsquo;s close: the SDK rejects a request with
+              anything but its <code>RequestError</code> only when it closes, and writes nothing after, so the rail is
+              down from there, even when <code>transport.closed</code> comes late or never (adapter-acp hears it at the
+              child process&rsquo;s <code>close</code>). One case stays: a submission made after the SDK closed, with
+              nothing in flight, is the first to hear it, and answers <code>uncertain</code> though nothing was
+              written.
+              <code>rejected</code>: Grok answered the request with an error before it listed the prompt (adapter-acp's
+              native event says <code>answered</code>, and Grok's message is the reason), or the rail is down and
+              nothing was written (<code>grok control rail unavailable</code>). A failed attach, a closed rail
+              and a disposed binding all last for the binding's life, so that refusal carries
+              <code>retryable: false</code>. After Grok listed it, a request failure is never the turn's end: with the
+              observer it stays a <code>control.prompt-failed</code> diagnostic, and the log's
+              <code>turn_completed</code> ends the turn.
+            </li>
+            <li>
+              Limit: a durable record over 1 MiB is dropped whole. <code>maxRecordBytes</code> is the observer's memory
+              bound, and the record's only trace is one <code>updates-log-error</code> diagnostic. If that record is a
+              tool's terminal <code>tool_call_update</code>, nothing else closes the tool: the control path filters
+              ACP's tool events and <code>turn:completed</code> retracts no tool, so the row reads working until the
+              run ends. A resume's settle closes it with the rest of the replay. Reaching 1 MiB takes a non-default
+              config: the review read the default <code>output_byte_limit</code> as keeping a completed Bash record
+              near 180 KB, which leaves a raised limit, or a large write whose diff carries the whole file, and neither
+              is witnessed. A sweep at <code>turn_completed</code> would bound this to the turn; it waits for the census
+              owed in <code>findings.md</code>, on whether a background shell's tool outlives the turn.
+            </li>
+            <li>
               Durable <code>timestamp</code> is Unix seconds; <code>signals.json</code> is written asynchronously after the
               prompt result, so a context sample can trail <code>turn:completed</code>.
             </li>
@@ -1795,8 +1923,12 @@ createGrokBackend → grok agent leader
                   <td class="m">session:exited</td>
                 </tr>
                 <tr>
+                  <td class="m">_x.ai/queue/changed runningPromptId (ACP, observer attached)</td>
+                  <td class="m">turn:started (native prompt id) · the prompt receipt</td>
+                </tr>
+                <tr>
                   <td class="m">user_message_chunk</td>
-                  <td class="m">turn:started (TUI-visible)</td>
+                  <td class="m">turn:started (TUI-visible; once, whichever rail is first)</td>
                 </tr>
                 <tr>
                   <td class="m">agent_message_chunk</td>
@@ -1812,7 +1944,7 @@ createGrokBackend → grok agent leader
                 </tr>
                 <tr>
                   <td class="m">turn_completed</td>
-                  <td class="m">turn:completed</td>
+                  <td class="m">turn:completed · turn:failed (live, non-empty error_kind)</td>
                 </tr>
                 <tr>
                   <td class="m">token / compaction signals</td>
