@@ -471,7 +471,9 @@ describe('createGrokSessionObserver', () => {
     expect(received).toHaveLength(firstCount);
     expect(received.filter(({ event }) => event.type === 'turn:started')).toHaveLength(2);
     expect(received.filter(({ event }) => event.type === 'turn:completed')).toHaveLength(2);
-    // Only the record straddling the first stat's size was there to replay: what came after it is live.
+    // Only the record straddling the boundary, the log's size at construction, was there to replay: what came after
+    // it is live. *Erratum 2026-11-08 (RV, main's red since #72):* the boundary is the log's size when the session
+    // was opened, not its size at the first stat.
     expect(received.filter(({ phase }) => phase === 'bootstrap').map(({ event }) => event.type)).toEqual([
       'session:started',
       'adapter:native-event',
@@ -654,6 +656,8 @@ describe('createGrokSessionObserver', () => {
   });
 
   it('marks a log created after the initial observation boundary as live', async () => {
+    // *Erratum 2026-11-08 (RV, main's red since #72):* the boundary is the log's size when the session was opened, not
+    // its size at the first stat. No log exists at construction, so it is 0, and the title holds as written.
     const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-live-observer-'));
     temporaryDirectories.push(directory);
     const path = join(directory, 'updates.jsonl');
