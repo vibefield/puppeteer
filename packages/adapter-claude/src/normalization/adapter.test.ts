@@ -1076,13 +1076,14 @@ describe('SubagentStop re-entrancy', () => {
 });
 
 describe('Claude 2.1.226 hook additions', () => {
-  it('marks a /clear SessionStart as an in-process native identity rebind', () => {
+  it('marks a SessionStart the observer rotated to as an in-process native identity rebind', () => {
     expect(
-      normalizeOne(
+      new ClaudeHookNormalizer().normalize(
         fakeClaudeHookPayload('SessionStart', {
           session_id: 'new-native-session',
           source: 'clear',
         }),
+        { rebind: true },
       ).events[0],
     ).toMatchObject({
       type: 'session:started',
@@ -1090,6 +1091,31 @@ describe('Claude 2.1.226 hook additions', () => {
       startSource: 'clear',
       rebind: true,
     });
+  });
+
+  it('a rotation of any source starts the session over: effort and mode are news again, context is gone', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const settled = { effort: 'high', permission_mode: 'plan' };
+    normalizer.normalize(fakeClaudeHookPayload('SessionStart', { source: 'startup', ...settled }));
+    const resumed = normalizer.normalize(
+      fakeClaudeHookPayload('SessionStart', { session_id: 'chosen-session', source: 'resume', ...settled }),
+      { rebind: true },
+    );
+    expect(resumed.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'session:started', startSource: 'resume', rebind: true }),
+        { type: 'context-window:invalidated', reason: 'history-changed' },
+        { type: 'effort:updated', intent: 'observed', effort: 'high' },
+        expect.objectContaining({ type: 'mode:updated', mode: { raw: 'plan', normalized: 'Plan' } }),
+      ]),
+    );
+  });
+
+  it('never rebinds on the hook’s own word: a /clear start the observer did not rotate to is no rebind', () => {
+    const cleared = normalizeOne(fakeClaudeHookPayload('SessionStart', { source: 'clear' })).events;
+    expect(cleared[0]).toMatchObject({ type: 'session:started', startSource: 'clear' });
+    expect(cleared[0]).not.toHaveProperty('rebind');
+    expect(cleared).not.toContainEqual(expect.objectContaining({ type: 'context-window:invalidated' }));
   });
 
   it('keeps directory configuration separate from direct file observations', () => {

@@ -92,6 +92,13 @@ export interface AgentTuiSessionOptions {
   host: AgentHost;
   /** The host's say over the session's loopback ingress (see {@link HostIngress}). */
   ingress?: HostIngress | undefined;
+  /**
+   * A directory for this run's launch files that outlives the host's process. The runtime creates it (0700, empty)
+   * and removes it once the run is over; the adapter writes inside it and never removes it. Absent = the adapter
+   * stages in the OS temp directory, which a long-lived host cannot keep: macOS empties files there that have gone
+   * about three days unaccessed, under a running agent that reads them again.
+   */
+  stagingDir?: string | undefined;
 }
 
 /**

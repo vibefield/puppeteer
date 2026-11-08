@@ -747,6 +747,19 @@ describe('createBuiltinProviders launch options', () => {
     expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(expect.objectContaining({ forwarderRuntime }));
   });
 
+  it('hands the run’s staging directory to both Claude launch paths', async () => {
+    const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+      (provider) => provider.descriptor.id === 'claude',
+    )!;
+    // The runtime's directory for this run: the adapter writes the launch's files in it and never removes it.
+    const stagingDir = '/host/agents/staging/run-1';
+
+    await claude.createSession({ cwd: '/work/repo', host, stagingDir });
+    expect(adapters.createClaudeSession).toHaveBeenLastCalledWith(expect.objectContaining({ stagingDir }));
+    await claude.prepareSession!({ cwd: '/work/repo', host, stagingDir });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(expect.objectContaining({ stagingDir }));
+  });
+
   it('does not spawn Claude when capability preflight fails', async () => {
     const claude = createBuiltinProviders({ executables: { claude: '/old/claude' } }).find(
       (provider) => provider.descriptor.id === 'claude',

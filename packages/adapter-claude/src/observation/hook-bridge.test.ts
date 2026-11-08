@@ -135,6 +135,24 @@ describe('createHookBridge', () => {
     expect(errors.map((e) => e.kind)).toEqual(['unknown-session']);
   });
 
+  it('stamps the hook its owner rotated to, so the observed session starts over there', async () => {
+    const rotatedTo = '00000000-0000-4000-8000-0000000000d0';
+    const events: NativeHookEnvelope[] = [];
+    bridge = createHookBridge({
+      allowSession: (id) => (id === OWNED_SESSION ? true : id === rotatedTo ? 'rotate' : false),
+    });
+    bridge.onEvent((e) => events.push(e));
+    await bridge.start();
+    const owned = fakeClaudeHookPayload('SessionEnd', { session_id: OWNED_SESSION, reason: 'clear' });
+    expect((await post(bridge.endpoint(), bridge.token, JSON.stringify(owned))).status).toBe(200);
+    const start = fakeClaudeHookPayload('SessionStart', { session_id: rotatedTo, source: 'clear' });
+    expect((await post(bridge.endpoint(), bridge.token, JSON.stringify(start))).status).toBe(200);
+    expect(events.map((e) => [e.body.hook_event_name, e.rotated])).toEqual([
+      ['SessionEnd', undefined],
+      ['SessionStart', true],
+    ]);
+  });
+
   it('rejects malformed JSON with 400 without crashing', async () => {
     const { bridge: b, events, errors } = await startBridge();
     expect((await post(b.endpoint(), b.token, '{nope')).status).toBe(400);

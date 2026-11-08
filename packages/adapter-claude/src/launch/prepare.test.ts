@@ -11,8 +11,8 @@ import {
 import { Buffer } from 'node:buffer';
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { basename, dirname, join } from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isAgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 import {
   ClaudeHooksOffError,
@@ -27,6 +27,7 @@ import { getHookSpec } from '../generated/registry.js';
 import { readClaudeInvocation } from './invocation-grammar.js';
 import { normalizeClaudeNativeInvocation } from './native-invocation.js';
 import { createHookBridge } from '../observation/hook-bridge.js';
+import { prepareClaudeTuiSession } from '../driver.js';
 
 // Windows starts PowerShell as well as Node; cold startup on hosted runners can exceed the usual test budget.
 const statusLineTestTimeout = process.platform === 'win32' ? 45_000 : 10_000;
@@ -516,6 +517,22 @@ describe('prepareClaudeSession', () => {
     expect(p.args).toContain('--resume');
   });
 
+  it('finds a resume under the launch environment’s CLAUDE_CONFIG_DIR, the root an attach reads', async () => {
+    const resumeId = '64a61b19-f4d8-4f96-ba56-07024b470815';
+    const root = conversationRoot(resumeId);
+    // only the launch environment names the root: no explicit configDir, and nothing in this process
+    vi.stubEnv('CLAUDE_CONFIG_DIR', undefined);
+    try {
+      const p = await prepare({ resume: resumeId, env: { CLAUDE_CONFIG_DIR: root } });
+      expect(p.args[p.args.indexOf('--resume') + 1]).toBe(resumeId);
+      // the process is launched on the root the conversation was found under
+      expect(p.env.CLAUDE_CONFIG_DIR).toBe(root);
+    } finally {
+      vi.unstubAllEnvs();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('preserves a native resume picker invocation without forcing --session-id', async () => {
     const p = await prepare({ resumeInvocation: ['--resume'] });
     expect(p.args[0]).toBe('--resume');
@@ -866,3 +883,30 @@ it.each(['--append-system-prompt=old', '--system-prompt-snapshot=on', '--restric
     });
   },
 );
+
+describe('a run’s staging directory, the runtime’s (PU-C)', () => {
+  it('writes every launch file in the directory it is handed, and removes the files, never the directory', async () => {
+    const stagingDir = mkdtempSync(join(tmpdir(), 'prepare-staging-'));
+    const configDir = mkdtempSync(join(tmpdir(), 'prepare-staging-config-'));
+    const session = await prepareClaudeTuiSession({
+      cwd: BASE.cwd,
+      home: BASE.home,
+      configDir,
+      stagingDir,
+      automate: async () => ({ accepted: true }),
+    });
+    try {
+      const { settingsPath, forwarderPath } = session.launch;
+      expect([dirname(settingsPath), dirname(forwarderPath!)]).toEqual([stagingDir, stagingDir]);
+      expect(readdirSync(stagingDir).sort()).toEqual([basename(settingsPath), basename(forwarderPath!)].sort());
+      expect(session.launch.filesToCleanup).not.toContain(stagingDir);
+    } finally {
+      await session.dispose();
+    }
+    // the files go with the session; the directory is the runtime's, removed when the run is over
+    expect(existsSync(stagingDir)).toBe(true);
+    expect(readdirSync(stagingDir)).toEqual([]);
+    rmSync(stagingDir, { recursive: true, force: true });
+    rmSync(configDir, { recursive: true, force: true });
+  });
+});
