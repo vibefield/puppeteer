@@ -4,9 +4,11 @@
  * The host owns the slot element. The slot gives each mounted view a fresh
  * root inside it, builds the view's input from a replica and the host's own
  * parts, and drives `update` at most once per frame, only when a part changed
- * identity. What a view reports reaches the host through `onReport` and is
- * mirrored as data attributes on the slot element, outside the view's root, so
- * a host never has to read a view's DOM (MV-W5).
+ * identity. The one exception is the stage going out of sight or coming back
+ * (`theme.hidden`): delivered at once, since a hidden page runs no frame. What
+ * a view reports reaches the host through `onReport` and is mirrored as data
+ * attributes on the slot element, outside the view's root, so a host never has
+ * to read a view's DOM (MV-W5).
  */
 
 import { allAdded, diffModels, NO_CHANGES } from '../internal/input.js';
@@ -109,7 +111,10 @@ export interface ViewSlot {
   readonly view: MonitorView;
   /** The view's latest report, merged. */
   readonly report: ViewReport;
-  /** Replaces some of the host's parts; a part equal in value to the current one keeps the current object. */
+  /**
+   * Replaces some of the host's parts; a part equal in value to the current one keeps the current object. Delivered at
+   * the next frame, except a theme whose `hidden` changed: at once, with whatever else was waiting.
+   */
   setInput(parts: Partial<ViewSlotInput>): void;
   setReplica(replica: MonitorReplicaLike): void;
   /** Unmounts the current view, then mounts this one with the current input. */
@@ -400,11 +405,14 @@ export function createViewSlot(slot: HTMLElement, options: ViewSlotOptions): Vie
       ) {
         return;
       }
+      // The stage going out of sight or coming back cannot wait for a frame: a hidden page runs none.
+      const sightChanged = (nextTheme.hidden ?? false) !== (theme.hidden ?? false);
       stage = nextStage;
       theme = nextTheme;
       parameters = nextParameters;
       hostCapabilities = nextCapabilities;
-      requestFlush();
+      if (sightChanged) flush();
+      else requestFlush();
     },
     setReplica(next) {
       if (disposed || next === replica) return;

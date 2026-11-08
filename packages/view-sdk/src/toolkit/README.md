@@ -29,7 +29,7 @@ Two rules hold for everything here:
 | `mark-outline.ts` | A view's own mark, for its manifest (MV-D6): the host's bar FILLS `manifest.mark` in currentColor and never strokes it (ruled at MV-8: a stroked outline draws both edges). `strokeOutline(from, to)`, `strokesOutline(strokes)` and `ringOutline(cx, cy, r)` write the filled outline a monoline stroke paints on the bar's grid (`MARK_VIEW_BOX`, `MARK_STROKE` = 1.6, round caps) |
 | `marks-atlas.ts` | `MARKS_ATLAS_URL`, the swarm's SDF atlas as a data URL |
 | `canvas.ts` | `sizeCanvas` (device-pixel backing store, CSS-pixel element, writes only on change), `canvasRatio`, `watchDevicePixelRatio` |
-| `motion.ts` | `createMotionLoop(callback, { animations, reducedMotion, fps? })`, which requests no frame at all while animations are off or motion is reduced, and re-evaluates on `loop.update(input.theme)` |
+| `motion.ts` | `createMotionLoop(callback, { animations, reducedMotion, hidden?, moving?, fps?, still? })`, which requests no frame at all while animations are off, motion is reduced, the stage is out of sight or the view has nothing moving, and re-evaluates on `loop.update(themeMotion(input.theme))`; stopped, `loop.requestStill()` asks for one still frame, merged with every request before it, and owed while the stage is out of sight. `themeMotion(theme)` reads an absent `hidden` as false; `motionAllowed(theme)` says whether a view may move at all |
 | `keys.ts` | `keyLegend(key)`: how a declared key is printed, as the keyboard's legend (`↵`, `↘`) or its character. The host's bar prints a view's keys in its tooltip with it, and a view prints the key of one of its own controls on that control, under its glyph (MV-D8, M177 ruling 4) |
 
 ## Ported, with identical output
@@ -51,8 +51,10 @@ The ports keep a few differences in their signatures, so a ported view prints ex
   themselves (`AgentIcon`, `ProfileGlyph`) are not in the toolkit, because it is framework-free: since MV-4 they are
   `@vibefield/puppeteer-view-sdk/react`'s (M6), drawn from these marks, and the views' copies are gone.
 - `sizeCanvas` follows the timeline: it rounds the CSS size and the backing size, and writes the backing size only
-  when it changes. The rain floored its backing size and wrote it on every resize. Pass `{ pixels: 'floor' }` to
-  keep the rain's pixels; with integer `clientWidth` and an integer ratio the two agree anyway.
+  when it changes. The rain floored its backing size and wrote it on every measure, every publish included, which
+  cleared its field each time (corrected 2026-11-06: this said "on every resize"). It now sizes through `sizeCanvas`
+  with `{ pixels: 'floor' }`, which keeps its pixels, so a publish clears nothing; with integer `clientWidth` and an
+  integer ratio the two roundings agree anyway.
 
 ## Colour and the replica (L7)
 
@@ -61,17 +63,38 @@ replica with the theme's key. The function deals each sequence once per theme an
 with no `project.seq`. The replica re-colours rows only when the key changes, and views receive
 `AgentView.colour` ready. A view never calls `projectColour` itself.
 
-## The motion loop and `theme.animations`
+## The motion loop, `theme.animations` and `theme.hidden`
 
 ```ts
-const loop = createMotionLoop((time, deltaMs) => draw(time, deltaMs), input.theme);
-// in update(input):
-loop.update(input.theme); // starts or stops; keeps an fps given at creation
-if (!loop.running) draw(performance.now(), 0); // a stopped loop draws once per update
+const loop = createMotionLoop((time, deltaMs) => draw(time, deltaMs), themeMotion(input.theme));
+// in update(input), and wherever else what the view shows changes (a worker's answer, focus):
+loop.update(themeMotion(input.theme)); // starts or stops; keeps an fps given at creation
+loop.requestStill(); // stopped: one still frame, on the next frame; running: nothing, its next frame draws
 ```
 
-While either switch says no, the loop holds no `requestAnimationFrame` at all, which is the conformance rule
-(MV-W4: no loop when off).
+While any switch says no, the loop holds no `requestAnimationFrame` at all, which is the conformance rule
+(MV-W4: no loop when off). The theme's switches pass through `themeMotion`, never straight in: `update` changes
+only the keys it is given, and `themeMotion` reads an absent `hidden` as false, so a host that drops the key shows
+the stage again. A view's own eases, springs and tweens ask `motionAllowed(theme)`, the same three switches as one
+answer. `moving: false` is the view's own demand: nothing of it moves now (the spend's wave moves only while a head
+waits), so no frame is asked for even with motion allowed. A stopped view still draws every change it shows, through
+`requestStill`:
+- **One frame for a burst.** Requests merge until the still frame runs, so an update, the answer it starts and a
+  focus that lands before the frame are drawn once. The request has a handle of its own; `running` reports only the
+  loop.
+- **A fade asks again.** The request is cleared before the still draw, so a request made inside the draw asks for
+  the next frame: a reduced-motion fade is drawn frame by frame, and the view is still again the moment it stops
+  asking. One-shot requests are never a loop.
+- **What a still frame draws.** `callback(time, 0)`, unless the loop was made with `still` (read once, at creation)
+  for a view whose moving callback must not run with no time passed.
+- **Nothing while it runs, nothing once disposed.** A running loop's next frame draws anyway; a loop that starts,
+  and `dispose`, drop a still frame owed.
+- **Owed out of sight.** While `hidden` (`MonitorTheme.hidden`: the host's chrome covers the stage, or its window is
+  hidden) a still frame asked for is never drawn, and one already asked for is taken back: it is owed. Shown with the
+  loop still stopped, it is drawn once on the next frame; shown with motion on, the loop's frames draw it. The host
+  delivers `hidden` at once rather than at its next frame, since a hidden page runs none; the view's own clocks and
+  timers rest with the loop. The conformance suite holds a view to it (MV-W4, `rests-when-hidden`): mounted out of
+  sight, it asks for no frame, not even for an update, and keeps no timer standing.
 
 ## Workers and bundlers (MV-D7)
 
@@ -83,7 +106,8 @@ A view owns its worker. `createWorkerDriver` carries VibeField's swarm driver se
   their latest post. Gestures are not replayed.
 - **An honest mode.** `observeMode` reports `worker` or `inline`, and the view passes it to
   `commands.report({ physics })`.
-- **No rebuild.** A proven worker that dies later is reported through `onError`, never rebuilt.
+- **No rebuild.** An error a proven worker did not catch is reported through `onError`, never rebuilt: the worker
+  keeps running and takes the commands that follow, and the mode stays `worker`.
 - **Its own end.** In the worker, `serveWorker` answers through `end.post` and ends the thread with `end.close()`,
   so a view's worker never names the global object (MV-W2 reads an alias of it as a reach, MV-8b).
 

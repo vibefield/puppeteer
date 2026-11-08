@@ -6,6 +6,7 @@ import {
   axisMoney,
   est,
   fitWords,
+  heroCaption,
   modelOf,
   money,
   NOT_RECORDED,
@@ -156,5 +157,62 @@ describe('the spend words', () => {
     expect(state).toMatchObject({ key: 'unseen', glyph: 'reply' });
     expect(stateWords(state, NOW, undefined).tone).toBe('info');
     expect(NOT_RECORDED).toEqual({ text: 'not recorded', tone: 'muted' });
+  });
+
+  it('says who the hero’s total leaves out: after its caption at full width, and at a narrow stage alone and in short', () => {
+    const names = spendNames([row('a', 'notes'), row('b', 'swarm-lab'), row('c', 'scratch')]);
+    const left = (...ids: string[]) => ids.map((id) => ({ id }));
+    // A narrow stage's room beside the number and the burn, at 6 px a glyph: here, room for every word.
+    const roomy = { width: 600, measure: (text: string): number => text.length * 6 };
+    // Wide and compact: what the figure is, then who it leaves out (SV review must-fix 3), word for word as before.
+    expect(heroCaption({ missing: [], names })).toBe('since each agent started, at API prices');
+    expect(heroCaption({ missing: left('b'), names })).toBe(
+      'since each agent started, at API prices · not counting swarm-lab',
+    );
+    expect(heroCaption({ missing: left('b', 'c'), names })).toBe(
+      'since each agent started, at API prices · not counting 2 agents with no price',
+    );
+    // Narrow: the caption goes, who it leaves out stays: one by name, several by how many, in the rows' "no price".
+    expect(heroCaption({ missing: left('b'), names, narrow: roomy })).toBe('not counting swarm-lab');
+    expect(heroCaption({ missing: left('b', 'c'), names, narrow: roomy })).toBe('2 with no price');
+    expect(heroCaption({ missing: left('a', 'b', 'c'), names, narrow: roomy })).toBe('3 with no price');
+    // Nobody left out: nothing beside the number and the burn.
+    expect(heroCaption({ missing: [], names, narrow: roomy })).toBeUndefined();
+  });
+
+  it('cuts a narrow hero’s words to the room beside its number and burn: the name at a word, else how many, never the count', () => {
+    const said = (text: string) => ({ reply: { text, final: true } });
+    const names = spendNames([
+      row('a', 'notes'),
+      row('b', 'swarm-lab'),
+      row('c', 'scratch'),
+      row('d', 'rosetta', said('Rebuilt the session index.')),
+      row('e', 'rosetta', said('Tidied the timeline route docs.')),
+    ]);
+    expect(names.get('d')!.one).toBe('rosetta · Rebuilt the');
+    const left = (...ids: string[]) => ids.map((id) => ({ id }));
+    // The room, at 6 px a glyph (the ellipsis is one).
+    const room = (width: number) => ({ width, measure: (text: string): number => text.length * 6 });
+    // Fits whole, to the pixel: "not counting swarm-lab" is 132 px.
+    expect(heroCaption({ missing: left('b'), names, narrow: room(132) })).toBe('not counting swarm-lab');
+    // A longer name is cut at a word, as a row's words are, while a word of it fits.
+    expect(heroCaption({ missing: left('d'), names, narrow: room(190) })).toBe('not counting rosetta · Rebuilt…');
+    expect(heroCaption({ missing: left('d'), names, narrow: room(130) })).toBe('not counting rosetta…');
+    // Not one word of the name fits ("not counting…" would say nobody): how many instead, whole while it fits…
+    expect(heroCaption({ missing: left('b'), names, narrow: room(120) })).toBe('1 with no price');
+    // …and cut at a word where it does not, keeping its count.
+    expect(heroCaption({ missing: left('b'), names, narrow: room(50) })).toBe('1 with…');
+    expect(heroCaption({ missing: left('b', 'c'), names, narrow: room(70) })).toBe('2 with no…');
+    // The floor: where not even the count and its ellipsis fit they are said anyway, so the caption never goes while
+    // anyone is left out.
+    expect(heroCaption({ missing: left('a', 'b', 'c'), names, narrow: room(10) })).toBe('3…');
+    expect(heroCaption({ missing: left('b'), names, narrow: room(-40) })).toBe('1…');
+    // A name with no words (no project and no provider label) names nobody: how many instead.
+    const unnamed = spendNames([row('z', '', { provider: undefined })]);
+    expect(heroCaption({ missing: left('z'), names: unnamed, narrow: room(200) })).toBe('1 with no price');
+    // Wide keeps every word, however long the name.
+    expect(heroCaption({ missing: left('d'), names })).toBe(
+      'since each agent started, at API prices · not counting rosetta · Rebuilt the',
+    );
   });
 });

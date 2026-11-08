@@ -116,10 +116,14 @@ describe('a lane is its row alone (TL-D9, MV-6)', () => {
     expect([peer.sinceMs, peer.current.fromMs, peer.current.status]).toEqual([NOW - 7 * MIN, NOW - 7 * MIN, 'idle']);
   });
 
-  it('clips at the horizon, and never claims a state before its birth or after now', () => {
+  it('keeps its own start however old, and never claims a state before its birth or after now', () => {
+    // Older than the horizon: the window is its readers' to clamp to, never the lane's start.
     const old = laneFor(agentRow('old', TIMELINE_HORIZON_MS + 60 * MIN), NOW);
-    expect(old.sinceMs).toBe(NOW - TIMELINE_HORIZON_MS);
+    expect(old.sinceMs).toBe(NOW - TIMELINE_HORIZON_MS - 60 * MIN);
+    expect(old.current.fromMs).toBe(old.sinceMs);
     expect(old.bornMs).toBe(NOW - TIMELINE_HORIZON_MS - 60 * MIN);
+    const atHorizon = stateAt(old, NOW - TIMELINE_HORIZON_MS);
+    expect(atHorizon.kind === 'span' && atHorizon.span).toBe(old.current);
     const early = laneFor(agentRow('early', 10 * MIN, {}, 30 * MIN), NOW);
     expect(early.sinceMs).toBe(NOW - 10 * MIN);
     const ahead = laneFor(agentViewFixture({ id: 'skew', createdAt: NOW + MIN, statusSince: NOW + MIN }), NOW);
@@ -197,6 +201,13 @@ describe('laneContentKey', () => {
     expect(key([agentRow('a', 40 * MIN, { status: 'working' }, 20 * MIN)])).not.toBe(base);
     expect(key([agentRow('a', 40 * MIN, { status: 'working', colour: '#000' }, 30 * MIN)])).not.toBe(base);
     expect(key([agentRow('a', 40 * MIN, { status: 'working', receded: true }, 30 * MIN)])).not.toBe(base);
+  });
+
+  it('holds for a lane older than the horizon as now moves: its start is its own, never the window’s', () => {
+    const old = agentRow('old', TIMELINE_HORIZON_MS + 60 * MIN);
+    const at = (nowMs: number): string => laneContentKey([laneFor(old, nowMs)]);
+    expect(at(NOW + 16)).toBe(at(NOW));
+    expect(at(NOW + MIN)).toBe(at(NOW));
   });
 });
 

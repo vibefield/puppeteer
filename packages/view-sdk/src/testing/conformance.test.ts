@@ -2,6 +2,7 @@
 import { createElement, useEffect } from 'react';
 import { describe, expect, it } from 'vitest';
 import { reactMonitorView, type ReactMonitorViewProps } from '../react/index.js';
+import { motionAllowed } from '../toolkit/motion.js';
 import { defineMonitorView, type MonitorView, type MonitorViewInput, type MonitorViewManifest } from '../view.js';
 import { checkConformance, runConformance, type ConformanceCheckId, type ConformanceReport } from './conformance.js';
 
@@ -16,7 +17,7 @@ const manifest = (id: string): MonitorViewManifest => ({
   motion: { loops: true },
 });
 
-const moves = (input: MonitorViewInput): boolean => input.theme.animations && !input.theme.reducedMotion;
+const moves = (input: MonitorViewInput): boolean => motionAllowed(input.theme);
 
 interface Misbehaviour {
   mount?(root: HTMLElement, input: MonitorViewInput): void;
@@ -86,8 +87,8 @@ describe('checkConformance', () => {
     const report = await checkConformance(listView('calm'));
     expect(report.failures).toEqual([]);
     expect(report.ok).toBe(true);
-    // Two schemes × three sizes, then the two motion cases.
-    expect(report.cases).toBe(8);
+    // Two schemes × three sizes, then the two motion cases and the stage out of sight.
+    expect(report.cases).toBe(9);
   });
 
   it('hands the view the three commands alone unless told the host lends openEnded (TV-8)', async () => {
@@ -176,8 +177,51 @@ describe('checkConformance', () => {
 
   it('fails a view that keeps a frame loop running when told to keep still', async () => {
     const report = await checkConformance(listView('restless', { restless: true }));
-    expect(failedChecks(report)).toEqual(new Set(['still-when-asked']));
-    expect(report.failures.map((failure) => failure.case)).toEqual(['animations off', 'reduced motion']);
+    expect(failedChecks(report)).toEqual(new Set(['still-when-asked', 'rests-when-hidden']));
+    expect(report.failures.map((failure) => failure.case)).toEqual(['animations off', 'reduced motion', 'hidden']);
+    // out of sight, a loop that never rests is said once: its frames, not the update's
+    expect(report.failures[2]!.message).toBe('still asks for a frame out of sight after 5 frames');
+  });
+
+  it('fails a view that keeps a clock out of sight, and only there', async () => {
+    let clock: ReturnType<typeof setInterval> | undefined;
+    const report = await checkConformance(
+      listView('clockwork', {
+        mount: () => {
+          clock = setInterval(() => undefined, 1_000);
+        },
+        unmount: () => clearInterval(clock),
+      }),
+    );
+    expect(report.failures).toEqual([
+      { check: 'rests-when-hidden', case: 'hidden', message: 'keeps an interval of 1000 ms out of sight' },
+    ]);
+  });
+
+  it('fails a view whose timeout stands out of sight, never one that fired or one of 0 ms', async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const report = await checkConformance(
+      listView('ticking', {
+        mount: () => {
+          setTimeout(() => undefined, 0);
+          setTimeout(() => undefined, 1);
+          timer = setTimeout(() => undefined, 1_000);
+        },
+        unmount: () => clearTimeout(timer),
+      }),
+      { schemes: ['dark'], sizes: ['default'] },
+    );
+    expect(report.failures).toEqual([
+      { check: 'rests-when-hidden', case: 'hidden', message: 'keeps a timeout of 1000 ms out of sight' },
+    ]);
+  });
+
+  it('fails a view that asks for a frame out of sight when an update arrives', async () => {
+    const eager = listView('eager', { update: () => requestAnimationFrame(() => undefined) });
+    const report = await checkConformance(eager, { schemes: ['dark'], sizes: ['default'] });
+    expect(report.failures).toEqual([
+      { check: 'rests-when-hidden', case: 'hidden', message: 'asks for a frame out of sight when an update arrives' },
+    ]);
   });
 
   it('fails a view whose loop outlives it', async () => {
@@ -273,9 +317,9 @@ describe('checkConformance', () => {
     expect(report.failures[0]!.message).toBe('mount returned no { update, unmount }');
   });
 
-  it('skips a check it was told to skip', async () => {
+  it('skips the checks it was told to skip', async () => {
     const report = await checkConformance(listView('restless-skipped', { restless: true }), {
-      skip: ['still-when-asked'],
+      skip: ['still-when-asked', 'rests-when-hidden'],
     });
     expect(report.ok).toBe(true);
   });
@@ -287,6 +331,7 @@ describe('checkConformance', () => {
       cancelAnimationFrame: window.cancelAnimationFrame,
       windowAdd: window.addEventListener,
       documentAdd: document.addEventListener,
+      timers: [setTimeout, setInterval, clearTimeout, clearInterval],
       act: (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT,
     };
     await checkConformance(listView('tidy'), { schemes: ['dark'], sizes: ['default'] });
@@ -296,9 +341,11 @@ describe('checkConformance', () => {
       cancelAnimationFrame: window.cancelAnimationFrame,
       windowAdd: window.addEventListener,
       documentAdd: document.addEventListener,
+      timers: [setTimeout, setInterval, clearTimeout, clearInterval],
       act: (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT,
     }).toEqual(before);
     expect(window.requestAnimationFrame).toBe(before.requestAnimationFrame);
+    expect(globalThis.setTimeout).toBe(before.timers[0]);
     expect(window.addEventListener).toBe(before.windowAdd);
     expect(Object.hasOwn(document, 'addEventListener')).toBe(false);
   });
