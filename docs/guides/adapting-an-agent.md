@@ -791,7 +791,7 @@ The driver owns the complete live composition:
 - category normalization delegated to `normalization/<category>.ts`, not embedded in the driver;
 - named `services/<capability>.ts` for prompt, approval, and other commands;
 - native control and approval decisions;
-- programmatic prompt submission with a truthful `confirmed`, `rejected`, or `uncertain` receipt;
+- programmatic prompt submission with a truthful `confirmed`, `rejected`, or `uncertain` receipt, and `retryable: false` on a rejection no later attempt can clear;
 - idempotent disposal of observation/control resources;
 - an honest `ObservationLevel`.
 

@@ -84,6 +84,41 @@ describe('Grok native scenarios', () => {
     ).toEqual([]);
   });
 
+  it('serves the 1.0.70 queue frames around a prompt', () => {
+    // captures/grok@1.0.70/viewer-session/acp-controller.jsonl lines 20–21 and 30: Grok lists the prompt, runs it
+    // under the id its chunks and turn_completed carry, and empties the queue before turn_completed.
+    const start = persona.ops['turn.start'] ?? [];
+    expect(start.map(({ channel, event }) => [channel, event])).toEqual([
+      ['jsonrpc', '_x.ai/queue/changed'],
+      ['jsonrpc', '_x.ai/queue/changed'],
+      ['jsonrpc', 'session/update'],
+      ['native-log', 'session/update'],
+    ]);
+    expect(start[0]?.with).toEqual({
+      sessionId: '$sessionId',
+      entries: [{ id: '$uuid:prompt', version: 0, kind: 'prompt', text: '$op.text', position: 0 }],
+    });
+    expect(start[1]?.with).toEqual({
+      sessionId: '$sessionId',
+      entries: [],
+      runningPromptId: '$uuid:prompt',
+      runningText: '$op.text',
+      runningKind: 'prompt',
+    });
+    const chunk = persona.ops['assistant.delta']?.[0]?.with?._meta as { promptId?: string } | undefined;
+    expect(chunk?.promptId).toBe('$uuid:prompt');
+
+    const end = (persona.ops['turn.end'] ?? []).map(({ event, with: payload }) => ({
+      event,
+      payload,
+      update: (payload?.update as { sessionUpdate?: string } | undefined)?.sessionUpdate,
+    }));
+    const emptied = end.findIndex(({ event }) => event === '_x.ai/queue/changed');
+    expect(end[emptied]?.payload).toEqual({ sessionId: '$sessionId', entries: [] });
+    expect(emptied).toBeGreaterThan(end.findIndex(({ update }) => update === 'response_completed'));
+    expect(emptied).toBeLessThan(end.findIndex(({ update }) => update === 'turn_completed'));
+  });
+
   it('offers the 1.0.70 permission options with their native ids, kinds, and order', () => {
     const request = persona.ops['permission.ask']?.find(({ event }) => event === 'session/request_permission');
     expect(request?.await).toBe(true);

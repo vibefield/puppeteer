@@ -322,6 +322,13 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
   `authoritative`. That includes `subagent_spawned`/`subagent_finished` →
   `delegation:subagent-started|stopped`. Mirror- and serde-only kinds stay `inferred`.
   `normalization/adapter.test.ts` holds both sets to this ground truth.
+- **Refused turns (review fix, 2026-11-07; unwitnessed).** A live `turn_completed` whose `error_kind` is a
+  non-empty string ends the turn as `turn:failed {error: error_kind}`, whatever its `stop_reason` says, with
+  the final message kept. A null or absent one completes it, and so does a replayed one: what it refused has
+  gone, and a failure would hold a resumed row's queue. The kind passes through verbatim. No census turn
+  was refused, so the mapping rests on the public enum and the 1.0.70 model (string or null). A refused-turn
+  capture carrying `error_kind` is owed, and its groundtruth confidence stays unverified. Downstream a refusal
+  now reads failed rather than idle.
 - **Invocation grammar 1.0.70.**
   - Fixtures are the exact artifact's `grok help` (long form) and nested helps.
   - The census reads `[aliases: …]` lines, so `--effort` and `--ref` need no special case, and checks arity.
@@ -353,12 +360,13 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
 - **Control path (`services/control-session.ts`).**
   - ACP candidates whose params carry `_meta.isReplay` (session/load history) are published as replay.
   - ACP frames under another sessionId (a subagent child) keep only their raw native events; the control
-    path publishes none of their normalized events on the root. One leak predates this and is outside the
-    Grok adapter: `adapter-acp`'s session-unscoped assistant-text buffer takes in the child's
-    `agent_message_chunk` text before the control path sees it, so in a composition without the durable
-    observer the root's later `conversation:assistant-message` and `turn:completed.lastAssistantMessage`
-    carry it (open item below). The default driver always attaches the observer, which filters those events
-    out. (follow-up) Their monitor evidence goes to the subagent actor
+    path publishes none of their normalized events on the root. (review fix, 2026-11-07) The child's text no
+    longer reaches the root through `adapter-acp` either. Its driver keeps one normalizer per notification
+    sessionId and feeds only its own session's events to the prompt service, and the assistant-message
+    buffers start empty at every prompt (a submit, or a `user_message_chunk` of that session), so a message
+    never spans two turns. Replaying `captures/grok@1.0.70/subagent/acp-controller.jsonl` with no observer,
+    the root's first `turn:completed` carries the root's 2 text chunks, not 4
+    (`services/control-session.test.ts`). (follow-up) Their monitor evidence goes to the subagent actor
     that `subagent_spawned` names for that `child_session_id`: the child's live `response_completed` and
     `turn_completed` usage (actor-attributed, keyed by the child session and prompt), and its running turn
     (`_x.ai/queue/changed` `runningPromptId` until its `turn_completed`) as the actor's activity. Any other
@@ -381,6 +389,41 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
     total equal to the turn totals; restoring the old identity makes it fail.
   - ACP's `session/new|load` `session:started` is admitted once when the observer is active, deduplicated
     against a live hook-derived start.
+  - (review fix, 2026-11-07) A turn starts at Grok's acceptance, and a receipt means it. With the observer
+    attached, an own-session live `_x.ai/queue/changed` that names a `runningPromptId` (kind `prompt`)
+    starts that turn under the native id, with the submitted text when the prompt is ours, else the text
+    Grok listed for it. The log used to start it only at the first model chunk, so a confirmed prompt left
+    its row idle (the user echo carries no `promptId`). A turn either rail starts is published once, the
+    first rail winning, as `session:started` is. Only the log ends a turn, and the rail hears the next turn
+    first, so a running frame waits for the log's end of the turn before it: the root's activity is keyed
+    by actor, and that end would otherwise retract the new turn's. While the log replays turns, which spans
+    64 KiB reads and, past 4 MiB, polls, it waits for the replay's settle instead: a replayed turn's start
+    never makes the open turn, and its end ends only the rail's start of that same prompt, since Grok ended
+    it before the first stat. `services/prompt.ts` confirms a receipt
+    only when Grok lists the prompt under a new id with the submitted text and then runs it (or lists it
+    while another prompt runs). adapter-acp's own 'confirmed' came before Grok had accepted anything. The
+    receipt names the turn the binding publishes or will publish: Grok's id with the observer, adapter-acp's
+    turn without. That turn is on the monitor before the receipt only when the prompt runs at once, with no
+    earlier turn open and the log not replaying. No acceptance within the submission's bound (5 s) answers
+    'uncertain'. Replaying
+    `viewer-session` with a stub observer confirms under `a11a5ed0-6f6f-40a0-8790-e989034dc9ff`, its turn
+    already published (`services/control-session.test.ts`).
+  - (review fix, 2026-11-07) A dead control rail refuses: after the transport closes, a submission answers
+    'rejected' (`grok control rail unavailable`) without reaching adapter-acp, and receipts still waiting
+    answer 'uncertain'. That refusal carries `retryable: false`, as a failed attach and a disposed binding
+    do: each lasts for the binding's life, and a host queue must not retry it. adapter-acp's request
+    failure decides only the receipt. 'rejected' means Grok answered: a JSON-RPC error (the SDK's
+    `RequestError`) before Grok listed the prompt answers 'rejected' with that error. No answer is
+    'uncertain', in either order, with the closed rail's reason. The SDK's `close()` rejects every request
+    in flight with a plain Error, and the rail's `child.once('close')` fires only after stdio has closed,
+    so the rejection normally comes first (read from SDK 1.2.1's `jsonrpc.js`), and the leader may hold
+    that prompt. That failure is also the rail's close: the SDK rejects a pending request with anything
+    but a `RequestError` only through `close()`, and writes nothing after it, so the binding refuses every
+    later submission from there, even when the child outlives its stdio and the rail never hears the
+    close. A submission made after the SDK closed, with nothing in flight, is the first to hear it and
+    still answers 'uncertain'. With the observer the failure stays a `control.prompt-failed` diagnostic
+    and is never republished as the turn's end. The log's `turn_completed` is the one end of a Grok turn,
+    and the leader runs on when a controller's transport closes mid-turn.
 - **`--continue`/`resumeLatest`** skips sessions whose `summary.json` says `session_kind: "subagent"`.
 - **Live test support.**
   - The provider answers `GET /` as an origin probe kept apart from model calls.
@@ -393,8 +436,9 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
 - **`groundtruth-map.json` review.**
   - Semantic: `session/update` and `_x.ai/session/update` (the durable pipeline), and
     `_x.ai/session_notification` (`normalization/interaction.ts` reads its `turn_completed` cancellation
-    category to settle a deferred approval). (follow-up) `_x.ai/queue/changed`: `normalization/monitor.ts`
-    reads its `runningPromptId` as a session's running native prompt.
+    category to settle a deferred approval). (follow-up) `_x.ai/queue/changed`: `normalization/queue.ts`
+    is its one reader. `normalization/monitor.ts` takes `runningPromptId` as a session's running native
+    prompt, the control path starts the root turn there, and `services/prompt.ts` confirms a receipt on it.
   - Observed or controlled: `initialize`, `signals.json`, `summary.json`, and now `_x.ai/auth/info`
     (`services/profiles.ts`).
   - The 16 unmapped events are accepted as listed. The other `_x.ai/*` notifications are consumed
@@ -407,7 +451,9 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
     result); `session/list` and `_x.ai/auth/info` handlers; the four permission options with their native
     ids, kinds, and order, bracketed by `pending_interaction`/`interaction_resolved`; snake_case
     `response_completed` usage without a signature; no chunk `messageId`; durable user chunks without a
-    `promptId`; and `prompt_complete`.
+    `promptId`; `prompt_complete`; and (2026-11-07) `_x.ai/queue/changed` around each prompt: listed, then
+    running under the turn's `$uuid:prompt`, then emptied after `response_completed` and before
+    `turn_completed`, in the 1.0.70 order.
   - Store and timing: the durable `timestamp` is Unix seconds and `_meta.eventId` is `<sessionId>-<n>`
     (persona-scoped native-store options; Codex keeps the legacy millisecond envelope). `signals.json` is
     written after the prompt result, with the full 1.0.70 key set and an integer-percent
@@ -473,17 +519,31 @@ Deferred design-level work, each with its evidence:
     context, or model evidence (none captured on a child) is dropped from the root, not attributed.
   - A frame a child sends before its `subagent_spawned` is dropped (its later `turn_completed` still
     carries the turn total), and a grandchild that a child spawns is never registered.
-  - Child conversation text reaches the root through `adapter-acp`, without the durable observer only.
-    `AcpConversationNormalizer` and `AcpPromptService` are session-unscoped, and Grok's
-    `agent_message_chunk` has no `messageId`. Every chunk, a child's included, therefore joins one
-    `acp-msg` buffer, which becomes the root turn's `lastAssistantMessage` and later
-    `conversation:assistant-message` text. The control path drops only the child's own candidates. The same
-    buffer also grows across turns: each turn's message repeats every earlier turn's text. Replaying
-    `captures/grok@1.0.70/subagent/acp-controller.jsonl` with no observer gives the root's first
-    `turn:completed` 4 text chunks where the root sent 2 (the other 2 are under the child sessionId). The fix
-    belongs in `adapter-acp`, shared with the other ACP adapters: ignore or scope foreign-session
-    notifications in its normalizer and prompt service, and reset the buffer for each turn. The default
-    driver always attaches the observer, whose allowlist excludes these events.
+- **Queue text witness (owed before the release).** A receipt and the rail's turn start match a submission
+  to Grok's queue entry by its text, and the turn's prompt is that text. The sanitizer redacts the entry
+  `text`, `runningText`, and the `session/prompt` text alike, so the captures cannot show they are equal. If
+  Grok's queue text is a truncated or rewritten preview, every managed submission answers 'uncertain'. Owed:
+  on a signed-in host, a long, multi-line, marked prompt (`Vela (your spark) on your behalf:\n…`), with the
+  hashes of the submitted text, the entry text, `runningText`, and the log's user echo compared.
+- **A durable record over 1 MiB (a recorded limit, 2026-11-07; its census is owed).** The observer drops an
+  `updates.jsonl` line over `maxRecordBytes` (1 MiB) whole and reports one `updates-log-error`. The bound is
+  its memory, and it stays. If the line is a tool's terminal `tool_call_update`, nothing else closes the tool:
+  the control path filters ACP's tool events and `turn:completed` retracts no tool, so the row reads working
+  until the run ends (a resume's settle closes it with the rest of the replay). The review read the default
+  `output_byte_limit` (20000) as keeping a completed Bash record near 180 KB, so reaching 1 MiB takes a raised
+  limit or a large write whose ACP diff carries whole `oldText`/`newText`. Neither is witnessed. Census owed,
+  on a signed-in host:
+  - the terminal `tool_call_update` record's size for a write of a file of 1 MiB or more, and with
+    `[toolset.bash] output_byte_limit` raised past 300 KB;
+  - whether a backgrounded shell leaves its `tool_call` open past `turn_completed`.
+    `--background-shell-timeout` says a shell can run past the turn's end (`completions.fish`). No capture
+    shows one: the `subagent` capture's `run_in_background` is a Task, not a shell.
+
+  A sweep at `turn_completed`, closing the prompt's open root tools with a derived `tool:failed` on the replay
+  ledger, would bound the harm to one turn. It is not built: it would read a background shell as failed if
+  Grok keeps one open past the turn. If the second row shows that tools never outlive `turn_completed`, it is
+  taken. Reading the fields from the head of an oversized line depends on serde's field order, and admitting
+  ACP's terminal update makes a second authority on tool state.
 - **Response usage, residual edges.** Unsigned responses are now identified by session, running native
   prompt, and ordinal (Adapter section). An ordinal cannot deduplicate a re-delivered notification; none
   was observed on one controller connection. A signed response with no known native prompt (the 1.0.0
@@ -534,9 +594,6 @@ Deferred design-level work, each with its evidence:
   - The served `session/prompt` result's `_meta.promptId` is bound per request and is not the stream's
     per-turn `$uuid:prompt`.
   - `modelUsage` uses the persona's default model id as its key.
-  - The persona emits no `_x.ai/queue/changed`, so an Imposter-backed composition correlates its unsigned
-    `response_completed` only through the `_meta.promptId` its chunks carry (the same `$uuid:prompt` as
-    its `turn_completed`), not through `runningPromptId` as 1.0.70 does.
   - The §6.1 scenario set is still partial: compaction, team, configured hooks, and remote ambient only.
 
 ## Reproduce

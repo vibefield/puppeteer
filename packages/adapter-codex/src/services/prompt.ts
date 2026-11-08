@@ -33,7 +33,7 @@ export class CodexPromptService {
   }
 
   async submit(submission: PromptSubmission): Promise<PromptReceipt> {
-    if (this.options.isDisposed()) return { status: 'rejected', reason: 'codex session is disposed' };
+    if (this.options.isDisposed()) return { status: 'rejected', reason: 'codex session is disposed', retryable: false };
     const clientUserMessageId = `puppeteer-inj-${++this.sequence}`;
     let resolveReceipt!: (receipt: PromptReceipt) => void;
     const receipt = new Promise<PromptReceipt>((resolve) => {

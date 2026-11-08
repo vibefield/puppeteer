@@ -1,6 +1,15 @@
 import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibefield/puppeteer-core';
 
-export type GrokUpdateMeta = { promptId?: string; agentTimestampMs?: number; totalTokens?: number };
+/** The observer's marker: a launch or resume replay ended, and what it left open is settled. */
+export const GROK_REPLAY_SETTLED = 'replay.settled';
+
+export type GrokUpdateMeta = {
+  promptId?: string;
+  agentTimestampMs?: number;
+  totalTokens?: number;
+  /** When the model stream that wrote this record began: one value per stream segment of a turn. */
+  streamStartMs?: number;
+};
 
 export interface GrokUpdate {
   sessionUpdate?: string;
@@ -9,6 +18,8 @@ export interface GrokUpdate {
   toolCallId?: string;
   prompt_id?: string;
   stop_reason?: string;
+  /** Set on a refused turn (public TurnCompleted, Option<String>); null or absent otherwise. */
+  error_kind?: string | null;
   event_name?: string;
   reason?: string;
   subagent_id?: string;
@@ -34,6 +45,13 @@ export interface GrokObservedEvent {
   phase?: 'bootstrap' | 'live' | undefined;
   source?: AgentEventSource | undefined;
   confidence?: AgentEventConfidence | undefined;
+  /** The replay's settle ended this prompt's turn and live work reopened it. No `turn:started` says so; this does. */
+  reopened?: boolean | undefined;
+  /**
+   * The log's own end of a turn the settle ended, with no live work of it first. It is the settle's duplicate unless a
+   * running frame started that prompt again, which only control-session knows.
+   */
+  settledEnd?: boolean | undefined;
   nativeEvent: unknown;
 }
 
@@ -41,6 +59,8 @@ export interface GrokSessionObserver {
   onEvent(listener: (event: GrokObservedEvent) => void): () => void;
   onError(listener: (error: Error) => void): () => void;
   poll(): Promise<void>;
+  /** The live rail saw this session move: look soon. However often it is called, polls keep the fast cadence. */
+  wake(): void;
   stop(): void;
 }
 
