@@ -1,0 +1,210 @@
+/** Generated from scripts/tui-gateway-host.py by scripts/generate-gateway-host-source.mjs. Edit the script. */
+export const TUI_GATEWAY_HOST_SOURCE = `#!/usr/bin/env python3
+"""Puppeteer-owned Hermes tui_gateway WebSocket host.
+
+The native TUI attaches with HERMES_TUI_GATEWAY_URL. This process owns the
+one AIAgent for the session; it is not a second agent beside hermes --tui.
+
+Whoever connects drives that agent and its tools, so the host admits only the
+two clients of the launch that started it: each presents the launch's bearer,
+and none sends an Origin.
+"""
+
+import asyncio
+from contextlib import asynccontextmanager
+import hmac
+import json
+import socket
+import sys
+from typing import Optional, TextIO
+
+# The bearer's query parameter, \`?token=\`: the form Hermes's own dashboard
+# hands the TUI in HERMES_TUI_GATEWAY_URL, which the TUI dials verbatim.
+# Mirrors HERMES_GATEWAY_TOKEN_PARAM in src/transport/gateway-auth.ts.
+TOKEN_PARAM = "token"
+# Hermes's own pre-accept close codes for a bad credential and a refused
+# Origin. Before the accept, uvicorn answers either with HTTP 403.
+CLOSE_BAD_CREDENTIAL = 4401
+CLOSE_REFUSED_ORIGIN = 4403
+
+
+def read_gateway_token(stream: TextIO) -> str:
+    """Read this launch's bearer, the first line of stdin.
+
+    The adapter mints a fresh token for each host and writes it here, never in
+    argv or the environment: any same-user process can read both with ps, and
+    the environment reaches every tool the agent runs. A host given no token
+    fails to start rather than serve anyone.
+    """
+    token = stream.readline().strip()
+    if not token:
+        raise RuntimeError("Hermes gateway host needs its token on stdin")
+    return token
+
+
+def refusal(origin: Optional[str], presented: Optional[str], token: str) -> Optional[int]:
+    """Return the close code that refuses a WebSocket upgrade, or None to admit it.
+
+    The bearer is compared in constant time. Any Origin is refused: the
+    adapter and the native TUI are Node WebSocket clients, which send none,
+    while a browser sends one on every WebSocket upgrade, \`\`null\`\` included.
+    """
+    if not presented or not hmac.compare_digest(presented.encode(), token.encode()):
+        return CLOSE_BAD_CREDENTIAL
+    if origin is not None:
+        return CLOSE_REFUSED_ORIGIN
+    return None
+
+
+def short_circuit_disabled_wake_start() -> None:
+    """Keep a disabled wake listener from blocking native-TUI startup.
+
+    Hermes 0.20.0 probes microphone and speech dependencies before it checks
+    \`\`wake_word.enabled\`\`. The handler runs inline on the WebSocket reader, so
+    a blocked probe also blocks the TUI's following resume requests. Preserve
+    the native path for enabled wake-word support and explicit enable gestures;
+    only return Hermes's documented disabled result early when it is off.
+    """
+
+    from tui_gateway import server
+
+    original_wake_start = server._methods["wake.start"]
+
+    def wake_start(rid, params: dict) -> dict:
+        if params.get("persist"):
+            return original_wake_start(rid, params)
+        config = server._load_cfg()
+        wake = config.get("wake_word") if isinstance(config, dict) else None
+        if not isinstance(wake, dict) or not wake.get("enabled"):
+            return server._ok(rid, {"started": False, "reason": "disabled"})
+        return original_wake_start(rid, params)
+
+    server._methods["wake.start"] = wake_start
+
+
+def gateway_attaches_resuming_clients() -> bool:
+    """Whether this Hermes adds a resuming client beside a live session's others.
+
+    From 0.21 a live session holds a \`\`tui_gateway.transport.FanoutTransport\`\`
+    of every attached client, and \`\`session.resume\`\` joins it rather than
+    taking the slot, so the native TUI and the adapter both receive the
+    session's events and server→client requests without help.
+    """
+
+    try:
+        from tui_gateway import transport
+    except ImportError:
+        return False
+    return hasattr(transport, "FanoutTransport")
+
+
+def enable_session_event_fanout() -> None:
+    """Tee one session's events to the adapter and its native TUI viewer.
+
+    Hermes 0.20.0 stores one transport on each live session. A second client
+    that calls \`\`session.resume\`\` becomes that transport, which is correct for
+    ordinary tab switching but would otherwise disconnect Puppeteer's observer
+    when the native TUI attaches. This host is private to one Puppeteer session,
+    so fan-out is confined to its adapter and TUI connections. RPC results stay
+    request-local; only session-scoped event notifications are copied.
+
+    A Hermes that already attaches resuming clients side by side is left as
+    shipped: the tee only supplied the membership that 0.20 lacked.
+    """
+
+    if gateway_attaches_resuming_clients():
+        return
+
+    from tui_gateway import server
+    from tui_gateway.ws import WSTransport
+
+    original_write = WSTransport.write
+
+    def fanout_write(self: WSTransport, frame: dict) -> bool:
+        params = frame.get("params") if isinstance(frame, dict) else None
+        session_event = (
+            frame.get("method") == "event"
+            and isinstance(params, dict)
+            and bool(params.get("session_id"))
+        )
+        if not session_event:
+            return original_write(self, frame)
+
+        with server._live_transports_lock:
+            targets = list(server._live_transports)
+        if not targets:
+            return original_write(self, frame)
+
+        delivered = False
+        for target in targets:
+            try:
+                delivered = bool(original_write(target, frame)) or delivered
+            except Exception:
+                # A closing viewer must not cut off the surviving observer.
+                continue
+        return delivered
+
+    WSTransport.write = fanout_write
+
+
+def main() -> None:
+    token = read_gateway_token(sys.stdin)
+
+    from fastapi import FastAPI, WebSocket
+    from tui_gateway.ws import handle_ws
+    import uvicorn
+
+    short_circuit_disabled_wake_start()
+    enable_session_event_fanout()
+
+    @asynccontextmanager
+    async def lifespan(app):
+        try:
+            yield
+        finally:
+            # uvicorn re-raises SIGTERM after graceful shutdown, bypassing Python atexit.
+            # Close native sessions (including detached slash workers) before that signal.
+            from tui_gateway import server as native_server
+            shutdown = getattr(native_server, "_shutdown_sessions", None)
+            if callable(shutdown):
+                await asyncio.to_thread(shutdown)
+
+    app = FastAPI(lifespan=lifespan)
+
+    @app.websocket("/api/ws")
+    async def websocket_endpoint(websocket: WebSocket) -> None:
+        code = refusal(
+            websocket.headers.get("origin"),
+            websocket.query_params.get(TOKEN_PARAM),
+            token,
+        )
+        if code is not None:
+            await websocket.close(code=code)
+            return
+        await handle_ws(websocket)
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("127.0.0.1", 0))
+    sock.listen(128)
+    port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app, log_level="warning"))
+
+    # Importing tui_gateway.server intentionally redirects sys.stdout to
+    # stderr to protect its JSON-RPC stdio mode. This host's one readiness
+    # record belongs on the process's original stdout contract.
+    print(
+        json.dumps({"url": f"ws://127.0.0.1:{port}/api/ws"}),
+        file=sys.__stdout__,
+        flush=True,
+    )
+    server.run(sockets=[sock])
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:  # pragma: no cover - startup failure is the contract
+        print(json.dumps({"error": str(exc)}), file=sys.stderr, flush=True)
+        raise
+`;

@@ -148,8 +148,9 @@ Before publication, `pnpm release:verify:packed` builds the tarballs and install
 them into a fresh npm project. Linux CI runs this check after testing the minimum
 supported Node version, using the same Node and npm versions as the release job.
 After publication, `pnpm release:verify` installs every package at the release
-version in a fresh npm project. It verifies ordinary Node imports, testing
-exports under Vitest, the Views browser bundle and CSS, and the Imposter CLI.
+version in a fresh npm project. It verifies ordinary Node imports, a Node bundle
+of the built-in providers run with no `node_modules` above it, testing exports
+under Vitest, the Views browser bundle and CSS, and the Imposter CLI.
 The workflow runs this check for tags that include it; it also runs when a retry
 skips packages already present on npm. Older tags retain their original checks.
 A verification failure does not unpublish packages. Diagnose the consumer error

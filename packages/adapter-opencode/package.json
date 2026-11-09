@@ -15,6 +15,12 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "imports": {
+    "#jsonc-parser": {
+      "module": "jsonc-parser/lib/esm/main.js",
+      "default": "jsonc-parser"
+    }
+  },
   "publishConfig": {
     "access": "public",
     "main": "./dist/index.js",
@@ -48,6 +54,7 @@
   "devDependencies": {
     "@vibefield/puppeteer-surface": "workspace:*",
     "@vibefield/puppeteer-testing": "workspace:*",
+    "esbuild": "^0.28.2",
     "node-pty": "1.2.0-beta.15",
     "vitest": "^4.1.11"
   }

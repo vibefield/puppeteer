@@ -1,10 +1,12 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { createInterface } from 'node:readline';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AgentHost } from '@vibefield/puppeteer-core';
 import { HERMES_HOME_ENV, HERMES_PYTHON_ENV } from '../generated/detection.js';
+import { TUI_GATEWAY_HOST_SOURCE } from '../generated/tui-gateway-host.js';
 import { createHermesGatewayToken } from '../transport/gateway-auth.js';
 
 export interface HermesGatewayHost {
@@ -55,10 +57,37 @@ async function terminateChild(child: ChildProcess, timeoutMs = 10_000): Promise<
   if (timer) clearTimeout(timer);
 }
 
-function hostScript(): string {
-  const moduleRoot = dirname(fileURLToPath(import.meta.url));
-  const packaged = join(moduleRoot, 'tui-gateway-host.py');
-  return existsSync(packaged) ? packaged : join(moduleRoot, '../../scripts/tui-gateway-host.py');
+interface HostScript {
+  path: string;
+  /** Python has compiled the script once the host has published its URL or gone, so the launch ends a copy's life. */
+  release(): void;
+}
+
+// A bundling host keeps neither the script beside this module nor, when it defines
+// import.meta.url away as fieldd does, this module's place on disk.
+function hostScript(): HostScript {
+  const moduleUrl = import.meta.url as string | undefined;
+  if (moduleUrl?.startsWith('file:')) {
+    const moduleRoot = dirname(fileURLToPath(moduleUrl));
+    const onDisk = [
+      join(moduleRoot, 'tui-gateway-host.py'),
+      join(moduleRoot, '../../scripts/tui-gateway-host.py'),
+    ].find((path) => existsSync(path));
+    if (onDisk) return { path: onDisk, release: () => undefined };
+  }
+  const directory = mkdtempSync(join(tmpdir(), 'puppeteer-hermes-host-'));
+  const path = join(directory, 'tui-gateway-host.py');
+  writeFileSync(path, TUI_GATEWAY_HOST_SOURCE, { mode: 0o600 });
+  return {
+    path,
+    release: () => {
+      try {
+        rmSync(directory, { recursive: true, force: true });
+      } catch {
+        // A leftover copy in the temp directory does not fail a launch.
+      }
+    },
+  };
 }
 
 export function resolveHermesPython(explicit?: string): string {
@@ -76,11 +105,18 @@ export async function startHermesGatewayHost(options: StartHermesGatewayHostOpti
   // The agent's environment, as the host composes it for every helper that runs the agent's turns and tools. A host
   // that composes none gets the minimal set it always had: this process's PATH, and nothing else of its own.
   const env = options.host?.helperEnvironment?.(own) ?? { PATH: process.env.PATH, ...own };
-  const child: ChildProcess = spawn(python, [hostScript()], {
-    cwd: options.cwd,
-    env,
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
+  const script = hostScript();
+  let child: ChildProcess;
+  try {
+    child = spawn(python, [script.path], {
+      cwd: options.cwd,
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+  } catch (error) {
+    script.release();
+    throw error;
+  }
   // The bearer rides stdin, never argv or the environment: any same-user
   // process can read both with ps, and the host's environment reaches every
   // tool the agent runs. A write to a host that has already gone fails with
@@ -138,6 +174,8 @@ export async function startHermesGatewayHost(options: StartHermesGatewayHostOpti
   } catch (error) {
     await terminateChild(child);
     throw error;
+  } finally {
+    script.release();
   }
 
   return {
