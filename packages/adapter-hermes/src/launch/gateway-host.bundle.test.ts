@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { afterAll, describe, expect, it } from 'vitest';
+import { TUI_GATEWAY_HOST_SOURCE } from '../generated/tui-gateway-host.js';
 
 const source = fileURLToPath(new URL('./gateway-host.ts', import.meta.url));
 const hostScript = readFileSync(fileURLToPath(new URL('../../scripts/tui-gateway-host.py', import.meta.url)), 'utf8');
@@ -28,7 +29,11 @@ require(bundle)
 `;
 
 describe('the Hermes gateway host in a bundled Node host', () => {
-  // The stub is a shell script, and the launch has nothing platform-specific in it to lose.
+  it('embeds the current host script (pnpm generate:gateway-host writes it)', () => {
+    expect(TUI_GATEWAY_HOST_SOURCE).toBe(hostScript);
+  });
+
+  // The stub is a shell script, which Windows cannot spawn directly.
   it.skipIf(process.platform === 'win32')(
     "launches under fieldd's esbuild flags, with nothing beside the bundle",
     { timeout: 30_000 },

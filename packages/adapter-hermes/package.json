@@ -35,7 +35,8 @@
     "prepack": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "generate:detection": "node scripts/generate-detection.mjs"
+    "generate:detection": "node scripts/generate-detection.mjs",
+    "generate:gateway-host": "node scripts/generate-gateway-host-source.mjs"
   },
   "engines": {
     "node": ">=22.18.0"
