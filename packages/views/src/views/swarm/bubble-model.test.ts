@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentView, MonitorCost } from '@vibefield/puppeteer-view-sdk';
 import { agentViewFixture, type AgentViewFixturePartial } from '@vibefield/puppeteer-view-sdk/testing';
-import { OPENING_QUIET_MS, bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
+import { detailLine } from '@vibefield/puppeteer-view-sdk/toolkit';
+import {
+  OPENING_QUIET_MS,
+  bubbleModel,
+  workingShares,
+  type BubbleModelInput,
+  type SwarmBubbleModel,
+} from './bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from './swarm-parameters.js';
 import { SWARM_WEIGHT } from './weight.js';
 
@@ -627,5 +634,50 @@ describe('the profile line (a terminal born under an Agent Profile)', () => {
       ['sub', 'opening'],
       ['profile', 'Work'],
     ]);
+  });
+});
+
+describe('the profile glyph on an agent’s model line (UM-D6)', () => {
+  const WORK = { label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true } as const;
+  const worn = (row: AgentView, profile?: BubbleModelInput['profile'], unread = false): SwarmBubbleModel =>
+    bubbleModel({ agent: row, parameters, nowMs: NOW, unread, profile });
+  const modelLine = (model: SwarmBubbleModel) => model.copy.find((line) => line.key === 'model');
+  const idle = agent({ status: 'idle' });
+
+  it('leads the model line with the glyph, at the terminal line’s size, and adds no line of its own', () => {
+    const model = worn(idle, WORK);
+    expect(model.copy.map((line) => line.key)).toEqual(['name', 'model']);
+    expect(modelLine(model)?.lead).toEqual({ kind: 'icon', icon: 'profile:briefcase:filled', size: 10.5, gap: 3 });
+  });
+
+  it.each<[string, AgentView, boolean]>([
+    ['working', agent({ status: 'working', activity: { kind: 'tool', line: 'Editing tokens.css', since: AT } }), false],
+    ['idle', idle, false],
+    ['blocked', agent({ status: 'blocked', wait: { kind: 'permission', since: AT, tool: 'Bash' } }), false],
+    ['unread', agent({ status: 'idle', reply: { text: 'Tests pass on the branch.', at: AT, final: true } }), true],
+  ])('leads the model line in every state an agent draws: %s', (_state, row, unread) => {
+    expect(modelLine(worn(row, WORK, unread))?.lead?.icon).toBe('profile:briefcase:filled');
+  });
+
+  it('draws the mark a terminal’s profile line draws: outlined, the laptop for native, the star for a token it lacks', () => {
+    const icon = (profile: BubbleModelInput['profile']) => modelLine(worn(idle, profile))?.lead?.icon;
+    expect(icon({ label: 'Personal', glyph: 'house', kind: 'managed' })).toBe('profile:house');
+    expect(icon({ label: 'This Mac', glyph: 'rocket', kind: 'native' })).toBe('profile:laptop');
+    expect(icon({ label: 'This Mac', kind: 'native', isDefault: true })).toBe('profile:laptop:filled');
+    expect(icon({ label: 'Odd', glyph: 'no-such-mark', kind: 'managed' })).toBe('profile:star');
+  });
+
+  it('says the profile to a screen reader and in the tooltip, where a sighted person reads its name', () => {
+    const model = worn(idle, WORK);
+    expect(model.ariaLabel).toContain('Fable 5.1, under Work, idle');
+    expect(model.title).toContain('Fable 5.1 · Work ·');
+  });
+
+  it('without a profile: no lead, and the accessible name and tooltip are what they were', () => {
+    const model = worn(idle);
+    expect(modelLine(model)).not.toHaveProperty('lead');
+    expect(model.ariaLabel).toMatch(/^puppeteer, Fable 5\.1, idle: /);
+    expect(model.title).toMatch(/^puppeteer · Fable 5\.1 · /);
+    expect(model.title).toBe(`puppeteer · Fable 5.1 · ${detailLine(idle)}`);
   });
 });

@@ -164,6 +164,23 @@ describe('the swarm with a spawn menu (SB)', () => {
   });
 });
 
+describe('an agent’s body and its profile (UM-D6)', () => {
+  const row = working('a1', 'vibe-field', 'Sonnet 5');
+
+  it('says the profile an agent runs under, when the desktop you sit at has two or more', () => {
+    expect(markup([{ ...row, profileSet: 'work' }], fixtureSpawnMenu())).toContain('Sonnet 5, under Work, working:');
+  });
+
+  it.each<[string, AgentView, MonitorSpawnMenu]>([
+    ['one profile on this desktop', { ...row, profileSet: 'native' }, BLOOM_SCENARIOS['one-one']],
+    ['a peer’s agent: never a guess', { ...row, device: PEER, profileSet: 'work' }, fixtureSpawnMenu()],
+    ['a set the menu does not hold', { ...row, profileSet: 'ghost' }, fixtureSpawnMenu()],
+    ['a row with no set', row, fixtureSpawnMenu()],
+  ])('says nothing for %s', (_case, agent, menu) => {
+    expect(markup([agent], menu)).not.toContain(', under ');
+  });
+});
+
 describe('the manifest', () => {
   it('declares the bloom’s keys (MV-D8), the spawn capability and a loop at rest', () => {
     expect(SWARM_MANIFEST.id).toBe('swarm');

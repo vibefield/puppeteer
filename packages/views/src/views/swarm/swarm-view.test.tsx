@@ -246,6 +246,19 @@ describe('the swarm mounted', () => {
     expect(counting.creates[0]?.target).toEqual({ deviceId: 'mini', profileSet: 'native' });
     expect(counting.reports.at(-1)).toEqual({ keysHeld: false });
   });
+
+  it('draws an agent wearing the profile it runs under, read from the menu in the frame loop (UM-D6)', async () => {
+    const row = agentViewFixture({
+      id: 'a1',
+      status: 'working',
+      project: { name: 'vibe-field', seq: 0 },
+      provider: { id: 'claude', label: 'Claude' },
+      model: 'Sonnet 5',
+      profileSet: 'demo',
+    });
+    await mounted(BLOOM_SCENARIOS['one-three'], theme, { agents: [row] });
+    expect(lastDrawn('a1')!.model.copy.find((line) => line.key === 'model')?.lead?.icon).toBe('profile:flask');
+  });
 });
 
 describe('a body leaving the field (DESIGN §6, the departure; M4: depart is not vanish)', () => {
