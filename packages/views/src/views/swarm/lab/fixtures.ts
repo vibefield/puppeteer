@@ -1037,7 +1037,10 @@ export function pendingStages(nowMs: number): LabStage[] {
   ];
 }
 
-/** Part: terminals born under an Agent Profile — the profile line, its glyph from ProfileGlyph's own shapes. */
+/**
+ * Part: bodies under an Agent Profile — a terminal's profile line and an agent's model line, the glyph from
+ * ProfileGlyph's own shapes.
+ */
 export function profileStages(nowMs: number): LabStage[] {
   const peer = onPeer(terminalFixture('pr5', '~', false, nowMs));
   return [
@@ -1076,6 +1079,47 @@ export function profileStages(nowMs: number): LabStage[] {
       note: 'Before the host line, which a peer’s body always keeps.',
       agent: peer,
       profile: { label: 'Default', kind: 'native', isDefault: true },
+    },
+    {
+      id: 'profile-agent-idle',
+      title: 'An agent, idle, under a profile',
+      note: 'The glyph alone leads the model line (UM-D6); no line of its own. Its width comes from the line, so a long model · effort takes the ellipsis sooner.',
+      agent: agentFixture(
+        {
+          id: 'pr6',
+          project: 'puppeteer',
+          status: 'idle',
+          model: 'Fable 5.1',
+          effort: 'high',
+          contextPercent: 25,
+          accent: 4,
+        },
+        nowMs,
+      ),
+      profile: { label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true },
+    },
+    {
+      id: 'profile-agent-working',
+      title: 'An agent, working, under a profile',
+      note: 'The same lead on a working body: the burn row stands clear of the glyph as it stands clear of the words.',
+      agent: agentFixture(
+        {
+          id: 'pr7',
+          project: 'ghosttea',
+          status: 'working',
+          model: 'GPT-5',
+          effort: 'high',
+          branch: 'mv/mv0-pu',
+          contextPercent: 34,
+          burn: 'steady',
+          ratePerMin: 0.28,
+          activity: { kind: 'tool', line: 'Editing grid.rs' },
+          accent: 7,
+          tokens: 512_000,
+        },
+        nowMs,
+      ),
+      profile: { label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true },
     },
   ];
 }

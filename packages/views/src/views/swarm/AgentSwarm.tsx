@@ -235,9 +235,13 @@ function measured(stage: StageGeometry): boolean {
   return stage.width > 0 && stage.height > 0;
 }
 
-/** A terminal born under a profile of the desktop you sit at names it, when there is more than one (SB §2.10). */
-function terminalProfile(menu: MonitorSpawnMenu | undefined, agent: AgentView): BirthProfile | undefined {
-  return agent.kind === 'agent' || !agent.device.self ? undefined : profileLineFor(menu, agent.profileSet);
+/**
+ * The profile a body of the desktop you sit at runs under, when that desktop has more than one: a terminal names it
+ * (SB §2.10), an agent wears its glyph (UM-D6). A peer's body never draws a guess (UM-L3): this menu is not its
+ * desktop's.
+ */
+function bodyProfile(menu: MonitorSpawnMenu | undefined, agent: AgentView): BirthProfile | undefined {
+  return !agent.device.self ? undefined : profileLineFor(menu, agent.profileSet);
 }
 
 /**
@@ -269,7 +273,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     const shares = workingShares(agents);
     const byId = new Map<string, SwarmBubbleModel>();
     for (const agent of agents) {
-      const profile = terminalProfile(spawnMenu, agent);
+      const profile = bodyProfile(spawnMenu, agent);
       byId.set(
         bodyIdOf(agent),
         bubbleModel({
@@ -534,7 +538,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     };
   }, []);
 
-  // A new tree can change which terminals name their profile.
+  // A new tree can change which bodies name or wear their profile.
   useEffect(() => {
     modelsRef.current.at = 0;
   }, [spawnMenu]);
@@ -576,7 +580,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     const shares = workingShares(agentsRef.current);
     for (const agent of agentsRef.current) {
       const runningSince = runningSinceRef.current.get(bodyIdOf(agent));
-      const profile = terminalProfile(spawnMenuRef.current, agent);
+      const profile = bodyProfile(spawnMenuRef.current, agent);
       byId.set(
         bodyIdOf(agent),
         bubbleModel({
