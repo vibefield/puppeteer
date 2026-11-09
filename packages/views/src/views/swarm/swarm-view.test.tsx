@@ -265,6 +265,22 @@ describe('the swarm mounted', () => {
     await mounted(BLOOM_SCENARIOS['one-three'], theme, { agents: [row] });
     expect(lastDrawn('a1')!.model.copy.find((line) => line.key === 'model')?.lead?.icon).toBe('profile:flask');
   });
+
+  it('never draws a peer’s agent wearing a profile: this menu is not its desktop’s (UM-L3)', async () => {
+    const row = agentViewFixture({
+      id: 'a1',
+      status: 'working',
+      project: { name: 'vibe-field', seq: 0 },
+      provider: { id: 'claude', label: 'Claude' },
+      model: 'Sonnet 5',
+      device: { id: 'mini', name: 'studio-mini', self: false },
+      profileSet: 'demo',
+    });
+    await mounted(BLOOM_SCENARIOS['one-three'], theme, { agents: [row] });
+    const line = lastDrawn('a1')!.model.copy.find((candidate) => candidate.key === 'model');
+    expect(line).toBeDefined();
+    expect(line!.lead).toBeUndefined();
+  });
 });
 
 describe('a body leaving the field (DESIGN §6, the departure; M4: depart is not vanish)', () => {

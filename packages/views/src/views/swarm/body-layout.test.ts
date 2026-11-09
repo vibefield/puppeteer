@@ -260,7 +260,7 @@ describe('a profile’s glyph on an agent’s model line, rung by rung (UM-D6)',
   it.each<[keyof typeof BODIES, number]>([
     ['working', 60],
     ['idle', 50],
-  ])('the full rung: %s at r %d keeps the glyph on the model line, and pays for it from the line', (kind, radius) => {
+  ])('the full rung: %s at r %d keeps the glyph on the model line', (kind, radius) => {
     const model = lines(kind, radius).find((line) => line.key === 'model')!;
     expect(model.lead?.icon).toBe('profile:briefcase:filled');
     expect(model.width - model.textWidth).toBeCloseTo(LEAD, 9);
@@ -272,6 +272,20 @@ describe('a profile’s glyph on an agent’s model line, rung by rung (UM-D6)',
     const model = kept[1]!;
     expect(model.lead?.icon).toBe('profile:briefcase:filled');
     expect(model.width - model.textWidth).toBeCloseTo(LEAD, 9);
+  });
+
+  // What the words pay for the glyph (`width - textWidth` above is the lead whether or not they shrank). These cuts
+  // are this file's fixed-pitch measurer's, 0.6 em: the atlas measures the system face, which is a little wider.
+  it.each([
+    [50, 'fable 5.1 · hi…'],
+    [40, 'fable 5.1 …'],
+    [36, 'fable 5.1…'],
+  ])('pays for it from the words: idle at r %d reads %s', (radius, text) => {
+    expect(lines('idle', radius).find((line) => line.key === 'model')!.text).toBe(text);
+  });
+
+  it('never pushes the line past the budget the words are fitted to', () => {
+    expect(lines('idle', 50).find((line) => line.key === 'model')!.width).toBeLessThanOrEqual(84);
   });
 
   it('goes with its line: a blocked body’s one line is its state, and below the rung only the name stands', () => {

@@ -166,6 +166,11 @@ describe('the swarm with a spawn menu (SB)', () => {
 
 describe('an agent’s body and its profile (UM-D6)', () => {
   const row = working('a1', 'vibe-field', 'Sonnet 5');
+  /** The desktop you sit at holds one profile; a peer holds two. */
+  const ONE_HERE_TWO_THERE: MonitorSpawnMenu = {
+    devices: [BLOOM_SCENARIOS['one-one'].devices[0]!, BLOOM_SCENARIOS.two.devices[1]!],
+  };
+  const READING_HERE: MonitorSpawnMenu = { devices: [{ id: 'desk', label: 'Desk', self: true, state: 'reading' }] };
 
   it('says the profile an agent runs under, when the desktop you sit at has two or more', () => {
     expect(markup([{ ...row, profileSet: 'work' }], fixtureSpawnMenu())).toContain('Sonnet 5, under Work, working:');
@@ -173,6 +178,9 @@ describe('an agent’s body and its profile (UM-D6)', () => {
 
   it.each<[string, AgentView, MonitorSpawnMenu]>([
     ['one profile on this desktop', { ...row, profileSet: 'native' }, BLOOM_SCENARIOS['one-one']],
+    ['one profile here, however many a peer has', { ...row, profileSet: 'native' }, ONE_HERE_TWO_THERE],
+    ['a set only a peer holds', { ...row, profileSet: 'personal' }, BLOOM_SCENARIOS.two],
+    ['a desktop whose profiles are still being read', { ...row, profileSet: 'work' }, READING_HERE],
     ['a peer’s agent: never a guess', { ...row, device: PEER, profileSet: 'work' }, fixtureSpawnMenu()],
     ['a set the menu does not hold', { ...row, profileSet: 'ghost' }, fixtureSpawnMenu()],
     ['a row with no set', row, fixtureSpawnMenu()],
