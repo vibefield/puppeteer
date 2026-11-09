@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import type { MonitorSpawnFuel, MonitorSpawnMenu } from '@vibefield/puppeteer-view-sdk';
 import { approximateBloomMeasure } from './canvas-measure.js';
 import type { BloomPoint } from './geometry.js';
 import { commitBloom, isInstant, keyBloom, openBloom, pointBloom, type BloomEnv, type BloomState } from './model.js';
@@ -160,5 +161,105 @@ describe('the spawn bloom, posed', () => {
     const markup = html(done.state);
     expect(markup).toContain('data-bloom-state="cancelled"');
     expect(markup).not.toContain('is-chosen');
+  });
+});
+
+describe("the spawn bloom's fuel", () => {
+  const fuelled = (
+    id: BloomScenarioId,
+    fuels: Readonly<Record<string, MonitorSpawnFuel | undefined>>,
+  ): MonitorSpawnMenu => ({
+    devices: BLOOM_SCENARIOS[id].devices.map((device) => ({
+      ...device,
+      profiles: device.profiles?.map((profile) =>
+        profile.id in fuels ? { ...profile, fuel: fuels[profile.id] } : profile,
+      ),
+    })),
+  });
+
+  const bloomOf = (menu: MonitorSpawnMenu): BloomState => {
+    const opened = openBloom(env(), P, 'hold', menu);
+    if (isInstant(opened)) throw new Error('expected a bloom');
+    return opened;
+  };
+
+  const work = (fuel: MonitorSpawnFuel): BloomState => bloomOf(fuelled('one-three', { work: fuel }));
+
+  it('a profile with a reading wears a ring: the track, the fill to its share, a tick at the time gone', () => {
+    const markup = html(work({ usedPercent: 42, elapsedPercent: 25 }));
+    expect(count(markup, /class="vf-bloom-fuel"/g)).toBe(1);
+    expect(markup).toContain('style="position:absolute;inset:0;overflow:visible"');
+    expect(markup).toMatch(/class="vf-bloom-fuel-track"[^>]*r="21.62"/);
+    expect(markup).toMatch(/class="vf-bloom-fuel-track"[^>]*stroke-width="3.17"/);
+    expect(markup).toContain('stroke-dasharray:41.02 200');
+    expect(markup).toContain('transform="rotate(-85.8 24 24)"');
+    expect(markup).toMatch(/class="vf-bloom-fuel-tick" x1="42.42" y1="26.03" x2="48.55" y2="26.71"/);
+    // the ring sits under the blocked dot: the dot comes later in the face
+    expect(markup.indexOf('class="vf-bloom-fuel"')).toBeLessThan(markup.indexOf('class="vf-bloom-dot"'));
+  });
+
+  it('a bud on the second ring sizes its ring to itself', () => {
+    const markup = html(toward(bloomOf(fuelled('two', { personal: { usedPercent: 42 } })), 'mini'));
+    expect(markup).toMatch(/class="vf-bloom-fuel-track"[^>]*r="18.81"/);
+    expect(markup).toMatch(/class="vf-bloom-fuel-track"[^>]*stroke-width="2.77"/);
+  });
+
+  it('a window running hot turns its fill orange, and an old reading draws at half', () => {
+    const s = toward(work({ usedPercent: 92, hot: true, stale: true }), 'studio', 'work');
+    const markup = html(s);
+    expect(markup).toContain('class="vf-bloom-fuel-fill is-fuel-hot is-fuel-stale"');
+    // a bud's `is-hot` still means targeted, and only that
+    expect(markup).toMatch(/class="vf-bloom-bud is-out is-hot"[^>]*data-bloom-bud-id="work"/);
+    expect(count(markup, /class="vf-bloom-bud[^"]* is-hot/g)).toBe(1);
+  });
+
+  it('a share past 100 fills the ring, never more', () => {
+    expect(html(work({ usedPercent: 130 }))).toContain('stroke-dasharray:97.67 200');
+  });
+
+  it("the bud's accessible name says its fuel", () => {
+    const markup = html(work({ usedPercent: 42, word: 'Plan: 42% of 5 hours' }));
+    expect(markup).toContain('aria-label="Work, default, plan: 42% of 5 hours"');
+    // a word with no reading to draw still speaks
+    expect(html(work({ word: 'Plan: 42% of 5 hours' }))).toContain('aria-label="Work, default, plan: 42% of 5 hours"');
+  });
+
+  it("a tick outside its window stands at the window's end", () => {
+    const at = (elapsedPercent: number) => html(work({ usedPercent: 42, elapsedPercent }));
+    expect(at(130)).toContain('vf-bloom-fuel-tick');
+    expect(at(130)).toBe(at(100));
+    expect(at(-5)).toBe(at(0));
+  });
+
+  it('a profile the host cannot read draws a thread, and a number wins over it', () => {
+    const unread = html(work({ unread: true }));
+    expect(unread).toMatch(/class="vf-bloom-fuel-thread"[^>]*stroke-width="1.15"/);
+    expect(unread).toContain('stroke-dasharray:0.01 2.99');
+    expect(unread).not.toContain('vf-bloom-fuel-fill');
+    const reading = html(work({ unread: true, usedPercent: 42 }));
+    expect(reading).toContain('vf-bloom-fuel-fill');
+    expect(reading).not.toContain('vf-bloom-fuel-thread');
+  });
+
+  it("a host that gives no fuel draws today's buds, byte for byte", () => {
+    const today = html(open('one-three'));
+    expect(today).not.toContain('vf-bloom-fuel');
+    expect(html(bloomOf(fuelled('one-three', { work: undefined })))).toBe(today);
+  });
+
+  it('a malformed reading draws no ring', () => {
+    expect(html(work({ usedPercent: Number.NaN }))).not.toContain('vf-bloom-fuel');
+    expect(html(work({ usedPercent: '42' as unknown as number }))).not.toContain('vf-bloom-fuel');
+    expect(html(bloomOf(fuelled('one-three', { work: 'full' as unknown as MonitorSpawnFuel })))).not.toContain(
+      'vf-bloom-fuel',
+    );
+    expect(html(work({ word: 'Plan: 42% of 5 hours' }))).not.toContain('vf-bloom-fuel');
+  });
+
+  it("a desktop's bud never wears one", () => {
+    // mini's default profile is fuelled, and level one draws mini itself
+    const markup = html(bloomOf(fuelled('two', { native: { usedPercent: 42 }, work: { usedPercent: 42 } })));
+    expect(count(markup, /data-bloom-bud-kind="device"/g)).toBe(2);
+    expect(markup).not.toContain('vf-bloom-fuel');
   });
 });

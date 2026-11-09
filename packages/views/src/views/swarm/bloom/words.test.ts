@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorSpawnDevice } from '@vibefield/puppeteer-view-sdk';
+import type { MonitorSpawnDevice, MonitorSpawnFuel, MonitorSpawnProfile } from '@vibefield/puppeteer-view-sdk';
 import type { BloomTextMeasure } from './constants.js';
 import { menuOf, type BloomDeviceItem, type BloomOpenMenu, type BloomProfileItem } from './menu.js';
 import { BLOOM_SCENARIOS } from './scenarios.js';
@@ -191,5 +191,70 @@ describe('placeWords', () => {
       measure,
     });
     expect(place.m.size).toBe(40);
+  });
+});
+
+describe("the words name a profile's fuel", () => {
+  const FUEL: MonitorSpawnFuel = { usedPercent: 42, word: 'Plan: 42% of 5 hours' };
+  const wearing = (
+    at: BloomProfileItem,
+    fuel: MonitorSpawnFuel,
+    more?: Partial<MonitorSpawnProfile>,
+  ): BloomProfileItem => ({
+    ...at,
+    profile: { ...at.profile, ...more, fuel },
+  });
+
+  it('reaching a profile names its fuel after who is signed in', () => {
+    const words = wordsFor(three, { kind: 'profile', item: wearing(personal, FUEL) }, 'hold');
+    expect(words.detail).toBe('ON MINI · ALPHA · BETA SIGNED IN · PLAN: 42% OF 5 HOURS');
+    expect(words.tone).toBe('go');
+  });
+
+  it("a peer's native profile names it too", () => {
+    const item = wearing(profileOn(mini.device, 'native'), FUEL);
+    const words = wordsFor(three, { kind: 'profile', item }, 'hold');
+    expect(text(words)).toBe('Open on mini');
+    expect(words.detail).toBe('UNDER DEFAULT · ALPHA · BETA · GAMMA · DELTA SIGNED IN · PLAN: 42% OF 5 HOURS');
+  });
+
+  it('a real fuel word does not cost the words their size', () => {
+    const signedIn = ['Claude Code', 'Codex'];
+    const bare: BloomProfileItem = { ...personal, profile: { ...personal.profile, signedIn } };
+    const fuelled = wearing(bare, { usedPercent: 64, word: 'Claude Max: 64% of 5 hours' });
+    const field = { w: 1000, h: 500 };
+    const bloom = [{ x: 270, y: 270, width: 60, height: 60 }];
+    const placed = (words: BloomWords) => placeWords({ words, field, chrome: [], bloom, bodies: [], measure });
+    const words = wordsFor(three, { kind: 'profile', item: fuelled }, 'hold');
+    expect(words.detail.endsWith(' · CLAUDE MAX: 64% OF 5 HOURS')).toBe(true);
+    const place = placed(words);
+    const before = placed(wordsFor(three, { kind: 'profile', item: bare }, 'hold'));
+    expect(place.m.size).toBe(before.m.size);
+    expect(place.m.w).toBe(before.m.w);
+    expect(place.key).toBe(before.key);
+  });
+
+  it('the hub and a desktop say nothing of fuel', () => {
+    const device: MonitorSpawnDevice = {
+      ...mini.device,
+      profiles: (mini.device.profiles ?? []).map((p) => ({ ...p, fuel: FUEL })),
+    };
+    const menu = menuOf({ devices: [BLOOM_SCENARIOS.two.devices[0] as MonitorSpawnDevice, device] }) as BloomOpenMenu;
+    expect(wordsFor(menu, { kind: 'hub' }, 'hold').detail).not.toContain('5 HOURS');
+    const words = wordsFor(menu, { kind: 'device', item: menu.items[1] as BloomDeviceItem }, 'hold');
+    expect(words.detail).toBe('UNDER DEFAULT');
+  });
+
+  it('a blank word adds nothing', () => {
+    const words = wordsFor(
+      three,
+      { kind: 'profile', item: wearing(personal, { usedPercent: 42, word: '   ' }) },
+      'hold',
+    );
+    expect(words.detail).toBe('ON MINI · ALPHA · BETA SIGNED IN');
+    const peer = wearing(profileOn(mini.device, 'native'), { unread: true }, { signedIn: [] });
+    expect(wordsFor(three, { kind: 'profile', item: peer }, 'hold').detail).toBe(
+      'UNDER DEFAULT · THE AGENTS’ OWN SIGN-INS',
+    );
   });
 });
