@@ -1,4 +1,4 @@
-import type { MonitorView, MonitorViewKey, MonitorViewMark } from '@vibefield/puppeteer-view-sdk';
+import type { MonitorSpawnFuel, MonitorView, MonitorViewKey, MonitorViewMark } from '@vibefield/puppeteer-view-sdk';
 import type { AgentMonitorState, MonitorContextState, MonitorRecency } from '@vibefield/puppeteer-core';
 import type { AgentVisualStatus } from './agent-status.js';
 import type { MonitorParameterGroup } from './parameters.js';
@@ -159,6 +159,8 @@ export interface MonitorSpawnProfile {
   readonly blocked?: boolean | undefined;
   /** The agents signed in under it, as the host labels them, in its order. */
   readonly signedIn?: readonly string[] | undefined;
+  /** Its headroom, as the host reads it (the SDK's port). Absent: the bud as before. */
+  readonly fuel?: MonitorSpawnFuel | undefined;
 }
 
 /** Whether a desktop can take a terminal from here right now. Only `ready`

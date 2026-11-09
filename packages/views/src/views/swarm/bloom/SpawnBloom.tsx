@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { ProfileGlyph } from '@vibefield/puppeteer-view-sdk/react';
 import { BLOOM } from './constants.js';
+import { budRing, type BloomFuel } from './fuel.js';
 import type { BloomBox } from './geometry.js';
 import { bloomView, type BloomBudView, type BloomSay, type BloomState, type BloomView } from './model.js';
 import type { BloomTarget } from './targeting.js';
@@ -190,6 +191,59 @@ function budStyle(bud: BloomBudView, delay: number, grow: number | null): CSSPro
   } as CSSProperties;
 }
 
+/** A profile's fuel, inside the disc and under the blocked dot. Its layout is inline: the face is a grid, so an in-flow
+ * svg would push the glyph off centre, and the tick ends just past the bud's own box. */
+function BudFuel({ d, fuel }: { d: number; fuel: BloomFuel }): ReactElement {
+  const ring = budRing(d, fuel);
+  const c = d / 2;
+  return (
+    <svg
+      className="vf-bloom-fuel"
+      width={d}
+      height={d}
+      viewBox={`0 0 ${d} ${d}`}
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
+    >
+      {fuel.kind === 'unread' ? (
+        <circle
+          className="vf-bloom-fuel-thread"
+          cx={c}
+          cy={c}
+          r={ring.r}
+          strokeWidth={ring.thread.width}
+          style={{ strokeDasharray: ring.thread.dash }}
+        />
+      ) : (
+        <>
+          <circle className="vf-bloom-fuel-track" cx={c} cy={c} r={ring.r} strokeWidth={ring.band} />
+          {ring.fill ? (
+            <circle
+              className={`vf-bloom-fuel-fill${fuel.hot ? ' is-fuel-hot' : ''}${fuel.stale ? ' is-fuel-stale' : ''}`}
+              cx={c}
+              cy={c}
+              r={ring.r}
+              strokeWidth={ring.band}
+              pathLength={100}
+              transform={`rotate(${ring.fill.rotate} ${c} ${c})`}
+              style={{ strokeDasharray: ring.fill.dash }}
+            />
+          ) : null}
+          {ring.tick ? (
+            <line
+              className="vf-bloom-fuel-tick"
+              x1={ring.tick.x1}
+              y1={ring.tick.y1}
+              x2={ring.tick.x2}
+              y2={ring.tick.y2}
+            />
+          ) : null}
+        </>
+      )}
+    </svg>
+  );
+}
+
 function BudFace({ bud }: { bud: BloomBudView }): ReactElement {
   const face = bud.face;
   return (
@@ -204,6 +258,7 @@ function BudFace({ bud }: { bud: BloomBudView }): ReactElement {
           size={bud.level === 1 ? 20 : 18}
         />
       )}
+      {bud.fuel ? <BudFuel d={bud.d} fuel={bud.fuel} /> : null}
       {bud.dot ? <i className="vf-bloom-dot" /> : null}
     </span>
   );

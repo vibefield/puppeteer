@@ -67,8 +67,7 @@
   transform: translate(var(--mv-swarm-bloom-hx), var(--mv-swarm-bloom-hy)) scale(0.2);
   opacity: 0;
   transition:
-    transform var(--mv-swarm-bloom-pop, 280ms) var(--vf-ease-pop)
-      var(--mv-swarm-bloom-delay, 0ms),
+    transform var(--mv-swarm-bloom-pop, 280ms) var(--vf-ease-pop) var(--mv-swarm-bloom-delay, 0ms),
     opacity 140ms ease var(--mv-swarm-bloom-delay, 0ms);
   will-change: transform, opacity;
 }
@@ -90,6 +89,7 @@
 }
 
 .mv-swarm .vf-bloom-face {
+  --mv-swarm-bloom-fuel-ink: var(--mv-swarm-bloom-ink);
   position: absolute;
   inset: 0;
   display: grid;
@@ -123,6 +123,7 @@
 
 .mv-swarm .vf-bloom-bud.is-hot .vf-bloom-face,
 .mv-swarm .vf-bloom-bud.is-path.is-hot .vf-bloom-face {
+  --mv-swarm-bloom-fuel-ink: var(--mv-swarm-bloom-ground);
   transform: scale(1.16);
   background: var(--mv-swarm-bloom-ink);
   color: var(--mv-swarm-bloom-ground);
@@ -191,6 +192,44 @@
   border-radius: 50%;
   background: var(--mv-swarm-orange, #ff9f0a);
   box-shadow: 0 0 0 1.5px var(--idle-bg, #e5e5e5);
+}
+
+/* a profile's fuel (UM-D7): one arc just inside the rim. Its classes are `is-fuel-*` because a bud's
+   `is-hot` already means targeted; it scales and fades with the face, adds no motion of its own, and
+   inverts with the targeted face through its ink. */
+.mv-swarm .vf-bloom-fuel {
+  pointer-events: none;
+}
+
+.mv-swarm .vf-bloom-fuel circle {
+  fill: none;
+}
+
+.mv-swarm .vf-bloom-fuel-track {
+  stroke: color-mix(in srgb, var(--mv-swarm-bloom-fuel-ink) 12%, transparent);
+}
+
+.mv-swarm .vf-bloom-fuel-fill {
+  stroke: color-mix(in srgb, var(--mv-swarm-bloom-fuel-ink) 64%, transparent);
+  stroke-linecap: round;
+}
+
+.mv-swarm .vf-bloom-fuel-fill.is-fuel-hot {
+  stroke: color-mix(in srgb, var(--mv-swarm-orange, #ff9f0a) 88%, transparent);
+}
+
+.mv-swarm .vf-bloom-fuel-fill.is-fuel-stale {
+  opacity: 0.5;
+}
+
+.mv-swarm .vf-bloom-fuel-tick {
+  stroke: color-mix(in srgb, var(--mv-swarm-bloom-fuel-ink) 84%, transparent);
+  stroke-width: 1.25;
+}
+
+.mv-swarm .vf-bloom-fuel-thread {
+  stroke: color-mix(in srgb, var(--mv-swarm-bloom-fuel-ink) 46%, transparent);
+  stroke-linecap: round;
 }
 
 /* ── the labels: seated clear of everything (the core's seatLabel), 140ms behind their bud ── */
