@@ -193,7 +193,10 @@ export interface MonitorSpawnFuel {
    * wins.
    */
   readonly unread?: boolean | undefined;
-  /** One short clause naming the window, worded by the host (as a device's `word`). */
+  /**
+   * One short clause naming the window, worded by the host (as a device's `word`). It is the only text this reading gets
+   * (the ring is hidden from the accessibility tree), so a `stale` reading's clause says how old it is.
+   */
   readonly word?: string | undefined;
 }
 
