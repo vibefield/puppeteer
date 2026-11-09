@@ -35,13 +35,19 @@ import type { SwarmPhysicsCommand } from './physics/protocol.js';
 // saying the rows of the update that hands them over, and a renderer that fails to build saying so on the stage.
 
 /** What the stub renderer was asked to draw, oldest first; and whether it builds (`reject`: its build throws). */
-const drawn = vi.hoisted(() => ({ frames: [] as SwarmFrame[], renderer: 'ok' as 'ok' | 'reject' }));
+const drawn = vi.hoisted(() => ({
+  frames: [] as SwarmFrame[],
+  renderer: 'ok' as 'ok' | 'reject',
+  /** The renderer's atlas saying a picture has decoded: what the view handed it. */
+  spriteReady: undefined as (() => void) | undefined,
+}));
 
 vi.mock('./gpu/swarm-renderer.js', async (original) => ({
   ...(await original<object>()),
-  createSwarmRenderer: async () => {
+  createSwarmRenderer: async (_canvas: HTMLCanvasElement, options?: { onSpriteReady?: () => void }) => {
     // A build that throws all the same: what the view meets when anything escapes the renderer's typed answers.
     if (drawn.renderer === 'reject') throw new Error('the stub GPU will not build');
+    drawn.spriteReady = options?.onSpriteReady;
     return {
       ok: true,
       renderer: {
@@ -475,6 +481,18 @@ describe('a field held still draws each change it shows, on a frame of its own (
       await frames(10);
       expect(drawn.frames.length).toBe(drawnThen);
     });
+  });
+
+  it('draws one still frame for a picture that decoded after the still that asked for it, then asks for no frame', async () => {
+    await mounted(BLOOM_SCENARIOS['one-three'], still);
+    const before = drawn.frames.length;
+    await frames(2);
+    expect(drawn.frames.length).toBe(before);
+    drawn.spriteReady?.();
+    await frames(2);
+    expect(drawn.frames.length).toBe(before + 1);
+    await frames(10);
+    expect(drawn.frames.length).toBe(before + 1);
   });
 
   it('rings the body whose button has the focus, and takes the ring away on blur', async () => {
