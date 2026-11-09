@@ -218,7 +218,7 @@ describe("the words name a profile's fuel", () => {
     expect(words.detail).toBe('UNDER DEFAULT · ALPHA · BETA · GAMMA · DELTA SIGNED IN · PLAN: 42% OF 5 HOURS');
   });
 
-  it('a real fuel word does not cost the words their size', () => {
+  it('a real fuel word under a wider headline does not cost the words their size', () => {
     const signedIn = ['Claude Code', 'Codex'];
     const bare: BloomProfileItem = { ...personal, profile: { ...personal.profile, signedIn } };
     const fuelled = wearing(bare, { usedPercent: 64, word: 'Claude Max: 64% of 5 hours' });
@@ -234,15 +234,66 @@ describe("the words name a profile's fuel", () => {
     expect(place.key).toBe(before.key);
   });
 
+  describe('where the detail outgrows the headline', () => {
+    const field = { w: 1000, h: 500 };
+    const bare = wordsFor(three, { kind: 'profile', item: profileOn(mini.device, 'native') }, 'hold');
+    const long = wordsFor(three, { kind: 'profile', item: wearing(profileOn(mini.device, 'native'), FUEL) }, 'hold');
+
+    it('the box widens to the detail, and its size stands where the room is there', () => {
+      const bloom = [{ x: 270, y: 270, width: 60, height: 60 }];
+      const placed = (words: BloomWords) => placeWords({ words, field, chrome: [], bloom, bodies: [], measure });
+      expect(placed(bare).m).toMatchObject({ w: 469, size: 66 });
+      expect(placed(long).m).toMatchObject({ w: 614, size: 66 });
+    });
+
+    it('a size the longer line cost is kept for the rest of the gesture', () => {
+      // a rule through the field leaves the 469-wide box a place at 66, and the 614-wide one only the strip above its
+      // foot, which the 82 tall box of size 59 clears and the 89 tall box of size 66 does not
+      const bloom = [{ x: 540, y: 148, width: 20, height: 352 }];
+      const placed = (words: BloomWords, current?: { key: string; size: number }) =>
+        placeWords({ words, field, chrome: [], bloom, bodies: [], current, measure });
+      expect(placed(bare).m.size).toBe(66);
+      const reached = placed(long);
+      expect(reached.m.size).toBe(59);
+      expect(placed(bare, { key: reached.key, size: reached.m.size }).m.size).toBe(59);
+    });
+  });
+
   it('the hub and a desktop say nothing of fuel', () => {
-    const device: MonitorSpawnDevice = {
-      ...mini.device,
-      profiles: (mini.device.profiles ?? []).map((p) => ({ ...p, fuel: FUEL })),
-    };
-    const menu = menuOf({ devices: [BLOOM_SCENARIOS.two.devices[0] as MonitorSpawnDevice, device] }) as BloomOpenMenu;
-    expect(wordsFor(menu, { kind: 'hub' }, 'hold').detail).not.toContain('5 HOURS');
+    const fuelledAll = (device: MonitorSpawnDevice): MonitorSpawnDevice => ({
+      ...device,
+      profiles: (device.profiles ?? []).map((p) => ({ ...p, fuel: FUEL })),
+    });
+    const devices = [fuelledAll(BLOOM_SCENARIOS.two.devices[0] as MonitorSpawnDevice), fuelledAll(mini.device)];
+    const menu = menuOf({ devices }) as BloomOpenMenu;
+    // the hub's own profile is fuelled here: its words would carry the clause if the hub ever said one
+    expect(menu.hub.profile?.fuel).toBe(FUEL);
+    expect(wordsFor(menu, { kind: 'hub' }, 'hold').detail).toBe('ON STUDIO (HERE) · UNDER WORK · THE DEFAULT');
     const words = wordsFor(menu, { kind: 'device', item: menu.items[1] as BloomDeviceItem }, 'hold');
     expect(words.detail).toBe('UNDER DEFAULT');
+  });
+
+  it('a hot or an old reading leaves the line one tone: the ring carries the orange', () => {
+    const peer = profileOn(mini.device, 'native');
+    for (const flags of [{ hot: true }, { stale: true }, { hot: true, stale: true }]) {
+      const fuel = { ...FUEL, ...flags };
+      expect(wordsFor(three, { kind: 'profile', item: wearing(personal, fuel) }, 'hold').tone).toBe('go');
+      expect(wordsFor(three, { kind: 'profile', item: wearing(peer, fuel) }, 'hold').tone).toBe('go');
+    }
+  });
+
+  it("a kept reading's age, worded by the host, reaches the line whole", () => {
+    const fuel = { usedPercent: 64, stale: true, word: 'Claude Max: 64% of 5 hours, as of 5m ago' };
+    const words = wordsFor(three, { kind: 'profile', item: wearing(personal, fuel) }, 'hold');
+    expect(words.detail).toBe('ON MINI · ALPHA · BETA SIGNED IN · CLAUDE MAX: 64% OF 5 HOURS, AS OF 5M AGO');
+  });
+
+  it('a word that is not a string, or no fuel at all, adds nothing and takes nothing down', () => {
+    const detail = 'ON MINI · ALPHA · BETA SIGNED IN';
+    const notAWord = wearing(personal, { usedPercent: 42, word: 42 as unknown as string });
+    expect(wordsFor(three, { kind: 'profile', item: notAWord }, 'hold').detail).toBe(detail);
+    const nothing = wearing(personal, null as unknown as MonitorSpawnFuel);
+    expect(wordsFor(three, { kind: 'profile', item: nothing }, 'hold').detail).toBe(detail);
   });
 
   it('a blank word adds nothing', () => {
