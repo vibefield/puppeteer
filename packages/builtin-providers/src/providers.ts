@@ -706,6 +706,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           // The launch's own word only: a profile binding normalizes an empty argv as
           // well, and must not start a host's own spawn from the configuration.
           permissionDefaults: own?.permissionDefaults,
+          keepThreadCwd: own?.keepThreadCwd,
           onApproval: launch?.onApproval,
           resumeInvocation: launch?.resumeInvocation,
           appServerEnv: launch?.appServerEnv,

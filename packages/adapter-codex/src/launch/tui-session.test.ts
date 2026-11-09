@@ -135,6 +135,36 @@ describe('Codex TUI preparation', () => {
     });
   });
 
+  describe('the directory a briefed resume names', () => {
+    const lastObserver = (): Record<string, unknown> =>
+      fakes.createObserver.mock.lastCall?.[0] as Record<string, unknown>;
+
+    it("leaves a typed resume where its thread ran, and hands the preflight the pane's directory apart", async () => {
+      const prepared = await prepareCodexTuiSession({
+        cwd: '/pane',
+        host: host(),
+        resume: 'thread-old',
+        instructions: 'role',
+        keepThreadCwd: true,
+      });
+      expect(lastObserver().resumeOverrides).toEqual(expect.objectContaining({ instructions: 'role' }));
+      expect(lastObserver().resumeOverrides).not.toHaveProperty('cwd');
+      expect(lastObserver().configCwd).toBe('/pane');
+      await prepared.dispose();
+    });
+
+    it("moves a host's resume to the launch directory, as it always has", async () => {
+      const prepared = await prepareCodexTuiSession({
+        cwd: '/pane',
+        host: host(),
+        resume: 'thread-old',
+        instructions: 'role',
+      });
+      expect(lastObserver().resumeOverrides).toEqual(expect.objectContaining({ cwd: '/pane' }));
+      await prepared.dispose();
+    });
+  });
+
   describe('under withhold', () => {
     const conflict = { field: 'mcpServers', code: 'CONFLICTING_LAUNCH_FIELD' };
 

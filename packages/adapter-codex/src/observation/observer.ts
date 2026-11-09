@@ -32,6 +32,7 @@ import {
   withAgentBriefing,
   withholdUntilAccepted,
   type AgentBriefingRefusalPolicy,
+  type AgentBriefingSettlement,
   type AgentBriefingWithheld,
   type AgentRunBriefing,
 } from '@vibefield/puppeteer-core';
@@ -93,6 +94,8 @@ export interface CreateCodexObserverOptions {
    * to keep the thread's own.
    */
   resumeOverrides?: CodexResumeOverrides | undefined;
+  /** The directory whose effective configuration the preflight reads when a resume names none of its own. */
+  configCwd?: string | undefined;
   /**
    * What the preflight does with a field it cannot honour. Under `withhold` the field leaves and the thread starts
    * without it, on this same connection and app-server, and {@link CodexObserver.briefingWithheld} says so.
@@ -142,6 +145,17 @@ export interface CodexObserver {
    */
   attachThread(threadId: string): Promise<void>;
   dispose(): Promise<void>;
+}
+
+/** A resume's overrides after its preflight. The directory rides only for a briefing, so it leaves with the last field. */
+function settledResumeOverrides(
+  overrides: CodexResumeOverrides,
+  settled: AgentBriefingSettlement,
+): CodexResumeOverrides {
+  const kept = withAgentBriefing(overrides, settled.briefing);
+  if (settled.withheld.length === 0 || Object.keys(settled.briefing).length > 0) return kept;
+  const { cwd: _cwd, ...unmoved } = kept;
+  return unmoved;
 }
 
 export async function createCodexObserver(opts: CreateCodexObserverOptions): Promise<CodexObserver> {
@@ -511,15 +525,18 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       { briefing: pickAgentBriefing(opts.start ?? opts.resumeOverrides ?? {}), withheld: [] },
       opts.briefingRefusal,
       (briefing) =>
-        preflightCodexBriefing(briefing, initialized, opts.start?.cwd ?? opts.resumeOverrides?.cwd, (method, params) =>
-          client.request(method, params),
+        preflightCodexBriefing(
+          briefing,
+          initialized,
+          opts.start?.cwd ?? opts.configCwd ?? opts.resumeOverrides?.cwd,
+          (method, params) => client.request(method, params),
         ),
     );
     briefingWithheld = settled.withheld;
     opts = {
       ...opts,
       ...(opts.start ? { start: withAgentBriefing(opts.start, settled.briefing) } : {}),
-      ...(opts.resumeOverrides ? { resumeOverrides: withAgentBriefing(opts.resumeOverrides, settled.briefing) } : {}),
+      ...(opts.resumeOverrides ? { resumeOverrides: settledResumeOverrides(opts.resumeOverrides, settled) } : {}),
     };
     // Display names are optional metadata. Neither a slow catalog nor its request
     // timeout belongs on the native thread's ready path.

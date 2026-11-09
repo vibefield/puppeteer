@@ -1480,6 +1480,37 @@ describe('observer run briefing', () => {
       }
     });
 
+    it("asks config/read about the pane's directory and leaves it out of a typed resume", async () => {
+      const server = controllable(0);
+      const observer = await createCodexObserver({
+        transport: server.transport,
+        threadId: 'existing',
+        configCwd: '/pane',
+        resumeOverrides: { mcpServers: servers },
+      });
+      try {
+        expect(server.calls().find((call) => call.method === 'config/read')!.params).toMatchObject({ cwd: '/pane' });
+        expect(server.calls().find((call) => call.method === 'thread/resume')!.params).not.toHaveProperty('cwd');
+      } finally {
+        await observer.dispose();
+      }
+    });
+
+    it('moves nothing once every field was withheld: the directory rode only for the briefing', async () => {
+      const server = controllable(0, {}, { config: { mcp_servers: { field: { url: 'x' } } } });
+      const observer = await createCodexObserver({
+        transport: server.transport,
+        briefingRefusal: 'withhold',
+        threadId: 'existing',
+        resumeOverrides: { cwd: '/x', mcpServers: servers },
+      });
+      try {
+        expect(server.calls().find((call) => call.method === 'thread/resume')!.params).not.toHaveProperty('cwd');
+      } finally {
+        await observer.dispose();
+      }
+    });
+
     it('still refuses without the policy', async () => {
       const server = controllable(0, {}, { config: { mcp_servers: { field: { url: 'x' } } } });
       await expect(

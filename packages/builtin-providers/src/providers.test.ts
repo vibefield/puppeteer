@@ -1764,6 +1764,21 @@ describe('stable ingress (AR-4 / PU-1)', () => {
       });
     });
 
+    it("hands Codex a typed resume's own word about its directory, and none from a profile binding", async () => {
+      adapters.prepareCodexTuiSession.mockResolvedValue(fakePreparation('codex'));
+      const codex = createBuiltinProviders({ executables: { codex: '/opt/codex' } }).find(
+        ({ descriptor }) => descriptor.id === 'codex',
+      )!;
+      await codex.prepareSession!({ cwd: '/work/repo', host, resume: 't', agentOptions: { keepThreadCwd: true } });
+      expect(adapters.prepareCodexTuiSession).toHaveBeenLastCalledWith(
+        expect.objectContaining({ keepThreadCwd: true }),
+      );
+      await codex.prepareSession!({ cwd: '/work/repo', host, resume: 't' });
+      expect(adapters.prepareCodexTuiSession).toHaveBeenLastCalledWith(
+        expect.not.objectContaining({ keepThreadCwd: true }),
+      );
+    });
+
     it('hands the policy to Codex and Grok', async () => {
       adapters.prepareCodexTuiSession.mockResolvedValue(fakePreparation('codex'));
       const grok = {

@@ -86,6 +86,8 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions, Ag
    * reports the wait as a pending permission.
    */
   onApproval?: ((req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>) | undefined;
+  /** A typed resume: `thread/resume` names no directory, so the thread goes on where it ran. A host's resume moves it. */
+  keepThreadCwd?: boolean | undefined;
   /** Preserve a native `codex resume ...` selection flow on the private app-server. */
   resumeInvocation?: string[] | undefined;
   /** Settings for the private app-server's own command line (`--config=…`, `--enable=…`, `--disable=…`). */
@@ -191,6 +193,8 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
         : opts.resume
           ? {
               threadId: opts.resume,
+              // The preflight reads the effective configuration of the directory the launch came from.
+              ...(Object.keys(briefing).length ? { configCwd: opts.cwd } : {}),
               // The TUI's own `resume --remote` cannot set them on a held thread (C7).
               ...(opts.model || opts.effort || Object.keys(briefing).length
                 ? {
@@ -198,7 +202,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
                       model: opts.model,
                       effort: opts.effort,
                       ...briefing,
-                      ...(Object.keys(briefing).length ? { cwd: opts.cwd } : {}),
+                      ...(Object.keys(briefing).length && !opts.keepThreadCwd ? { cwd: opts.cwd } : {}),
                     },
                   }
                 : {}),

@@ -27,7 +27,11 @@ const THREAD = '64a61b19-f4d8-4f96-ba56-07024b470813';
 
 describe('Codex native invocation normalization', () => {
   it('distinguishes an exact thread id from the native resume selection flow', () => {
-    expect(normalize(['resume', THREAD])).toEqual({ status: 'accepted', resume: THREAD });
+    expect(normalize(['resume', THREAD])).toEqual({
+      status: 'accepted',
+      resume: THREAD,
+      options: { keepThreadCwd: true },
+    });
     expect(normalize(['resume', '--last'])).toEqual({
       status: 'accepted',
       options: { resumeInvocation: ['resume', '--last'] },
@@ -244,7 +248,7 @@ describe('what a managed Codex session carries', () => {
     expect(normalize(['resume', THREAD, 'keep going'])).toEqual({
       status: 'accepted',
       resume: THREAD,
-      options: { prompt: 'keep going' },
+      options: { prompt: 'keep going', keepThreadCwd: true },
     });
   });
 
@@ -300,7 +304,7 @@ describe('what a managed Codex session carries', () => {
     expect(normalize(['resume', THREAD, '--no-alt-screen'])).toEqual({
       status: 'accepted',
       resume: THREAD,
-      options: { tuiArguments: ['--no-alt-screen'] },
+      options: { tuiArguments: ['--no-alt-screen'], keepThreadCwd: true },
     });
     expect(normalize(['resume', '--last', '--no-alt-screen'])).toEqual({
       status: 'accepted',
