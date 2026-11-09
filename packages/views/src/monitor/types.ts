@@ -1,4 +1,4 @@
-import type { MonitorView, MonitorViewKey, MonitorViewMark } from '@vibefield/puppeteer-view-sdk';
+import type { MonitorSpawnFuel, MonitorView, MonitorViewKey, MonitorViewMark } from '@vibefield/puppeteer-view-sdk';
 import type { AgentMonitorState, MonitorContextState, MonitorRecency } from '@vibefield/puppeteer-core';
 import type { AgentVisualStatus } from './agent-status.js';
 import type { MonitorParameterGroup } from './parameters.js';
@@ -140,7 +140,7 @@ export interface MonitorAgent {
    * SET id (`'native'` for the machine's own). A managed agent's set, or the set
    * a terminal's shell was born under (VibeField binds a pane's shell to it).
    * Absent: unknown, or a shell bound to none. The spawn bloom lights the rows
-   * under the profile it points at (SB-D8); a terminal's body names it. */
+   * under the profile it points at (SB-D8); a body names or wears it. */
   profileSet?: string | undefined;
   agent?: MonitorAgentFacet | undefined;
 }
@@ -159,6 +159,8 @@ export interface MonitorSpawnProfile {
   readonly blocked?: boolean | undefined;
   /** The agents signed in under it, as the host labels them, in its order. */
   readonly signedIn?: readonly string[] | undefined;
+  /** Its headroom, as the host reads it (the SDK's port). Absent: the bud as before. */
+  readonly fuel?: MonitorSpawnFuel | undefined;
 }
 
 /** Whether a desktop can take a terminal from here right now. Only `ready`

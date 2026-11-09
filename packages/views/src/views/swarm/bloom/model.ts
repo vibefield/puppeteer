@@ -17,6 +17,7 @@ import type {
 } from '@vibefield/puppeteer-view-sdk';
 import type { SwarmClearing } from '../gpu/swarm-renderer.js';
 import { BLOOM, type BloomTextMeasure } from './constants.js';
+import { budFuel, fuelAria, type BloomFuel } from './fuel.js';
 import {
   arcFits,
   labelCost,
@@ -107,6 +108,8 @@ export interface BloomBud {
   readonly face: BloomFace;
   /** An agent under this profile waits on the person: the profile tabs' orange dot. */
   readonly dot: boolean;
+  /** A profile's fuel, as the host reads it. Null: no ring, and always on a desktop's bud. */
+  readonly fuel: BloomFuel | null;
   /** A desktop that cannot take a terminal now: faint, aria-disabled; letting go on it opens nothing. */
   readonly off: boolean;
   /** Its entry delay, ms: centre first, `stagger` apart (0 under reduced motion). */
@@ -299,6 +302,7 @@ function budFor(
     hy: pos.hy,
     face,
     dot: item.kind === 'profile' && !!item.profile.blocked,
+    fuel: item.kind === 'profile' ? budFuel(item.profile) : null,
     off: !ready(item.device),
     delay,
     labelDelay: delay + ms(env, BLOOM.reveal),
@@ -493,7 +497,7 @@ function openLevel1(env: BloomEnv, P: BloomPoint, mode: BloomMode, menu: BloomOp
           (ready(item.device)
             ? ', ' + (item.device.profiles ?? []).length + ' profiles'
             : ', ' + (item.device.word || 'unavailable').toLowerCase())
-        : item.profile.label + (item.profile.isDefault ? ', default' : '');
+        : item.profile.label + (item.profile.isDefault ? ', default' : '') + fuelAria(item.profile);
     const label = labels[i] as { name: string; sub: string };
     const face: BloomFace =
       item.kind === 'profile' ? glyphFace(item.profile) : { kind: 'initial', text: faces[i] ?? '?' };
@@ -573,7 +577,7 @@ function openLevel2(env: BloomEnv, s: Draft, bud: Bud): void {
           short: at.short,
           name,
           sub: '',
-          aria: profileWord(p, device) + (p.isDefault ? ', default' : '') + ', on ' + device.label,
+          aria: profileWord(p, device) + (p.isDefault ? ', default' : '') + fuelAria(p) + ', on ' + device.label,
         },
         glyphFace(p),
         delay,

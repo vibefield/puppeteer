@@ -163,7 +163,13 @@ export interface MonitorAgentRow {
   readonly unread: boolean;
   readonly device: MonitorDeviceRef;
   readonly tier?: AgentTier | undefined;
-  /** The Agent Profile SET it runs under (`native` for the machine's own). */
+  /**
+   * The Agent Profile SET it runs under (`native` for the machine's own).
+   *
+   * Errata (2026-11-09, UM-D6's review): `native` is also the backend's answer for a run that names no persona and for
+   * a persona no set lists (`resolveProfileSet`). It says where the row is placed, and is not a reading of the run's
+   * root: a shell run on a root Puppeteer did not allocate has no word of its own on this wire.
+   */
   readonly profileSet?: string | undefined;
   /** A pane on the reading desktop can show it now. */
   readonly attachable: boolean;
@@ -174,6 +180,30 @@ export interface MonitorAgentRow {
    * named by its desktop alone; what a viewer may do is decided at the attach, by the host.
    */
   readonly writable: boolean;
+}
+
+/**
+ * What a host knows of a profile's headroom, drawn on its spawn-bloom bud and said when the bud is reached. The host
+ * decides everything: which window is tightest, what runs hot, when a reading is old, and the words. It belongs to this
+ * profile on THIS desktop's row.
+ */
+export interface MonitorSpawnFuel {
+  /** Share of the window used. Not a finite number: no gauge. */
+  readonly usedPercent?: number | undefined;
+  /** Share of the window's time gone (the tick). Absent: no tick. */
+  readonly elapsedPercent?: number | undefined;
+  readonly hot?: boolean | undefined;
+  readonly stale?: boolean | undefined;
+  /**
+   * No reading to draw, for a reason worth showing: a dashed thread where the gauge would be. A number in `usedPercent`
+   * wins.
+   */
+  readonly unread?: boolean | undefined;
+  /**
+   * One short clause naming the window, worded by the host (as a device's `word`). It is the only text this reading gets
+   * (the ring is hidden from the accessibility tree), so a `stale` reading's clause says how old it is.
+   */
+  readonly word?: string | undefined;
 }
 
 /** An Agent Profile the spawn bloom offers under a desktop. */
@@ -188,6 +218,8 @@ export interface MonitorSpawnProfile {
   readonly blocked?: boolean | undefined;
   /** The agents signed in under it, in the host's order. */
   readonly signedIn?: readonly string[] | undefined;
+  /** Its headroom, as the host reads it. Absent: the bud as before. */
+  readonly fuel?: MonitorSpawnFuel | undefined;
 }
 
 /** Whether a desktop can take a terminal right now. Only `ready` takes one. */
