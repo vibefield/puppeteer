@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.4.0](https://github.com/vibefield/puppeteer/compare/v0.3.4...v0.4.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **adapter-claude:** a status line's quota goes to its own account, pushes merge and polls replace, and a usage tile says what it knows ([#74](https://github.com/vibefield/puppeteer/issues/74))
+* **runtime,adapter-grok:** one git observer per repository, a shim inside the gateway's bounds, and a Grok launch reads the home and environment it really has ([#73](https://github.com/vibefield/puppeteer/issues/73))
+* **adapter-grok:** a Grok turn reads as Grok runs it — its thoughts, messages and receipts say what happened, a replay is history, and the observer looks when something moved ([#72](https://github.com/vibefield/puppeteer/issues/72))
+* **adapter-claude:** one config root and one session selection, a transcript rail pinned to the selected session's file, a held hook port refused with retry and named, and run-owned launch staging ([#68](https://github.com/vibefield/puppeteer/issues/68))
+* **adapter-claude:** a host-lent forwarder runtime, bounded hook and transcript memory, calls that close where their fate is decided, and typed turn endings ([#65](https://github.com/vibefield/puppeteer/issues/65))
+
+### Features
+
+* **views:** a spawn bloom's profile buds wear their fuel ([#76](https://github.com/vibefield/puppeteer/issues/76)) ([c20417e](https://github.com/vibefield/puppeteer/commit/c20417e9b6e155d33de082e63c42d77d91f765c1))
+* **views:** an agent's body wears its profile ([#77](https://github.com/vibefield/puppeteer/issues/77)) ([927a89c](https://github.com/vibefield/puppeteer/commit/927a89c567651aba2bea7bc2a36d132b5aa954f4))
+
+
+### Bug Fixes
+
+* **adapter-claude:** a host-lent forwarder runtime, bounded hook and transcript memory, calls that close where their fate is decided, and typed turn endings ([#65](https://github.com/vibefield/puppeteer/issues/65)) ([3c12ba7](https://github.com/vibefield/puppeteer/commit/3c12ba73d124680fabc1f9478228eba5790604c9))
+* **adapter-claude:** a status line's quota goes to its own account, pushes merge and polls replace, and a usage tile says what it knows ([#74](https://github.com/vibefield/puppeteer/issues/74)) ([931f7b0](https://github.com/vibefield/puppeteer/commit/931f7b0fc910eac7c8a5daf2a876f882e448f8c1))
+* **adapter-claude:** one config root and one session selection, a transcript rail pinned to the selected session's file, a held hook port refused with retry and named, and run-owned launch staging ([#68](https://github.com/vibefield/puppeteer/issues/68)) ([ed889c6](https://github.com/vibefield/puppeteer/commit/ed889c65d3d7cdf42466258caaf55906ca095719))
+* **adapter-grok:** a Grok session's first turn reads as live whenever its first records land, and a resume's history line is drawn when the session opens ([#75](https://github.com/vibefield/puppeteer/issues/75)) ([b4eb11e](https://github.com/vibefield/puppeteer/commit/b4eb11ed8870d6fa35e20fb34243e3d4acecac01))
+* **adapter-grok:** a Grok turn reads as Grok runs it — its thoughts, messages and receipts say what happened, a replay is history, and the observer looks when something moved ([#72](https://github.com/vibefield/puppeteer/issues/72)) ([dbe97df](https://github.com/vibefield/puppeteer/commit/dbe97dff58135fb03def3947101eb61abf737372))
+* **adapter-opencode,adapter-hermes:** JSONC parsing and the gateway host work from a bundled Node host ([#78](https://github.com/vibefield/puppeteer/issues/78)) ([9b02583](https://github.com/vibefield/puppeteer/commit/9b025839b489bb3f96c55d6afc405788025796d0))
+* **runtime,adapter-grok:** one git observer per repository, a shim inside the gateway's bounds, and a Grok launch reads the home and environment it really has ([#73](https://github.com/vibefield/puppeteer/issues/73)) ([c9745a5](https://github.com/vibefield/puppeteer/commit/c9745a5de629f57bafdd79a79b46d83b7277a762))
+* **views:** a held-still swarm draws every change, its list and tooltip follow the input, a renderer that fails to build says so, the shader clock wraps, and the rain stops blinking ([#66](https://github.com/vibefield/puppeteer/issues/66)) ([748d015](https://github.com/vibefield/puppeteer/commit/748d015a7e393112e0a91dad80111fdf5abe6583))
+* **views:** a stage out of sight rests every view, a held-still swarm's physics sleeps, a timeline lane keeps its true start, a narrow spend hero says who it leaves out, and keepPast keeps a re-read that moved only its window ([#69](https://github.com/vibefield/puppeteer/issues/69)) ([5a0ae86](https://github.com/vibefield/puppeteer/commit/5a0ae86bde2acdfc67b458ad115ffe0528ab8759))
+* **views:** a stopped pane lets go when its agent is gone ([#71](https://github.com/vibefield/puppeteer/issues/71)) ([73e3f0e](https://github.com/vibefield/puppeteer/commit/73e3f0edcc967babc26117bb812d83c265d01983))
+
+
+### Performance Improvements
+
+* **monitor:** one projection per coalesce window, a dead run blocked by its failures alone, and no retained runtime ids ([#64](https://github.com/vibefield/puppeteer/issues/64)) ([7d87dd8](https://github.com/vibefield/puppeteer/commit/7d87dd82d9445becf448d86700b0485ee8327e8a))
+
 ## [0.3.4](https://github.com/vibefield/puppeteer/compare/v0.3.3...v0.3.4) (2026-11-04)
 
 
