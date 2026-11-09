@@ -17,21 +17,32 @@ export function assertConsumerNpmVersion() {
   }
 }
 
-// Bundling for Node must follow every provider's dependencies; a plain import cannot show that.
+// Bundling for Node must follow every provider's dependencies; a plain import cannot show that. The bundle runs from
+// a bare directory, because a host may ship it with no node_modules above it, and a package the bundler could not see
+// would otherwise be answered by this consumer's install.
 export function verifyProvidersBundle(consumer) {
-  const node = (args) => execFileSync(process.execPath, args, { cwd: consumer, stdio: 'inherit', timeout: 60_000 });
-  writeFileSync(
-    join(consumer, 'bundle-node.mjs'),
-    `import { build } from 'esbuild';
+  const alone = mkdtempSync(join(tmpdir(), 'puppeteer-bundle-alone-'));
+  try {
+    const outfile = join(alone, 'providers.cjs');
+    const node = (args, cwd) => execFileSync(process.execPath, args, { cwd, stdio: 'inherit', timeout: 60_000 });
+    writeFileSync(
+      join(consumer, 'bundle-node.mjs'),
+      `import { build } from 'esbuild';
 await build({
   stdin: { contents: "import { createBuiltinProviders } from '@vibefield/puppeteer-builtin-providers'; console.log(typeof createBuiltinProviders);", resolveDir: process.cwd() },
-  bundle: true, platform: 'node', format: 'cjs', outfile: 'bundled/providers.cjs',
+  bundle: true, platform: 'node', format: 'cjs', outfile: ${JSON.stringify(outfile)},
   external: ['bufferutil', 'utf-8-validate'], define: { 'import.meta.url': 'undefined' }, logLevel: 'warning',
 });
 `,
-  );
-  node(['bundle-node.mjs']);
-  node(['bundled/providers.cjs']);
+    );
+    node(['bundle-node.mjs'], consumer);
+    // Loading runs only module scope. fieldd's define turns this call into a throw wherever a launch reaches it.
+    if (/fileURLToPath\)?\(void 0\)/u.test(readFileSync(outfile, 'utf8')))
+      throw new Error('A provider calls fileURLToPath(import.meta.url), which a bundled host has defined away');
+    node([outfile], alone);
+  } finally {
+    rmSync(alone, { recursive: true, force: true });
+  }
 }
 
 // Local tarballs exercise this same consumer check before the first registry publication.
