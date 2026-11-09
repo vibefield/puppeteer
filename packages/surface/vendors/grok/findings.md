@@ -399,7 +399,8 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
     by actor, and that end would otherwise retract the new turn's. While the log replays turns, which spans
     64 KiB reads and, past 4 MiB, polls, it waits for the replay's settle instead: a replayed turn's start
     never makes the open turn, and its end ends only the rail's start of that same prompt, since Grok ended
-    it before the first stat. `services/prompt.ts` confirms a receipt
+    it before the session was opened (*Erratum 2026-11-08 (RV, main's red since #72):* the boundary is the
+    log's size when the session was opened, not its size at the first stat). `services/prompt.ts` confirms a receipt
     only when Grok lists the prompt under a new id with the submitted text and then runs it (or lists it
     while another prompt runs). adapter-acp's own 'confirmed' came before Grok had accepted anything. The
     receipt names the turn the binding publishes or will publish: Grok's id with the observer, adapter-acp's

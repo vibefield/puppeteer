@@ -1,7 +1,7 @@
 /** Grok durable-log tailing service. */
 
-import { open, readdir, readFile, stat } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
+import { open, readFile, stat } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { GrokUpdateNormalizer } from '../normalization/pipeline.js';
 import {
   GROK_REPLAY_SETTLED,
@@ -10,6 +10,7 @@ import {
   type GrokSessionObserver,
   type GrokUpdateRecord,
 } from '../normalization/types.js';
+import { findGrokSessionDirectory, measureGrokReplayBoundary } from './session-discovery.js';
 
 interface GrokSignals {
   contextTokensUsed?: number;
@@ -44,6 +45,13 @@ export interface GrokSessionObserverOptions {
   maxRecordBytes?: number;
   /** Yield after this many newly appended bytes; the next poll continues. */
   maxBytesPerPoll?: number;
+  /**
+   * The log's size when the session was opened: records below it are history, every later record is live. The caller
+   * that opened the session knows it (0 for a session nothing has written to yet; else `measureGrokReplayBoundary`,
+   * before a prompt can reach Grok). Without it the observer measures the log as it stands at construction, the same
+   * way, and never at a poll.
+   */
+  replayBoundary?: number;
 }
 
 /** A file as one stat sees it: a rewrite changes the key. */
@@ -71,7 +79,6 @@ export function createGrokSessionObserver(
   let parsedSummaryKey: string | undefined;
   let currentUpdatesPath = updatesPath;
   let currentSessionDirectory = dirname(updatesPath);
-  const sessionId = basename(currentSessionDirectory);
   const sessionsRoot = dirname(dirname(currentSessionDirectory));
   let lastRelocationSearch = 0;
   let relocationSearch: Promise<void> | undefined;
@@ -85,8 +92,13 @@ export function createGrokSessionObserver(
   let pollTimer: ReturnType<typeof setTimeout> | undefined;
   let pollTimerDueAt = 0;
   let bootstrap = true;
-  /** The log's size at the first stat: a record whose first byte lies before it is replay, and any other is live. */
-  let bootstrapTargetOffset: number | undefined;
+  /**
+   * The log's size when the session was opened: a record whose first byte lies before it is replay, and any other is
+   * live. It is drawn before the binding can carry a prompt, never at a poll: the first poll starts unawaited at
+   * adoption and races the prompt a host submits at once, and a line drawn after that prompt's first records would
+   * replay them and settle a live turn.
+   */
+  const bootstrapTargetOffset = options.replayBoundary ?? measureGrokReplayBoundary(updatesPath);
   const readChunkBytes = Math.max(1, Math.floor(options.readChunkBytes ?? 64 * 1024));
   const maxRecordBytes = Math.max(readChunkBytes, Math.floor(options.maxRecordBytes ?? 1024 * 1024));
   const maxBytesPerPoll = Math.max(readChunkBytes, Math.floor(options.maxBytesPerPoll ?? 4 * 1024 * 1024));
@@ -141,7 +153,7 @@ export function createGrokSessionObserver(
 
   const normalizeUpdateLine = (line: Buffer, startOffset: number): void => {
     if (line.length === 0) return;
-    if (bootstrapTargetOffset !== undefined && startOffset >= bootstrapTargetOffset) endReplay();
+    if (startOffset >= bootstrapTargetOffset) endReplay();
     try {
       const record = JSON.parse(line.toString('utf8')) as GrokUpdateRecord;
       for (const event of normalizer.normalize(record, { replay: bootstrap })) {
@@ -213,27 +225,17 @@ export function createGrokSessionObserver(
     }
   };
 
+  /** A file is missing: the session's directory may be in another cwd bucket. One search at a time, one a second. */
   const locateRelocatedSession = async (): Promise<void> => {
     if (relocationSearch) return relocationSearch;
     const now = Date.now();
     if (now - lastRelocationSearch < 1_000) return;
     lastRelocationSearch = now;
     const pending = (async (): Promise<void> => {
-      try {
-        for (const cwdDirectory of await readdir(sessionsRoot)) {
-          const candidate = join(sessionsRoot, cwdDirectory, sessionId);
-          try {
-            await stat(join(candidate, 'summary.json'));
-            currentSessionDirectory = candidate;
-            currentUpdatesPath = join(candidate, 'updates.jsonl');
-            return;
-          } catch {
-            // Continue scanning cwd buckets.
-          }
-        }
-      } catch {
-        // The next regular poll retries.
-      }
+      const directory = await findGrokSessionDirectory(updatesPath);
+      if (directory === undefined) return;
+      currentSessionDirectory = directory;
+      currentUpdatesPath = join(directory, 'updates.jsonl');
     })();
     relocationSearch = pending;
     try {
@@ -247,7 +249,6 @@ export function createGrokSessionObserver(
     let handle: Awaited<ReturnType<typeof open>> | undefined;
     try {
       const info = await stat(currentUpdatesPath);
-      bootstrapTargetOffset ??= info.size;
       if (info.size < offset) {
         offset = 0;
         updateStartOffset = 0;
@@ -269,25 +270,14 @@ export function createGrokSessionObserver(
           consumeUpdateBytes(chunk.subarray(0, bytesRead), chunkOffset);
         }
       }
-      // Every replayed record is out once the next record, whole or not, starts at or past the first stat's size.
+      // Every replayed record is out once the next record, whole or not, starts at or past the boundary.
       if (updateStartOffset >= bootstrapTargetOffset) endReplay();
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Find the log, never measure it: the next poll reads it where it is, against the boundary drawn at open. A
+        // session with no log when it was opened has nothing to replay, so its replay ends here.
         await locateRelocatedSession();
-        if (bootstrapTargetOffset === undefined) {
-          try {
-            bootstrapTargetOffset = (await stat(currentUpdatesPath)).size;
-          } catch (relocatedError) {
-            if ((relocatedError as NodeJS.ErrnoException).code === 'ENOENT') {
-              // No durable log existed at adoption, so any later file content
-              // is live rather than replayed history.
-              bootstrapTargetOffset = 0;
-              endReplay();
-            } else {
-              report(relocatedError);
-            }
-          }
-        }
+        if (bootstrapTargetOffset === 0) endReplay();
       } else report(error);
     } finally {
       await handle?.close().catch(() => undefined);
