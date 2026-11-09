@@ -41,7 +41,6 @@ const SVG = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor"/>';
 const device = { createTexture: () => ({ destroy: () => {} }) } as unknown as GPUDevice;
 
 function atlasSaying(ready: () => void): GlyphAtlas {
-  // @ts-expect-error the fifth argument comes with the fix this row is red for
   return new GlyphAtlas(device, 1, undefined, undefined, ready);
 }
 

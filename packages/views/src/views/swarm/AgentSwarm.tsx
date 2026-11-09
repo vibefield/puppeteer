@@ -501,7 +501,12 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       commandsRef.current.report({ renderer: 'unavailable' });
     };
     const start = async (): Promise<void> => {
-      const result = await createSwarmRenderer(canvas);
+      const result = await createSwarmRenderer(canvas, {
+        // The first draw of a picture only starts its decode; held still, nothing else draws it once it lands.
+        onSpriteReady: () => {
+          if (alive) loopRef.current?.requestStill();
+        },
+      });
       if (!alive) {
         if (result.ok) result.renderer.destroy();
         return;

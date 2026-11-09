@@ -137,6 +137,11 @@ export interface SwarmRenderer {
 
 export type SwarmRendererResult = { ok: true; renderer: SwarmRenderer } | { ok: false; reason: string };
 
+export interface SwarmRendererOptions {
+  /** A picture the last frame could not draw has decoded. A field held still asks for its next frame here. */
+  readonly onSpriteReady?: (() => void) | undefined;
+}
+
 /**
  * What the stage says under WEBGPU UNAVAILABLE when the renderer could not be built: a device refused, a shader the
  * driver would not compile, a pipeline it would not validate. A sentence for a person, in the voice of the reasons
@@ -285,7 +290,10 @@ function withAlpha(colour: Rgba, alpha: number): Rgba {
  * a shader the driver will not compile, a pipeline it will not validate — and is answered as one: RENDERER_UNBUILT,
  * never a rejection.
  */
-export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<SwarmRendererResult> {
+export async function createSwarmRenderer(
+  canvas: HTMLCanvasElement,
+  options: SwarmRendererOptions = {},
+): Promise<SwarmRendererResult> {
   if (typeof navigator === 'undefined' || !navigator.gpu)
     return { ok: false, reason: 'WebGPU is not available in this window' };
   let device: GPUDevice;
@@ -317,7 +325,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     device.addEventListener('uncapturederror', (event) => {
       console.error('[swarm] WebGPU error', (event as GPUUncapturedErrorEvent).error.message);
     });
-    return { ok: true, renderer: await buildRenderer(canvas, device, context, format) };
+    return { ok: true, renderer: await buildRenderer(canvas, device, context, format, options) };
   } catch (error) {
     console.warn('[swarm] the renderer could not be built:', error);
     // A build that fails lets go of what it made: the canvas's configuration, then the device. (A built renderer's
@@ -335,6 +343,7 @@ async function buildRenderer(
   device: GPUDevice,
   context: GPUCanvasContext,
   format: GPUTextureFormat,
+  options: SwarmRendererOptions,
 ): Promise<SwarmRenderer> {
   const [fieldModule, shadowModule, bodyModule, glowModule, textModule, eraseModule, hubModule] = await Promise.all([
     compile(device, 'swarm field', fieldShader),
@@ -403,8 +412,12 @@ async function buildRenderer(
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
   const sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
-  const atlas = new GlyphAtlas(device, Math.max(1, window.devicePixelRatio || 1), undefined, () =>
-    canvas.ownerDocument.createElement('canvas'),
+  const atlas = new GlyphAtlas(
+    device,
+    Math.max(1, window.devicePixelRatio || 1),
+    undefined,
+    () => canvas.ownerDocument.createElement('canvas'),
+    options.onSpriteReady,
   );
   const marks = await loadMarks(device);
 
