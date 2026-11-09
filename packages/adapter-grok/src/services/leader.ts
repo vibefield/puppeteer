@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 interface GrokLeader {
+  readonly startedAtMs: number;
   readonly socketPath: string;
   readonly readinessPath: string;
   readonly directory: string;
@@ -12,6 +13,8 @@ interface GrokLeader {
 
 export interface GrokLeaderService {
   ensure(): Promise<string>;
+  /** The live leader `ensure` answered with, for naming it to the host. Absent while none stands. */
+  helper(): { pid: number | undefined; startedAtMs: number } | undefined;
   /** Resolves once every leader has exited (or was killed after the grace period) and its directory is gone. */
   dispose(): Promise<void>;
 }
@@ -29,6 +32,17 @@ export interface CreateGrokLeaderServiceOptions {
  */
 export function grokLeaderReadinessPath(socketPath: string, platform: NodeJS.Platform = process.platform): string {
   return platform === 'win32' && socketPath.endsWith('.sock') ? `${socketPath.slice(0, -5)}.lock` : socketPath;
+}
+
+/** A Unix socket path's limit on macOS, whose `sun_path` is the shorter of the two platforms': 104 bytes with its NUL. */
+const GROK_LEADER_SOCKET_MAX_BYTES = 103;
+
+/**
+ * A leader binds PATH and, in Grok Build unified, a shared daemon at `PATH.daemon` beside it (`--leader-socket` help),
+ * so both must fit. On Windows the path is only hashed into a named pipe's name.
+ */
+export function grokLeaderSocketFits(socketPath: string, platform: NodeJS.Platform = process.platform): boolean {
+  return platform === 'win32' || Buffer.byteLength(`${socketPath}.daemon`) <= GROK_LEADER_SOCKET_MAX_BYTES;
 }
 
 /**
@@ -136,13 +150,19 @@ export function createGrokLeaderService(options: CreateGrokLeaderServiceOptions)
     // macOS /tmp is a symlink the native socket bind rejects; use its real path.
     const directory = mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-grok-'));
     const socketPath = join(directory, 'leader.sock');
+    if (!grokLeaderSocketFits(socketPath)) {
+      rmSync(directory, { recursive: true, force: true });
+      // Grok would never bind it, and the readiness wait below would spend 20 s saying nothing.
+      throw new Error(`Grok leader socket path is too long for this platform: ${socketPath}`);
+    }
     const readinessPath = grokLeaderReadinessPath(socketPath);
+    const startedAtMs = Date.now();
     const child = spawn(
       options.executable,
       ['agent', 'leader', '--no-exit-on-disconnect', '--relay-on-demand', '--leader-socket', socketPath],
       { stdio: 'ignore', env: options.env },
     );
-    const candidate = { socketPath, readinessPath, directory, child };
+    const candidate = { startedAtMs, socketPath, readinessPath, directory, child };
     startingLeader = candidate;
     let spawnError: Error | undefined;
     child.once('error', (error) => {
@@ -186,6 +206,9 @@ export function createGrokLeaderService(options: CreateGrokLeaderServiceOptions)
 
   return {
     ensure,
+    helper() {
+      return live(leader) ? { pid: leader.child.pid, startedAtMs: leader.startedAtMs } : undefined;
+    },
     dispose(): Promise<void> {
       if (disposal) return disposal;
       disposed = true;

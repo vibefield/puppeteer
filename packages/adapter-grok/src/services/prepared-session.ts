@@ -12,6 +12,8 @@ export function createPreparedGrokSession(
   disposeUnadopted?: () => void | Promise<void>,
   observe?: () => GrokSessionObserver,
   configured: GrokConfiguredIntent = {},
+  /** What the run owns beyond its control (a leader of its own); goes after control, on either way out. */
+  stopRunResources?: () => void | Promise<void>,
 ): PreparedGrokSession {
   let adoptedRuntimeSessionId: string | undefined;
   let adoptedSession: AgentAdapterBinding | undefined;
@@ -27,14 +29,26 @@ export function createPreparedGrokSession(
       }
       if (adoptedSession) return adoptedSession;
       adoptedRuntimeSessionId = runtimeSessionId;
-      adoptedSession = createPendingControlSession(sessionId, runtimeSessionId, attach, observe?.(), configured);
+      const binding = createPendingControlSession(sessionId, runtimeSessionId, attach, observe?.(), configured);
+      adoptedSession = stopRunResources
+        ? {
+            ...binding,
+            async dispose(options) {
+              await binding.dispose(options);
+              await stopRunResources();
+            },
+          }
+        : binding;
       return adoptedSession;
     },
     async dispose(): Promise<void> {
       if (disposed) return;
       disposed = true;
       if (adoptedSession) await adoptedSession.dispose().catch(() => undefined);
-      else await Promise.resolve(disposeUnadopted?.()).catch(() => undefined);
+      else {
+        await Promise.resolve(disposeUnadopted?.()).catch(() => undefined);
+        await stopRunResources?.();
+      }
     },
   };
 }

@@ -1,6 +1,15 @@
 import { EventEmitter } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GROK_LEADER_EXIT_GRACE_MS, grokLeaderReadinessPath, stopGrokLeaderProcess } from './leader.js';
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  createGrokLeaderService,
+  GROK_LEADER_EXIT_GRACE_MS,
+  grokLeaderReadinessPath,
+  grokLeaderSocketFits,
+  stopGrokLeaderProcess,
+} from './leader.js';
 
 describe('Grok leader readiness', () => {
   it('waits for the Unix socket where the listener is materialized', () => {
@@ -36,6 +45,39 @@ function drainingLeader(drainMs: number | undefined) {
   });
   return child;
 }
+
+describe('Grok leader socket path', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('fits the path and the unified daemon beside it under the 104 bytes a Unix socket allows', () => {
+    const fits = '/private/var/folders/ab/cdefghijklmnopqrstuvwxyzabcdef/T/puppeteer-grok-AbCdEf/leader.sock';
+    expect(grokLeaderSocketFits(fits, 'darwin')).toBe(true);
+    const tooLong = `/${'a'.repeat(96)}/leader.sock`;
+    expect(Buffer.byteLength(tooLong)).toBeGreaterThan(103);
+    expect(grokLeaderSocketFits(tooLong, 'darwin')).toBe(false);
+    // The path fits; the daemon Grok Build unified binds at PATH.daemon would not.
+    const justShort = `/${'a'.repeat(90)}/leader.sock`;
+    expect(Buffer.byteLength(justShort)).toBeLessThan(104);
+    expect(grokLeaderSocketFits(justShort, 'linux')).toBe(false);
+  });
+
+  it('asks nothing of Windows, where the path is hashed into a named pipe', () => {
+    expect(grokLeaderSocketFits(`C:\\${'a'.repeat(200)}\\leader.sock`, 'win32')).toBe(true);
+  });
+
+  it('refuses with the reason, not a 20 second silence, when the temp directory is too deep', async () => {
+    const root = mkdtempSync(join(realpathSync(tmpdir()), `puppeteer-deep-${'x'.repeat(100)}`));
+    vi.stubEnv('TMPDIR', root);
+    try {
+      const service = createGrokLeaderService({ executable: '/bin/false' });
+      await expect(service.ensure()).rejects.toThrow(/socket path/);
+      await service.dispose();
+    } finally {
+      vi.unstubAllEnvs();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
 
 describe('Grok leader shutdown', () => {
   afterEach(() => vi.useRealTimers());
