@@ -12,6 +12,8 @@
  * terminal, and observes/controls the result).
  */
 
+import { AgentLaunchRefusedError } from './services/launch.js';
+
 /** An authoritative native terminal recipe for a host spawn or caller-owned exec. */
 export interface TerminalSpec {
   command: string;
@@ -125,6 +127,49 @@ export interface HostIngress {
    * `attachSession`. Adapters with nothing to find again beyond the continuation never call it.
    */
   onAttachRecord?: ((record: AgentAttachRecord) => void) | undefined;
+  /**
+   * The process that runs this run's MCP servers, when it is a helper the adapter started outside the terminal
+   * (`mcpServerProcess: 'run-helper'`), reported once it runs and BEFORE any request that could start an MCP server.
+   * The adapter awaits the answer: an MCP server may open its door to the host as soon as that request goes, and a
+   * door names its caller by kernel ancestry, so the host must hold the pid first. A hook that throws refuses the
+   * launch ({@link announceRunHelper}), because an agent the door cannot name must not start.
+   */
+  onHelperProcess?: ((helper: AgentHelperProcess) => void | Promise<void>) | undefined;
+}
+
+/** One run's helper process, named to the host ({@link HostIngress.onHelperProcess}). */
+export interface AgentHelperProcess {
+  pid: number;
+  /** This host's clock when the adapter spawned it: a hint. The kernel's own start time is the identity. */
+  startedAtMs: number;
+}
+
+/**
+ * Tell the host which process runs this run's MCP servers, and wait for its answer. The one way an adapter fires
+ * {@link HostIngress.onHelperProcess}: with the hook present, an unnamed helper is a refused launch, in the runtime's
+ * vocabulary (`RUN_HELPER_UNNAMED`), and the host's own words never reach the message.
+ */
+export async function announceRunHelper(
+  ingress: Pick<HostIngress, 'onHelperProcess'> | undefined,
+  helper: { pid?: number | undefined; startedAtMs: number },
+  label: string,
+): Promise<void> {
+  const hook = ingress?.onHelperProcess;
+  if (!hook) return;
+  const refusal = (cause?: unknown): AgentLaunchRefusedError => {
+    const error = new AgentLaunchRefusedError(
+      'RUN_HELPER_UNNAMED',
+      `${label} could not name its helper process to the host, so this run's MCP servers could not be identified.`,
+    );
+    if (cause !== undefined) error.cause = cause;
+    return error;
+  };
+  if (helper.pid === undefined) throw refusal();
+  try {
+    await hook({ pid: helper.pid, startedAtMs: helper.startedAtMs });
+  } catch (cause) {
+    throw refusal(cause);
+  }
 }
 
 /**
