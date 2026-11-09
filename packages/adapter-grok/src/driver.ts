@@ -59,6 +59,8 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
   const leader = createGrokLeaderService({ executable, env: childEnv });
   /** Briefed runs' own leaders while their runs stand, so the backend can stop what a run left behind. */
   const runLeaders = new Set<GrokLeaderService>();
+  /** Run leaders on their way out: until one has exited it may still write the session it held. */
+  const stoppingRunLeaders = new Set<Promise<void>>();
   let disposed = false;
   let disposal: Promise<void> | undefined;
 
@@ -79,13 +81,27 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
         ? createGrokLeaderService({ executable, env: childEnv })
         : undefined;
     if (runLeader) runLeaders.add(runLeader);
-    const stopRunLeader = async (): Promise<void> => {
-      if (!runLeader) return;
-      await runLeader.dispose();
-      runLeaders.delete(runLeader);
+    let stopping: Promise<void> | undefined;
+    // Registered synchronously, as the run begins to stop: a run's exit is recorded before its leader's ~2 s drain, and
+    // its control is still closing before that. `closing` goes first, so the leader drains with nobody talking to it.
+    const stopRunLeader = (closing: Promise<unknown> = Promise.resolve()): Promise<void> => {
+      if (!runLeader) return Promise.resolve();
+      if (stopping) return stopping;
+      const stopped: Promise<void> = closing
+        .catch(() => undefined)
+        .then(() => runLeader.dispose())
+        .finally(() => {
+          stoppingRunLeaders.delete(stopped);
+          runLeaders.delete(runLeader);
+        });
+      stoppingRunLeaders.add(stopped);
+      stopping = stopped;
+      return stopped;
     };
     let control: AgentAdapterBinding | undefined;
     try {
+      // A resume must not open a session its previous run's leader is still draining. A fresh session has no such past.
+      if (opts.resume !== undefined || opts.resumeLatest) await Promise.allSettled([...stoppingRunLeaders]);
       const socketPath = await (runLeader ?? leader).ensure();
       if (runLeader) await announceRunHelper(opts.ingress, runLeader.helper() ?? { startedAtMs: Date.now() }, 'Grok');
       // Materialize the leader-owned session before returning the launch recipe.

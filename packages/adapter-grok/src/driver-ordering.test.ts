@@ -241,6 +241,101 @@ describe('Grok leader session materialization ordering', () => {
       }
     });
 
+    describe('a resume and a leader still draining', () => {
+      /** A leader that takes its signal and keeps draining until the test says it has exited. */
+      function drainingLeader(pid: number) {
+        const exits: Array<() => void> = [];
+        const child = {
+          pid,
+          exitCode: null as number | null,
+          signalCode: null,
+          killed: false,
+          kill: vi.fn(() => true),
+          once: vi.fn((event: string, listener: () => void) => {
+            if (event === 'exit') exits.push(listener);
+            return child;
+          }),
+          exit() {
+            child.exitCode = 143;
+            exits.splice(0).forEach((exit) => exit());
+          },
+        };
+        return child;
+      }
+      const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 5));
+
+      it("starts a resuming run's leader only after the old leader has exited", async () => {
+        const old = drainingLeader(7101);
+        mocks.spawn.mockReturnValueOnce(old).mockReturnValueOnce(leaderProcess(7102));
+        const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+        try {
+          const first = await backend.prepareSession({ cwd: '/a', mcpServers });
+          const stopping = first.dispose();
+          await vi.waitFor(() => expect(old.kill).toHaveBeenCalledWith('SIGTERM'));
+          const resuming = backend.prepareSession({ cwd: '/a', mcpServers, resume: 'old-session' });
+          await settle();
+          expect(mocks.spawn).toHaveBeenCalledTimes(1);
+          old.exit();
+          await stopping;
+          const resumed = await resuming;
+          expect(mocks.spawn).toHaveBeenCalledTimes(2);
+          await resumed.dispose();
+        } finally {
+          await backend.dispose();
+        }
+      });
+
+      it('waits from the moment the run begins to stop, while its control is still closing', async () => {
+        const old = drainingLeader(7103);
+        mocks.spawn.mockReturnValueOnce(old);
+        let closed!: () => void;
+        const control = controlSession('materialized-session');
+        control.dispose = vi.fn(() => new Promise<void>((resolve) => (closed = resolve)));
+        mocks.createAcpSession.mockImplementationOnce(async () => control);
+        const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+        try {
+          const prepared = await backend.prepareSession({ cwd: '/a', mcpServers });
+          const binding = await prepared.adopt('terminal-1');
+          const disposing = binding.dispose();
+          await vi.waitFor(() => expect(control.dispose).toHaveBeenCalledOnce());
+          // A resume on the shared leader waits too: the old run's leader still writes this session.
+          const resuming = backend.prepareSession({ cwd: '/a', resume: 'old-session' });
+          await settle();
+          expect(mocks.spawn).toHaveBeenCalledTimes(1);
+          expect(mocks.createAcpSession).toHaveBeenCalledTimes(1);
+          closed();
+          await vi.waitFor(() => expect(old.kill).toHaveBeenCalledWith('SIGTERM'));
+          await settle();
+          expect(mocks.spawn).toHaveBeenCalledTimes(1);
+          old.exit();
+          await disposing;
+          const resumed = await resuming;
+          expect(mocks.spawn).toHaveBeenCalledTimes(2);
+          await resumed.dispose();
+        } finally {
+          await backend.dispose();
+        }
+      });
+
+      it('holds a fresh run for nobody', async () => {
+        const old = drainingLeader(7104);
+        mocks.spawn.mockReturnValueOnce(old).mockReturnValueOnce(leaderProcess(7105));
+        const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+        try {
+          const first = await backend.prepareSession({ cwd: '/a', mcpServers });
+          const stopping = first.dispose();
+          await vi.waitFor(() => expect(old.kill).toHaveBeenCalledWith('SIGTERM'));
+          const fresh = await backend.prepareSession({ cwd: '/b', mcpServers });
+          expect(mocks.spawn).toHaveBeenCalledTimes(2);
+          old.exit();
+          await stopping;
+          await fresh.dispose();
+        } finally {
+          await backend.dispose();
+        }
+      });
+    });
+
     it('stops a run leader the backend still holds when the backend goes', async () => {
       const child = leaderProcess(7005);
       mocks.spawn.mockReturnValue(child);
