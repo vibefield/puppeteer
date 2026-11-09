@@ -32,16 +32,17 @@
     "prompt.submit",
     "session.create",
     "session.interrupt",
-    "session.resume"
+    "session.resume",
+    "wake.start"
   ],
   "unmapped": {
-    "count": 338,
-    "sha256": "23697649f233950f7d3ecaeaa5273efd821cd23bd7eaae86cb388360423ec713",
+    "count": 337,
+    "sha256": "8eb964df9573c60ce102fa2da9c2132d996248c17e9ea67588d0a24a6c743583",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 364,
     "semantic": 22,
-    "observedOrControlled": 4
+    "observedOrControlled": 5
   }
 }
