@@ -1,4 +1,5 @@
 import {
+  AGENT_NATIVE_INVOCATION_LIMITS,
   AgentLaunchCommandSchema,
   AgentNativeInvocationIntentSchema,
   type AgentNativeInvocationIntent,
@@ -12,13 +13,16 @@ import {
  * Any process of the person's uid can read the rendezvous and speak this
  * protocol, so the gateway treats every request as untrusted: unknown keys and
  * unbounded strings are refused, and the intent is held to the Core schema
- * before any host code sees it. The pid a request names is self-asserted; the
- * host's `resolveTerminal` is what binds it to a terminal.
+ * before any host code sees it. The shim keeps its own request inside those
+ * bounds ({@link boundSpawnThroughLaunch}) and marks one it had to cut. The pid
+ * a request names is self-asserted; the host's `resolveTerminal` is what binds
+ * it to a terminal.
  */
 
 /** A request longer than this is answered without being parsed. */
 export const MAX_REQUEST_BYTES = 64 * 1024;
-const MAX_TOKEN_LENGTH = 256;
+/** The longest bearer a request carries: the shim budgets its request's bytes for one this long. */
+export const MAX_TOKEN_LENGTH = 256;
 const MAX_TEXT_LENGTH = 8_192;
 
 /** The shim's exit when a launch is refused (EX_TEMPFAIL): nothing was exec'd. */
@@ -32,11 +36,12 @@ export const SPAWN_THROUGH_EXIT_UNAVAILABLE = 127;
  * is for people and logs, and may change.
  */
 export const SPAWN_THROUGH_DECLINE_CODES = [
-  // The gateway's own: it could not read or trust the request.
-  'unauthenticated', // a wrong bearer, or a request of the wrong shape: one answer for both
-  'request-too-large', // over MAX_REQUEST_BYTES
+  // The gateway's own: it could not trust or read the request.
+  'unauthenticated', // a wrong bearer, or a line that is not a request: nothing more for a caller without the bearer
+  'request-too-large', // over MAX_REQUEST_BYTES at the gateway (unplaced), or a session the shim had to bound (placed)
   'handler-failed', // the host's handler threw
-  // The request: its process identity or its intent does not parse.
+  // The request: an authenticated request of the wrong shape (a shim of another version, at the gateway), or a
+  // process identity or intent that does not parse.
   'invalid-request',
   // What the invocation is: not a session at all.
   'passthrough', // the adapter says: a utility, a one-shot, an agent that lives elsewhere
@@ -114,6 +119,13 @@ export interface SpawnThroughLaunchRequest extends AgentNativeInvocationIntent {
    * never a session, whatever its argv says.
    */
   interactive: boolean;
+  /**
+   * The shim cut the request to the gateway's bounds ({@link boundSpawnThroughLaunch}): an argument or a variable's
+   * value, or the arguments or variables past their counts. What the host reads is what survived the cut, so it
+   * classifies that and never prepares a session from it; a fallback still runs what was typed, whole. Absent: the
+   * request is the launch as typed.
+   */
+  bounded?: true;
 }
 
 /** The shim could not exec the recipe it was given; the preparation is the host's to cancel. */
@@ -231,14 +243,16 @@ export function parseSpawnThroughRequest(value: unknown): SpawnThroughRequest | 
       'imposter',
       'command',
       'interactive',
+      'bounded',
     ])
   ) {
     return undefined;
   }
-  const { pid, parentPid, imposter, command, interactive } = value;
+  const { pid, parentPid, imposter, command, interactive, bounded } = value;
   if (!positivePid(pid) || !positivePid(parentPid)) return undefined;
   if (imposter !== undefined && typeof imposter !== 'boolean') return undefined;
   if (interactive !== undefined && typeof interactive !== 'boolean') return undefined;
+  if (bounded !== undefined && typeof bounded !== 'boolean') return undefined;
   if (command !== undefined && !isSpawnThroughCommandName(command)) return undefined;
   const intent = AgentNativeInvocationIntentSchema.safeParse({
     providerId: value.providerId,
@@ -257,7 +271,69 @@ export function parseSpawnThroughRequest(value: unknown): SpawnThroughRequest | 
     ...(typeof command === 'string' ? { command } : {}),
     // Absent: a shim from before this field, which never looked. Its launch is read as every launch was then.
     interactive: interactive ?? true,
+    // Only a cut is marked: `false` says no more than an absent key.
+    ...(bounded === true ? { bounded: true as const } : {}),
   };
+}
+
+/** `value` held to `length` UTF-16 code units, as Zod counts them, never between the halves of a surrogate pair. */
+function cutToLength(value: string, length: number): string {
+  if (value.length <= length) return value;
+  const last = value.charCodeAt(length - 1);
+  return value.slice(0, last >= 0xd800 && last <= 0xdbff ? length - 1 : length);
+}
+
+/**
+ * The shim's launch request held to what the gateway reads: Core's
+ * {@link AGENT_NATIVE_INVOCATION_LIMITS}, and {@link MAX_REQUEST_BYTES} with a
+ * {@link MAX_TOKEN_LENGTH} bearer. An argument or an allow-listed value past
+ * its length is cut, and the arguments and variables past their counts are
+ * left out; a request still over the bytes has every argument and value cut to
+ * the largest common length that fits, which keeps short flags whole. A request
+ * that changed says so (`bounded`), and the host never prepares a session from
+ * it; one that did not carries no mark. Only the request is cut: the shim's
+ * fallback runs what was typed, whole.
+ */
+export function boundSpawnThroughLaunch(
+  launch: Omit<SpawnThroughLaunchRequest, 'token'>,
+): Omit<SpawnThroughLaunchRequest, 'token'> {
+  const limits = AGENT_NATIVE_INVOCATION_LIMITS;
+  const argv = launch.argv.slice(0, limits.arguments);
+  const variables = Object.entries(launch.environment).slice(0, limits.environmentEntries);
+  const fits = (request: Omit<SpawnThroughLaunchRequest, 'token'>): boolean =>
+    Buffer.byteLength(`${JSON.stringify({ ...request, token: 'x'.repeat(MAX_TOKEN_LENGTH) })}\n`) <= MAX_REQUEST_BYTES;
+  /** Every argument and value held to its own length, and to `cap` when the bytes ask for less. */
+  const capped = (cap: number): Omit<SpawnThroughLaunchRequest, 'token'> => {
+    const argumentLength = Math.min(cap, limits.argumentLength);
+    const valueLength = Math.min(cap, limits.environmentValueLength);
+    const environment: Record<string, string> = {};
+    for (const [variable, value] of variables) environment[variable] = cutToLength(value, valueLength);
+    return {
+      ...launch,
+      argv: argv.map((argument) => cutToLength(argument, argumentLength)),
+      environment,
+      bounded: true,
+    };
+  };
+
+  const withinLimits =
+    argv.length === launch.argv.length &&
+    argv.every((argument) => argument.length <= limits.argumentLength) &&
+    variables.length === Object.keys(launch.environment).length &&
+    variables.every(([, value]) => value.length <= limits.environmentValueLength);
+  if (withinLimits && fits(launch)) return launch;
+  const held = capped(Number.POSITIVE_INFINITY);
+  if (fits(held)) return held;
+  // The largest common length that fits, by bisection: a length one longer only ever adds bytes. Fourteen passes at
+  // most; a request that does not fit even with every value empty is the gateway's to answer `request-too-large`.
+  let low = 0;
+  let high = Math.max(limits.argumentLength, limits.environmentValueLength);
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (fits(capped(middle))) low = middle;
+    else high = middle - 1;
+  }
+  return capped(low);
 }
 
 function stringRecord(value: unknown): value is Record<string, string> {

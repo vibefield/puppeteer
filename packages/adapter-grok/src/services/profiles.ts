@@ -61,6 +61,19 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 20_000;
  */
 const PROBE_INHERITED = ['PATH', 'HOME', 'USER', 'LOGNAME', 'LANG', 'SystemRoot', 'TEMP', 'TMP', 'USERPROFILE'];
 
+/** A probe's whole environment, verify()'s and account usage's: the allow-list out of `ambient`, then the binding. */
+export function grokProbeEnvironment(
+  ambient: NodeJS.ProcessEnv,
+  binding: Record<string, string>,
+): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const name of PROBE_INHERITED) {
+    const value = ambient[name];
+    if (value !== undefined) env[name] = value;
+  }
+  return { ...env, ...binding };
+}
+
 /** `methodId`s of a credential the root holds: its cached session, or an API key. */
 const SIGNED_IN_METHODS: ReadonlySet<string> = new Set(['cached_token', 'xai.api_key']);
 /** The interactive logins the agent offers a root that holds neither. */
@@ -159,15 +172,6 @@ export function createGrokProfileService(options: GrokProfileServiceOptions = {}
   const bindingEnvironment = (profile: AgentProfile): Record<string, string> =>
     profile.kind === 'native-default' ? {} : { [GROK_PROFILE_ROOT_VARIABLE]: profile.dataRoot };
 
-  const probeEnvironment = (profile: AgentProfile): NodeJS.ProcessEnv => {
-    const env: NodeJS.ProcessEnv = {};
-    for (const name of PROBE_INHERITED) {
-      const value = ambient[name];
-      if (value !== undefined) env[name] = value;
-    }
-    return { ...env, ...bindingEnvironment(profile) };
-  };
-
   return {
     provider,
     bindingEnvironment,
@@ -189,7 +193,7 @@ export function createGrokProfileService(options: GrokProfileServiceOptions = {}
       let transport: GrokAgentTransport | undefined;
       let client: GrokAcpClient | undefined;
       try {
-        transport = spawnTransport({ executable, env: probeEnvironment(profile) });
+        transport = spawnTransport({ executable, env: grokProbeEnvironment(ambient, bindingEnvironment(profile)) });
         client = new GrokAcpClient(transport, requestTimeoutMs);
         await client.request('initialize', {
           protocolVersion: 1,

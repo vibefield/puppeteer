@@ -161,7 +161,7 @@ import { launchValues } from './host/environment.js';
 import { boundSpawnThroughText } from './host/spawn-through/protocol.js';
 import { createProfileRootAllocator } from './profiles/roots.js';
 import { cloneAgentSessionInfo, createAgentController, type Agent, type AgentController } from './agent.js';
-import { createGitStateObserver, type GitStateObserver } from './observation/git.js';
+import { createGitObserverPool, type GitStateObserver } from './observation/git.js';
 import {
   allocateRuntimeRunIdentity,
   canonicalizeCreationFingerprint,
@@ -694,6 +694,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const preparationTombstones = new Map<string, PreparationTombstone>();
   const preparationCleanups = new Map<string, Promise<void>>();
   const workspaceFinalizations = new WeakMap<Workspace, Promise<RuntimeWorkspaceFinalization>>();
+  // One git observer per repository cwd, whatever the number of sessions there.
+  const gitObservers = createGitObserverPool();
   const inflightCreations = new Map<string, InflightCreation>();
   const pendingCreations = new Set<Promise<CreateAgentSessionResult | PrepareAgentSessionResult>>();
   const prewarmAbort = new AbortController();
@@ -2316,7 +2318,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       observationLevel: session.observationLevel(),
       terminalSessionId: session.runtimeSessionId,
     });
-    run.monitor?.updateRun(activeMonitorLifecycle(agent.state.lifecycle), {
+    run.monitor?.updateRun(activeMonitorLifecycle(agent.lifecycle), {
       alive: true,
       nativeSession: initialNativeClaim.value,
     });
@@ -2342,7 +2344,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       info.nativeSessionRevision = next.revision;
       info.continuation = continuationFor(provider, next.value.id, run);
       info.sessionId = next.value.id;
-      run.monitor?.updateRun(activeMonitorLifecycle(agent.state.lifecycle), { alive: true, nativeSession: next.value });
+      run.monitor?.updateRun(activeMonitorLifecycle(agent.lifecycle), { alive: true, nativeSession: next.value });
       void recordNativeSessionCorrelation(run, effectiveAt, evidence);
     };
 
@@ -2415,20 +2417,24 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       if (info.continuation.resumable === false && run.durableRecordSeen?.() !== false) {
         info.continuation = continuationFor(provider, run.nativeSessionClaim!.value.id, run);
       }
-      const previousCwd = agent.state.environment.currentCwd?.value;
+      // accept() hands back the uncopied states on either side of the event (the reducer never mutates in place);
+      // the application getter `agent.state` would deep-copy the whole session per event to read one cwd.
       if (!isCanonicalApplicationEvent(session, envelope)) {
-        const projected = agentController.accept(envelope, {
+        const { previousState, state } = agentController.accept(envelope, {
           projectMonitor: false,
           projectState: reduceIntoState,
           publish: false,
         });
-        const currentCwd = projected.state.environment.currentCwd?.value;
-        if (currentCwd && currentCwd !== previousCwd) gitObserver?.setCwd(currentCwd);
+        const currentCwd = state.environment.currentCwd?.value;
+        if (currentCwd && currentCwd !== previousState.environment.currentCwd?.value) gitObserver?.setCwd(currentCwd);
         return;
       }
-      const projected = agentController.accept(envelope, { projectState: reduceIntoState, hostProcessEvidence });
-      const currentCwd = projected.state.environment.currentCwd?.value;
-      if (currentCwd && currentCwd !== previousCwd) gitObserver?.setCwd(currentCwd);
+      const { previousState, state } = agentController.accept(envelope, {
+        projectState: reduceIntoState,
+        hostProcessEvidence,
+      });
+      const currentCwd = state.environment.currentCwd?.value;
+      if (currentCwd && currentCwd !== previousState.environment.currentCwd?.value) gitObserver?.setCwd(currentCwd);
       for (const listener of listeners) {
         try {
           listener(info.terminalSessionId, envelope);
@@ -2498,7 +2504,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (!agent.state.environment.currentCwd) {
       dispatch({ type: 'environment:updated', currentCwd: lease.workspace.root }, 'runtime', 'derived');
     }
-    gitObserver = createGitStateObserver({
+    gitObserver = gitObservers.observe({
       cwd: agent.state.environment.currentCwd?.value ?? lease.workspace.root,
       onChange: (git) => dispatch({ type: 'environment:updated', git }, 'runtime', 'derived'),
       onError: report,

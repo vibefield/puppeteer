@@ -7,14 +7,17 @@ import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import type { AgentLaunchProvider } from '@vibefield/puppeteer-core';
+import { AGENT_NATIVE_INVOCATION_LIMITS, type AgentLaunchProvider } from '@vibefield/puppeteer-core';
 import { startSpawnThroughGateway, type SpawnThroughGateway } from './gateway.js';
 import { spawnThroughLayout } from './layout.js';
 import { materializeShims } from './materialize.js';
 import { processStartedAt } from './process-watch.js';
 import {
   MAX_REFUSAL_MESSAGE_LENGTH,
+  MAX_REQUEST_BYTES,
+  MAX_TOKEN_LENGTH,
   declineSpawnThrough,
+  type SpawnThroughLaunchRequest,
   type SpawnThroughRequest,
   type SpawnThroughResponse,
 } from './protocol.js';
@@ -703,12 +706,11 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
       expect(ran.elapsedMs).toBeLessThan(AT_ONCE_MS);
     });
 
-    it("obeys an unplaced refusal — a wrong bearer, an oversize request — only under one of the host's shells", async () => {
-      // Over 64 KiB of argv: the gateway answers before it reads the request.
-      const oversize = Array.from({ length: 10 }, (_, index) => `${index}${'x'.repeat(7_000)}`);
+    it("obeys an unplaced refusal — a wrong bearer — only under one of the host's shells", async () => {
+      // An oversize request is no longer one the shim sends: it keeps its request inside the gateway's bounds (the
+      // next row). The gateway's own answer to one is gateway.test.ts's.
       const unplaced: { name: string; rendezvous: { strict: boolean; token?: string }; args: string[] }[] = [
         { name: 'a wrong bearer', rendezvous: { strict: true, token: 'not-the-bearer' }, args: ['x'] },
-        { name: 'an oversize request', rendezvous: { strict: true }, args: oversize },
       ];
       for (const listed of [true, false]) {
         for (const { name, rendezvous, args } of unplaced) {
@@ -716,7 +718,7 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
           await (listed ? writeTerminals(home, [thisShell]) : rm(join(home, TERMINALS_FILE), { force: true }));
           const ran = await launch(home, 'example', args, { tty: 'both' });
 
-          // The host's handler never saw it: the gateway could neither read nor trust it.
+          // The host's handler never saw it: the gateway did not trust it.
           expect(requests, name).toEqual([]);
           if (listed) {
             expect(ran.code, name).toBe(75);
@@ -732,6 +734,41 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
           for (const gateway of gateways.splice(0)) await gateway.close();
         }
       }
+    });
+
+    it("keeps its request inside the gateway's bounds, and runs a one-shot with its whole argument", async () => {
+      const requests = await gatewayAnswering(
+        home,
+        () => ({ action: 'fallback', code: 'passthrough', reason: 'a one-shot' }),
+        { strict: true },
+      );
+      await writeTerminals(home, [thisShell]);
+      // One argument past its length; then arguments each within it, past the request's bytes in all.
+      const typed = [
+        ['-p', 'x'.repeat(20_000)],
+        ['-p', ...Array.from({ length: 10 }, (_, index) => `${index}${'x'.repeat(7_000)}`)],
+      ];
+      for (const args of typed) {
+        const ran = await launch(home, 'example', args, { tty: 'both' });
+        // Strict, under the host's shell: a request the gateway could not read would be refused here, exit 75.
+        expect(ran.code, ran.stderr).toBe(0);
+        // The fallback execs what was typed, whole.
+        expect(ran.lines('ARG ')).toEqual(args);
+      }
+
+      const sent = requests as SpawnThroughLaunchRequest[];
+      expect(sent).toHaveLength(typed.length);
+      for (const [index, request] of sent.entries()) {
+        expect(request).toMatchObject({ type: 'launch', interactive: true, bounded: true });
+        // What the host reads is what was typed, cut: every argument a head of the one typed in its place.
+        for (const [position, argument] of request.argv.entries()) {
+          expect(typed[index]![position]!.startsWith(argument)).toBe(true);
+        }
+        const line = `${JSON.stringify({ ...request, token: 'x'.repeat(MAX_TOKEN_LENGTH) })}\n`;
+        expect(Buffer.byteLength(line)).toBeLessThanOrEqual(MAX_REQUEST_BYTES);
+      }
+      expect(sent[0]!.argv).toEqual(['-p', 'x'.repeat(AGENT_NATIVE_INVOCATION_LIMITS.argumentLength)]);
+      expect(sent[1]!.argv).toHaveLength(typed[1]!.length);
     });
 
     it('when the launcher is strict and no rendezvous exists, uses a gateway that appears during the wait', async () => {

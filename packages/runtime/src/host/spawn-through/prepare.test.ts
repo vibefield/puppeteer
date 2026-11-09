@@ -296,6 +296,24 @@ describe('prepareSpawnThroughLaunch', () => {
         reached: ['classify'],
         strict: 'fallback',
       },
+      // A one-shot whose arguments the shim had to cut runs whole, as typed: the shim execs what the person typed.
+      {
+        name: 'a one-shot the shim had to bound',
+        request: { bounded: true },
+        grammar: { status: 'passthrough', kind: 'one-shot', reason: 'a one-shot invocation' },
+        code: 'passthrough',
+        reason: 'a one-shot invocation',
+        reached: ['classify'],
+        strict: 'fallback',
+      },
+      {
+        name: 'a bounded session whose input or output is not a terminal',
+        request: { bounded: true, interactive: false },
+        code: 'not-interactive',
+        reason: 'its input or output is not a terminal: a one-shot run',
+        reached: ['classify'],
+        strict: 'fallback',
+      },
       // 3. Where it is: outside the host's terminals (the launcher's directory leaks), never refused.
       {
         name: 'an accepted session no terminal of the host contains',
@@ -323,7 +341,34 @@ describe('prepareSpawnThroughLaunch', () => {
         reached: ['classify', 'resolve'],
         strict: 'fallback',
       },
-      // 4. A session in one of the host's terminals that the host cannot manage.
+      {
+        name: 'a bounded session no terminal of the host contains',
+        ...NOWHERE,
+        request: { bounded: true },
+        code: 'outside-host-terminals',
+        reason: 'not in a terminal this host owns',
+        reached: ['classify', 'resolve'],
+        strict: 'fallback',
+      },
+      // 4. A session in one of the host's terminals that the host cannot manage. First, one the shim had to cut to
+      // the gateway's bounds: what was classified is not what was typed, and a managed launch would carry the cut.
+      {
+        name: 'a session the shim had to bound',
+        request: { bounded: true },
+        code: 'request-too-large',
+        reason: 'its arguments are longer than a managed launch carries',
+        reached: ['classify', 'resolve'],
+        strict: 'refuse',
+      },
+      {
+        name: 'a rejected session the shim had to bound',
+        request: { bounded: true },
+        grammar: { status: 'rejected', reason: 'cannot carry it', argument: '--other' },
+        code: 'request-too-large',
+        reason: 'its arguments are longer than a managed launch carries',
+        reached: ['classify', 'resolve'],
+        strict: 'refuse',
+      },
       {
         name: 'an unknown provider',
         request: { providerId: 'missing' },
@@ -523,6 +568,27 @@ describe('prepareSpawnThroughLaunch', () => {
         }
       }
     }
+  });
+
+  it('never prepares a session the shim had to bound: a strict host refuses it, placed, in its own words', async () => {
+    const words = vi.fn((refused: SpawnThroughRefusal) => `${refused.command} was not started: name a file instead`);
+    const { runtime, host } = scripted({ host: { strict: true, refusal: words } });
+    const bounded = launch({ argv: ['-p', 'x'.repeat(8_192)], bounded: true });
+    await expect(prepareSpawnThroughLaunch(bounded, host)).resolves.toEqual(
+      refusal(
+        'request-too-large',
+        'its arguments are longer than a managed launch carries',
+        'example was not started: name a file instead',
+      ),
+    );
+    expect(words).toHaveBeenCalledWith({
+      code: 'request-too-large',
+      reason: 'its arguments are longer than a managed launch carries',
+      providerId: 'example',
+      command: 'example',
+    });
+    expect(runtime.prepareInvocation).not.toHaveBeenCalled();
+    expect(host.onAdopted).not.toHaveBeenCalled();
   });
 
   describe("a refusal in the host's own words", () => {

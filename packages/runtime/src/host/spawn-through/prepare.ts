@@ -154,7 +154,8 @@ function hostWords(host: SpawnThroughHost, refused: SpawnThroughRefusal): string
  * invocation is (the adapter's grammar — a version query or a one-shot never
  * waits on a terminal lookup), then the containing terminal, and only then the
  * declines a strict host may refuse, the preparation and the adoption. Nothing
- * is prepared for a process no terminal of the host's contains, and a
+ * is prepared for a process no terminal of the host's contains, nor for a
+ * session the shim had to cut to the gateway's bounds (`bounded`), and a
  * preparation no terminal adopted is cancelled rather than left to expire. The
  * host's record is written before the shim is told to exec.
  *
@@ -212,7 +213,9 @@ export async function prepareSpawnThroughLaunch(
   if (!terminal) return decline('outside-host-terminals', 'not in a terminal this host owns');
   invocation.placed = true;
 
-  // 4. Only now, a session in the host's terminal that the host cannot manage.
+  // 4. Only now, a session in the host's terminal that the host cannot manage. First, one the shim cut to the
+  // gateway's bounds: what was classified is not all that was typed, and a managed launch would carry the cut.
+  if (request.bounded) return decline('request-too-large', 'its arguments are longer than a managed launch carries');
   if (classified.status === 'unsupported') {
     const code = classified.code === 'NATIVE_INVOCATION_UNSUPPORTED' ? 'unsupported-agent' : 'invalid-invocation';
     return decline(code, classified.reason);
