@@ -940,7 +940,7 @@ describe('A launch or resume replay of the durable log', () => {
       [userLine, thoughtLine, endLine],
       async (projection, append, railRuns) => {
         // A stale frame names P while the log replays it, and the replay goes on to P's own end, which Grok wrote
-        // before the first stat: P is over, and its start has nothing to start at the settle.
+        // before the session was opened: P is over, and its start has nothing to start at the settle.
         railRuns('p1');
         await append();
         expect(turnEvents(projection)).toEqual(['turn:started p1', 'turn:completed p1']);
@@ -955,7 +955,7 @@ describe('A launch or resume replay of the durable log', () => {
     await overLog(
       [userLine, thoughtLine, endLine],
       async (projection, _append, railRuns) => {
-        // Grok ended P before the first stat: the next prompt it runs is not held behind P.
+        // Grok ended P before the session was opened: the next prompt it runs is not held behind P.
         railRuns('q1');
         expect(turnEvents(projection).at(-1)).toBe('turn:started q1');
         expect(projection.state.activeTurn?.id).toBe('q1');
@@ -973,7 +973,7 @@ describe('A launch or resume replay of the durable log', () => {
       [userLine, thoughtLine, endLine, userLine, thought2Line, end2Line],
       async (projection, append, railRuns) => {
         // The frame started P1 at adoption, and the replay shows its start again. P1 and P2 both ended before the
-        // first stat, so nothing the rail named runs, and Q is the next turn.
+        // session was opened, so nothing the rail named runs, and Q is the next turn.
         const replayed = [
           'turn:started p1',
           'turn:started p1',

@@ -11,7 +11,12 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { AgentAdapterBinding, TerminalSpec } from '@vibefield/puppeteer-core';
 import { resolveGrokExecutable } from './detection.js';
-import { grokHomeIn, grokUpdatesPath, latestGrokSessionId } from './observation/session-discovery.js';
+import {
+  grokHomeIn,
+  grokUpdatesPath,
+  latestGrokSessionId,
+  measureGrokReplayBoundary,
+} from './observation/session-discovery.js';
 import { createGrokSessionObserver } from './observation/session-observer.js';
 import { openGrokControl } from './services/acp-control.js';
 import { createGrokLeaderService } from './services/leader.js';
@@ -75,6 +80,18 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
     // that joins after a request was issued is still shown it (1.0.70 probe).
     const control = await openGrokControl(executable, cwd, socketPath, resume, opts, childEnv, { viewer: 'attached' });
     const sessionId = control.sessionId;
+    const updatesPath = grokUpdatesPath(cwd, sessionId, grokHome);
+    // The replay boundary is drawn here, once control holds the session and before the terminal spawns and adopt
+    // hands the binding back, so no prompt through this binding reaches the leader first. A session ACP's session/new
+    // created (no resume id, as openGrokControl reads it) has nothing to replay. A resume's history is its log as it
+    // stands now, measured in whichever cwd bucket holds the session, so a relocated resume never reads it as live.
+    let replayBoundary: number;
+    try {
+      replayBoundary = resume ? measureGrokReplayBoundary(updatesPath) : 0;
+    } catch (error) {
+      await control.dispose().catch(() => undefined);
+      throw error;
+    }
     const launch: TerminalSpec = {
       command: executable,
       args: buildGrokTuiArgs(socketPath, sessionId, { ...opts, resume: sessionId }),
@@ -86,7 +103,7 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
       launch,
       () => control,
       () => control.dispose(),
-      () => createGrokSessionObserver(grokUpdatesPath(cwd, sessionId, grokHome)),
+      () => createGrokSessionObserver(updatesPath, { replayBoundary }),
       {
         cwd,
         ...(opts.model ? { model: opts.model } : {}),

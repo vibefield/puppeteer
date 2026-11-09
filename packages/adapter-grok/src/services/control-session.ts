@@ -205,9 +205,9 @@ export function createPendingControlSession(
       startHeld();
     }
     if (turnEnd && replayedTurn && observed.source !== 'runtime' && observedTurnId !== undefined) {
-      // The log's own end, replayed: Grok ended this prompt before the first stat. A turn the rail started for it is
-      // over, and a start held for it has nothing to start; what waits starts at the settle. The settle's own ends are
-      // derived, the runtime's: they leave the open turn open.
+      // The log's own end, replayed: Grok ended this prompt before the session was opened. A turn the rail started for
+      // it is over, and a start held for it has nothing to start; what waits starts at the settle. The settle's own
+      // ends are derived, the runtime's: they leave the open turn open.
       if (activeTurnId === observedTurnId) setActiveTurn(undefined, observedAt);
       const held = heldStarts.findIndex(({ promptId }) => promptId === observedTurnId);
       if (held >= 0) heldStarts.splice(held, 1);

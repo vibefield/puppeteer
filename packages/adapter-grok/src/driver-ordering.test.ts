@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   createStdioAcpConnector: vi.fn(() => ({ connector: 'fake' })),
   socketReady: true,
   removeFails: false,
+  statFails: false,
 }));
 
 vi.mock('node:child_process', () => ({ spawn: mocks.spawn }));
@@ -23,6 +24,12 @@ vi.mock('node:fs', async (importOriginal) => {
         throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
       }
       return actual.rmSync(...args);
+    },
+    statSync: (...args: Parameters<typeof actual.statSync>) => {
+      if (mocks.statFails && String(args[0]).endsWith('updates.jsonl')) {
+        throw Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' });
+      }
+      return actual.statSync(...args);
     },
   };
 });
@@ -59,6 +66,7 @@ describe('Grok leader session materialization ordering', () => {
     vi.clearAllMocks();
     mocks.socketReady = true;
     mocks.removeFails = false;
+    mocks.statFails = false;
     mocks.spawn.mockReturnValue({ exitCode: null, signalCode: null, killed: false, kill: vi.fn(), once: vi.fn() });
     mocks.createAcpSession.mockImplementation(async (options: { resume?: string }) =>
       controlSession(options.resume ?? 'materialized-session'),
@@ -195,6 +203,23 @@ describe('Grok leader session materialization ordering', () => {
     expect(prepared.launch.args).toEqual(expect.arrayContaining(['--resume', 'existing-session']));
     await prepared.dispose();
     backend.dispose();
+  });
+
+  it('rejects a resume whose log cannot be measured, and disposes the control it opened', async () => {
+    // A resume's replay boundary is its log's size once control holds the session. A log that exists but cannot be
+    // measured is never guessed at: preparation fails, and the control it opened goes with it.
+    const control = controlSession('existing');
+    mocks.createAcpSession.mockImplementationOnce(async () => control);
+    mocks.statFails = true;
+    const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+    try {
+      await expect(backend.prepareSession({ cwd: '/repo', resume: 'existing' })).rejects.toMatchObject({
+        code: 'EACCES',
+      });
+      expect(control.dispose).toHaveBeenCalledTimes(1);
+    } finally {
+      backend.dispose();
+    }
   });
 
   it('starts the shared leader only once when preparations overlap', async () => {

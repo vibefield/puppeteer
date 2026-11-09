@@ -1757,7 +1757,9 @@ createGrokBackend → grok agent leader
   → own-session live _x.ai/queue/changed runningPromptId ⇒ turn:started (native prompt id), held until the log
       ends any earlier turn and settles the replay it is reading; the receipt follows the frame
   → log owns turns/tools/messages/lifecycle (a turn either rail starts is published once)
-  → log replay ⇒ bootstrap up to the first stat's size, its open work settled, then replay.settled
+  → log replay ⇒ bootstrap up to the log's size when the session was opened (0 after session/new), its open work
+      settled, then replay.settled (<em>Erratum 2026-11-08 (RV, main's red since #72):</em> the boundary is the log's
+      size when the session was opened, not its size at the first stat)
   → observationLevel: native-log</pre>
           <h5>Grok 1.0.70 notes</h5>
           <ul>
@@ -1806,8 +1808,15 @@ createGrokBackend → grok agent leader
             </li>
             <li>
               A launch or resume replay is a baseline, not work. A record whose first byte lies before the log&rsquo;s
-              size at the first stat is replay, and any other is live, so a record Grok appends during a long replay
-              is never settled. Before the first live record the observer ends what the log left open with derived
+              size when the session was opened is replay, and any other is live, so a record Grok appends during a
+              long replay is never settled. <em>Erratum 2026-11-08 (RV, main&rsquo;s red since #72):</em> the boundary
+              is the log&rsquo;s size when the session was opened, not its size at the first stat. The first poll
+              starts unawaited at adoption and races the prompt a host submits at once, so a line drawn at its stat
+              could fall inside that prompt&rsquo;s first records, and the settle then ended a live turn without its
+              text. A session ACP&rsquo;s <code>session/new</code> created has nothing to replay, so its boundary is
+              0; a resume&rsquo;s is measured once <code>session/load</code> answers and before the terminal spawns,
+              in whichever cwd bucket holds the session.
+              Before the first live record the observer ends what the log left open with derived
               closers: <code>tool:failed</code> per open tool, <code>delegation:subagent-stopped</code> per open
               subagent, <code>reasoning:completed</code>, and <code>turn:completed</code> with no stop reason or
               message per open turn, never <code>turn:failed</code>, which would hold a resumed row&rsquo;s queue. A
@@ -1840,7 +1849,9 @@ createGrokBackend → grok agent leader
               nothing to replay sends no <code>replay.settled</code>, and nothing waits for one. A frame the rail
               delivers before the replay shows a turn, such as one buffered between <code>session/load</code> and
               adoption, still starts at once, and a replayed end retracts its activity. The log&rsquo;s own replayed
-              end of that prompt ends it, since Grok ended it before the first stat, and a frame still waiting for a
+              end of that prompt ends it, since Grok ended it before the session was opened (<em>Erratum 2026-11-08
+              (RV, main&rsquo;s red since #72):</em> the boundary is the log&rsquo;s size when the session was opened,
+              not its size at the first stat), and a frame still waiting for a
               prompt whose end the replay shows starts nothing. The settle&rsquo;s own ends are derived and leave the
               open turn open: a turn the rail started and the replay left open is still the one Grok runs, and its
               next live record holds it working as a reopened turn; until then it reads idle. Only an attach keeps
