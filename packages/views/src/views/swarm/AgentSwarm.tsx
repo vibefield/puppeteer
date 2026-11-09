@@ -238,7 +238,7 @@ function measured(stage: StageGeometry): boolean {
 /**
  * The profile a body of the desktop you sit at runs under, when that desktop has more than one: a terminal names it
  * (SB §2.10), an agent wears its glyph (UM-D6). A peer's body never draws a guess (UM-L3): this menu is not its
- * desktop's.
+ * desktop's. `native` is whatever the row's `profileSet` says: where the tabs place it (`AgentView.profileSet`).
  */
 function bodyProfile(menu: MonitorSpawnMenu | undefined, agent: AgentView): BirthProfile | undefined {
   return !agent.device.self ? undefined : profileLineFor(menu, agent.profileSet);

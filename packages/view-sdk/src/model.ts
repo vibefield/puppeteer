@@ -163,7 +163,13 @@ export interface MonitorAgentRow {
   readonly unread: boolean;
   readonly device: MonitorDeviceRef;
   readonly tier?: AgentTier | undefined;
-  /** The Agent Profile SET it runs under (`native` for the machine's own). */
+  /**
+   * The Agent Profile SET it runs under (`native` for the machine's own).
+   *
+   * Errata (2026-11-09, UM-D6's review): `native` is also the backend's answer for a run that names no persona and for
+   * a persona no set lists (`resolveProfileSet`). It says where the row is placed, and is not a reading of the run's
+   * root: a shell run on a root Puppeteer did not allocate has no word of its own on this wire.
+   */
   readonly profileSet?: string | undefined;
   /** A pane on the reading desktop can show it now. */
   readonly attachable: boolean;

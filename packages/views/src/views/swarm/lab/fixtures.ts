@@ -58,7 +58,7 @@ export interface LabStage {
   glow?: { reach: number; strength: number; breath: number };
   /** A last word on the model, for readings the model does not produce on its own. */
   patch?: (model: SwarmBubbleModel) => SwarmBubbleModel;
-  /** The Agent Profile a terminal was born under (its profile line). */
+  /** The Agent Profile the body is under: a terminal's profile line, or the glyph leading an agent's model line. */
   profile?: BubbleModelInput['profile'];
   /** A birth on its way, `agoMs` since the person let go: the pending body. */
   opening?: { agoMs: number; on?: string };
