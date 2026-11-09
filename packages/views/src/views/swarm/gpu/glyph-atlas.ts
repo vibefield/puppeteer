@@ -66,6 +66,8 @@ export class GlyphAtlas {
     /** Where there is no `OffscreenCanvas`: a detached canvas from the owner's own document (the view reaches no
      * document of its own, MV-W2). Without one, the atlas needs `OffscreenCanvas`. */
     createCanvas?: () => HTMLCanvasElement,
+    /** A sprite finished decoding: it can be drawn now. On a field held still, nothing else asks for that frame. */
+    private readonly onSpriteReady?: () => void,
   ) {
     this.size = size;
     this.dpr = dpr;
@@ -222,6 +224,7 @@ export class GlyphAtlas {
       element.onload = () => {
         this.spriteImages.set(key, element);
         this.pendingSprites.delete(key);
+        this.onSpriteReady?.();
       };
       element.onerror = () => this.pendingSprites.delete(key);
       const white = svg.replaceAll('currentColor', '#ffffff');

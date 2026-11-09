@@ -18,7 +18,7 @@ export const BIRTH_GIVE_UP_MS = 30_000;
 /** A row's spawn hint is the point asked for within this (the host copies the numbers it was given). */
 const HINT_SLOP = 0.5;
 
-/** The profile line a terminal body names (SB §2.10). */
+/** The profile a body shows: a terminal names it on a line of its own (SB §2.10), an agent wears its glyph (UM-D6). */
 export interface BirthProfile {
   readonly label: string;
   readonly glyph?: string | undefined;
@@ -51,8 +51,9 @@ export interface BloomBirth {
   readonly failedAt: number | null;
 }
 
-/** The profile line for a terminal born under `profileSet`, when the desktop you sit at has more than
- * one profile and that is one of them — naming the only profile there is tells nobody anything. */
+/** The profile a body under `profileSet` shows (a terminal's birth, and every self body through `bodyProfile`), when
+ * the desktop you sit at has more than one profile and that is one of them — naming the only profile there is tells
+ * nobody anything. */
 export function profileLineFor(
   menu: MonitorSpawnMenu | undefined,
   profileSet: string | undefined,

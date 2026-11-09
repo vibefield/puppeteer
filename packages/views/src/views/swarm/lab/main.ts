@@ -388,8 +388,8 @@ async function main(): Promise<void> {
     'grid',
   );
   addPart(
-    'Born under a profile',
-    'A terminal born under an Agent Profile names it on its body, where the desktop has more than one.',
+    'Under a profile',
+    'A terminal born under an Agent Profile names it on its body, and an agent wears its glyph on the model line, where the desktop has more than one.',
     profileStages(nowMs),
     'grid',
   );

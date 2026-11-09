@@ -140,7 +140,7 @@ export interface MonitorAgent {
    * SET id (`'native'` for the machine's own). A managed agent's set, or the set
    * a terminal's shell was born under (VibeField binds a pane's shell to it).
    * Absent: unknown, or a shell bound to none. The spawn bloom lights the rows
-   * under the profile it points at (SB-D8); a terminal's body names it. */
+   * under the profile it points at (SB-D8); a body names or wears it. */
   profileSet?: string | undefined;
   agent?: MonitorAgentFacet | undefined;
 }
