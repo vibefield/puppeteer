@@ -38,7 +38,8 @@ export function codexBriefingParams(
       args: server.args ?? [],
       env: server.env ?? {},
       enabled: true,
-      required: true,
+      // Never `required`: Codex would fail thread/start when a server cannot start, with an error that names no
+      // field, so `withhold` could not absorb it and a person's own `codex` would exit because a door was full.
       ...(tools.includes('*')
         ? { default_tools_approval_mode: 'approve' }
         : tools.length

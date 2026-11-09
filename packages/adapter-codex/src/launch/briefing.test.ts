@@ -4,6 +4,12 @@ import { CODEX_BRIEFING_CAPABILITIES, codexBriefingParams, preflightCodexBriefin
 const servers = { field: { command: 'door', args: ['--stdio'], env: { TOKEN: 'secret' } } };
 const hello = { userAgent: 'puppeteer/0.147.0 (test)' };
 describe('Codex run briefing', () => {
+  it('never marks a server required: a failing door must not fail thread/start with an error that names no field', () => {
+    const config = codexBriefingParams({ mcpServers: servers }).config!['mcp_servers.field'] as Record<string, unknown>;
+    expect(config).not.toHaveProperty('required');
+    expect(config.enabled).toBe(true);
+  });
+
   it('names the field each preflight refusal is about', async () => {
     await expect(
       preflightCodexBriefing({ mcpServers: servers }, { userAgent: 'x/0.100.0' }, '/w', vi.fn()),
@@ -30,7 +36,6 @@ describe('Codex run briefing', () => {
         'mcp_servers.field': {
           ...servers.field,
           enabled: true,
-          required: true,
           tools: { read: { approval_mode: 'approve' } },
         },
       },
