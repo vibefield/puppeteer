@@ -57,6 +57,7 @@ describe('Codex TUI preparation', () => {
     fakes.tapDispose.mockResolvedValue(undefined);
     fakes.observerDispose.mockResolvedValue(undefined);
     fakes.spawnServer.mockReturnValue({
+      process: { pid: 4242 },
       endpoint: () => ({ kind: 'unix', path: '/tmp/codex.sock' }),
       ready: fakes.serverReady,
       dispose: fakes.serverDispose,
@@ -89,6 +90,49 @@ describe('Codex TUI preparation', () => {
     expect(JSON.stringify(prepared.launch)).not.toContain('secret');
     expect(JSON.stringify(prepared.launch)).not.toContain('role');
     await prepared.dispose();
+  });
+
+  describe('naming the app-server to the host', () => {
+    const paths = {
+      fresh: {},
+      resume: { resume: 'thread-old' },
+      picker: { resumeInvocation: ['resume'] },
+      imposter: { appServerEnv: { AI_PERSONA: 'codex' } },
+    };
+
+    it.each(Object.entries(paths))('names it before the thread opens (%s)', async (_path, launch) => {
+      let answer!: () => void;
+      const onHelperProcess = vi.fn(() => new Promise<void>((resolve) => (answer = resolve)));
+      const before = Date.now();
+      const preparing = prepareCodexTuiSession({ cwd: '/work', host: host(), ingress: { onHelperProcess }, ...launch });
+      await vi.waitFor(() => expect(onHelperProcess).toHaveBeenCalledOnce());
+      expect(onHelperProcess).toHaveBeenCalledWith({ pid: 4242, startedAtMs: expect.any(Number) });
+      const { startedAtMs } = (onHelperProcess.mock.calls[0] as unknown as [{ startedAtMs: number }])[0];
+      expect(startedAtMs).toBeGreaterThanOrEqual(before);
+      expect(fakes.serverReady.mock.invocationCallOrder[0]).toBeLessThan(onHelperProcess.mock.invocationCallOrder[0]!);
+      // Held until the host answers: nothing that can start an MCP server has gone yet.
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      expect(fakes.createObserver).not.toHaveBeenCalled();
+      answer();
+      const prepared = await preparing;
+      expect(fakes.createObserver).toHaveBeenCalledOnce();
+      await prepared.dispose();
+    });
+
+    it('refuses the launch honestly when the hook throws, and stops the helper', async () => {
+      const onHelperProcess = vi.fn(() => Promise.reject(new Error('the floor said no')));
+      await expect(
+        prepareCodexTuiSession({ cwd: '/work', host: host(), ingress: { onHelperProcess } }),
+      ).rejects.toMatchObject({ code: 'RUN_HELPER_UNNAMED' });
+      expect(fakes.createObserver).not.toHaveBeenCalled();
+      expect(fakes.serverDispose).toHaveBeenCalledOnce();
+    });
+
+    it('prepares as before under a host that has no hook', async () => {
+      const prepared = await prepareCodexTuiSession({ cwd: '/work', host: host(), ingress: { port: 1 } });
+      expect(fakes.createObserver).toHaveBeenCalledOnce();
+      await prepared.dispose();
+    });
   });
 
   it('refuses a briefed resume picker before starting a helper', async () => {

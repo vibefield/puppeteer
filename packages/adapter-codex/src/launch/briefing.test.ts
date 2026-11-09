@@ -1,9 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { codexBriefingParams, preflightCodexBriefing } from './briefing.js';
+import { CODEX_BRIEFING_CAPABILITIES, codexBriefingParams, preflightCodexBriefing } from './briefing.js';
 
 const servers = { field: { command: 'door', args: ['--stdio'], env: { TOKEN: 'secret' } } };
 const hello = { userAgent: 'puppeteer/0.147.0 (test)' };
 describe('Codex run briefing', () => {
+  it('declares one helper per run: the private app-server names itself before a thread opens', () => {
+    expect(CODEX_BRIEFING_CAPABILITIES.mcpServerProcess).toBe('run-helper');
+  });
+
   it('combines MCP, instructions and effort without widening sandbox or tool visibility', () => {
     expect(
       codexBriefingParams({ mcpServers: servers, allowTools: ['field/read'], instructions: 'new role' }, 'high'),

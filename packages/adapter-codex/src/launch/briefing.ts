@@ -11,7 +11,8 @@ export const CODEX_BRIEFING_CAPABILITIES = Object.freeze({
   mcpServers: true,
   allowTools: true,
   instructions: true,
-  mcpServerProcess: 'helper',
+  // One private app-server per run, named to the host through `HostIngress.onHelperProcess` before a thread opens.
+  mcpServerProcess: 'run-helper',
 } as const satisfies AgentBriefingCapabilities);
 
 /**

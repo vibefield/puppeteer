@@ -613,7 +613,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreCodexContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions, profile, environment, ...briefing }) => {
+      createSession: ({ cwd, resume, host, agentOptions, profile, environment, ingress, ...briefing }) => {
         const launch = withLaunchEnvironment(
           withProfileBinding(
             'codex',
@@ -632,6 +632,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           resume,
           executable: launch?.executable ?? resolved.codex,
           host,
+          ingress,
           env: launch?.env,
           model: launch?.model,
           effort: launch?.effort,
@@ -645,7 +646,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           prompt: launch?.prompt,
         });
       },
-      async prepareSession({ cwd, resume, host, agentOptions, profile, ...briefing }) {
+      async prepareSession({ cwd, resume, host, agentOptions, profile, ingress, ...briefing }) {
         const own = agentOptions as CodexProviderOptions | undefined;
         const launch = withProfileBinding(
           'codex',
@@ -661,6 +662,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           resume,
           executable: launch?.executable ?? resolved.codex,
           host,
+          ingress,
           env: launch?.env,
           model: launch?.model,
           effort: launch?.effort,
@@ -727,7 +729,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreGrokContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions, profile, environment, ...briefing }) => {
+      createSession: ({ cwd, resume, host, agentOptions, profile, environment, ingress, ...briefing }) => {
         const launch = withLaunchEnvironment(
           withProfileBinding(
             'grok',
@@ -744,6 +746,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ...pickAgentBriefing(briefing),
           cwd,
           resume,
+          ingress,
           model: launch?.model,
           permissionMode: launch?.permissionMode,
           sandbox: launch?.sandbox,
@@ -753,7 +756,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           onElicitation: launch?.onElicitation,
         });
       },
-      prepareSession: ({ cwd, resume, host, agentOptions, profile, ...briefing }) => {
+      prepareSession: ({ cwd, resume, host, agentOptions, profile, ingress, ...briefing }) => {
         const launch = withProfileBinding(
           'grok',
           cwd,
@@ -766,6 +769,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ...pickAgentBriefing(briefing),
           cwd,
           resume,
+          ingress,
           model: launch?.model,
           permissionMode: launch?.permissionMode,
           sandbox: launch?.sandbox,

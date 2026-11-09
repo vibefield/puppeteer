@@ -19,7 +19,12 @@
  * best-effort `confirmed` (the structured driver has deterministic receipts).
  */
 
-import { pickAgentBriefing, validateAgentBriefing, type AgentRunBriefing } from '@vibefield/puppeteer-core';
+import {
+  announceRunHelper,
+  pickAgentBriefing,
+  validateAgentBriefing,
+  type AgentRunBriefing,
+} from '@vibefield/puppeteer-core';
 import { CODEX_BRIEFING_CAPABILITIES } from './briefing.js';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -142,6 +147,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   // The app-server runs the agent's turns and tools: under a host that composes a helper
   // environment it gets the agent's, never this process's own.
   const helperEnvironment = host.helperEnvironment?.(opts.appServerEnv ?? {});
+  const startedAtMs = Date.now();
   const server = spawnAppServer({
     executable,
     ...(opts.appServerTransport ? { transport: opts.appServerTransport } : {}),
@@ -154,6 +160,9 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   });
   try {
     await server.ready();
+    // MCP servers start inside thread/start and thread/resume, below (briefing.live.test.ts). A host that names callers
+    // by process ancestry must hold this pid first, so every path (fresh, resume, picker, imposter) waits for its answer.
+    await announceRunHelper(opts.ingress, { pid: server.process.pid, startedAtMs }, 'Codex');
   } catch (err) {
     await server.dispose();
     throw err;

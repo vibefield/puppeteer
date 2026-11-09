@@ -1685,6 +1685,33 @@ describe('stable ingress (AR-4 / PU-1)', () => {
     );
   });
 
+  it('hands Codex and Grok the host ingress on both launch doors, so a run helper can be named', async () => {
+    adapters.createCodexTuiSession.mockResolvedValue(fakeSession('codex'));
+    adapters.prepareCodexTuiSession.mockResolvedValue(fakePreparation('codex'));
+    const grok = {
+      createSession: vi.fn(async () => fakeSession('grok')),
+      prepareSession: vi.fn(async () => fakePreparation('grok')),
+      dispose: vi.fn(async () => undefined),
+    };
+    adapters.createGrokBackend.mockReturnValue(grok);
+    const providers = createBuiltinProviders({ executables: { codex: '/opt/codex', grok: '/opt/grok' } });
+    const ingress = { onHelperProcess: vi.fn() };
+    const launch = { cwd: '/work/repo', host, ingress };
+    for (const id of ['codex', 'grok']) {
+      const provider = providers.find(({ descriptor }) => descriptor.id === id)!;
+      await provider.createSession(launch);
+      await provider.prepareSession!(launch);
+    }
+    for (const door of [
+      adapters.createCodexTuiSession,
+      adapters.prepareCodexTuiSession,
+      grok.createSession,
+      grok.prepareSession,
+    ]) {
+      expect(door).toHaveBeenCalledWith(expect.objectContaining({ ingress }));
+    }
+  });
+
   it('refuses a Claude attach without the ingress the process was launched against', async () => {
     const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
       (provider) => provider.descriptor.id === 'claude',
