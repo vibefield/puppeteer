@@ -73,6 +73,20 @@ console.log('Package roots imported in ordinary Node');
       execFileSync(process.execPath, args, { cwd: consumer, stdio: 'inherit', timeout: 60_000, ...options });
     node(['runtime.mjs']);
 
+    // Bundling for Node must follow every provider's dependencies; a plain import cannot show that.
+    writeFileSync(
+      join(consumer, 'bundle-node.mjs'),
+      `import { build } from 'esbuild';
+await build({
+  stdin: { contents: "import { createBuiltinProviders } from '@vibefield/puppeteer-builtin-providers'; console.log(typeof createBuiltinProviders);", resolveDir: process.cwd() },
+  bundle: true, platform: 'node', format: 'cjs', outfile: 'bundled/providers.cjs',
+  external: ['bufferutil', 'utf-8-validate'], define: { 'import.meta.url': 'undefined' }, logLevel: 'warning',
+});
+`,
+    );
+    node(['bundle-node.mjs']);
+    node(['bundled/providers.cjs']);
+
     // Testing helpers need Vitest; Views contains CSS and must resolve in a browser bundle.
     writeFileSync(
       join(consumer, 'consumer.test.mjs'),
