@@ -15,6 +15,12 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "imports": {
+    "#jsonc-parser": {
+      "module": "jsonc-parser/lib/esm/main.js",
+      "default": "jsonc-parser"
+    }
+  },
   "publishConfig": {
     "access": "public",
     "main": "./dist/index.js",
