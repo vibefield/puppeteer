@@ -2,11 +2,13 @@
 // empty space (James, 2026-09-29: "huge bold minimal simple text … like
 // kinect text design … concise verb and noun"). The noun is the thing you
 // point at, at full ink; the verb steps back. One small line under it says
-// where the terminal lands and under whom. The prototype's `wordsFor`,
-// `measureWords` and the controller's `placeWords`, pure.
+// where the terminal lands, under whom and, reaching a profile whose host reads
+// it, how much of its tightest window is gone (UM-D7). The prototype's
+// `wordsFor`, `measureWords` and the controller's `placeWords`, pure.
 
 import type { MonitorSpawnProfile } from '@vibefield/puppeteer-view-sdk';
 import { BLOOM, BLOOM_FONT, type BloomTextMeasure } from './constants.js';
+import { fuelWord } from './fuel.js';
 import type { BloomAlign, BloomRect, BloomSize } from './geometry.js';
 import { deviceWord, hereWord, profileWord, ready, type BloomOpenMenu } from './menu.js';
 import type { BloomTarget } from './targeting.js';
@@ -92,7 +94,7 @@ export function wordsFor(
           ? profile && word !== 'DEFAULT'
             ? under + ' · ITS DEFAULT'
             : under
-          : under + ' · ' + (signedWords(profile) || 'THE AGENTS’ OWN SIGN-INS'),
+          : [under, signedWords(profile) || 'THE AGENTS’ OWN SIGN-INS', fuelWord(profile)].filter(Boolean).join(' · '),
       tone: 'go',
     };
   }
@@ -101,7 +103,7 @@ export function wordsFor(
       [going ? 'Opening as ' : 'Open as ', 'v'],
       [t.item.profile.label, 'n'],
     ],
-    detail: [where, signedWords(profile)].filter(Boolean).join(' · '),
+    detail: [where, signedWords(profile), fuelWord(profile)].filter(Boolean).join(' · '),
     tone: 'go',
   };
 }
