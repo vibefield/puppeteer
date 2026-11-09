@@ -251,6 +251,56 @@ describe('Grok leader session materialization ordering', () => {
     });
   });
 
+  describe('under withhold', () => {
+    const mcpServers = { field: { command: 'door' } };
+
+    it('launches an imposter bare and says so, on the shared leader', async () => {
+      const backend = createGrokBackend({
+        executable: '/real/grok',
+        host: host(),
+        appServerEnv: { AI_PERSONA: 'grok', PUPPETEER_IMPOSTER_HOME: '/tmp/imposter-withhold' },
+      });
+      try {
+        const prepared = await backend.prepareSession({ cwd: '/repo', mcpServers, briefingRefusal: 'withhold' });
+        expect(prepared.briefingWithheld).toEqual([{ field: 'mcpServers', code: 'UNSUPPORTED_LAUNCH_FIELD' }]);
+        expect(mocks.spawn).toHaveBeenCalledTimes(1);
+        expect(mocks.createAcpSession.mock.calls[0]![0]).not.toHaveProperty('mcpServers');
+        await prepared.dispose();
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    it('withholds instructions Grok has no field for, and keeps the servers on their own leader', async () => {
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        const prepared = await backend.prepareSession({
+          cwd: '/repo',
+          mcpServers,
+          instructions: 'role',
+          briefingRefusal: 'withhold',
+        });
+        expect(prepared.briefingWithheld).toEqual([{ field: 'instructions', code: 'UNSUPPORTED_LAUNCH_FIELD' }]);
+        expect(mocks.createAcpSession).toHaveBeenCalledWith(expect.objectContaining({ mcpServers }));
+        expect(mocks.spawn).toHaveBeenCalledTimes(1);
+        await prepared.dispose();
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    it('says nothing when nothing was withheld', async () => {
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        const prepared = await backend.prepareSession({ cwd: '/repo', briefingRefusal: 'withhold' });
+        expect(prepared).not.toHaveProperty('briefingWithheld');
+        await prepared.dispose();
+      } finally {
+        await backend.dispose();
+      }
+    });
+  });
+
   it('refuses instructions before starting the shared leader', async () => {
     const backend = createGrokBackend({ executable: '/real/grok', host: host() });
     try {

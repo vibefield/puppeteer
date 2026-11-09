@@ -1436,6 +1436,73 @@ describe('observer run briefing', () => {
     expect(server.calls().some((call) => call.method === 'thread/start')).toBe(false);
   });
 
+  describe('under withhold, on the connection it already holds', () => {
+    const servers = { field: { command: 'door' } };
+    const fullBriefing = { mcpServers: servers, allowTools: ['field/*'], instructions: 'role' };
+
+    it('starts without the servers a native name collides with, and keeps the instructions', async () => {
+      const server = controllable(0, {}, { config: { mcp_servers: { field: { url: 'private native config' } } } });
+      const close = vi.spyOn(server.transport, 'close');
+      const observer = await createCodexObserver({
+        transport: server.transport,
+        briefingRefusal: 'withhold',
+        start: { cwd: '/x', ...fullBriefing },
+      });
+      try {
+        expect(server.calls().filter((call) => call.method === 'initialize')).toHaveLength(1);
+        const start = server.calls().find((call) => call.method === 'thread/start')!;
+        expect(start.params).toMatchObject({ developerInstructions: 'role' });
+        expect(JSON.stringify(start.params)).not.toContain('door');
+        expect(observer.briefingWithheld).toEqual([
+          { field: 'mcpServers', code: 'CONFLICTING_LAUNCH_FIELD' },
+          { field: 'allowTools', code: 'CONFLICTING_LAUNCH_FIELD' },
+        ]);
+        expect(close).not.toHaveBeenCalled();
+      } finally {
+        await observer.dispose();
+      }
+    });
+
+    it('resumes bare the same way', async () => {
+      const server = controllable(0, {}, { config: { mcp_servers: { field: { url: 'x' } } } });
+      const observer = await createCodexObserver({
+        transport: server.transport,
+        briefingRefusal: 'withhold',
+        threadId: 'existing',
+        resumeOverrides: { cwd: '/x', mcpServers: servers },
+      });
+      try {
+        const resume = server.calls().find((call) => call.method === 'thread/resume')!;
+        expect(JSON.stringify(resume.params)).not.toContain('door');
+        expect(observer.briefingWithheld).toEqual([{ field: 'mcpServers', code: 'CONFLICTING_LAUNCH_FIELD' }]);
+      } finally {
+        await observer.dispose();
+      }
+    });
+
+    it('still refuses without the policy', async () => {
+      const server = controllable(0, {}, { config: { mcp_servers: { field: { url: 'x' } } } });
+      await expect(
+        createCodexObserver({ transport: server.transport, start: { cwd: '/x', mcpServers: servers } }),
+      ).rejects.toMatchObject({ code: 'CONFLICTING_LAUNCH_FIELD' });
+    });
+
+    it('says nothing when nothing was withheld', async () => {
+      const server = controllable(0);
+      const observer = await createCodexObserver({
+        transport: server.transport,
+        briefingRefusal: 'withhold',
+        start: { cwd: '/x', mcpServers: servers },
+      });
+      try {
+        expect(observer.briefingWithheld).toEqual([]);
+        expect(JSON.stringify(server.calls().find((call) => call.method === 'thread/start')!.params)).toContain('door');
+      } finally {
+        await observer.dispose();
+      }
+    });
+  });
+
   it('surfaces an explicit briefing resume failure instead of retrying rejected config forever', async () => {
     const server = controllable(1);
     const close = vi.spyOn(server.transport, 'close');

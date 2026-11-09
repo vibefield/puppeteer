@@ -1,4 +1,7 @@
 import type {
+  AgentBriefingReceipt,
+  AgentBriefingRefusalPolicy,
+  AgentBriefingWithheld,
   AgentRunBriefing,
   AgentModelProvider,
   AgentModelService,
@@ -87,11 +90,15 @@ import type { Agent } from './agent.js';
 export interface PreparedProviderSession {
   readonly sessionId: string;
   readonly launch: TerminalSpec;
+  /** Briefing fields this launch goes ahead without, under `briefingRefusal: 'withhold'`. */
+  readonly briefingWithheld?: readonly AgentBriefingWithheld[] | undefined;
   adopt(runtimeSessionId: string): Promise<AgentAdapterBinding>;
   dispose(): void | Promise<void>;
 }
 
 export interface AgentProviderSessionOptions extends AgentRunBriefing {
+  /** Asked only of a preparation. Absent = refuse. */
+  briefingRefusal?: AgentBriefingRefusalPolicy | undefined;
   /** Runtime-owned join identity for private diagnostics; adapters must not reinterpret it. */
   runtimeRunId?: RuntimeRunId | undefined;
   cwd: string;
@@ -270,6 +277,15 @@ export interface CreateAgentSessionOptions extends AgentRunBriefing {
   ingress?: HostIngress | undefined;
 }
 
+/** A launch for a caller-owned terminal. A typed launch is one of these, so it alone can go ahead without a field. */
+export interface PrepareAgentSessionOptions extends CreateAgentSessionOptions {
+  /**
+   * What to do with a briefing field this launch cannot honour: refuse the launch (the default), or launch without
+   * it and say so in the receipt. Field by field; withholding `mcpServers` withholds `allowTools` too.
+   */
+  briefingRefusal?: AgentBriefingRefusalPolicy | undefined;
+}
+
 /** Consumer-facing spawn request. Native resume identity is accepted only through resume(). */
 export type SpawnAgentOptions = Omit<CreateAgentSessionOptions, 'resume'>;
 
@@ -311,13 +327,15 @@ export interface ResumeAgentOptions extends AgentRunBriefing {
 }
 
 /** Host-only native invocation request. Adapters normalize it before normal preparation. */
-export interface PrepareAgentInvocationOptions extends AgentNativeInvocation {
+export interface PrepareAgentInvocationOptions extends AgentNativeInvocation, AgentRunBriefing {
   title?: string | undefined;
   creationRequestId?: string | undefined;
   externalRefs?: readonly ExternalRef[] | undefined;
   workspace?: AgentWorkspaceRequest | undefined;
   /** The host's say over the session's loopback ingress (stable ingress), as for `prepareSession`. */
   ingress?: HostIngress | undefined;
+  /** Withhold rather than refuse, as for `prepareSession`: a person's own command is not failed for a host's addition. */
+  briefingRefusal?: AgentBriefingRefusalPolicy | undefined;
 }
 
 export interface AgentSessionInfo {
@@ -346,6 +364,8 @@ export interface AgentSessionInfo {
   profileId?: string;
   /** The profile set the run was born under, when a spawn chose one or took the default set's account. */
   profileSetId?: string;
+  /** What the launch did with its briefing, by field name. Absent when it was asked to carry none. */
+  briefing?: AgentBriefingReceipt;
 }
 
 export type AgentSessionErrorCode =
@@ -470,6 +490,8 @@ export interface PreparedAgentSessionInfo {
   launch: TerminalSpec;
   workspace: AgentWorkspaceInfo;
   expiresAt: string;
+  /** What the launch did with its briefing, by field name. Absent when it was asked to carry none. */
+  briefing?: AgentBriefingReceipt;
 }
 
 export type PrepareAgentSessionResult = PreparedAgentSessionInfo | PreparationFailure;
@@ -1115,7 +1137,7 @@ export interface AgentRuntime {
    */
   prepareInvocation(options: PrepareAgentInvocationOptions): Promise<PrepareAgentSessionResult>;
   /** Low-level provider-composition API. Terminal hosts use prepareInvocation(). */
-  prepareSession(options: CreateAgentSessionOptions): Promise<PrepareAgentSessionResult>;
+  prepareSession(options: PrepareAgentSessionOptions): Promise<PrepareAgentSessionResult>;
   adoptPrepared(preparationId: string, options: AdoptPreparedSessionOptions): Promise<AdoptPreparedSessionResult>;
   restoreSession(options: RestoreAgentSessionOptions): Promise<CreateAgentSessionResult>;
   /** Re-attach a run to a process that outlived the host (see {@link AttachAgentOptions}). */

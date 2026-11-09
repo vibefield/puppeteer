@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AgentLaunchProviderSchema,
+  AgentLaunchRefusedError,
   type AgentAdapterBinding,
   type AgentHost,
   type AgentProfile,
@@ -1710,6 +1711,80 @@ describe('stable ingress (AR-4 / PU-1)', () => {
     ]) {
       expect(door).toHaveBeenCalledWith(expect.objectContaining({ ingress }));
     }
+  });
+
+  describe('a typed launch under withhold', () => {
+    const servers = { field: { command: 'door' } };
+
+    it('Claude: drops what the executable has no flag for and carries the receipt to the runtime', async () => {
+      adapters.preflightClaudeLaunch.mockImplementation(
+        async ({ executable, mcpServers }: { executable?: string; mcpServers: boolean }) => {
+          if (mcpServers) {
+            throw new AgentLaunchRefusedError('UNSUPPORTED_LAUNCH_FIELD', 'no flag', 'mcpServers');
+          }
+          return { executable: executable ?? 'claude' };
+        },
+      );
+      adapters.prepareClaudeTuiSession.mockResolvedValue({
+        ...fakePreparation('claude'),
+        launch: { command: 'claude', args: [], cwd: '/work/repo', env: {} },
+        briefingWithheld: [{ field: 'instructions', code: 'CONFLICTING_LAUNCH_FIELD' }],
+      });
+      const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+        ({ descriptor }) => descriptor.id === 'claude',
+      )!;
+      const prepared = await claude.prepareSession!({
+        cwd: '/work/repo',
+        host,
+        mcpServers: servers,
+        allowTools: ['field/*'],
+        instructions: 'role',
+        briefingRefusal: 'withhold',
+      });
+      const [handed] = adapters.prepareClaudeTuiSession.mock.lastCall as unknown as [Record<string, unknown>];
+      expect(handed).not.toHaveProperty('mcpServers');
+      expect(handed).not.toHaveProperty('allowTools');
+      expect(handed).toMatchObject({ instructions: 'role', briefingRefusal: 'withhold' });
+      expect(prepared.briefingWithheld).toEqual([
+        { field: 'mcpServers', code: 'UNSUPPORTED_LAUNCH_FIELD' },
+        { field: 'allowTools', code: 'UNSUPPORTED_LAUNCH_FIELD' },
+        { field: 'instructions', code: 'CONFLICTING_LAUNCH_FIELD' },
+      ]);
+    });
+
+    it('Claude: still refuses by default', async () => {
+      adapters.preflightClaudeLaunch.mockImplementation(async () => {
+        throw new AgentLaunchRefusedError('UNSUPPORTED_LAUNCH_FIELD', 'no flag', 'mcpServers');
+      });
+      const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+        ({ descriptor }) => descriptor.id === 'claude',
+      )!;
+      await expect(claude.prepareSession!({ cwd: '/work/repo', host, mcpServers: servers })).rejects.toMatchObject({
+        code: 'UNSUPPORTED_LAUNCH_FIELD',
+      });
+    });
+
+    it('hands the policy to Codex and Grok', async () => {
+      adapters.prepareCodexTuiSession.mockResolvedValue(fakePreparation('codex'));
+      const grok = {
+        createSession: vi.fn(async () => fakeSession('grok')),
+        prepareSession: vi.fn(async () => fakePreparation('grok')),
+        dispose: vi.fn(async () => undefined),
+      };
+      adapters.createGrokBackend.mockReturnValue(grok);
+      const providers = createBuiltinProviders({ executables: { codex: '/opt/codex', grok: '/opt/grok' } });
+      for (const id of ['codex', 'grok']) {
+        await providers.find(({ descriptor }) => descriptor.id === id)!.prepareSession!({
+          cwd: '/work/repo',
+          host,
+          briefingRefusal: 'withhold',
+        });
+      }
+      expect(adapters.prepareCodexTuiSession).toHaveBeenCalledWith(
+        expect.objectContaining({ briefingRefusal: 'withhold' }),
+      );
+      expect(grok.prepareSession).toHaveBeenCalledWith(expect.objectContaining({ briefingRefusal: 'withhold' }));
+    });
   });
 
   it('refuses a Claude attach without the ingress the process was launched against', async () => {

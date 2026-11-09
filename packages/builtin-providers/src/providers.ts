@@ -1,4 +1,12 @@
-import { pickAgentBriefing, validateAgentBriefing, type AgentRunBriefing } from '@vibefield/puppeteer-core';
+import {
+  pickAgentBriefing,
+  settleAgentBriefing,
+  validateAgentBriefing,
+  withholdUntilAccepted,
+  type AgentBriefingRefusalPolicy,
+  type AgentBriefingSettlement,
+  type AgentRunBriefing,
+} from '@vibefield/puppeteer-core';
 import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
 import type {
@@ -344,31 +352,37 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     resume: string | undefined,
     title: string | undefined,
     launch: ClaudeProviderOptions | undefined,
-    briefing: AgentRunBriefing,
-  ): Promise<{ executable: string; providerVersion?: string }> => {
+    asked: AgentRunBriefing,
+    refusal?: AgentBriefingRefusalPolicy,
+  ): Promise<{ executable: string; providerVersion?: string; settled: AgentBriefingSettlement }> => {
     const executable = launch?.executable ?? resolved.claude ?? 'claude';
     // The unified Imposter selects its vendor outside Claude's argv surface,
     // so probing an unselected `ai` entry point would fail before the owning
     // launcher can add that selection. Other custom paths still get probed.
     if (/^ai(?:\.(?:mjs|cjs|js|ts|exe))?$/i.test(basename(executable))) {
-      validateAgentBriefing(briefing, undefined, 'Claude imposter');
-      return { executable };
+      return { executable, settled: settleAgentBriefing(asked, undefined, 'Claude imposter', refusal) };
     }
-    const detection = await preflightClaudeLaunch({
-      executable,
-      freshSession: resume === undefined && launch?.resumeInvocation === undefined,
-      resume: resume !== undefined,
-      title: title !== undefined,
-      model: launch?.model !== undefined,
-      effort: launch?.effort !== undefined,
-      settingSources: launch?.settingSources !== undefined,
-      mcpServers: briefing.mcpServers !== undefined,
-      allowTools: briefing.allowTools !== undefined && briefing.allowTools.length > 0,
-      instructions: briefing.instructions !== undefined,
-    });
+    const { result: detection, settled } = await withholdUntilAccepted(
+      { briefing: pickAgentBriefing(asked), withheld: [] },
+      refusal,
+      (briefing) =>
+        preflightClaudeLaunch({
+          executable,
+          freshSession: resume === undefined && launch?.resumeInvocation === undefined,
+          resume: resume !== undefined,
+          title: title !== undefined,
+          model: launch?.model !== undefined,
+          effort: launch?.effort !== undefined,
+          settingSources: launch?.settingSources !== undefined,
+          mcpServers: briefing.mcpServers !== undefined,
+          allowTools: briefing.allowTools !== undefined && briefing.allowTools.length > 0,
+          instructions: briefing.instructions !== undefined,
+        }),
+    );
     return {
       executable: detection.executable,
       ...(detection.version ? { providerVersion: detection.version } : {}),
+      settled,
     };
   };
   // One Claude usage service for the composition: each session's status line reaches its listeners, stamped with the
@@ -530,7 +544,18 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           automate: host.automateTerminal,
         });
       },
-      async prepareSession({ cwd, resume, title, host, agentOptions, profile, ingress, stagingDir, ...briefing }) {
+      async prepareSession({
+        cwd,
+        resume,
+        title,
+        host,
+        agentOptions,
+        profile,
+        ingress,
+        stagingDir,
+        briefingRefusal,
+        ...briefing
+      }) {
         // A typed launch is prepared, never created. What the person typed is read from the
         // invocation's own options: the profile binding normalizes an empty argv of its own, which
         // binds the environment and says nothing of the argv.
@@ -544,9 +569,16 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           typed,
         );
         const sessionTitle = typed?.title ?? title;
-        const { executable, providerVersion } = await claudeLaunchFor(resume, sessionTitle, launch, briefing);
+        const { executable, providerVersion, settled } = await claudeLaunchFor(
+          resume,
+          sessionTitle,
+          launch,
+          briefing,
+          briefingRefusal,
+        );
         const prepared = await prepareClaudeTuiSession({
-          ...pickAgentBriefing(briefing),
+          ...settled.briefing,
+          ...(briefingRefusal === undefined ? {} : { briefingRefusal }),
           cwd,
           resume,
           title: sessionTitle,
@@ -572,9 +604,11 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           accountUsage: claudeAccountUsageSink(cwd, profile, launch),
         });
         const { command, args, cwd: launchCwd, env } = prepared.launch;
+        const briefingWithheld = [...settled.withheld, ...(prepared.briefingWithheld ?? [])];
         return {
           sessionId: prepared.sessionId,
           launch: { command, args, cwd: launchCwd, env },
+          ...(briefingWithheld.length > 0 ? { briefingWithheld } : {}),
           adopt: (runtimeSessionId) => prepared.adopt(runtimeSessionId),
           dispose: () => prepared.dispose(),
         };
@@ -646,7 +680,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           prompt: launch?.prompt,
         });
       },
-      async prepareSession({ cwd, resume, host, agentOptions, profile, ingress, ...briefing }) {
+      async prepareSession({ cwd, resume, host, agentOptions, profile, ingress, briefingRefusal, ...briefing }) {
         const own = agentOptions as CodexProviderOptions | undefined;
         const launch = withProfileBinding(
           'codex',
@@ -658,6 +692,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         );
         return prepareCodexTuiSession({
           ...pickAgentBriefing(briefing),
+          ...(briefingRefusal === undefined ? {} : { briefingRefusal }),
           cwd,
           resume,
           executable: launch?.executable ?? resolved.codex,
@@ -756,7 +791,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           onElicitation: launch?.onElicitation,
         });
       },
-      prepareSession: ({ cwd, resume, host, agentOptions, profile, ingress, ...briefing }) => {
+      prepareSession: ({ cwd, resume, host, agentOptions, profile, ingress, briefingRefusal, ...briefing }) => {
         const launch = withProfileBinding(
           'grok',
           cwd,
@@ -767,6 +802,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         );
         return grokBackendFor(launch, host).prepareSession({
           ...pickAgentBriefing(briefing),
+          ...(briefingRefusal === undefined ? {} : { briefingRefusal }),
           cwd,
           resume,
           ingress,

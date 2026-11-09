@@ -3,7 +3,7 @@
  * run's own) plus per-session launch, observer, and ACP-control services.
  */
 
-import { announceRunHelper, validateAgentBriefing } from '@vibefield/puppeteer-core';
+import { announceRunHelper, settleAgentBriefing, withAgentBriefing } from '@vibefield/puppeteer-core';
 import { GROK_BRIEFING_CAPABILITIES } from './launch/briefing.js';
 import { grokHelperEnvironment } from './launch/environment.js';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
@@ -64,9 +64,11 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
 
   async function prepareSession(opts: CreateGrokSessionOptions): Promise<PreparedGrokSession> {
     if (disposed) throw new Error('Grok backend is disposed');
-    opts = { ...opts, ...validateAgentBriefing(opts, GROK_BRIEFING_CAPABILITIES, 'Grok') };
+    const refusal = opts.briefingRefusal;
+    let settled = settleAgentBriefing(opts, GROK_BRIEFING_CAPABILITIES, 'Grok', refusal);
     if (childExtras?.AI_PERSONA === 'grok' || childExtras?.PUPPETEER_IMPOSTER_HOME)
-      validateAgentBriefing(opts, undefined, 'Grok imposter');
+      settled = settleAgentBriefing(settled.briefing, undefined, 'Grok imposter', refusal, settled.withheld);
+    opts = withAgentBriefing(opts, settled.briefing);
     const { cwd } = opts;
     // A shared leader cannot name a run: the door names a caller by ancestry, and every run's MCP children would share
     // one parent. A run that declares servers gets a leader of its own (`--leader-socket`), named to the host before
@@ -112,7 +114,7 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
         cwd,
         ...(childExtras ? { env: childExtras } : {}),
       };
-      return createPreparedGrokSession(
+      const session = createPreparedGrokSession(
         sessionId,
         launch,
         () => opened,
@@ -126,6 +128,7 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
         },
         runLeader ? stopRunLeader : undefined,
       );
+      return settled.withheld.length > 0 ? { ...session, briefingWithheld: settled.withheld } : session;
     } catch (error) {
       await control?.dispose().catch(() => undefined);
       await stopRunLeader();

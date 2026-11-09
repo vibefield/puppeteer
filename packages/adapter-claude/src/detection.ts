@@ -324,6 +324,7 @@ export function assertClaudeLaunchCapabilities(
     throw new AgentLaunchRefusedError(
       'UNSUPPORTED_LAUNCH_FIELD',
       `This Claude executable does not support launch field: ${field}.`,
+      field,
     );
   if (missing.length > 0) throw new ClaudeCapabilityError(detection, missing);
 }

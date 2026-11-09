@@ -17,8 +17,11 @@ import {
   AgentNativeInvocationPassthroughKindSchema,
   AgentNativeInvocationSchema,
   AgentProviderDescriptorSchema,
+  AGENT_BRIEFING_FIELDS,
+  agentBriefingReceipt,
   pickAgentBriefing,
-  validateAgentBriefing,
+  settleAgentBriefing,
+  withAgentBriefing,
   DistributionProviderSchema,
   NATIVE_PROFILE_SET_ID,
   ProfileProviderSchema,
@@ -41,6 +44,8 @@ import {
   type AgentInstallation,
   type AgentLaunchProvider,
   type AgentMonitorState,
+  type AgentBriefingField,
+  type AgentBriefingWithheld,
   type AgentNativeInvocation,
   type AgentNativeInvocationResolution,
   type AgentProfile,
@@ -106,6 +111,7 @@ import type {
   InstallPlan,
   InstallPlanOptions,
   PreparationFailure,
+  PrepareAgentSessionOptions,
   PreparedAgentSessionInfo,
   PreparedProviderSession,
   PrepareAgentSessionResult,
@@ -261,6 +267,10 @@ interface ManagedRun {
   monitor?: AgentMonitorService | undefined;
   /** The run's staging directory while the run stands: made for its launch, or an attached run's, found by its id. */
   stagingDir?: string | undefined;
+  /** The briefing fields this launch was asked to carry, by name. */
+  briefingAsked?: readonly AgentBriefingField[] | undefined;
+  /** What the runtime and the adapter withheld of them. */
+  briefingWithheld?: readonly AgentBriefingWithheld[] | undefined;
 }
 
 interface TerminalFailureEntry {
@@ -1606,7 +1616,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
   function creationFingerprint(
     operation: RuntimeCreationOperation,
-    request: CreateAgentSessionOptions,
+    request: PrepareAgentSessionOptions,
     externalRefs: readonly ExternalRef[],
   ): string {
     const cwd = request.cwd ?? options.defaultCwd;
@@ -1630,6 +1640,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       ...(request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }),
       ...(request.modelSelection === undefined ? {} : { modelSelection: request.modelSelection }),
       ...pickAgentBriefing(request),
+      // What a launch does with a refusal is part of what was asked.
+      ...(request.briefingRefusal === undefined ? {} : { briefingRefusal: request.briefingRefusal }),
       // Two requests that differ only by account are different runs.
       ...(request.profile === undefined ? {} : { profile: request.profile }),
       ...(request.profileSet === undefined ? {} : { profileSet: request.profileSet }),
@@ -1716,19 +1728,27 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
   function beginCreation<T extends CreateAgentSessionResult | PrepareAgentSessionResult>(
     operation: RuntimeCreationOperation,
-    request: CreateAgentSessionOptions,
-    execute: (run: ManagedRun, request: CreateAgentSessionOptions) => Promise<T>,
+    request: PrepareAgentSessionOptions,
+    execute: (run: ManagedRun, request: PrepareAgentSessionOptions) => Promise<T>,
   ): Promise<T> {
     let launchFailure: ReturnType<typeof providerError> | undefined;
     const original = request;
+    const briefingAsked = AGENT_BRIEFING_FIELDS.filter((field) => request[field] !== undefined);
+    let briefingWithheld: readonly AgentBriefingWithheld[] = [];
     try {
       const provider = providers.get(request.agent);
       // Snapshot the briefing synchronously: a caller cannot change it while allocation, model discovery or
       // workspace acquisition is pending, nor can an adapter mutate the caller's server/environment records.
-      const briefing = provider
-        ? validateAgentBriefing(request, provider.descriptor.briefing, provider.descriptor.label)
-        : {};
-      request = { ...request, ...briefing };
+      if (provider) {
+        const settled = settleAgentBriefing(
+          request,
+          provider.descriptor.briefing,
+          provider.descriptor.label,
+          request.briefingRefusal,
+        );
+        request = withAgentBriefing(request, settled.briefing);
+        briefingWithheld = settled.withheld;
+      }
       if (defaultedSpawns.has(original)) defaultedSpawns.add(request);
       if (restoredResumes.has(original)) restoredResumes.add(request);
       const attributed = attributedAccounts.get(original);
@@ -1739,7 +1759,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     // Idempotency tracks only requests with creationRequestId. Shutdown must
     // also wait for anonymous requests, including workspace/provider awaits.
     const promise = Promise.resolve().then(() =>
-      executeCreation(operation, request, (run) => execute(run, request), launchFailure),
+      executeCreation(
+        operation,
+        request,
+        (run) => {
+          run.briefingAsked = briefingAsked;
+          run.briefingWithheld = briefingWithheld;
+          return execute(run, request);
+        },
+        launchFailure,
+      ),
     );
     pendingCreations.add(promise);
     const clear = () => pendingCreations.delete(promise);
@@ -2319,6 +2348,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (extras.processId !== undefined) info.processId = extras.processId;
     if (run.profileId !== undefined) info.profileId = run.profileId;
     if (run.profileSetId !== undefined) info.profileSetId = run.profileSetId;
+    const briefingReceipt = agentBriefingReceipt(run.briefingAsked ?? [], run.briefingWithheld ?? []);
+    if (briefingReceipt) info.briefing = briefingReceipt;
     if (!run.monitor) throw new Error(`runtime monitor was not installed for run ${run.identity.runtimeRunId}`);
     let managed: ManagedSession | undefined;
     const agentController = createAgentController({
@@ -3413,7 +3444,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       } catch (error) {
         report(error);
       }
-      const prepareRequest: CreateAgentSessionOptions = {
+      const prepareRequest: PrepareAgentSessionOptions = {
         agent: invocation.providerId,
         cwd: invocation.cwd,
         title: request.title,
@@ -3423,6 +3454,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         resume: normalized.resume,
         ...(normalized.options === undefined ? {} : { agentOptions: normalized.options }),
         ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
+        ...pickAgentBriefing(request),
+        ...(request.briefingRefusal === undefined ? {} : { briefingRefusal: request.briefingRefusal }),
       };
       if (attribution.account !== undefined) attributedAccounts.set(prepareRequest, attribution.account);
       const result = await runtime.prepareSession(prepareRequest);
@@ -3445,7 +3478,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return result;
     },
 
-    prepareSession(request: CreateAgentSessionOptions): Promise<PrepareAgentSessionResult> {
+    prepareSession(request: PrepareAgentSessionOptions): Promise<PrepareAgentSessionResult> {
       if (disposed) throw new Error('agent runtime is disposed');
       return beginCreation('prepare', request, async (run, request) => {
         run.status = 'preparing';
@@ -3499,6 +3532,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           host: options.host,
           agentOptions: request.agentOptions,
           ...pickAgentBriefing(request),
+          ...(request.briefingRefusal === undefined ? {} : { briefingRefusal: request.briefingRefusal }),
           ...(profile === undefined ? {} : { profile }),
           ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
         };
@@ -3530,6 +3564,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         run.status = 'prepared';
         // Prepared is not started: no process runs until the host spawns and adopts it.
         run.monitor?.updateRun('preparing', { alive: true, nativeSession: nativeSessionClaim.value });
+        run.briefingWithheld = [...(run.briefingWithheld ?? []), ...(prepared.briefingWithheld ?? [])];
+        const briefingReceipt = agentBriefingReceipt(run.briefingAsked ?? [], run.briefingWithheld);
         const publicInfo: PreparedAgentSessionInfo = {
           preparationId,
           agent: provider.descriptor.id,
@@ -3541,6 +3577,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           launch: cloneLaunch(prepared.launch),
           workspace: workspaceInfo(lease.workspace),
           expiresAt: new Date(expiresAtMs).toISOString(),
+          ...(briefingReceipt ? { briefing: briefingReceipt } : {}),
         };
         const timer = setTimeout(() => {
           const current = preparations.get(preparationId);

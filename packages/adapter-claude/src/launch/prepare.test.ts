@@ -884,6 +884,78 @@ it.each(['--append-system-prompt=old', '--system-prompt-snapshot=on', '--restric
   },
 );
 
+describe('a person’s own flags under withhold', () => {
+  const briefing = {
+    mcpServers: { field: { command: '/opt/door' } },
+    allowTools: ['field/read'],
+    instructions: 'role briefing',
+  };
+  const withholds = (field: string) => ({ field, code: 'CONFLICTING_LAUNCH_FIELD' });
+
+  it.each([
+    [['--mcp-config', 'mine.json'], ['mcpServers', 'allowTools'], ['instructions']],
+    [['--strict-mcp-config'], ['mcpServers', 'allowTools'], ['instructions']],
+    [['--allowedTools', 'Bash'], ['allowTools'], ['mcpServers', 'instructions']],
+    [['--system-prompt=mine'], ['instructions'], ['mcpServers', 'allowTools']],
+    [['--restricted'], ['mcpServers', 'allowTools', 'instructions'], []],
+  ])('launches %j without what it conflicts with, and says so', async (carriedArgs, out, kept) => {
+    const session = await prepare({ ...briefing, carriedArgs, briefingRefusal: 'withhold' });
+    expect(session.briefingWithheld).toEqual(out.map(withholds));
+    // The person’s own words stay; nothing of ours rides beside them.
+    for (const word of carriedArgs) expect(session.args).toContain(word);
+    expect(session.args.filter((arg) => arg === '--mcp-config')).toHaveLength(
+      Number(kept.includes('mcpServers')) + Number(carriedArgs.includes('--mcp-config')),
+    );
+    expect(session.args.some((arg) => arg.includes('mcp__field__read'))).toBe(kept.includes('allowTools'));
+    expect(session.args.includes('--append-system-prompt-file')).toBe(kept.includes('instructions'));
+  });
+
+  it('reports nothing withheld when nothing conflicts', async () => {
+    const session = await prepare({ ...briefing, carriedArgs: ['--verbose'], briefingRefusal: 'withhold' });
+    expect(session.briefingWithheld ?? []).toEqual([]);
+    expect(session.args).toContain('--mcp-config');
+  });
+
+  it('keeps refusing by default', async () => {
+    await expect(prepareClaudeSession({ ...BASE, ...briefing, carriedArgs: ['--restricted'] })).rejects.toMatchObject({
+      code: 'CONFLICTING_LAUNCH_FIELD',
+    });
+  });
+
+  it('withholds what the imposter cannot execute, rather than failing a typed launch', async () => {
+    const session = await prepare({ env: { AI_PERSONA: 'claude' }, instructions: 'role', briefingRefusal: 'withhold' });
+    expect(session.briefingWithheld).toEqual([{ field: 'instructions', code: 'UNSUPPORTED_LAUNCH_FIELD' }]);
+  });
+
+  it('withholds what the executable has no flag for, end to end through a preparation', async () => {
+    // /usr/bin/true answers every probe with nothing: every briefing flag is missing, and no agent runs.
+    const stagingDir = mkdtempSync(join(tmpdir(), 'prepare-withhold-'));
+    const configDir = mkdtempSync(join(tmpdir(), 'prepare-withhold-config-'));
+    const session = await prepareClaudeTuiSession({
+      cwd: BASE.cwd,
+      home: BASE.home,
+      configDir,
+      stagingDir,
+      executable: '/usr/bin/true',
+      ...briefing,
+      briefingRefusal: 'withhold',
+      automate: async () => ({ accepted: true }),
+    });
+    try {
+      expect(session.briefingWithheld).toEqual([
+        { field: 'mcpServers', code: 'UNSUPPORTED_LAUNCH_FIELD' },
+        { field: 'allowTools', code: 'UNSUPPORTED_LAUNCH_FIELD' },
+        { field: 'instructions', code: 'UNSUPPORTED_LAUNCH_FIELD' },
+      ]);
+      expect(session.launch.args).not.toContain('--mcp-config');
+    } finally {
+      await session.dispose();
+      rmSync(stagingDir, { recursive: true, force: true });
+      rmSync(configDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('a run’s staging directory, the runtime’s (PU-C)', () => {
   it('writes every launch file in the directory it is handed, and removes the files, never the directory', async () => {
     const stagingDir = mkdtempSync(join(tmpdir(), 'prepare-staging-'));

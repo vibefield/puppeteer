@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { AgentBriefingField } from './briefing.js';
 import { AgentProviderDescriptorSchema, AgentProviderIdSchema } from './provider.js';
 
 /**
@@ -211,6 +212,8 @@ export class AgentLaunchRefusedError<Code extends string = string> extends Error
   constructor(
     readonly code: Code,
     message: string,
+    /** The one briefing field this refusal is about, when it is about one: under `withhold` that field can go. */
+    readonly field?: AgentBriefingField | undefined,
   ) {
     super(message);
     this.name = 'AgentLaunchRefusedError';

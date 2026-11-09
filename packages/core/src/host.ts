@@ -12,6 +12,7 @@
  * terminal, and observes/controls the result).
  */
 
+import type { AgentBriefingRefusalPolicy } from './services/briefing.js';
 import { AgentLaunchRefusedError } from './services/launch.js';
 
 /** An authoritative native terminal recipe for a host spawn or caller-owned exec. */
@@ -94,6 +95,8 @@ export interface AgentTuiSessionOptions {
   host: AgentHost;
   /** The host's say over the session's loopback ingress (see {@link HostIngress}). */
   ingress?: HostIngress | undefined;
+  /** What to do with a briefing field this launch cannot honour. Absent = refuse. */
+  briefingRefusal?: AgentBriefingRefusalPolicy | undefined;
   /**
    * A directory for this run's launch files that outlives the host's process. The runtime creates it (0700, empty)
    * and removes it once the run is over; the adapter writes inside it and never removes it. Absent = the adapter

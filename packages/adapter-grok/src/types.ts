@@ -2,6 +2,8 @@ import type { CreateAcpSessionOptions } from '@vibefield/puppeteer-adapter-acp';
 import type {
   AgentAdapterBinding,
   AgentHost,
+  AgentBriefingRefusalPolicy,
+  AgentBriefingWithheld,
   AgentRunBriefing,
   HostIngress,
   TerminalSpec,
@@ -27,6 +29,8 @@ export interface CreateGrokSessionOptions extends AgentRunBriefing {
   cwd: string;
   /** The host's ear for a briefed run's own leader (`onHelperProcess`). A shared leader is named to nobody. */
   ingress?: HostIngress | undefined;
+  /** What to do with a briefing field this launch cannot honour. Absent = refuse. */
+  briefingRefusal?: AgentBriefingRefusalPolicy | undefined;
   resume?: string | undefined;
   resumeLatest?: boolean | undefined;
   model?: string | undefined;
@@ -40,6 +44,8 @@ export interface CreateGrokSessionOptions extends AgentRunBriefing {
 export interface PreparedGrokSession {
   readonly sessionId: string;
   readonly launch: TerminalSpec;
+  /** What of the briefing this launch goes ahead without, under `briefingRefusal: 'withhold'`. */
+  readonly briefingWithheld?: readonly AgentBriefingWithheld[] | undefined;
   adopt(runtimeSessionId: string): Promise<AgentAdapterBinding>;
   dispose(): Promise<void>;
 }
