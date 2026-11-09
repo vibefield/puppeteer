@@ -17,6 +17,23 @@ export function assertConsumerNpmVersion() {
   }
 }
 
+// Bundling for Node must follow every provider's dependencies; a plain import cannot show that.
+export function verifyProvidersBundle(consumer) {
+  const node = (args) => execFileSync(process.execPath, args, { cwd: consumer, stdio: 'inherit', timeout: 60_000 });
+  writeFileSync(
+    join(consumer, 'bundle-node.mjs'),
+    `import { build } from 'esbuild';
+await build({
+  stdin: { contents: "import { createBuiltinProviders } from '@vibefield/puppeteer-builtin-providers'; console.log(typeof createBuiltinProviders);", resolveDir: process.cwd() },
+  bundle: true, platform: 'node', format: 'cjs', outfile: 'bundled/providers.cjs',
+  external: ['bufferutil', 'utf-8-validate'], define: { 'import.meta.url': 'undefined' }, logLevel: 'warning',
+});
+`,
+  );
+  node(['bundle-node.mjs']);
+  node(['bundled/providers.cjs']);
+}
+
 // Local tarballs exercise this same consumer check before the first registry publication.
 export function verifyPublishedPackages({ root = repositoryRoot, tarballs } = {}) {
   const packages = readReleasePackages(root);
@@ -73,19 +90,7 @@ console.log('Package roots imported in ordinary Node');
       execFileSync(process.execPath, args, { cwd: consumer, stdio: 'inherit', timeout: 60_000, ...options });
     node(['runtime.mjs']);
 
-    // Bundling for Node must follow every provider's dependencies; a plain import cannot show that.
-    writeFileSync(
-      join(consumer, 'bundle-node.mjs'),
-      `import { build } from 'esbuild';
-await build({
-  stdin: { contents: "import { createBuiltinProviders } from '@vibefield/puppeteer-builtin-providers'; console.log(typeof createBuiltinProviders);", resolveDir: process.cwd() },
-  bundle: true, platform: 'node', format: 'cjs', outfile: 'bundled/providers.cjs',
-  external: ['bufferutil', 'utf-8-validate'], define: { 'import.meta.url': 'undefined' }, logLevel: 'warning',
-});
-`,
-    );
-    node(['bundle-node.mjs']);
-    node(['bundled/providers.cjs']);
+    verifyProvidersBundle(consumer);
 
     // Testing helpers need Vitest; Views contains CSS and must resolve in a browser bundle.
     writeFileSync(
