@@ -20,7 +20,7 @@ vi.mock('@vibefield/puppeteer-view-sdk/react', async (importOriginal) => {
 });
 
 const NOW = Date.parse('2026-07-23T20:00:00.000Z');
-function reading(usedPercent: number): AccountUsageBatch {
+function reading(usedPercent: number, resetsAtMs = NOW + 60_001): AccountUsageBatch {
   return {
     refreshedAt: new Date(NOW).toISOString(),
     entries: [
@@ -39,7 +39,7 @@ function reading(usedPercent: number): AccountUsageBatch {
                 label: 'SHORT',
                 kind: 'window',
                 usedPercent,
-                resetsAt: new Date(NOW + 60_001).toISOString(),
+                resetsAt: new Date(resetsAtMs).toISOString(),
               },
             ],
           },
@@ -152,5 +152,30 @@ describe('the usage column owns its feed and clock', () => {
     expect(tile.querySelector('b')?.textContent).toBe('64%');
     await act(async () => next.emit(reading(71)));
     expect(tile.querySelector('b')?.textContent).toBe('71%');
+  });
+
+  it('keeps a window whose reset passes on the column’s clock: faint, never hot, never the figure', async () => {
+    const source = feed(reading(100, NOW + 1_000));
+    const test = harness();
+    await test.render(source.port);
+    const tile = test.container.querySelector<HTMLButtonElement>('.vf-usage-tile')!;
+    expect(tile.querySelector('.vf-usage-fill')?.classList.contains('is-hot')).toBe(true);
+    expect(tile.querySelector('b')?.textContent).toBe('100%');
+
+    await act(async () => {
+      vi.advanceTimersByTime(1_000);
+    });
+    const fill = tile.querySelector('.vf-usage-fill')!;
+    expect(fill.classList.contains('is-kept')).toBe(true);
+    expect(fill.classList.contains('is-hot')).toBe(false);
+    expect(tile.classList.contains('is-hot')).toBe(false);
+    expect(tile.querySelector('b')?.textContent).toBe('—');
+    expect(tile.querySelector('b')?.classList.contains('is-hot')).toBe(false);
+
+    await act(async () => tile.focus());
+    const row = test.container.querySelector('.vf-usage-popup-row')!;
+    expect(row.classList.contains('is-kept')).toBe(true);
+    expect(row.classList.contains('is-hot')).toBe(false);
+    expect(row.textContent).toContain('↻ NOW');
   });
 });

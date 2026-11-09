@@ -48,7 +48,7 @@ function Rings({ tile }: { tile: UsageTile }) {
         <g key={ring.key}>
           <circle className="vf-usage-track" cx="18" cy="18" r={RING_RADIUS[ring.slot]} pathLength="100" />
           <circle
-            className={`vf-usage-fill${ring.hot ? ' is-hot' : ''}`}
+            className={`vf-usage-fill${ring.hot ? ' is-hot' : ''}${ring.kept ? ' is-kept' : ''}`}
             cx="18"
             cy="18"
             r={RING_RADIUS[ring.slot]}
@@ -126,7 +126,11 @@ function UsagePopup({ tile, anchor, id }: PopupProps) {
       </div>
       {tile.windows.length > 0 ? (
         tile.windows.map((window) => (
-          <div className={`vf-usage-popup-row${window.hot ? ' is-hot' : ''}`} key={window.key} title={window.title}>
+          <div
+            className={`vf-usage-popup-row${window.hot ? ' is-hot' : ''}${window.kept ? ' is-kept' : ''}`}
+            key={window.key}
+            title={window.title}
+          >
             <small>
               <i className={`vf-usage-popup-slot is-${window.slot}`} />
               {window.label}

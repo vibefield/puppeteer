@@ -60,7 +60,7 @@ import { claudeConfigRoot } from './launch/config-root.js';
 import { createClaudeSessionSelection, type ClaudeSessionSelection } from './observation/session-selection.js';
 import { createPromptInjector, type PromptInjector } from './services/prompt.js';
 import { createClaudeTurnStop } from './services/turn-stop.js';
-import { observeClaudeStatusLineAccountUsage } from './services/account-usage.js';
+import type { ClaudeAccountUsageSink } from './services/account-usage.js';
 import { claudeContextWindowEvent, claudeEnvironmentEvents } from './observation/status-channel.js';
 import { ClaudeMonitorEvidence } from './normalization/monitor.js';
 import {
@@ -211,6 +211,11 @@ export interface CreateClaudeSessionOptions extends AgentRunBriefing {
   observeOtlpUsage?: boolean | undefined;
   /** Install and consume Claude's child status channel. Defaults to true for direct adapter callers. */
   observeSubagentStatus?: boolean | undefined;
+  /**
+   * Where this session's status-line quota goes: its host binds it to the account the session runs under
+   * (`createClaudeAccountUsageService().observeStatusLine`). Absent, it goes nowhere.
+   */
+  accountUsage?: ClaudeAccountUsageSink | undefined;
 }
 
 export interface ClaudeHookRailFaultInjection {
@@ -262,6 +267,7 @@ export interface AttachClaudeTuiSessionOptions extends Pick<
   | 'semanticProviderFactory'
   | 'observeOtlpUsage'
   | 'observeSubagentStatus'
+  | 'accountUsage'
 > {
   /** The native session id the running process announced. */
   sessionId: string;
@@ -1018,8 +1024,7 @@ function createClaudeObservation(
   });
 
   bridge.onStatusLine((statusEnvelope) => {
-    // Account usage is process-global (subscription quota), not session state.
-    observeClaudeStatusLineAccountUsage(statusEnvelope.body, statusEnvelope.receivedAt);
+    options.accountUsage?.observeStatusLine(statusEnvelope.body, statusEnvelope.receivedAt);
     const monitorBatch = monitorEvidence.rootStatusBatch(
       statusEnvelope.body,
       statusEnvelope.receivedAt,
@@ -1235,6 +1240,7 @@ export async function createClaudeSession(options: CreateClaudeSessionOptions): 
     semanticProviderFactory: options.semanticProviderFactory,
     observeOtlpUsage: options.observeOtlpUsage,
     observeSubagentStatus: options.observeSubagentStatus,
+    accountUsage: options.accountUsage,
     automate: options.ports.automate,
   });
   try {

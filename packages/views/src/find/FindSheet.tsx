@@ -154,7 +154,6 @@ export function FindSheet<Agent extends FindAgent>({
   const [searching, setSearching] = useState(false);
   const [active, setActive] = useState(0);
   const [clock, setClock] = useState(() => nowMs ?? Date.now());
-  const sequence = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const scope = useMemo(() => liveScope(agents), [agents]);
@@ -190,9 +189,11 @@ export function FindSheet<Agent extends FindAgent>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, bridge, scopeKey]);
 
-  // Words: one debounced question per keystroke. A late answer to an older
-  // question is ignored, and a daemon that had no answer leaves the last hits
-  // in place rather than blanking the list.
+  // Words: one debounced question per keystroke. Each run owns its question,
+  // and tearing the run down ends it (the next keystroke, the field cleared,
+  // a new live set, the sheet put away), so an answer to words no longer
+  // asked never lands. A daemon that had no answer leaves the last hits in
+  // place rather than blanking the list.
   useEffect(() => {
     if (!open || !bridge) return;
     const trimmed = query.trim();
@@ -203,8 +204,7 @@ export function FindSheet<Agent extends FindAgent>({
       setAnswered(true);
       return;
     }
-    sequence.current += 1;
-    const mine = sequence.current;
+    let live = true;
     setSearching(true);
     const timer = window.setTimeout(() => {
       void bridge
@@ -215,7 +215,7 @@ export function FindSheet<Agent extends FindAgent>({
           prefix: true,
         })
         .then((response) => {
-          if (mine !== sequence.current) return;
+          if (!live) return;
           setStatus(response.status);
           setAnswered(response.answered);
           if (response.answered) {
@@ -225,12 +225,15 @@ export function FindSheet<Agent extends FindAgent>({
           setSearching(false);
         })
         .catch(() => {
-          if (mine !== sequence.current) return;
+          if (!live) return;
           setAnswered(false);
           setSearching(false);
         });
     }, FIND_DEBOUNCE_MS);
-    return () => window.clearTimeout(timer);
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, bridge, query, scopeKey]);
 

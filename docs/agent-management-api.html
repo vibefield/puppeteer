@@ -2359,6 +2359,7 @@ interface AccountUsageMetric {
   startsAt?: string;
   resetsAt?: string;
   group?: AccountUsageMetricGroup;
+  fetchedAt?: string;
 }
 
 interface AccountUsageCredits {
@@ -2424,7 +2425,9 @@ interface AccountUsageProvider {
                       sharing a group id are one family; a view may head them with the group’s label and name each by
                       its window. <code>label</code> stays unique across groups. <code>standby</code> marks an
                       allowance drawn on only after the plan’s own limits run out; untouched, a view may keep it out of
-                      sight.
+                      sight. Core’s <code>accountUsageMetricInPlay(metric, metrics)</code> is that rule, one for every
+                      consumer: a standby metric is in play once any metric of its group is used, or once one of the
+                      plan’s own windows (no group) reaches 100%.
                     </td>
                   </tr>
                   <tr>
@@ -2446,7 +2449,12 @@ interface AccountUsageProvider {
                     <td>Polling and push</td>
                     <td>
                       Use pollIntervalMs and optional pushUpdatePollIntervalMs as provider recommendations. The
-                      application owns scheduling, caching and display policy. Honor retryAt when provided.
+                      application owns scheduling, caching and display policy. Honor retryAt when provided. A push is a
+                      reading of the meters it carries: merge it into the last reading by metric ID rather than
+                      replacing it. pushUpdatePollIntervalMs only defers a poll the push covers (it carries every meter,
+                      and the credits, the last poll had); a push never brings a poll forward. A meter a later, partial
+                      reading did not carry keeps its own <code>fetchedAt</code>, present only when earlier than its
+                      snapshot’s.
                     </td>
                   </tr>
                   <tr>
@@ -2863,6 +2871,7 @@ interface AccountUsageEntry {
   profileLabel?: string;
   /** The last good snapshot is retained when a later refresh fails. */
   stale?: boolean;
+  /** That failure. Whether the kept reading still stands for the account is `accountUsageFailurePasses`. */
   refreshFailure?: AccountUsageFailure;
 }
 
@@ -2871,10 +2880,26 @@ interface AccountUsageBatch {
   entries: AccountUsageEntry[];
 }</code></pre>
             <p>
-              The account usage monitor schedules reads per provider/profile, coalesces refreshes, incorporates pushes,
-              and applies retry/backoff policy. A failed refresh can retain the last successful result with
-              <code>stale: true</code> and <code>refreshFailure</code>; the renderer can show both the last known quota
-              and current refresh health. Profile defaults are app policy and do not change existing processes.
+              The account usage monitor schedules reads per provider/profile, coalesces refreshes, merges each push
+              into its row by metric ID, and applies retry/backoff policy. A push lands on the row of the account its
+              snapshot names or, naming none, on the provider’s only row. The registry is the account authority: a push
+              no row owns is dropped, never a row of its own, whether it names no account while the provider has several
+              rows or names an account the registry, once it has answered, does not list; one naming an account before
+              the registry first answers is kept under that ID until the answer names or removes its row. A successful
+              read is next due after the provider’s poll interval, or at the earliest reset its reading names when that
+              comes first, so a window is read again when it resets. A push never moves the poll’s clock: it never
+              brings a poll forward, never shortens a failure’s backoff or Retry-After, and counts toward the manual
+              refresh guard only when it covers the last poll, which it may then defer, no further than that reading’s
+              earliest reset. A failed refresh can retain the last successful result with <code>stale: true</code> and
+              <code>refreshFailure</code>; the renderer can show both the last known quota and current refresh health.
+              Core’s <code>accountUsageFailurePasses(failure)</code> tells the two apart: a passing failure (a read that
+              failed or was rate limited) keeps the quota beside it; one that names the account (a refused sign-in,
+              limits not exposed) is the row in its place. A poll’s failure stands until a poll succeeds: a push merged
+              meanwhile keeps a passing one beside its reading, and one that names the account gives way to the push, a
+              reading of it. No push defers a poll while its failure stands: the retry comes at the failure’s backoff or
+              Retry-After, so the failure beside a push lasts no longer than that retry. A sign-in resets only an
+              authentication failure’s local cooldown, never a poll’s server backoff. Profile defaults are app policy
+              and do not change existing processes.
             </p>
           </section>
           <section id="usage-history">

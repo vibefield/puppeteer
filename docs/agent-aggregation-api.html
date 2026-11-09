@@ -1306,7 +1306,9 @@
   query: string;
   /** Provider-native ids of the live runs to scope to; empty means everything the daemon knows. */
   nativeSessionIds: string[];
-  /** Earliest live start, so a daemon without session scope narrows by time instead. */
+  /** A hint, not a filter: the live runs' earliest start, for a daemon that cannot scope by session to narrow by
+   * time instead. A host whose daemon scopes by session never applies it, scoped or not: a resumed conversation
+   * began before its run. */
   afterMs?: number;
   limit?: number;
   /** Widen word fragments; on by default where the daemon supports it. */
