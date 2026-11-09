@@ -6,7 +6,7 @@ import { createGrokSessionObserver } from './session-observer.js';
 import { grokExtensionEvents } from '../normalization/adapter.js';
 import { GrokConversationNormalizer } from '../normalization/conversation.js';
 import { GrokUpdateNormalizer } from '../normalization/pipeline.js';
-import type { GrokObservedEvent, GrokObservedFactory } from '../normalization/types.js';
+import type { GrokObservedEvent, GrokObservedFactory, GrokSessionObserver } from '../normalization/types.js';
 import { grokUpdatesPath, latestGrokSessionId } from './session-discovery.js';
 
 const temporaryDirectories: string[] = [];
@@ -122,6 +122,15 @@ function thoughtChunk(promptId: string): unknown {
 /** The log echoes a person's text with no prompt id, at its own time (Unix seconds). */
 function userChunk(text: string, timestamp: number): unknown {
   return { ...(record({ sessionUpdate: 'user_message_chunk', content: { type: 'text', text } }) as object), timestamp };
+}
+
+/** One turn as the Imposter's leader writes it, a few milliseconds apart: the user's echo, the answer, then the end. */
+function imposterTurn(promptId: string, prompt: string): { user: unknown; answer: unknown; end: unknown } {
+  return {
+    user: userChunk(prompt, 1_784_669_125),
+    answer: record({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'imposter: ok' } }, promptId),
+    end: record({ sessionUpdate: 'turn_completed', prompt_id: promptId, stop_reason: 'end_turn' }),
+  };
 }
 
 function twoTurnRecords(): unknown[] {
@@ -462,7 +471,9 @@ describe('createGrokSessionObserver', () => {
     expect(received).toHaveLength(firstCount);
     expect(received.filter(({ event }) => event.type === 'turn:started')).toHaveLength(2);
     expect(received.filter(({ event }) => event.type === 'turn:completed')).toHaveLength(2);
-    // Only the record straddling the first stat's size was there to replay: what came after it is live.
+    // Only the record straddling the boundary, the log's size at construction, was there to replay: what came after
+    // it is live. *Erratum 2026-11-08 (RV, main's red since #72):* the boundary is the log's size when the session
+    // was opened, not its size at the first stat.
     expect(received.filter(({ phase }) => phase === 'bootstrap').map(({ event }) => event.type)).toEqual([
       'session:started',
       'adapter:native-event',
@@ -645,6 +656,8 @@ describe('createGrokSessionObserver', () => {
   });
 
   it('marks a log created after the initial observation boundary as live', async () => {
+    // *Erratum 2026-11-08 (RV, main's red since #72):* the boundary is the log's size when the session was opened, not
+    // its size at the first stat. No log exists at construction, so it is 0, and the title holds as written.
     const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-live-observer-'));
     temporaryDirectories.push(directory);
     const path = join(directory, 'updates.jsonl');
@@ -666,6 +679,117 @@ describe('createGrokSessionObserver', () => {
         event: expect.objectContaining({ type: 'session:started' }),
       }),
     ]);
+  });
+
+  /**
+   * A binding starts its observer's first poll at adoption without awaiting it, and a host submits its prompt as soon
+   * as the binding is back, so the prompt's first records can be on disk before that poll looks. The replay boundary
+   * is the log's size when the session was opened: a line drawn at the first poll's stat would replay those records,
+   * and the settle would end the live turn without its text (main's red since #72, the grok conformance turn).
+   */
+  async function freshFirstTurn(open: (path: string) => GrokSessionObserver): Promise<void> {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-boundary-fresh-'));
+    temporaryDirectories.push(directory);
+    const path = join(directory, 'updates.jsonl');
+    // Adoption: a fresh session has no log yet.
+    const observer = open(path);
+    const received: GrokObservedEvent[] = [];
+    observer.onEvent((event) => received.push(event));
+    const turn = imposterTurn('P1', 'do the thing');
+    try {
+      // The echo and the answer land before the first poll looks, and the end after it.
+      await writeFile(path, jsonl(turn.user, turn.answer));
+      await observer.poll();
+      await appendFile(path, jsonl(turn.end));
+      await observer.poll();
+
+      expect(received.filter(({ phase }) => phase !== 'live').map(({ event }) => event.type)).toEqual([]);
+      expect(received.map(({ nativeEvent }) => nativeEvent)).not.toContainEqual({ code: 'grok-replay-settled' });
+      expect(received.map(({ event }) => event)).toContainEqual(
+        expect.objectContaining({ type: 'conversation:assistant-message', text: 'imposter: ok', final: true }),
+      );
+      expect(received.at(-1)?.event).toEqual({
+        type: 'turn:completed',
+        turnId: 'P1',
+        stopReason: 'end_turn',
+        lastAssistantMessage: 'imposter: ok',
+      });
+      expect(received.at(-1)?.settledEnd).toBeUndefined();
+    } finally {
+      observer.stop();
+    }
+  }
+
+  it('reads a fresh session’s first turn as live when it lands before the first poll (boundary 0)', async () => {
+    await freshFirstTurn((path) => createGrokSessionObserver(path, { pollIntervalMs: 60_000, replayBoundary: 0 }));
+  });
+
+  it('reads a fresh session’s first turn as live when it lands before the first poll (no boundary)', async () => {
+    await freshFirstTurn((path) => createGrokSessionObserver(path, { pollIntervalMs: 60_000 }));
+  });
+
+  /**
+   * A resume: its history is on disk when the session opens, and its next turn lands before the first poll looks.
+   * `relocated`: the observer is pointed at another cwd's bucket than the one that holds the session, as when a
+   * session is resumed from a new cwd, so it finds the session by its summary.json.
+   */
+  async function resumedNextTurn(
+    open: (path: string, boundary: number) => GrokSessionObserver,
+    { relocated = false }: { relocated?: boolean } = {},
+  ): Promise<void> {
+    const home = await mkdtemp(join(tmpdir(), 'puppeteer-grok-boundary-resume-'));
+    temporaryDirectories.push(home);
+    const path = grokUpdatesPath('/work/repo', 'resumed-session', home);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(join(dirname(path), 'summary.json'), '{}');
+    const history = imposterTurn('P1', 'before resume');
+    const next = imposterTurn('P2', 'after resume');
+    const written = jsonl(history.user, history.answer, history.end);
+    await writeFile(path, written);
+    // Adoption, at the log's size when the session was opened.
+    const observer = open(
+      relocated ? grokUpdatesPath('/work/elsewhere', 'resumed-session', home) : path,
+      Buffer.byteLength(written),
+    );
+    const received: GrokObservedEvent[] = [];
+    observer.onEvent((event) => received.push(event));
+    try {
+      await appendFile(path, jsonl(next.user, next.answer));
+      await observer.poll();
+      await appendFile(path, jsonl(next.end));
+      await observer.poll();
+
+      const starts = received.flatMap(({ event, phase }) =>
+        event.type === 'turn:started' ? [[event.turnId, phase]] : [],
+      );
+      expect(starts).toEqual([
+        ['P1', 'bootstrap'],
+        ['P2', 'live'],
+      ]);
+      const ends = received.flatMap(({ event, phase, settledEnd }) =>
+        event.type === 'turn:completed' ? [[event.turnId, phase, event.lastAssistantMessage, settledEnd === true]] : [],
+      );
+      expect(ends).toEqual([
+        ['P1', 'bootstrap', 'imposter: ok', false],
+        ['P2', 'live', 'imposter: ok', false],
+      ]);
+    } finally {
+      observer.stop();
+    }
+  }
+
+  it('reads a resume’s next turn as live when it lands before the first poll (boundary at open)', async () => {
+    await resumedNextTurn((path, boundary) =>
+      createGrokSessionObserver(path, { pollIntervalMs: 60_000, replayBoundary: boundary }),
+    );
+  });
+
+  it('reads a resume’s next turn as live when it lands before the first poll (no boundary)', async () => {
+    await resumedNextTurn((path) => createGrokSessionObserver(path, { pollIntervalMs: 60_000 }));
+  });
+
+  it('reads a relocated resume’s next turn as live when it lands before the first poll (no boundary)', async () => {
+    await resumedNextTurn((path) => createGrokSessionObserver(path, { pollIntervalMs: 60_000 }), { relocated: true });
   });
 
   it('reads historic logs in bounded chunks and skips an oversized record', async () => {
