@@ -418,7 +418,8 @@ promotion. Identity never reads a credential except where a paragraph says so, a
   present, and the organization from `organizationName`, else `teamName`. Only when signed in, `_x.ai/billing` gives
   the plan (`subscription_tier` or `subscriptionTier`); a billing miss keeps the identity without one. It never calls
   `authenticate`, `_x.ai/auth/check_subscription` (which refreshes first) or `_x.ai/auth/getBearerToken`. A build
-  without the method (`-32601`) is `unsupported`.
+  without the method (`-32601`) is `unsupported`. Account usage's own `_x.ai/billing` read takes the same allow-list
+  and binding, for the native default too, so a meter names the root's account, never an ambient credential's.
 - **Kimi Code** (Kimi Code 2.0.2) — service `kimi`, credential `root` (the only token store is the file), no
   `signOut`. `verify()` (`native-status`, documented) reads the access token Kimi Code keeps in
   `<root>/credentials/kimi-code.json` and makes one `GET {base}/me`. That gives `email`, and `user_level_name` as the

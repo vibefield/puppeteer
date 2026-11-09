@@ -16,6 +16,15 @@ import { spawnThroughLayout } from './layout.js';
  * put the real executable ahead of the launcher. A non-interactive `zsh -c` is
  * not integrated, and neither is an interactive shell a person starts inside
  * this one (it reads only the person's own files).
+ *
+ * The hook also forgets zsh's command hash when the set of launchers changes.
+ * zsh remembers where it found each name (HASH_CMDS) and, with HASH_DIRS, how
+ * far down PATH it has read, and only a PATH assignment or `rehash` clears
+ * either: a launcher written after a shell's birth (a host's first start, an
+ * agent offered later) would never be found by a name the shell had already
+ * run, nor past a directory its search had already read. A shell reads this
+ * file once, at its birth: one born before a host's upgrade keeps the hook it
+ * was born with for its life.
  */
 export const ZSH_INTEGRATION = `# puppeteer spawn-through — zsh integration (generated)
 # ZDOTDIR is the person's again before anything of theirs runs: every later
@@ -32,6 +41,12 @@ if [[ -o interactive && -n "\${PUPPETEER_SHIM_DIR:-}" ]]; then
     [[ -n "\${PUPPETEER_SHIM_DIR:-}" ]] || return 0
     [[ "\${path[1]}" == "$PUPPETEER_SHIM_DIR" && \${path[(Ie)$PUPPETEER_SHIM_DIR]} -eq 1 ]] ||
       path=("$PUPPETEER_SHIM_DIR" \${path:#\${(b)PUPPETEER_SHIM_DIR}})
+    # zsh remembers where it found each command and, with HASH_DIRS, how far down PATH it has read: a launcher
+    # written after its name was looked up would never be found. Forget both when the launchers change.
+    local -a launchers=("$PUPPETEER_SHIM_DIR"/*(N*:t))
+    [[ "\${(j: :)launchers}" == "\${_puppeteer_shim_launchers-}" ]] && return 0
+    typeset -g _puppeteer_shim_launchers="\${(j: :)launchers}"
+    rehash
   }
   autoload -Uz add-zsh-hook && add-zsh-hook precmd _puppeteer_shim_path
 fi

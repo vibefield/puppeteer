@@ -91,20 +91,42 @@ describe.skipIf(!zsh)(
       await rm(root, { recursive: true, force: true });
     });
 
-    function run(args: string[], options: { zdotdir?: string; input?: string } = {}) {
+    function run(args: string[], options: { zdotdir?: string; input?: string; shimHome?: string } = {}) {
       const base = {
         HOME: person,
         PATH: '/usr/bin:/bin',
         ...(options.zdotdir === undefined ? {} : { ZDOTDIR: options.zdotdir }),
       };
+      const shimHome = options.shimHome ?? home;
       const result = spawnSync(zsh!, args, {
         encoding: 'utf8',
-        env: { ...base, ...shellIntegrationEnvironment({ home, shell: zsh!, environment: base }) },
+        env: { ...base, ...shellIntegrationEnvironment({ home: shimHome, shell: zsh!, environment: base }) },
         input: options.input ?? '',
         timeout: 15_000,
       });
       expect(result.error).toBeUndefined();
       return result;
+    }
+
+    /** An executable in `directory` that prints `output`: a real agent, or a launcher staged to be moved in later. */
+    async function executable(directory: string, name: string, output: string): Promise<string> {
+      await mkdir(directory, { recursive: true });
+      const path = join(directory, name);
+      await writeFile(path, `#!/bin/sh\necho ${output}\n`);
+      await chmod(path, 0o755);
+      return path;
+    }
+
+    /** A shim home of the row's own with no launcher yet: one appears during the shell's life. */
+    async function homeWithoutLaunchers(row: string): Promise<string> {
+      const shimHome = join(root, row, 'shim home');
+      await materializeShims({
+        home: shimHome,
+        names: [],
+        script: join(root, 'agent-shim.cjs'),
+        runtime: { command: process.execPath },
+      });
+      return shimHome;
     }
 
     const report = 'print -r -- "ZDOTDIR=${ZDOTDIR-<unset>}|ENV=$MARK_ZSHENV|RC=${MARK_ZSHRC-}|HIST=${HISTFILE-}"';
@@ -188,6 +210,55 @@ describe.skipIf(!zsh)(
         // A person can leave: with the variable gone, the hook stands aside.
         join(realBin, 'example'),
       ]);
+    });
+
+    // A launcher written after the shell's birth (a host's first start, an agent offered later). zsh remembers where it
+    // found a name (HASH_CMDS) and, with HASH_DIRS, how far down PATH it has read. These rows RUN their commands:
+    // `whence -p` searches from PATH's start and would hide the second. zsh/files' builtin mv moves the launcher in and
+    // looks nothing up, so the shell's own lookups are the only ones in play.
+    it('finds a launcher written after its name was run, at the next prompt', async () => {
+      const shimHome = await homeWithoutLaunchers('hashed');
+      const realDirectory = join(root, 'hashed', 'real bin');
+      await executable(realDirectory, 'pst-late', 'real');
+      const staged = await executable(join(root, 'hashed', 'staged'), 'pst-late', 'launcher');
+      const result = run(['-i'], {
+        shimHome,
+        input: [
+          `export PATH=${JSON.stringify(realDirectory)}:$PATH`,
+          // Before its launcher exists: zsh hashes the real executable's path.
+          'pst-late',
+          'zmodload zsh/files',
+          `mv ${JSON.stringify(staged)} "$PUPPETEER_SHIM_DIR/pst-late"`,
+          'pst-late',
+          'exit',
+          '',
+        ].join('\n'),
+      });
+      expect(result.stdout.trim().split('\n')).toEqual(['real', 'launcher']);
+    });
+
+    it('finds a launcher past a directory its search has already read', async () => {
+      const shimHome = await homeWithoutLaunchers('resumed');
+      const first = join(root, 'resumed', 'real bin');
+      const second = join(root, 'resumed', 'real bin 2');
+      await executable(first, 'pst-other', 'other');
+      await executable(second, 'pst-late2', 'real');
+      const staged = await executable(join(root, 'resumed', 'staged'), 'pst-late2', 'launcher');
+      const result = run(['-i'], {
+        shimHome,
+        input: [
+          `export PATH=${JSON.stringify(first)}:${JSON.stringify(second)}:$PATH`,
+          // Found in the first directory: zsh hashes the shim directory and that one, and its next search resumes at
+          // the second. pst-late2 itself is never looked up before its launcher exists.
+          'pst-other',
+          'zmodload zsh/files',
+          `mv ${JSON.stringify(staged)} "$PUPPETEER_SHIM_DIR/pst-late2"`,
+          'pst-late2',
+          'exit',
+          '',
+        ].join('\n'),
+      });
+      expect(result.stdout.trim().split('\n')).toEqual(['other', 'launcher']);
     });
   },
 );

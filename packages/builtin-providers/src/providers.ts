@@ -722,8 +722,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         },
         normalizeInvocation: normalizeGrokNativeInvocation,
         continuation: {
-          capture: ({ agentOptions, cwd }) =>
-            captureGrokContinuationState(agentOptions as GrokProviderOptions | undefined, cwd),
+          capture: ({ agentOptions, cwd, host }) =>
+            captureGrokContinuationState(agentOptions as GrokProviderOptions | undefined, cwd, host),
           restore: (state) => restoreGrokContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },

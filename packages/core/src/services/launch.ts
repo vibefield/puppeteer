@@ -124,11 +124,29 @@ export const AgentLaunchImplementationSchema = z.discriminatedUnion('kind', [
 ]);
 export type AgentLaunchImplementation = z.infer<typeof AgentLaunchImplementationSchema>;
 
+/**
+ * The bounds of an untrusted shell intent ({@link AgentNativeInvocationIntentSchema}): each argument's length and
+ * how many there are, how many allow-listed variables and each value's length. Lengths count UTF-16 code units, as
+ * Zod does. The one authority: a sender that must stay inside them (the spawn-through shim) reads them here.
+ */
+export const AGENT_NATIVE_INVOCATION_LIMITS = Object.freeze({
+  argumentLength: 8_192,
+  arguments: 256,
+  environmentEntries: 32,
+  environmentValueLength: 8_192,
+});
+
+const NativeInvocationArgumentSchema = z.string().max(AGENT_NATIVE_INVOCATION_LIMITS.argumentLength);
+
 const NativeInvocationEnvironmentSchema = z
-  .record(EnvironmentVariableSchema, z.string().max(8_192))
+  .record(EnvironmentVariableSchema, z.string().max(AGENT_NATIVE_INVOCATION_LIMITS.environmentValueLength))
   .superRefine((environment, context) => {
-    if (Object.keys(environment).length > 32) {
-      context.addIssue({ code: 'custom', message: 'native invocation environment exceeds 32 entries' });
+    const { environmentEntries } = AGENT_NATIVE_INVOCATION_LIMITS;
+    if (Object.keys(environment).length > environmentEntries) {
+      context.addIssue({
+        code: 'custom',
+        message: `native invocation environment exceeds ${environmentEntries} entries`,
+      });
     }
   });
 
@@ -136,7 +154,7 @@ const NativeInvocationEnvironmentSchema = z
 export const AgentNativeInvocationIntentSchema = z.strictObject({
   providerId: AgentProviderIdSchema,
   cwd: NonEmptyStringSchema,
-  argv: z.array(z.string().max(8_192)).max(256),
+  argv: z.array(NativeInvocationArgumentSchema).max(AGENT_NATIVE_INVOCATION_LIMITS.arguments),
   environment: NativeInvocationEnvironmentSchema,
 });
 export type AgentNativeInvocationIntent = z.infer<typeof AgentNativeInvocationIntentSchema>;
