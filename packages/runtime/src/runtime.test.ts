@@ -3489,10 +3489,12 @@ describe('createAgentRuntime', () => {
     });
     const created = await runtime.createProfile({ providerId: 'example', label: 'Work' });
     if ('status' in created) throw new Error(created.message);
+    // A label puts the account in a managed set of that name, so the set id the run carries is a real one.
+    expect(created.set).toEqual(expect.any(String));
 
     const launch = async (
       environment: Record<string, string>,
-    ): Promise<{ handed: string | undefined; labelled: string | undefined }> => {
+    ): Promise<{ handed: string | undefined; labelled: string | undefined; set: string | undefined }> => {
       const prepared = await runtime.prepareInvocation({
         providerId: 'example',
         cwd: root,
@@ -3511,25 +3513,33 @@ describe('createAgentRuntime', () => {
         signal: null,
         reason: 'process-exit',
       });
-      return { handed, labelled: adopted.profileId };
+      return { handed, labelled: adopted.profileId, set: adopted.profileSetId };
     };
 
-    // An active account's own root: the run is prepared under that account, as a spawn that named it would be.
+    // An active account's own root: the run is prepared under that account, as a spawn that named it would be,
+    // and carries the account's set.
     await expect(launch({ EXAMPLE_HOME: created.dataRoot })).resolves.toEqual({
       handed: created.id,
       labelled: created.id,
+      set: created.set,
     });
     // The vendor's own root, and a root Puppeteer did not allocate, are handed no account.
-    await expect(launch({})).resolves.toEqual({ handed: undefined, labelled: 'example:native-default' });
+    await expect(launch({})).resolves.toEqual({
+      handed: undefined,
+      labelled: 'example:native-default',
+      set: 'native',
+    });
     await expect(launch({ EXAMPLE_HOME: '/somewhere/else' })).resolves.toEqual({
       handed: undefined,
       labelled: undefined,
+      set: undefined,
     });
-    // A signed-out account is never prepared under; its root is still labelled as the account it was.
+    // A signed-out account is never prepared under; its root is still labelled as the account it was, in its set.
     await runtime.retireProfile(created.id);
     await expect(launch({ EXAMPLE_HOME: created.dataRoot })).resolves.toEqual({
       handed: undefined,
       labelled: created.id,
+      set: created.set,
     });
     await runtime.dispose();
     await rm(root, { recursive: true, force: true });
