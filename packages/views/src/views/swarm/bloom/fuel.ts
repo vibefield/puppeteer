@@ -76,10 +76,12 @@ type Fields = Readonly<Record<string, unknown>>;
 
 // A host's drawing, read tolerantly by puppeteer's own limits (no host's rule): the first 4 valid drawings, 48 arcs and
 // 16 notches each, and no stroke past 2 px beyond the bud's rim as the bud draws it, so the audited `labelGap` (8)
-// keeps 6 to spare at any scale.
+// keeps 6 to spare at any scale. A list is read no further than 4 entries for each it may keep (16 drawings, 192
+// arcs, 64 notches), so a host that hands a long list of bad entries costs the bud no more than that.
 const MOST_DRAWINGS = 4;
 const MOST_ARCS = 48;
 const MOST_NOTCHES = 16;
+const READ_FACTOR = 4;
 const RIM_SLACK = 2;
 /** A whole ring: a sweep of 359.9 or more, less a float's slack (`from + 359.9 - from` may be 359.8999…). */
 const WHOLE_TURN = 359.9 - 1e-9;
@@ -157,13 +159,15 @@ function notchOf(value: unknown, c: number, reach: number): BloomNotch | null {
   };
 }
 
-/** The first `most` entries of a list that `read` keeps; nothing for what is not a list. */
+/** The first `most` entries of a list that `read` keeps, looking no further than `READ_FACTOR * most` entries in;
+ * nothing for what is not a list. */
 function firstValid<T>(list: unknown, most: number, read: (value: unknown) => T | null): T[] {
   const kept: T[] = [];
   if (!Array.isArray(list)) return kept;
-  for (const value of list as readonly unknown[]) {
-    if (kept.length >= most) break;
-    const each = read(value);
+  const entries = list as readonly unknown[];
+  const end = Math.min(entries.length, most * READ_FACTOR);
+  for (let index = 0; index < end && kept.length < most; index += 1) {
+    const each = read(entries[index]);
     if (each !== null) kept.push(each);
   }
   return kept;

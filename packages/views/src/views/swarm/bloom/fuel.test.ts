@@ -78,6 +78,13 @@ describe("a bud's drawn fuel, read", () => {
     expect(scaled(96, 51.1)).toBeNull();
     expect(sizeOf(scaled(4, 1))).toBe(4);
     expect(scaled(4, 3)).toBeNull();
+    // a list is read no further than 4 entries for each the bud may keep: 192 arcs, 16 drawings
+    const junk = Array.from({ length: 192 }, () => ({ ...base, tone: 'attention' }));
+    expect(budFuel(profile({ drawn: [{ size: 48, arcs: [...junk, base] }] }), 48)).toBeNull();
+    expect(sizeOf(budFuel(profile({ drawn: [{ size: 48, arcs: [...junk.slice(1), base] }] }), 48))).toBe(48);
+    const nulls = Array.from({ length: 16 }, () => null);
+    expect(budFuel(profile({ drawn: [...nulls, FUEL_48] }), 48)).toBeNull();
+    expect(sizeOf(budFuel(profile({ drawn: [...nulls.slice(1), FUEL_48] }), 48))).toBe(48);
     expect(oneArc({ ...base, percent: 140, opacity: 2 })).toMatchObject({ percent: 100, opacity: 1 });
     expect(oneArc({ ...base, percent: -5, opacity: -1 })).toMatchObject({ percent: 0, opacity: 0 });
     expect(oneArc({ ...base, r: 20.123, width: 2.346, percent: 64.456 })).toMatchObject({
