@@ -67,11 +67,25 @@ describe("the spawn bloom's fuel sheet", () => {
 
   it("inverts a host's strokes with the targeted face too, and leaves the host its own numbers", () => {
     for (const part of ['arc', 'notch']) {
-      const body = rule(`.mv-swarm .vf-bloom-fuel-${part}`);
-      expect(value(body, 'stroke')).toContain('var(--mv-swarm-bloom-fuel-ink)');
-      // a sheet's declaration wins over an SVG attribute, so the sheet sets none the host hands
-      for (const property of ['stroke-width', 'stroke-linecap', 'stroke-dasharray', 'opacity']) {
-        expect([part, property, value(body, property)]).toEqual([part, property, undefined]);
+      expect(value(rule(`.mv-swarm .vf-bloom-fuel-${part}`), 'stroke')).toContain('var(--mv-swarm-bloom-fuel-ink)');
+    }
+    // a sheet's declaration wins over an SVG attribute, so no rule for a host's stroke, hot or not, sets one it hands
+    const selectors = ['arc', 'notch'].flatMap((part) => [
+      `.mv-swarm .vf-bloom-fuel-${part}`,
+      `.mv-swarm .vf-bloom-fuel-${part}[data-tone='hot']`,
+    ]);
+    const properties = [
+      'stroke-width',
+      'stroke-linecap',
+      'stroke-dasharray',
+      'stroke-dashoffset',
+      'stroke-opacity',
+      'opacity',
+    ];
+    for (const selector of selectors) {
+      const body = rule(selector);
+      for (const property of properties) {
+        expect([selector, property, value(body, property)]).toEqual([selector, property, undefined]);
       }
     }
   });
