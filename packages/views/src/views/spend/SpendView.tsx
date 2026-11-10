@@ -431,8 +431,10 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
   // The header: how many had started by the moment, and what the money column means.
   const all = rows.length + unpricedRows.length;
   const started = [...rows, ...unpricedRows].filter((row) => row.state.key !== 'before').length;
-  // The compact form's slim header says only what it must: who had started while some had not, and "Total".
-  const headA = started < all ? `${started} of ${all} started` : g.compact ? '' : 'By spend';
+  // The compact form's slim header says only what it must: who had started while some had not, and "Total". At a
+  // moment it says the same, so "Total by <clock>" stands whole (item 291 · 2, James's A; at any moment, held or
+  // pointed: Q1 as leant).
+  const headA = started < all ? `${started} of ${all} started` : g.compact || tCross !== null ? '' : 'By spend';
   // The list's money is each run's total, the chart's what it spent in the window: the header says which.
   const headB = tCross !== null ? `Total by ${formatClock(tCross)}` : 'Total';
 

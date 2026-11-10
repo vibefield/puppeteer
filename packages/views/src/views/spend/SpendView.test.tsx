@@ -502,12 +502,16 @@ describe('the spend view at a held moment and at a narrow stage (item 291)', () 
     expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(burn);
   });
 
-  it('heads the money column alone at a held moment once every row had started (291 · 2)', async () => {
+  it('heads the money column alone at a moment once every row had started, held or pointed (291 · 2)', async () => {
     const view = await mount({ agents: afternoon() });
     // changelog, the afternoon's youngest, was born 4.5 minutes before now: 4 minutes before, every row had started.
     const moment = NOW - 4 * MIN;
+    const head = ['', `Total by ${formatClock(moment)}`];
+    // A pointer resting on the chart sets the moment too, unheld: the same head (Q1, as leant: any moment).
+    await pointAt(view, moment);
+    expect(text(view.root, '.vf-monitor-spend-head span')).toEqual(head);
     await setMoment(view, moment);
-    expect(text(view.root, '.vf-monitor-spend-head span')).toEqual(['', `Total by ${formatClock(moment)}`]);
+    expect(text(view.root, '.vf-monitor-spend-head span')).toEqual(head);
   });
 
   it('says the chart’s window short where the long words overrun the plot: the phone’s 402 (291 · 3b)', async () => {
