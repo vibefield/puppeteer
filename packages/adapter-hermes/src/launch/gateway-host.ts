@@ -20,6 +20,8 @@ export interface HermesGatewayHost {
 
 export interface StartHermesGatewayHostOptions {
   python?: string | undefined;
+  /** The `hermes` command the session launches; its wrapper names the interpreter and the checkout. */
+  executable?: string | undefined;
   hermesHome: string;
   cwd: string;
   /** The gateway host's own variables, set over the Hermes home. */

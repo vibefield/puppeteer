@@ -1,13 +1,26 @@
 import { EventEmitter } from 'node:events';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AgentHost } from '@vibefield/puppeteer-core';
 
-const mocks = vi.hoisted(() => ({ spawn: vi.fn() }));
+// This file starts no process. `execFile` is read when the adapter's own helpers load, so it is a stub that throws.
+const mocks = vi.hoisted(() => ({
+  spawn: vi.fn(),
+  execFile: vi.fn(() => {
+    throw new Error('this file starts no process');
+  }),
+}));
 
-vi.mock('node:child_process', () => ({ spawn: mocks.spawn }));
+vi.mock('node:child_process', () => ({ spawn: mocks.spawn, execFile: mocks.execFile }));
 
-import { startHermesGatewayHost } from './gateway-host.js';
+import { resolveHermesPython, startHermesGatewayHost, type StartHermesGatewayHostOptions } from './gateway-host.js';
+
+/** An interpreter named outright, for the rows about everything but how the interpreter is found. */
+const PYTHON = '/opt/hermes/venv/bin/python';
 
 class FakeHostProcess extends EventEmitter {
   readonly stdin = new PassThrough();
@@ -81,6 +94,7 @@ describe('Hermes gateway host launch', () => {
     mocks.spawn.mockReturnValue(child.asChildProcess());
     const helperEnvironment = vi.fn((env: Record<string, string>) => ({ PATH: '/agent/bin', ...env }));
     const starting = startHermesGatewayHost({
+      python: PYTHON,
       hermesHome: '/tmp/hermes-home',
       cwd: '/work',
       env: { AI_PERSONA: 'hermes' },
@@ -102,7 +116,7 @@ describe('Hermes gateway host launch', () => {
   it("keeps its minimal set, this process's PATH and the Hermes home, under a host that composes none", async () => {
     const child = new FakeHostProcess();
     mocks.spawn.mockReturnValue(child.asChildProcess());
-    const starting = startHermesGatewayHost({ hermesHome: '/tmp/hermes-home', cwd: '/work', host: {} });
+    const starting = startHermesGatewayHost({ python: PYTHON, hermesHome: '/tmp/hermes-home', cwd: '/work', host: {} });
     await child.stdinText();
     child.ready('ws://127.0.0.1:41234/api/ws');
     const host = await starting;
@@ -122,7 +136,7 @@ describe('Hermes gateway host launch', () => {
     for (const port of [41234, 41235]) {
       const child = new FakeHostProcess();
       mocks.spawn.mockReturnValueOnce(child.asChildProcess());
-      const starting = startHermesGatewayHost({ hermesHome: '/tmp/hermes-home', cwd: '/work' });
+      const starting = startHermesGatewayHost({ python: PYTHON, hermesHome: '/tmp/hermes-home', cwd: '/work' });
       await child.stdinText();
       child.ready(`ws://127.0.0.1:${port}/api/ws`);
       const host = await starting;
@@ -135,10 +149,97 @@ describe('Hermes gateway host launch', () => {
   it('reports a host that died before it read its bearer by its exit, not a pipe error', async () => {
     const child = new FakeHostProcess();
     mocks.spawn.mockReturnValue(child.asChildProcess());
-    const starting = startHermesGatewayHost({ hermesHome: '/tmp/hermes-home', cwd: '/work' });
+    const starting = startHermesGatewayHost({ python: PYTHON, hermesHome: '/tmp/hermes-home', cwd: '/work' });
     child.stdin.destroy(Object.assign(new Error('write EPIPE'), { code: 'EPIPE' }));
     child.exitCode = 1;
     child.emit('exit', 1, null);
     await expect(starting).rejects.toThrow('Hermes gateway host exited (1)');
+  });
+});
+
+describe("the gateway host's interpreter", () => {
+  let scratch: string;
+
+  beforeEach(async () => {
+    scratch = await mkdtemp(join(tmpdir(), 'puppeteer-hermes-interpreter-'));
+    vi.stubEnv('HERMES_PYTHON', undefined);
+    vi.stubEnv('PUPPETEER_HERMES_BIN', undefined);
+  });
+
+  afterEach(async () => {
+    vi.unstubAllEnvs();
+    mocks.spawn.mockReset();
+    await rm(scratch, { recursive: true, force: true });
+    expect(mocks.execFile).not.toHaveBeenCalled();
+  });
+
+  /** A `hermes` wrapper of the shape Hermes's installer writes, alone in a PATH directory. It is read, never run. */
+  async function wrapperOnPath(): Promise<{ directory: string; python: string; checkout: string }> {
+    const directory = join(scratch, 'bin');
+    const checkout = join(scratch, 'hermes-agent');
+    const python = join(checkout, 'venv', 'bin', 'python');
+    await mkdir(directory);
+    await writeFile(join(directory, 'hermes'), `#!/usr/bin/env bash\nexec "${python}" -m hermes_cli.main "$@"\n`, {
+      mode: 0o755,
+    });
+    return { directory, python, checkout };
+  }
+
+  /** A host whose helper environment's PATH is the one directory given. */
+  function pathOnly(directory: string): Pick<AgentHost, 'helperEnvironment'> {
+    return { helperEnvironment: (env) => ({ PATH: directory, ...env }) };
+  }
+
+  /** What the host was spawned as, for a launch that starts. */
+  async function spawned(
+    options: Partial<StartHermesGatewayHostOptions>,
+  ): Promise<{ command: string; args: string[] }> {
+    const child = new FakeHostProcess();
+    mocks.spawn.mockReturnValue(child.asChildProcess());
+    const starting = startHermesGatewayHost({ hermesHome: '/tmp/hermes-home', cwd: '/work', ...options });
+    await child.stdinText();
+    child.ready('ws://127.0.0.1:41234/api/ws');
+    const host = await starting;
+    await host.close();
+    const { command, args } = spawnCall(mocks.spawn.mock.calls.length - 1);
+    return { command, args };
+  }
+
+  it('runs the interpreter its hermes wrapper execs, when no python is given and HERMES_PYTHON is unset', async () => {
+    const wrapper = await wrapperOnPath();
+    expect((await spawned({ host: pathOnly(wrapper.directory) })).command).toBe(wrapper.python);
+  });
+
+  it('takes the explicit python first, then the wrapper, then HERMES_PYTHON', async () => {
+    const wrapper = await wrapperOnPath();
+    vi.stubEnv('HERMES_PYTHON', '/env/python');
+    expect((await spawned({ python: '/explicit/python', host: pathOnly(wrapper.directory) })).command).toBe(
+      '/explicit/python',
+    );
+    expect((await spawned({ host: pathOnly(wrapper.directory) })).command).toBe(wrapper.python);
+    expect((await spawned({ host: pathOnly(join(scratch, 'empty')) })).command).toBe('/env/python');
+  });
+
+  it("hands the script the wrapper's checkout", async () => {
+    const wrapper = await wrapperOnPath();
+    expect((await spawned({ host: pathOnly(wrapper.directory) })).args.at(-1)).toBe(wrapper.checkout);
+  });
+
+  it('refuses a launch that names no interpreter and finds none, before anything is spawned', async () => {
+    mocks.spawn.mockImplementation(() => {
+      throw new Error('a refused launch spawns nothing');
+    });
+    await expect(
+      startHermesGatewayHost({ hermesHome: '/tmp/hermes-home', cwd: '/work', host: pathOnly(join(scratch, 'empty')) }),
+    ).rejects.toMatchObject({ name: 'AgentLaunchRefusedError', code: 'INTERPRETER_UNAVAILABLE' });
+    expect(mocks.spawn).not.toHaveBeenCalled();
+  });
+
+  it('keeps resolveHermesPython as it was: the explicit, then HERMES_PYTHON, then python3', () => {
+    expect(resolveHermesPython('/explicit/python')).toBe('/explicit/python');
+    vi.stubEnv('HERMES_PYTHON', '/env/python');
+    expect(resolveHermesPython()).toBe('/env/python');
+    vi.stubEnv('HERMES_PYTHON', undefined);
+    expect(resolveHermesPython()).toBe('python3');
   });
 });
