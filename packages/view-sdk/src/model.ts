@@ -225,7 +225,7 @@ export interface MonitorSpawnFuelNotch {
 /**
  * A host's whole picture of a bud's fuel for a disc `size` across: its box is `size` square, the middle at `size / 2`.
  * Strokes draw in order, the arcs then the notches. The numbers are pixels at that size, not fractions of the disc, so
- * a host whose constants do not scale draws once per size it cares about (the views' `BLOOM.bud1` and `BLOOM.bud2`).
+ * a host whose constants do not scale draws once per size it cares about (the sizes its buds draw at, 48 and 42 today).
  */
 export interface MonitorSpawnFuelDrawing {
   readonly size: number;

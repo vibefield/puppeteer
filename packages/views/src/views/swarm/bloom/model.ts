@@ -108,7 +108,7 @@ export interface BloomBud {
   readonly face: BloomFace;
   /** An agent under this profile waits on the person: the profile tabs' orange dot. */
   readonly dot: boolean;
-  /** A profile's fuel, as the host reads it. Null: no ring, and always on a desktop's bud. */
+  /** A profile's fuel, as the host reads it. Null: no fuel drawn, and always on a desktop's bud. */
   readonly fuel: BloomFuel | null;
   /** A desktop that cannot take a terminal now: faint, aria-disabled; letting go on it opens nothing. */
   readonly off: boolean;
