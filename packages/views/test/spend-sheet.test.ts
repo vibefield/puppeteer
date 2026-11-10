@@ -46,4 +46,18 @@ describe('the spend view’s stylesheet', () => {
     const hiding = rules.filter((rule) => /\b(?:display\s*:\s*none|visibility\s*:\s*hidden)\b/.test(rule.body));
     expect(hiding.map((rule) => rule.selector)).toEqual([]);
   });
+
+  it('keeps the list head’s two labels 8 px apart, the first cut before the second (item 291 · 2)', () => {
+    // Item 291 (James's A on item 285's second mark): "Total by <clock>" stands whole; a label beside it stands 8 px
+    // clear, and is cut first where both do not fit.
+    expect(value(rule('.mv-spend .vf-monitor-spend-head'), 'gap')).toBe('8px');
+    const first = rule('.mv-spend .vf-monitor-spend-head span:first-child');
+    expect(value(first, 'min-width')).toBe('0');
+    expect(value(first, 'overflow')).toBe('hidden');
+    expect(value(first, 'text-overflow')).toBe('ellipsis');
+    expect(value(first, 'white-space')).toBe('nowrap');
+    const last = rule('.mv-spend .vf-monitor-spend-head span:last-child');
+    expect(value(last, 'flex')).toBe('none');
+    expect(value(last, 'white-space')).toBe('nowrap');
+  });
 });
