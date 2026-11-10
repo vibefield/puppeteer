@@ -890,8 +890,10 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
         Spent in the last 10 minutes
       </div>
       <div className="vf-monitor-spend-y" aria-hidden="true">
+        {/* The money labels, $0 among them 4 px higher: its line then ends above now's chip, which stands centred on
+            the plot's right edge at every width (item 291 · 4). */}
         {yTicks.map((value) => (
-          <span key={value} style={{ left: g.x1 + 12, top: yOf(value) - 7 }}>
+          <span key={value} style={{ left: g.x1 + 12, top: yOf(value) - (value === 0 ? 11 : 7) }}>
             {axisMoney(value, target.step)}
           </span>
         ))}
