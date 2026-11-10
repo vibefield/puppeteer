@@ -200,7 +200,7 @@ export interface MonitorSpawnFuelArc {
   readonly tone: MonitorSpawnFuelTone;
   /** The tone's share of the stroke, 0..100. */
   readonly percent: number;
-  /** 0..1; absent: 1. */
+  /** 0..1, a number outside it clamped; absent: 1. Present but not a finite number: the stroke is skipped. */
   readonly opacity?: number | undefined;
   /** Absent: butt. */
   readonly cap?: 'round' | 'butt' | undefined;
@@ -218,7 +218,7 @@ export interface MonitorSpawnFuelNotch {
   readonly tone: MonitorSpawnFuelTone;
   /** The tone's share of the stroke, 0..100. */
   readonly percent: number;
-  /** 0..1; absent: 1. */
+  /** 0..1, a number outside it clamped; absent: 1. Present but not a finite number: the notch is skipped. */
   readonly opacity?: number | undefined;
 }
 
