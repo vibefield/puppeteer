@@ -172,6 +172,16 @@ async function setMoment(view: Mounted, t: number, box = WIDE): Promise<void> {
   });
 }
 
+/** Rest a pointer on the chart at `t`, near the plot's top, pressing nothing: a moment the pointer sets, not held. */
+async function pointAt(view: Mounted, t: number, box = WIDE): Promise<void> {
+  const g = geometryFor(box.width, box.height);
+  const x = g.x0 + ((t - (NOW - SPEND_WINDOW_MS)) / SPEND_WINDOW_MS) * (g.x1 - g.x0);
+  const hit = view.root.querySelector('.vf-monitor-spend-hit')!;
+  await act(async () => {
+    hit.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: x, clientY: g.y0 + 2, pointerId: 1 }));
+  });
+}
+
 describe('the spend view', () => {
   it("captions the chart as the window's spend, and heads the list's money as each run's TOTAL (SV-D2)", async () => {
     const agents = afternoon();
@@ -340,7 +350,7 @@ describe('the spend view', () => {
       `Total by ${formatClock(moment)}`,
     ]);
     expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(
-      new RegExp(`^by ${formatClock(moment)} · \\$[\\d.]+/hr then$`),
+      new RegExp(`^by ${formatClock(moment)} · \\$[\\d.]+/hr$`),
     );
     const young = rowOf(view.root, 'changelog');
     expect(young.className).toContain('is-before');
@@ -481,13 +491,15 @@ describe('the spend view at a held moment and at a narrow stage (item 291)', () 
     expect(Number.parseFloat(zero.style.top) + 14).toBeLessThan(Number.parseFloat(chip.style.top));
   });
 
-  it('says a held moment’s burn without “then”: by when, and how fast (291 · 1)', async () => {
+  it('says a moment’s burn without “then”: by when, and how fast, held or pointed (291 · 1)', async () => {
     const view = await mount({ agents: afternoon() });
     const moment = NOW - 6 * MIN;
+    const burn = new RegExp(`^by ${formatClock(moment)} · \\$[\\d.]+/hr$`);
+    // A pointer resting on the chart sets the moment too, unheld: the same words (Q1, as leant: any moment).
+    await pointAt(view, moment);
+    expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(burn);
     await setMoment(view, moment);
-    expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(
-      new RegExp(`^by ${formatClock(moment)} · \\$[\\d.]+/hr$`),
-    );
+    expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(burn);
   });
 
   it('heads the money column alone at a held moment once every row had started (291 · 2)', async () => {

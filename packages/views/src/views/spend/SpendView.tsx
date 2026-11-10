@@ -415,8 +415,9 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     perMinute += row.burn ?? 0;
   }
   const heroFigure = `~${money(spent)}${partial ? '+' : ''}`;
-  const heroRate =
-    tCross !== null ? `by ${formatClock(tCross)} · ${perHour(perMinute)} then` : `${perHour(perMinute)} now`;
+  // At a moment the burn says by when and how fast. The moment's chip and "by" already say it is past, so it says no
+  // "then" (item 291 · 1, James's A; at any moment, held or pointed: Q1 as leant).
+  const heroRate = tCross !== null ? `by ${formatClock(tCross)} · ${perHour(perMinute)}` : `${perHour(perMinute)} now`;
   // Its caption: what the figure is, and who it leaves out, the unpriced that had started by the moment (one not yet
   // running is not missing). A narrow stage keeps only who, cut to the room the number and the burn leave it; with
   // nobody left out it has no caption.
