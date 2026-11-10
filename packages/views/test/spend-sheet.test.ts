@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { NARROW_HERO } from '../src/views/spend/spend-words.js';
+import { COLCAP, NARROW_HERO } from '../src/views/spend/spend-words.js';
 
 // THE SPEND VIEW'S SHEET HIDES NO WORD OF THE HERO'S CAPTION. happy-dom applies no stylesheet, so the view's own suite
 // reads every word the hero renders even where a rule would hide it; this reads spend.css as text. It lives outside the
@@ -59,5 +59,13 @@ describe('the spend view’s stylesheet', () => {
     const last = rule('.mv-spend .vf-monitor-spend-head span:last-child');
     expect(value(last, 'flex')).toBe('none');
     expect(value(last, 'white-space')).toBe('nowrap');
+  });
+
+  it('sets the chart’s caption in the face the view measures it in (item 291 · 3b)', () => {
+    const caption = rule('.mv-spend .vf-monitor-spend-colcap');
+    expect(value(caption, 'font')?.startsWith(`${COLCAP.face}/`)).toBe(true);
+    expect(value(caption, 'text-transform')).toBe('uppercase');
+    expect(value(caption, 'letter-spacing')).toBe(`${COLCAP.trackingEm}em`);
+    expect(value(caption, 'white-space')).toBe('nowrap');
   });
 });
