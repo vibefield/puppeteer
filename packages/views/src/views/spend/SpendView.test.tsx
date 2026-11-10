@@ -514,6 +514,18 @@ describe('the spend view at a held moment and at a narrow stage (item 291)', () 
     expect(text(view.root, '.vf-monitor-spend-head span')).toEqual(head);
   });
 
+  it('keeps who had started beside “Total by <clock>” at a held moment, at the narrowest plate (291 · 2)', async () => {
+    // Before changelog's birth (4.5 minutes before now) one row had not started: the count stands, as it did. happy-dom
+    // applies no stylesheet, so the 8 px between the two and the first one's cut are the sheet test's.
+    const view = await mount({ agents: afternoon() }, NARROW);
+    const moment = NOW - 6 * MIN;
+    await setMoment(view, moment, NARROW);
+    expect(text(view.root, '.vf-monitor-spend-head span')).toEqual([
+      '9 of 10 started',
+      `Total by ${formatClock(moment)}`,
+    ]);
+  });
+
   it('says the chart’s window short where the long words overrun the plot: the phone’s 402 (291 · 3b)', async () => {
     const view = await mount({ agents: afternoon() }, PHONE);
     expect(text(view.root, '.vf-monitor-spend-colcap')).toEqual(['Last 10 minutes']);
