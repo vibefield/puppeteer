@@ -4,9 +4,11 @@ import { tmpdir } from 'node:os';
 import { createInterface } from 'node:readline';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { AgentHost } from '@vibefield/puppeteer-core';
+import { AgentLaunchRefusedError, type AgentHost } from '@vibefield/puppeteer-core';
+import { resolveHermesExecutable } from '../detection.js';
 import { HERMES_HOME_ENV, HERMES_PYTHON_ENV } from '../generated/detection.js';
 import { TUI_GATEWAY_HOST_SOURCE } from '../generated/tui-gateway-host.js';
+import { hermesCheckoutFromWrapper, hermesPythonFromWrapper, readHermesWrapper } from '../services/distribution.js';
 import { createHermesGatewayToken } from '../transport/gateway-auth.js';
 
 export interface HermesGatewayHost {
@@ -96,9 +98,38 @@ export function resolveHermesPython(explicit?: string): string {
   return explicit ?? process.env[HERMES_PYTHON_ENV] ?? 'python3';
 }
 
+/** The interpreter the gateway host runs, and the checkout its script imports Hermes from when a wrapper names it. */
+interface GatewayInterpreter {
+  python: string;
+  checkout?: string;
+}
+
+/**
+ * For a launch that names no interpreter: the interpreter and the checkout the launch's `hermes` wrapper execs, found
+ * on the PATH the host runs under; else HERMES_PYTHON. With neither the launch is refused before anything is written
+ * or spawned: a bare `python3` cannot import Hermes, and its exit would say nothing a person can act on.
+ */
+async function resolveGatewayInterpreter(
+  options: StartHermesGatewayHostOptions,
+  env: Record<string, string | undefined>,
+): Promise<GatewayInterpreter> {
+  try {
+    const wrapper = await readHermesWrapper(resolveHermesExecutable(options.executable), env);
+    const python = wrapper === undefined ? undefined : hermesPythonFromWrapper(wrapper);
+    const checkout = wrapper === undefined ? undefined : hermesCheckoutFromWrapper(wrapper);
+    if (python) return checkout === undefined ? { python } : { python, checkout };
+  } catch {
+    // An unreadable wrapper names nothing.
+  }
+  const fromEnvironment = process.env[HERMES_PYTHON_ENV];
+  if (fromEnvironment) return { python: fromEnvironment };
+  throw new AgentLaunchRefusedError(
+    'INTERPRETER_UNAVAILABLE',
+    'no interpreter is named for the Hermes gateway host, and no hermes wrapper on its PATH names one',
+  );
+}
+
 export async function startHermesGatewayHost(options: StartHermesGatewayHostOptions): Promise<HermesGatewayHost> {
-  const python = resolveHermesPython(options.python);
-  const token = createHermesGatewayToken();
   const own: Record<string, string> = {
     [HERMES_HOME_ENV]: options.hermesHome,
     HOME: options.hermesHome,
@@ -107,10 +138,16 @@ export async function startHermesGatewayHost(options: StartHermesGatewayHostOpti
   // The agent's environment, as the host composes it for every helper that runs the agent's turns and tools. A host
   // that composes none gets the minimal set it always had: this process's PATH, and nothing else of its own.
   const env = options.host?.helperEnvironment?.(own) ?? { PATH: process.env.PATH, ...own };
+  // The explicit python, then the wrapper's, then HERMES_PYTHON. A named interpreter is taken with nothing awaited, so
+  // that launch spawns in the same turn as before.
+  const interpreter = options.python ? { python: options.python } : await resolveGatewayInterpreter(options, env);
+  const token = createHermesGatewayToken();
   const script = hostScript();
   let child: ChildProcess;
   try {
-    child = spawn(python, [script.path], {
+    // The checkout, when the wrapper names one, is the script's one argument: it imports Hermes from there.
+    const args = interpreter.checkout === undefined ? [script.path] : [script.path, interpreter.checkout];
+    child = spawn(interpreter.python, args, {
       cwd: options.cwd,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],

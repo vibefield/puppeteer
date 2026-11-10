@@ -79,6 +79,7 @@ export async function prepareHermesTuiSession(
       if (!gatewayUrl) {
         host = await startHermesGatewayHost({
           python: options.python,
+          executable: options.executable,
           hermesHome,
           cwd: options.cwd,
           env: options.env,
