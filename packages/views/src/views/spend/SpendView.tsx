@@ -926,11 +926,12 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
       </div>
       {pinned !== null ? (
         // Now, with the key it answers to printed under its glyph (M177 ruling 4: the button is the key), its legend
-        // from the toolkit's one table, as the timeline and the bar print it (M181).
+        // from the toolkit's one table, as the timeline and the bar print it (M181). It stands under the chart's
+        // caption, 4 px clear of its 10 px line, so a narrow plot's caption runs on uncovered (item 291 · 3).
         <button
           type="button"
           className="vf-monitor-spend-back"
-          style={{ right: g.width - g.x1 + 4, top: g.y0 + 2 }}
+          style={{ right: g.width - g.x1 + 4, top: g.y0 + 22 }}
           title={`Back to now (${NOW_KEY})`}
           aria-label="Back to now"
           aria-keyshortcuts={NOW_KEY}
