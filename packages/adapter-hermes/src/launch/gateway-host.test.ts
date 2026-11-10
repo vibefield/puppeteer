@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('node:child_process', () => ({ spawn: mocks.spawn, execFile: mocks.execFile }));
 
+import { TUI_GATEWAY_HOST_SOURCE } from '../generated/tui-gateway-host.js';
 import { resolveHermesPython, startHermesGatewayHost, type StartHermesGatewayHostOptions } from './gateway-host.js';
 
 /** An interpreter named outright, for the rows about everything but how the interpreter is found. */
@@ -233,6 +234,45 @@ describe("the gateway host's interpreter", () => {
       startHermesGatewayHost({ hermesHome: '/tmp/hermes-home', cwd: '/work', host: pathOnly(join(scratch, 'empty')) }),
     ).rejects.toMatchObject({ name: 'AgentLaunchRefusedError', code: 'INTERPRETER_UNAVAILABLE' });
     expect(mocks.spawn).not.toHaveBeenCalled();
+  });
+
+  // A command line, not a file: nothing is written for the host to run, and -I keeps the agent's working directory,
+  // PYTHONPATH and the user's site off its import path. The bearer still rides stdin alone (the first block's row).
+  it.skipIf(process.platform === 'win32')(
+    'runs the host script as -I -B -c with no file, and the checkout as its one argument',
+    async () => {
+      const wrapper = await wrapperOnPath();
+      expect((await spawned({ host: pathOnly(wrapper.directory) })).args).toEqual([
+        '-I',
+        '-B',
+        '-c',
+        TUI_GATEWAY_HOST_SOURCE,
+        wrapper.checkout,
+      ]);
+    },
+  );
+
+  it('hands over a checkout named beside a named python', async () => {
+    const launched = await spawned({ python: PYTHON, checkout: '/opt/hermes', host: pathOnly(join(scratch, 'empty')) });
+    expect({ command: launched.command, checkout: launched.args.at(-1) }).toEqual({
+      command: PYTHON,
+      checkout: '/opt/hermes',
+    });
+  });
+
+  it("takes a named checkout in place of the wrapper's, and the wrapper's interpreter still", async () => {
+    const wrapper = await wrapperOnPath();
+    const launched = await spawned({ checkout: '/named/checkout', host: pathOnly(wrapper.directory) });
+    expect({ command: launched.command, checkout: launched.args.at(-1) }).toEqual({
+      command: wrapper.python,
+      checkout: '/named/checkout',
+    });
+  });
+
+  it("hands a named python no checkout it was not given, whatever wrapper is on the host's PATH", async () => {
+    const wrapper = await wrapperOnPath();
+    const launched = await spawned({ python: PYTHON, host: pathOnly(wrapper.directory) });
+    expect(launched.args).not.toContain(wrapper.checkout);
   });
 
   it('keeps resolveHermesPython as it was: the explicit, then HERMES_PYTHON, then python3', () => {
