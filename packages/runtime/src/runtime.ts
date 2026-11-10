@@ -867,13 +867,25 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const restoredResumes = new WeakSet<CreateAgentSessionOptions>();
 
   /**
-   * The account a creation runs under: a named profile, a named set's, the
-   * default set's, or none. `setId` names the set when a named set resolved to
-   * no account — the native set, the provider's own root.
+   * Prepare requests from a native invocation whose launch environment names
+   * an active account, marked by `prepareInvocation` with the account its one
+   * registry read matched: the run is prepared under it, as a spawn naming it
+   * would be, without a second read that could fail the run, and the request
+   * itself still names no profile, so its creation fingerprint is unchanged.
+   */
+  const attributedAccounts = new WeakMap<CreateAgentSessionOptions, AgentProfile>();
+
+  /**
+   * The account a creation runs under: an attributed account, a named
+   * profile, a named set's, the default set's, or none. `setId` names the set
+   * when a named set resolved to no account — the native set, the provider's
+   * own root.
    */
   async function resolveProfileChoice(
     request: CreateAgentSessionOptions,
   ): Promise<{ profile?: AgentProfile; setId?: string } | { error: string }> {
+    const attributed = attributedAccounts.get(request);
+    if (attributed !== undefined) return { profile: attributed };
     const defaulted = defaultedSpawns.has(request);
     if (request.profile === undefined && request.profileSet === undefined && !defaulted) return {};
     if (!profileRegistryProviders.has(request.agent)) {
@@ -1053,23 +1065,30 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
    * provider's binding names is the vendor's default root. An environment that
    * carries a binding name with an unknown value is a root Puppeteer did not
    * allocate, so it is left unattributed rather than mislabelled.
+   *
+   * `account` is the matched profile when it is active (not signed out): the
+   * one a run can be prepared under. One registry read answers both.
    */
   async function attributeInvocationProfile(
     providerId: string,
     environment: Record<string, string>,
-  ): Promise<string | undefined> {
+  ): Promise<{ profileId?: string; account?: AgentProfile }> {
     const entry = profileRegistryProviders.get(providerId);
-    if (!entry || !entry.provider.support.supported) return undefined;
+    if (!entry || !entry.provider.support.supported) return {};
     const managed = await (await profileRuntime()).registry.managed(providerId);
     const bindingNames = new Set<string>();
     for (const profile of managed) {
       const binding = entry.service.bindingEnvironment(profile);
       const names = Object.keys(binding);
       for (const name of names) bindingNames.add(name);
-      if (names.length > 0 && names.every((name) => environment[name] === binding[name])) return profile.id;
+      if (names.length > 0 && names.every((name) => environment[name] === binding[name])) {
+        return profile.retiredAt === undefined
+          ? { profileId: profile.id, account: profile }
+          : { profileId: profile.id };
+      }
     }
-    if ([...bindingNames].some((name) => environment[name] !== undefined)) return undefined;
-    return entry.provider.support.nativeDefaultRoot ? nativeDefaultProfileId(providerId) : undefined;
+    if ([...bindingNames].some((name) => environment[name] !== undefined)) return {};
+    return entry.provider.support.nativeDefaultRoot ? { profileId: nativeDefaultProfileId(providerId) } : {};
   }
 
   function continuationFor(provider: AgentProvider, nativeSessionId: string, run: ManagedRun): AgentContinuation {
@@ -1712,6 +1731,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       request = { ...request, ...briefing };
       if (defaultedSpawns.has(original)) defaultedSpawns.add(request);
       if (restoredResumes.has(original)) restoredResumes.add(request);
+      const attributed = attributedAccounts.get(original);
+      if (attributed !== undefined) attributedAccounts.set(request, attributed);
     } catch (error) {
       launchFailure = providerError(error, request.agent, 'Invalid per-run briefing.');
     }
@@ -3382,7 +3403,17 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           };
       }
       const { invocation, provider, resolution: normalized } = classified;
-      const result = await runtime.prepareSession({
+      // A typed launch runs under the active account its launch environment
+      // names, as a spawn that named the account would: the provider is handed
+      // that profile. One registry read attributes it; a registry that cannot
+      // be read leaves the launch unattributed, as before, and is reported.
+      let attribution: { profileId?: string; account?: AgentProfile } = {};
+      try {
+        attribution = await attributeInvocationProfile(invocation.providerId, invocation.environment);
+      } catch (error) {
+        report(error);
+      }
+      const prepareRequest: CreateAgentSessionOptions = {
         agent: invocation.providerId,
         cwd: invocation.cwd,
         title: request.title,
@@ -3392,21 +3423,23 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         resume: normalized.resume,
         ...(normalized.options === undefined ? {} : { agentOptions: normalized.options }),
         ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
-      });
+      };
+      if (attribution.account !== undefined) attributedAccounts.set(prepareRequest, attribution.account);
+      const result = await runtime.prepareSession(prepareRequest);
       if ('error' in result) return result;
       const run = runs.get(result.runtimeRunId);
       if (run) {
         run.launchImplementation = invocation.implementation.kind;
         result.continuation = continuationFor(provider, result.nativeSession.id, run);
-        // Attribution only labels the run. The adapter already read its own
-        // root variable out of the invocation, so its options are untouched.
-        try {
-          run.profileId = await attributeInvocationProfile(invocation.providerId, invocation.environment);
-          if (run.profileId !== undefined) {
+        // prepareSession bound an active account. Otherwise attribution only
+        // labels the run: the vendor's own root, or a signed-out account's.
+        if (run.profileId === undefined && attribution.profileId !== undefined) {
+          run.profileId = attribution.profileId;
+          try {
             run.profileSetId = (await (await profileRuntime()).registry.get(run.profileId))?.set;
+          } catch (error) {
+            report(error);
           }
-        } catch (error) {
-          report(error);
         }
       }
       return result;

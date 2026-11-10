@@ -3449,7 +3449,8 @@ describe('createAgentRuntime', () => {
     await expect(attribute({})).resolves.toBe('example:native-default');
     // A root Puppeteer did not allocate is left unattributed rather than mislabelled.
     await expect(attribute({ EXAMPLE_HOME: '/somewhere/else' })).resolves.toBeUndefined();
-    // Attribution never rewrites what the adapter was handed.
+    // Attribution never normalizes the invocation again. (Corrected 2026-11-10: this said attribution "never rewrites
+    // what the adapter was handed"; an active account is now handed to the adapter as the run's profile, the next row.)
     expect(normalizeInvocation).toHaveBeenCalledTimes(3);
     await runtime.dispose();
     await rm(root, { recursive: true, force: true });
