@@ -47,4 +47,41 @@ describe("the spawn bloom's fuel sheet", () => {
       expect(value(rule(`.mv-swarm .vf-bloom-fuel-${part}`), 'stroke')).toContain(`var(${ink})`);
     }
   });
+
+  // A host's drawing (`MonitorSpawnFuel.drawn`): each stroke carries its tone (`data-tone`) and its share
+  // (`--mv-swarm-bloom-fuel-share`); the sheet holds the colours.
+  it("draws a host's strokes as lines: a path takes no fill either", () => {
+    expect(value(rule('.mv-swarm .vf-bloom-fuel path'), 'fill')).toBe('none');
+  });
+
+  it("paints a host's arcs and notches in the fuel's ink at the share each was handed, the hot ones orange", () => {
+    for (const part of ['arc', 'notch']) {
+      expect(value(rule(`.mv-swarm .vf-bloom-fuel-${part}`), 'stroke')).toBe(
+        'color-mix(in srgb, var(--mv-swarm-bloom-fuel-ink) var(--mv-swarm-bloom-fuel-share, 64%), transparent)',
+      );
+      expect(value(rule(`.mv-swarm .vf-bloom-fuel-${part}[data-tone='hot']`), 'stroke')).toBe(
+        'color-mix(in srgb, var(--mv-swarm-orange, #ff9f0a) var(--mv-swarm-bloom-fuel-share, 88%), transparent)',
+      );
+    }
+  });
+
+  it("inverts a host's strokes with the targeted face too, and leaves the host its own numbers", () => {
+    for (const part of ['arc', 'notch']) {
+      const body = rule(`.mv-swarm .vf-bloom-fuel-${part}`);
+      expect(value(body, 'stroke')).toContain('var(--mv-swarm-bloom-fuel-ink)');
+      // a sheet's declaration wins over an SVG attribute, so the sheet sets none the host hands
+      for (const property of ['stroke-width', 'stroke-linecap', 'stroke-dasharray', 'opacity']) {
+        expect([part, property, value(body, property)]).toEqual([part, property, undefined]);
+      }
+    }
+  });
+
+  it('adds no motion of its own: no fuel rule transitions or animates', () => {
+    const rules = [...sheet.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((each) => each[1]!.includes('vf-bloom-fuel'));
+    expect(rules.length).toBeGreaterThan(0);
+    for (const each of rules) {
+      const selector = each[1]!.trim().replace(/\s+/g, ' ');
+      expect([selector, /\b(?:transition|animation)/.test(each[2]!)]).toEqual([selector, false]);
+    }
+  });
 });

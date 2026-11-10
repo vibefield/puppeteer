@@ -194,6 +194,8 @@ function budStyle(bud: BloomBudView, delay: number, grow: number | null): CSSPro
 /** A profile's fuel, inside the disc and under the blocked dot. Its layout is inline: the face is a grid, so an in-flow
  * svg would push the glyph off centre, and the tick ends just past the bud's own box. */
 function BudFuel({ d, fuel }: { d: number; fuel: BloomFuel }): ReactElement {
+  // Red: a drawn fuel draws nothing until the bloom draws it (`budFuel` returns none yet).
+  if (fuel.kind === 'drawn') return <></>;
   const ring = budRing(d, fuel);
   const c = d / 2;
   return (

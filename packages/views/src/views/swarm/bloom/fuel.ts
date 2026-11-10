@@ -9,9 +9,38 @@
 // column on the same screen. The arc sits inside the disc so the audited
 // `BLOOM` table (a 1.25 rim, `labelGap` 8) keeps every number it has.
 
-import type { MonitorSpawnProfile } from '@vibefield/puppeteer-view-sdk';
+import type { MonitorSpawnFuelTone, MonitorSpawnProfile } from '@vibefield/puppeteer-view-sdk';
 
-/** A bud's reading, or the dashed thread that stands where there is none to draw. */
+/** A stroke a host drew (`MonitorSpawnFuelArc`) as the bud draws it: its lengths and shares rounded to the 2 places
+ * they are printed at, `from` and `to` as handed (the path rounds its points). */
+export interface BloomArc {
+  readonly r: number;
+  readonly width: number;
+  readonly from: number;
+  readonly to: number;
+  /** A sweep of 359.9 or more: drawn as a whole circle. */
+  readonly circle: boolean;
+  readonly tone: MonitorSpawnFuelTone;
+  readonly percent: number;
+  readonly opacity: number;
+  readonly cap: 'round' | 'butt';
+  /** Null: a solid stroke. */
+  readonly dash: readonly [number, number] | null;
+}
+
+/** A notch a host drew (`MonitorSpawnFuelNotch`) as the bud draws it, rounded as an arc is. */
+export interface BloomNotch {
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number;
+  readonly width: number;
+  readonly tone: MonitorSpawnFuelTone;
+  readonly percent: number;
+  readonly opacity: number;
+}
+
+/** A bud's reading, the dashed thread that stands where there is none to draw, or the picture its host drew. */
 export type BloomFuel =
   | {
       readonly kind: 'reading';
@@ -20,7 +49,14 @@ export type BloomFuel =
       readonly hot: boolean;
       readonly stale: boolean;
     }
-  | { readonly kind: 'unread' };
+  | { readonly kind: 'unread' }
+  | {
+      readonly kind: 'drawn';
+      /** The drawing's box, `size` square. The bud draws it at its own width: a drawing for another size scales. */
+      readonly size: number;
+      readonly arcs: readonly BloomArc[];
+      readonly notches: readonly BloomNotch[];
+    };
 
 function finite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -31,8 +67,8 @@ function percent(value: number): number {
 }
 
 /** The fuel a bud wears, or null for none: a finite `usedPercent` is a reading and wins over `unread`, and anything
- * malformed draws today's bud. */
-export function budFuel(profile: MonitorSpawnProfile): BloomFuel | null {
+ * malformed draws today's bud. Red: `d` and `drawn` are not read yet. */
+export function budFuel(profile: MonitorSpawnProfile, d: number): BloomFuel | null {
   const fuel: unknown = profile.fuel;
   if (typeof fuel !== 'object' || fuel === null) return null;
   const { usedPercent, elapsedPercent, hot, stale, unread } = fuel as Readonly<Record<string, unknown>>;
@@ -73,6 +109,12 @@ export interface BloomRing {
 }
 
 const print = (value: number): number => Math.round(value * 100) / 100;
+
+/** A host's arc as an SVG path about `c`, clockwise from `from` to `to` (degrees, 0 at three o'clock), in two halves
+ * past a half turn; every number rounded to 2 places. Red: no path yet. */
+export function arcD(c: number, r: number, from: number, to: number): string {
+  return '';
+}
 
 const RIM_INSET = 0.8;
 const NOTCH_OVERHANG = 1.5;
