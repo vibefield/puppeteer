@@ -75,7 +75,8 @@ type BloomDrawn = Extract<BloomFuel, { kind: 'drawn' }>;
 type Fields = Readonly<Record<string, unknown>>;
 
 // A host's drawing, read tolerantly by puppeteer's own limits (no host's rule): the first 4 valid drawings, 48 arcs and
-// 16 notches each, and no stroke past 2 beyond the disc's rim, so the audited `labelGap` (8) keeps 6 to spare.
+// 16 notches each, and no stroke past 2 px beyond the bud's rim as the bud draws it, so the audited `labelGap` (8)
+// keeps 6 to spare at any scale.
 const MOST_DRAWINGS = 4;
 const MOST_ARCS = 48;
 const MOST_NOTCHES = 16;
@@ -168,13 +169,14 @@ function firstValid<T>(list: unknown, most: number, read: (value: unknown) => T 
   return kept;
 }
 
-/** One drawing, or null when it has no finite size above 0 or no stroke the bud can draw. */
-function drawingOf(value: unknown): BloomDrawn | null {
+/** One drawing, or null when it has no finite size above 0 or no stroke the bud can draw. Its strokes are judged as a
+ * `d`-wide bud draws them (scaled by `d / size`): the slack is 2 of the bud's px, `2 * size / d` of the drawing's. */
+function drawingOf(value: unknown, d: number): BloomDrawn | null {
   const drawing = fields(value);
   const size = drawing?.size;
   if (!drawing || !finite(size) || size <= 0) return null;
   const c = size / 2;
-  const reach = c + RIM_SLACK;
+  const reach = c + (RIM_SLACK * size) / (finite(d) && d > 0 ? d : size);
   const arcs = firstValid(drawing.arcs, MOST_ARCS, (arc) => arcOf(arc, reach));
   const notches = firstValid(drawing.notches, MOST_NOTCHES, (notch) => notchOf(notch, c, reach));
   return arcs.length > 0 || notches.length > 0 ? { kind: 'drawn', size: print(size), arcs, notches } : null;
@@ -198,7 +200,7 @@ export function budFuel(profile: MonitorSpawnProfile, d: number): BloomFuel | nu
   const fuel: unknown = profile.fuel;
   if (typeof fuel !== 'object' || fuel === null) return null;
   const { usedPercent, elapsedPercent, hot, stale, unread, drawn } = fuel as Readonly<Record<string, unknown>>;
-  const drawing = pick(firstValid(drawn, MOST_DRAWINGS, drawingOf), d);
+  const drawing = pick(firstValid(drawn, MOST_DRAWINGS, (each) => drawingOf(each, d)), d);
   if (drawing) return drawing;
   if (finite(usedPercent)) {
     return {

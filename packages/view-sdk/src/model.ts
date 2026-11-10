@@ -270,8 +270,9 @@ export interface MonitorSpawnFuel {
    * else the nearest (the larger on a tie), scaled. A valid drawing (one with a stroke the bud can draw) wins over
    * `usedPercent` and `unread`, which stay for a host that draws nothing; `hot` and `stale` then do not touch the
    * picture, since its tones and opacities say them. The bud reads the first 4 valid drawings, 48 arcs and 16 notches
-   * each, and skips a stroke that reaches more than 2 past the disc's rim. The picture is hidden from the accessibility
-   * tree, so `word` still says everything, a kept reading's age included.
+   * each, and skips a stroke that, drawn at the bud's width, reaches more than 2 px past the bud's rim (so a drawing
+   * made for another size is judged as scaled). The picture is hidden from the accessibility tree, so `word` still
+   * says everything, a kept reading's age included.
    */
   readonly drawn?: readonly MonitorSpawnFuelDrawing[] | undefined;
 }

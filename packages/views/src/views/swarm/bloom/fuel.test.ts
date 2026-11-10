@@ -72,6 +72,12 @@ describe("a bud's drawn fuel, read", () => {
     ];
     for (const bad of skipped) expect([bad, oneArc({ ...base, ...bad })]).toEqual([bad, null]);
     expect(oneArc({ ...base, r: 25 })).toMatchObject({ r: 25 });
+    // the slack is 2 of the bud's own px, whatever size the drawing was made for: 52 of 96 is 26 of 48, 4 of 4 is 48
+    const scaled = (size: number, r: number) => budFuel(profile({ drawn: [{ size, arcs: [{ ...base, r }] }] }), 48);
+    expect(sizeOf(scaled(96, 51))).toBe(96);
+    expect(scaled(96, 51.1)).toBeNull();
+    expect(sizeOf(scaled(4, 1))).toBe(4);
+    expect(scaled(4, 3)).toBeNull();
     expect(oneArc({ ...base, percent: 140, opacity: 2 })).toMatchObject({ percent: 100, opacity: 1 });
     expect(oneArc({ ...base, percent: -5, opacity: -1 })).toMatchObject({ percent: 0, opacity: 0 });
     expect(oneArc({ ...base, r: 20.123, width: 2.346, percent: 64.456 })).toMatchObject({
