@@ -340,9 +340,9 @@ describe("the spawn bloom's drawn fuel", () => {
   });
   const arcs = (markup: string) => count(markup, /class="vf-bloom-fuel-arc"/g);
   const notches = (markup: string) => count(markup, /class="vf-bloom-fuel-notch"/g);
-  /** The box of the drawing Work's 48 bud picked from `drawn`. */
+  /** The box of the drawing Work's 48 bud picked from `drawn` (a glyph's own svg has a box too). */
   const box = (drawn: readonly MonitorSpawnFuelDrawing[]): string | undefined =>
-    /viewBox="(0 0 \d+ \d+)"/.exec(html(work({ drawn })))?.[1];
+    /class="vf-bloom-fuel is-drawn" width="48" height="48" viewBox="(0 0 \d+ \d+)"/.exec(html(work({ drawn })))?.[1];
 
   it('a 48 bud draws its drawing: arcs as paths, a whole ring as a circle, each with its tone and share', () => {
     const markup = html(work({ drawn: [FUEL_48] }));

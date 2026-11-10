@@ -239,15 +239,25 @@ export interface MonitorSpawnFuelDrawing {
  * profile on THIS desktop's row.
  */
 export interface MonitorSpawnFuel {
-  /** Share of the window used. Not a finite number: no gauge. */
+  /**
+   * Share of the window used. Not a finite number: no gauge.
+   * @deprecated Hand the picture in `drawn`. The one-arc fields carry a gauge's rules inside the bloom; they still
+   * work, and lose to a valid drawing.
+   */
   readonly usedPercent?: number | undefined;
-  /** Share of the window's time gone (the tick). Absent: no tick. */
+  /**
+   * Share of the window's time gone (the tick). Absent: no tick.
+   * @deprecated Hand the picture in `drawn` (a notch); this still works, and loses to a valid drawing.
+   */
   readonly elapsedPercent?: number | undefined;
+  /** @deprecated Hand the picture in `drawn` (a `hot` tone); this still works, and loses to a valid drawing. */
   readonly hot?: boolean | undefined;
+  /** @deprecated Hand the picture in `drawn` (an opacity); this still works, and loses to a valid drawing. */
   readonly stale?: boolean | undefined;
   /**
    * No reading to draw, for a reason worth showing: a dashed thread where the gauge would be. A number in `usedPercent`
    * wins.
+   * @deprecated Hand the picture in `drawn` (a dashed arc); this still works, and loses to a valid drawing.
    */
   readonly unread?: boolean | undefined;
   /**

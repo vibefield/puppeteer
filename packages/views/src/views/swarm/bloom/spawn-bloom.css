@@ -232,6 +232,29 @@
   stroke-linecap: round;
 }
 
+/* a host's own drawing (`MonitorSpawnFuel.drawn`): each stroke's tone is its `data-tone` and its share is
+   `--mv-swarm-bloom-fuel-share`, set on the stroke; widths, caps, dashes and opacities are the host's attributes,
+   so these rules set none of them (a declaration here would win over the attribute). No motion of its own. */
+.mv-swarm .vf-bloom-fuel path {
+  fill: none;
+}
+
+.mv-swarm .vf-bloom-fuel-arc {
+  stroke: color-mix(in srgb, var(--mv-swarm-bloom-fuel-ink) var(--mv-swarm-bloom-fuel-share, 64%), transparent);
+}
+
+.mv-swarm .vf-bloom-fuel-notch {
+  stroke: color-mix(in srgb, var(--mv-swarm-bloom-fuel-ink) var(--mv-swarm-bloom-fuel-share, 64%), transparent);
+}
+
+.mv-swarm .vf-bloom-fuel-arc[data-tone='hot'] {
+  stroke: color-mix(in srgb, var(--mv-swarm-orange, #ff9f0a) var(--mv-swarm-bloom-fuel-share, 88%), transparent);
+}
+
+.mv-swarm .vf-bloom-fuel-notch[data-tone='hot'] {
+  stroke: color-mix(in srgb, var(--mv-swarm-orange, #ff9f0a) var(--mv-swarm-bloom-fuel-share, 88%), transparent);
+}
+
 /* ── the labels: seated clear of everything (the core's seatLabel), 140ms behind their bud ── */
 
 .mv-swarm .vf-bloom-label {
