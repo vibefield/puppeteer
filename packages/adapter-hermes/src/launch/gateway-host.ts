@@ -106,10 +106,17 @@ interface GatewayInterpreter {
   checkout?: string;
 }
 
+/** An interpreter, with the checkout the host names in place of any other. */
+function withCheckout(python: string, named: string | undefined, found?: string): GatewayInterpreter {
+  const checkout = named ?? found;
+  return checkout === undefined ? { python } : { python, checkout };
+}
+
 /**
  * For a launch that names no interpreter: the interpreter and the checkout the launch's `hermes` wrapper execs, found
  * on the PATH the host runs under; else HERMES_PYTHON. With neither the launch is refused before anything is written
- * or spawned: a bare `python3` cannot import Hermes, and its exit would say nothing a person can act on.
+ * or spawned: a bare `python3` cannot import Hermes, and its exit would say nothing a person can act on. A checkout
+ * the host names takes the place of the wrapper's.
  */
 async function resolveGatewayInterpreter(
   options: StartHermesGatewayHostOptions,
@@ -119,12 +126,12 @@ async function resolveGatewayInterpreter(
     const wrapper = await readHermesWrapper(resolveHermesExecutable(options.executable), env);
     const python = wrapper === undefined ? undefined : hermesPythonFromWrapper(wrapper);
     const checkout = wrapper === undefined ? undefined : hermesCheckoutFromWrapper(wrapper);
-    if (python) return checkout === undefined ? { python } : { python, checkout };
+    if (python) return withCheckout(python, options.checkout, checkout);
   } catch {
     // An unreadable wrapper names nothing.
   }
   const fromEnvironment = process.env[HERMES_PYTHON_ENV];
-  if (fromEnvironment) return { python: fromEnvironment };
+  if (fromEnvironment) return withCheckout(fromEnvironment, options.checkout);
   throw new AgentLaunchRefusedError(
     'INTERPRETER_UNAVAILABLE',
     'no interpreter is named for the Hermes gateway host, and no hermes wrapper on its PATH names one',
@@ -140,22 +147,30 @@ export async function startHermesGatewayHost(options: StartHermesGatewayHostOpti
   // The agent's environment, as the host composes it for every helper that runs the agent's turns and tools. A host
   // that composes none gets the minimal set it always had: this process's PATH, and nothing else of its own.
   const env = options.host?.helperEnvironment?.(own) ?? { PATH: process.env.PATH, ...own };
-  // The explicit python, then the wrapper's, then HERMES_PYTHON. A named interpreter is taken with nothing awaited, so
-  // that launch spawns in the same turn as before.
-  const interpreter = options.python ? { python: options.python } : await resolveGatewayInterpreter(options, env);
+  // The explicit python with the checkout named beside it, if any; then the wrapper's python and checkout; then
+  // HERMES_PYTHON. A named checkout takes the place of the wrapper's. A named interpreter is taken with nothing
+  // awaited, so that launch spawns in the same turn as before.
+  const interpreter = options.python
+    ? withCheckout(options.python, options.checkout)
+    : await resolveGatewayInterpreter(options, env);
   const token = createHermesGatewayToken();
-  const script = hostScript();
+  // The script runs from the command line, isolated (-I): nothing is written for it, and neither the agent's working
+  // directory, PYTHONPATH nor the user's site reaches its imports. It is the adapter's own source, with nothing of the
+  // launch in it, so a same-user `ps` that reads it learns nothing. Windows keeps the file, whose command line is
+  // quoted another way.
+  const script = process.platform === 'win32' ? hostScript() : undefined;
   let child: ChildProcess;
   try {
-    // The checkout, when the wrapper names one, is the script's one argument: it imports Hermes from there.
-    const args = interpreter.checkout === undefined ? [script.path] : [script.path, interpreter.checkout];
+    // The checkout, when there is one, is the script's one argument: it imports Hermes from there.
+    const checkout = interpreter.checkout === undefined ? [] : [interpreter.checkout];
+    const args = script ? [script.path, ...checkout] : ['-I', '-B', '-c', TUI_GATEWAY_HOST_SOURCE, ...checkout];
     child = spawn(interpreter.python, args, {
       cwd: options.cwd,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
   } catch (error) {
-    script.release();
+    script?.release();
     throw error;
   }
   // The bearer rides stdin, never argv or the environment: any same-user
@@ -216,7 +231,7 @@ export async function startHermesGatewayHost(options: StartHermesGatewayHostOpti
     await terminateChild(child);
     throw error;
   } finally {
-    script.release();
+    script?.release();
   }
 
   return {
