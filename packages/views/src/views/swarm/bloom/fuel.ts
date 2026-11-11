@@ -23,7 +23,7 @@ export interface BloomArc {
   readonly width: number;
   readonly from: number;
   readonly to: number;
-  /** A sweep of 359.9 or more: drawn as a whole circle. */
+  /** A sweep of 359.9 or more: drawn as a whole circle, turned to start at `from`. */
   readonly circle: boolean;
   readonly tone: MonitorSpawnFuelTone;
   readonly percent: number;

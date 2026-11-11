@@ -350,9 +350,9 @@ describe("the spawn bloom's drawn fuel", () => {
       '<svg class="vf-bloom-fuel is-drawn" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true" style="position:absolute;inset:0;overflow:visible">',
     );
     const strokes = [
-      '<circle class="vf-bloom-fuel-arc" data-tone="ink" cx="24" cy="24" r="21.6" stroke-width="3.2" stroke-linecap="round" style="--mv-swarm-bloom-fuel-share:12%"',
+      '<circle class="vf-bloom-fuel-arc" data-tone="ink" cx="24" cy="24" r="21.6" stroke-width="3.2" stroke-linecap="round" transform="rotate(-90 24 24)" style="--mv-swarm-bloom-fuel-share:12%"',
       '<path class="vf-bloom-fuel-arc" data-tone="ink" d="M24 2.4A21.6 21.6 0 0 1 45.6 24" stroke-width="3.2" stroke-linecap="round" style="--mv-swarm-bloom-fuel-share:64%"',
-      '<circle class="vf-bloom-fuel-arc" data-tone="ink" cx="24" cy="24" r="17.6" stroke-width="3.2" stroke-linecap="butt" style="--mv-swarm-bloom-fuel-share:12%"',
+      '<circle class="vf-bloom-fuel-arc" data-tone="ink" cx="24" cy="24" r="17.6" stroke-width="3.2" stroke-linecap="butt" transform="rotate(-90 24 24)" style="--mv-swarm-bloom-fuel-share:12%"',
       // past a half turn, two halves
       '<path class="vf-bloom-fuel-arc" data-tone="hot" d="M24 6.4A17.6 17.6 0 0 1 24 41.6A17.6 17.6 0 0 1 6.4 24" stroke-width="3.2" stroke-linecap="round" opacity="0.5" style="--mv-swarm-bloom-fuel-share:88%"',
       '<line class="vf-bloom-fuel-notch" data-tone="ink" x1="42" y1="24" x2="49" y2="24" stroke-width="1.25" style="--mv-swarm-bloom-fuel-share:84%"',
@@ -396,7 +396,7 @@ describe("the spawn bloom's drawn fuel", () => {
 
   it('a thread is a dashed stroke with round caps', () => {
     expect(html(work({ drawn: [FUEL_THREAD] }))).toContain(
-      '<circle class="vf-bloom-fuel-arc" data-tone="ink" cx="24" cy="24" r="19.5" stroke-width="1.8" stroke-linecap="round" style="--mv-swarm-bloom-fuel-share:46%;stroke-dasharray:0.01 4.8"',
+      '<circle class="vf-bloom-fuel-arc" data-tone="ink" cx="24" cy="24" r="19.5" stroke-width="1.8" stroke-linecap="round" transform="rotate(-90 24 24)" style="--mv-swarm-bloom-fuel-share:46%;stroke-dasharray:0.01 4.8"',
     );
   });
 

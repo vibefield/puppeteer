@@ -200,7 +200,8 @@ function strokeStyle(percent: number, dash: readonly [number, number] | null): C
 }
 
 /** The picture a host drew, as handed: its box at the bud's width, so a drawing made for another size scales. Arcs as
- * paths (a whole ring as a circle), then the notches, each with its tone for the sheet and its share. */
+ * paths (a whole ring as a circle turned to start at `from`, where a circle would start at three o'clock), then the
+ * notches, each with its tone for the sheet and its share. */
 function DrawnFuel({ d, fuel }: { d: number; fuel: Extract<BloomFuel, { kind: 'drawn' }> }): ReactElement {
   const c = fuel.size / 2;
   return (
@@ -224,6 +225,7 @@ function DrawnFuel({ d, fuel }: { d: number; fuel: Extract<BloomFuel, { kind: 'd
             strokeWidth={arc.width}
             strokeLinecap={arc.cap}
             opacity={arc.opacity < 1 ? arc.opacity : undefined}
+            transform={`rotate(${arc.from} ${c} ${c})`}
             style={strokeStyle(arc.percent, arc.dash)}
           />
         ) : (

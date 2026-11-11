@@ -195,7 +195,7 @@ export interface MonitorSpawnFuelArc {
   readonly r: number;
   readonly width: number;
   readonly from: number;
-  /** After `from`; a sweep of 359.9 or more is a whole ring. */
+  /** After `from`; a sweep of 359.9 or more is a whole ring, which still starts at `from` (its dash and its seam). */
   readonly to: number;
   readonly tone: MonitorSpawnFuelTone;
   /** The tone's share of the stroke, 0..100. */
