@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.1](https://github.com/vibefield/puppeteer/compare/v0.4.0...v0.4.1) (2026-11-12)
+
+
+### Features
+
+* **view-sdk,views:** a spawn bloom's profile bud draws the arcs its host drew ([#82](https://github.com/vibefield/puppeteer/issues/82)) ([41b68c0](https://github.com/vibefield/puppeteer/commit/41b68c027f38948a5ca25d4d6e8049b1c2a15d9f))
+
+
+### Bug Fixes
+
+* **adapter-hermes:** the gateway host runs the interpreter the hermes wrapper names, and refuses when nothing names one ([#80](https://github.com/vibefield/puppeteer/issues/80)) ([10d0377](https://github.com/vibefield/puppeteer/commit/10d037713cb88e965c217d494fa3999e77a588cc))
+* **runtime:** a typed launch under a registered account is prepared under it, from the one read that attributed it ([#79](https://github.com/vibefield/puppeteer/issues/79)) ([95eba4c](https://github.com/vibefield/puppeteer/commit/95eba4cdcb1515c62a3e864baf5312ed09ee76f6))
+* **views:** spend keeps its words apart at a moment and on a phone ([#81](https://github.com/vibefield/puppeteer/issues/81)) ([6cc53ff](https://github.com/vibefield/puppeteer/commit/6cc53ff1c2b6d226ddf0f735d7dd4e735a2e9095))
+
 ## [0.4.0](https://github.com/vibefield/puppeteer/compare/v0.3.4...v0.4.0) (2026-11-09)
 
 
