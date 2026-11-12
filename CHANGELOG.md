@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/vibefield/puppeteer/compare/v0.4.1...v0.4.2) (2026-11-12)
+
+
+### Features
+
+* a host learns a run's helper process, and names the environment its services hand an agent's programs ([#85](https://github.com/vibefield/puppeteer/issues/85)) ([b883819](https://github.com/vibefield/puppeteer/commit/b883819474b93b1e391c27616ad4bb101c4608da))
+
 ## [0.4.1](https://github.com/vibefield/puppeteer/compare/v0.4.0...v0.4.1) (2026-11-12)
 
 
