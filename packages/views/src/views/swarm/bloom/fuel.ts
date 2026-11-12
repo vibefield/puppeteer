@@ -204,7 +204,10 @@ export function budFuel(profile: MonitorSpawnProfile, d: number): BloomFuel | nu
   const fuel: unknown = profile.fuel;
   if (typeof fuel !== 'object' || fuel === null) return null;
   const { usedPercent, elapsedPercent, hot, stale, unread, drawn } = fuel as Readonly<Record<string, unknown>>;
-  const drawing = pick(firstValid(drawn, MOST_DRAWINGS, (each) => drawingOf(each, d)), d);
+  const drawing = pick(
+    firstValid(drawn, MOST_DRAWINGS, (each) => drawingOf(each, d)),
+    d,
+  );
   if (drawing) return drawing;
   if (finite(usedPercent)) {
     return {
