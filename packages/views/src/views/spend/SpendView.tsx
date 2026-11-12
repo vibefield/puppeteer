@@ -48,6 +48,7 @@ import { normalizeSpendParameters } from './spend-parameters.js';
 import { rateAt, spendAt, spendMeters, spentAt, spentPoints, valueAt, type SpendLine } from './spend-series.js';
 import {
   axisMoney,
+  COLCAP,
   est,
   fitWords,
   heroCaption,
@@ -199,6 +200,18 @@ function heroRoom(g: Geometry, figure: string, rate: string, font: string, measu
   const { figureFace, gapPx, rateFace, capGapPx, wordsFace, listInsetPx } = NARROW_HERO;
   const before = measure(figure, `${figureFace} ${font}`) + gapPx + measure(rate, `${rateFace} ${font}`) + capGapPx;
   return { width: g.lx0 - listInsetPx - g.x0 - before, measure: (text) => measure(text, `${wordsFace} ${font}`) };
+}
+
+/**
+ * The chart's caption's words (item 291 · 3b): the long words wherever they fit the plot, the short ones where they
+ * would overrun it, as on a phone. The long words are measured as `heroRoom` measures, in the caption's face as
+ * spend.css sets it, in caps and with its tracking added (the canvas leaves both out).
+ */
+function colcapWords(g: Geometry, font: string, measure: TextMeasure): string {
+  const { long, short, face, trackingEm } = COLCAP;
+  const sizePx = Number.parseFloat(face.split(' ')[1] ?? '0');
+  const width = measure(long.toUpperCase(), `${face} ${font}`) + long.length * trackingEm * sizePx;
+  return width > g.x1 - g.x0 ? short : long;
 }
 
 // The glyphs (DESIGN §13 Instrument construction: 24 box, one 2-unit stroke, round caps).
@@ -415,11 +428,14 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     perMinute += row.burn ?? 0;
   }
   const heroFigure = `~${money(spent)}${partial ? '+' : ''}`;
-  const heroRate =
-    tCross !== null ? `by ${formatClock(tCross)} · ${perHour(perMinute)} then` : `${perHour(perMinute)} now`;
+  // At a moment the burn says by when and how fast. The moment's chip and "by" already say it is past, so it says no
+  // "then" (item 291 · 1, James's A; at any moment, held or pointed: Q1 as leant).
+  const heroRate = tCross !== null ? `by ${formatClock(tCross)} · ${perHour(perMinute)}` : `${perHour(perMinute)} now`;
   // Its caption: what the figure is, and who it leaves out, the unpriced that had started by the moment (one not yet
   // running is not missing). A narrow stage keeps only who, cut to the room the number and the burn leave it; with
   // nobody left out it has no caption.
+  // The chart's caption: the long words where they fit the plot, the short where they would overrun it (291 · 3b).
+  const colcap = colcapWords(g, font, measure);
   const missing = unpriced.filter((row) => row.bornMs <= tView);
   const heroWhat = heroCaption({
     missing,
@@ -430,8 +446,10 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
   // The header: how many had started by the moment, and what the money column means.
   const all = rows.length + unpricedRows.length;
   const started = [...rows, ...unpricedRows].filter((row) => row.state.key !== 'before').length;
-  // The compact form's slim header says only what it must: who had started while some had not, and "Total".
-  const headA = started < all ? `${started} of ${all} started` : g.compact ? '' : 'By spend';
+  // The compact form's slim header says only what it must: who had started while some had not, and "Total". At a
+  // moment it says the same, so "Total by <clock>" stands whole (item 291 · 2, James's A; at any moment, held or
+  // pointed: Q1 as leant).
+  const headA = started < all ? `${started} of ${all} started` : g.compact || tCross !== null ? '' : 'By spend';
   // The list's money is each run's total, the chart's what it spent in the window: the header says which.
   const headB = tCross !== null ? `Total by ${formatClock(tCross)}` : 'Total';
 
@@ -887,11 +905,13 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
         onPointerLeave={onHitLeave}
       />
       <div className="vf-monitor-spend-colcap" style={{ left: g.x0, top: g.y0 + 8 }} aria-hidden="true">
-        Spent in the last 10 minutes
+        {colcap}
       </div>
       <div className="vf-monitor-spend-y" aria-hidden="true">
+        {/* The money labels, $0 among them 4 px higher: its line then ends above now's chip, which stands centred on
+            the plot's right edge at every width (item 291 · 4). */}
         {yTicks.map((value) => (
-          <span key={value} style={{ left: g.x1 + 12, top: yOf(value) - 7 }}>
+          <span key={value} style={{ left: g.x1 + 12, top: yOf(value) - (value === 0 ? 11 : 7) }}>
             {axisMoney(value, target.step)}
           </span>
         ))}
@@ -926,11 +946,12 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
       </div>
       {pinned !== null ? (
         // Now, with the key it answers to printed under its glyph (M177 ruling 4: the button is the key), its legend
-        // from the toolkit's one table, as the timeline and the bar print it (M181).
+        // from the toolkit's one table, as the timeline and the bar print it (M181). It stands under the chart's
+        // caption, 4 px clear of its 10 px line, so a narrow plot's caption runs on uncovered (item 291 · 3).
         <button
           type="button"
           className="vf-monitor-spend-back"
-          style={{ right: g.width - g.x1 + 4, top: g.y0 + 2 }}
+          style={{ right: g.width - g.x1 + 4, top: g.y0 + 22 }}
           title={`Back to now (${NOW_KEY})`}
           aria-label="Back to now"
           aria-keyshortcuts={NOW_KEY}

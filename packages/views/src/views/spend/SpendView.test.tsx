@@ -87,6 +87,10 @@ const WIDE = { width: 1178, height: 638 };
 const NARROW = { width: 400, height: 260 };
 /** Still narrow (under 640), with room beside the hero's number and burn for its short caption whole. */
 const NARROW_ROOMY = { width: 600, height: 260 };
+/** The phone's stage, as VibeField's kit draws the spend view (402 × 781): narrow, its plot 166 px. */
+const PHONE = { width: 402, height: 781 };
+/** Godview's compact stage (680 × 170) past its usage column (46 px, the lab's `?chrome=46`): narrow, but roomy. */
+const GODVIEW_COMPACT = { width: 634, height: 170 };
 
 interface Mounted {
   readonly root: HTMLElement;
@@ -165,6 +169,16 @@ async function setMoment(view: Mounted, t: number, box = WIDE): Promise<void> {
   await act(async () => {
     hit.dispatchEvent(new PointerEvent('pointerdown', init));
     hit.dispatchEvent(new PointerEvent('pointerup', init));
+  });
+}
+
+/** Rest a pointer on the chart at `t`, near the plot's top, pressing nothing: a moment the pointer sets, not held. */
+async function pointAt(view: Mounted, t: number, box = WIDE): Promise<void> {
+  const g = geometryFor(box.width, box.height);
+  const x = g.x0 + ((t - (NOW - SPEND_WINDOW_MS)) / SPEND_WINDOW_MS) * (g.x1 - g.x0);
+  const hit = view.root.querySelector('.vf-monitor-spend-hit')!;
+  await act(async () => {
+    hit.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: x, clientY: g.y0 + 2, pointerId: 1 }));
   });
 }
 
@@ -336,7 +350,7 @@ describe('the spend view', () => {
       `Total by ${formatClock(moment)}`,
     ]);
     expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(
-      new RegExp(`^by ${formatClock(moment)} · \\$[\\d.]+/hr then$`),
+      new RegExp(`^by ${formatClock(moment)} · \\$[\\d.]+/hr$`),
     );
     const young = rowOf(view.root, 'changelog');
     expect(young.className).toContain('is-before');
@@ -448,6 +462,78 @@ describe('the spend view', () => {
       'NO ACTIVE AGENTS' + 'Launch an agent from a terminal pane.',
     );
     expect(view.root.querySelector('.vf-monitor-empty')).toBeNull();
+  });
+});
+
+// Item 291 (James's A on each of item 285's five marks, 2026-11-10): at a held moment and at a narrow stage, the
+// view keeps its words apart. A moment is held with a press, as a person holds one (`setMoment`).
+describe('the spend view at a held moment and at a narrow stage (item 291)', () => {
+  it('stands the Now button under the chart’s caption, 4 px clear of its line (291 · 3)', async () => {
+    const view = await mount({ agents: afternoon() });
+    const g = geometryFor(WIDE.width, WIDE.height);
+    await setMoment(view, NOW - 6 * MIN);
+    const back = view.root.querySelector<HTMLElement>('.vf-monitor-spend-back')!;
+    const caption = view.root.querySelector<HTMLElement>('.vf-monitor-spend-colcap')!;
+    expect(back.style.top).toBe(`${g.y0 + 22}px`);
+    // The caption's one line is 10 px tall (spend.css, `10px/1`).
+    const captionFoot = Number.parseFloat(caption.style.top) + 10;
+    expect(Number.parseFloat(back.style.top) - captionFoot).toBeGreaterThanOrEqual(4);
+  });
+
+  it('lifts the money axis’s $0 clear of now’s chip at the plot’s corner (291 · 4)', async () => {
+    const view = await mount({ agents: afternoon() });
+    const g = geometryFor(WIDE.width, WIDE.height);
+    const zero = view.root.querySelector<HTMLElement>('.vf-monitor-spend-y span')!;
+    const chip = view.root.querySelector<HTMLElement>('.vf-monitor-spend-x .vf-monitor-spend-chip')!;
+    expect(zero.textContent).toBe('$0');
+    expect(zero.style.top).toBe(`${g.y1 - 11}px`);
+    // Its 14 px line (spend.css) ends above the chip's top: the two boxes do not meet.
+    expect(Number.parseFloat(zero.style.top) + 14).toBeLessThan(Number.parseFloat(chip.style.top));
+  });
+
+  it('says a moment’s burn without “then”: by when, and how fast, held or pointed (291 · 1)', async () => {
+    const view = await mount({ agents: afternoon() });
+    const moment = NOW - 6 * MIN;
+    const burn = new RegExp(`^by ${formatClock(moment)} · \\$[\\d.]+/hr$`);
+    // A pointer resting on the chart sets the moment too, unheld: the same words (Q1, as leant: any moment).
+    await pointAt(view, moment);
+    expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(burn);
+    await setMoment(view, moment);
+    expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(burn);
+  });
+
+  it('heads the money column alone at a moment once every row had started, held or pointed (291 · 2)', async () => {
+    const view = await mount({ agents: afternoon() });
+    // changelog, the afternoon's youngest, was born 4.5 minutes before now: 4 minutes before, every row had started.
+    const moment = NOW - 4 * MIN;
+    const head = ['', `Total by ${formatClock(moment)}`];
+    // A pointer resting on the chart sets the moment too, unheld: the same head (Q1, as leant: any moment).
+    await pointAt(view, moment);
+    expect(text(view.root, '.vf-monitor-spend-head span')).toEqual(head);
+    await setMoment(view, moment);
+    expect(text(view.root, '.vf-monitor-spend-head span')).toEqual(head);
+  });
+
+  it('keeps who had started beside “Total by <clock>” at a held moment, at the narrowest plate (291 · 2)', async () => {
+    // Before changelog's birth (4.5 minutes before now) one row had not started: the count stands, as it did. happy-dom
+    // applies no stylesheet, so the 8 px between the two and the first one's cut are the sheet test's.
+    const view = await mount({ agents: afternoon() }, NARROW);
+    const moment = NOW - 6 * MIN;
+    await setMoment(view, moment, NARROW);
+    expect(text(view.root, '.vf-monitor-spend-head span')).toEqual([
+      '9 of 10 started',
+      `Total by ${formatClock(moment)}`,
+    ]);
+  });
+
+  it('says the chart’s window short where the long words overrun the plot: the phone’s 402 (291 · 3b)', async () => {
+    const view = await mount({ agents: afternoon() }, PHONE);
+    expect(text(view.root, '.vf-monitor-spend-colcap')).toEqual(['Last 10 minutes']);
+  });
+
+  it('keeps the long words wherever they fit: Godview’s compact stage, narrow but roomy (291 · 3b)', async () => {
+    const view = await mount({ agents: afternoon() }, GODVIEW_COMPACT);
+    expect(text(view.root, '.vf-monitor-spend-colcap')).toEqual(['Spent in the last 10 minutes']);
   });
 });
 
