@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,10 +12,12 @@ const hostScript = readFileSync(fileURLToPath(new URL('../../scripts/tui-gateway
 const directory = mkdtempSync(join(tmpdir(), 'puppeteer-hermes-bundle-'));
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 
-// Stands in for Hermes's Python: records the script it was asked to run, then publishes a URL as the real host does.
+// Stands in for Hermes's Python: records how it was asked to run the script and the script itself, then publishes a URL
+// as the real host does.
 const STUB_PYTHON = `#!/bin/sh
-printf '%s' "$1" > "$STUB_RECORD.path"
-cat "$1" > "$STUB_RECORD.script"
+printf '%s %s %s' "$1" "$2" "$3" > "$STUB_RECORD.flags"
+printf '%s' "$4" > "$STUB_RECORD.script"
+printf '%s' "$#" > "$STUB_RECORD.count"
 printf '{"url":"ws://127.0.0.1:1/api/ws"}\\n'
 exec sleep 60
 `;
@@ -52,17 +54,23 @@ describe('the Hermes gateway host in a bundled Node host', () => {
       writeFileSync(python, STUB_PYTHON);
       chmodSync(python, 0o755);
       const record = join(directory, 'record');
+      // The bundled host's own temp directory: nothing may be written there for the host to run.
+      const temporary = mkdtempSync(join(directory, 'tmp-'));
 
       const child = spawnSync(process.execPath, ['-e', LAUNCH, bundle, python, directory, record], {
         cwd: directory,
         encoding: 'utf8',
+        env: { ...process.env, TMPDIR: temporary },
         timeout: 25_000,
       });
 
       expect(child.status, child.stderr).toBe(0);
       expect(child.stdout.trim()).toBe('ok');
+      expect(readFileSync(`${record}.flags`, 'utf8')).toBe('-I -B -c');
       expect(readFileSync(`${record}.script`, 'utf8')).toBe(hostScript);
-      expect(existsSync(readFileSync(`${record}.path`, 'utf8'))).toBe(false);
+      // the script and nothing after it: a host that names its python and no checkout hands none
+      expect(readFileSync(`${record}.count`, 'utf8')).toBe('4');
+      expect(readdirSync(temporary)).toEqual([]);
     },
   );
 });

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { NARROW_HERO } from '../src/views/spend/spend-words.js';
+import { COLCAP, NARROW_HERO } from '../src/views/spend/spend-words.js';
 
 // THE SPEND VIEW'S SHEET HIDES NO WORD OF THE HERO'S CAPTION. happy-dom applies no stylesheet, so the view's own suite
 // reads every word the hero renders even where a rule would hide it; this reads spend.css as text. It lives outside the
@@ -45,5 +45,27 @@ describe('the spend view’s stylesheet', () => {
     expect(rules.length).toBeGreaterThan(0);
     const hiding = rules.filter((rule) => /\b(?:display\s*:\s*none|visibility\s*:\s*hidden)\b/.test(rule.body));
     expect(hiding.map((rule) => rule.selector)).toEqual([]);
+  });
+
+  it('keeps the list head’s two labels 8 px apart, the first cut before the second (item 291 · 2)', () => {
+    // Item 291 (James's A on item 285's second mark): "Total by <clock>" stands whole; a label beside it stands 8 px
+    // clear, and is cut first where both do not fit.
+    expect(value(rule('.mv-spend .vf-monitor-spend-head'), 'gap')).toBe('8px');
+    const first = rule('.mv-spend .vf-monitor-spend-head span:first-child');
+    expect(value(first, 'min-width')).toBe('0');
+    expect(value(first, 'overflow')).toBe('hidden');
+    expect(value(first, 'text-overflow')).toBe('ellipsis');
+    expect(value(first, 'white-space')).toBe('nowrap');
+    const last = rule('.mv-spend .vf-monitor-spend-head span:last-child');
+    expect(value(last, 'flex')).toBe('none');
+    expect(value(last, 'white-space')).toBe('nowrap');
+  });
+
+  it('sets the chart’s caption in the face the view measures it in (item 291 · 3b)', () => {
+    const caption = rule('.mv-spend .vf-monitor-spend-colcap');
+    expect(value(caption, 'font')?.startsWith(`${COLCAP.face}/`)).toBe(true);
+    expect(value(caption, 'text-transform')).toBe('uppercase');
+    expect(value(caption, 'letter-spacing')).toBe(`${COLCAP.trackingEm}em`);
+    expect(value(caption, 'white-space')).toBe('nowrap');
   });
 });

@@ -2081,7 +2081,10 @@ const resumed = await runtime.resume({
               a plain spawn in the provider's own root (reported through <code>onError</code>), while a named profile
               or set fails typed with its run terminal. A host handling native invocations can seed the terminal
               environment with <code>profileBindingEnvironment()</code>, which binds nothing for a signed-out
-              account; supported adapters preserve and attribute the binding through invocation normalization.
+              account; supported adapters preserve and attribute the binding through invocation normalization, and
+              <code>prepareInvocation()</code> prepares the run under the active account the binding names, as a spawn
+              naming that account would be, from the one registry read that attributed it (a signed-out account's
+              binding is attributed only, and a registry that cannot be read leaves the run unattributed).
             </p>
             <div class="table-wrap">
               <table class="reference-table">
