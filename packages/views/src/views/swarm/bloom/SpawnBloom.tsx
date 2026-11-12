@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { ProfileGlyph } from '@vibefield/puppeteer-view-sdk/react';
 import { BLOOM } from './constants.js';
-import { budRing, type BloomFuel } from './fuel.js';
+import { arcD, budRing, type BloomFuel } from './fuel.js';
 import type { BloomBox } from './geometry.js';
 import { bloomView, type BloomBudView, type BloomSay, type BloomState, type BloomView } from './model.js';
 import type { BloomTarget } from './targeting.js';
@@ -191,9 +191,78 @@ function budStyle(bud: BloomBudView, delay: number, grow: number | null): CSSPro
   } as CSSProperties;
 }
 
+/** A stroke's share of its tone's ink (the sheet mixes it), and its dash. */
+function strokeStyle(percent: number, dash: readonly [number, number] | null): CSSProperties {
+  return {
+    '--mv-swarm-bloom-fuel-share': `${percent}%`,
+    ...(dash ? { strokeDasharray: `${dash[0]} ${dash[1]}` } : {}),
+  } as CSSProperties;
+}
+
+/** The picture a host drew, as handed: its box at the bud's width, so a drawing made for another size scales. Arcs as
+ * paths (a whole ring as a circle turned to start at `from`, where a circle would start at three o'clock), then the
+ * notches, each with its tone for the sheet and its share. */
+function DrawnFuel({ d, fuel }: { d: number; fuel: Extract<BloomFuel, { kind: 'drawn' }> }): ReactElement {
+  const c = fuel.size / 2;
+  return (
+    <svg
+      className="vf-bloom-fuel is-drawn"
+      width={d}
+      height={d}
+      viewBox={`0 0 ${fuel.size} ${fuel.size}`}
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
+    >
+      {fuel.arcs.map((arc, index) =>
+        arc.circle ? (
+          <circle
+            key={index}
+            className="vf-bloom-fuel-arc"
+            data-tone={arc.tone}
+            cx={c}
+            cy={c}
+            r={arc.r}
+            strokeWidth={arc.width}
+            strokeLinecap={arc.cap}
+            opacity={arc.opacity < 1 ? arc.opacity : undefined}
+            transform={`rotate(${arc.from} ${c} ${c})`}
+            style={strokeStyle(arc.percent, arc.dash)}
+          />
+        ) : (
+          <path
+            key={index}
+            className="vf-bloom-fuel-arc"
+            data-tone={arc.tone}
+            d={arcD(c, arc.r, arc.from, arc.to)}
+            strokeWidth={arc.width}
+            strokeLinecap={arc.cap}
+            opacity={arc.opacity < 1 ? arc.opacity : undefined}
+            style={strokeStyle(arc.percent, arc.dash)}
+          />
+        ),
+      )}
+      {fuel.notches.map((notch, index) => (
+        <line
+          key={index}
+          className="vf-bloom-fuel-notch"
+          data-tone={notch.tone}
+          x1={notch.x1}
+          y1={notch.y1}
+          x2={notch.x2}
+          y2={notch.y2}
+          strokeWidth={notch.width}
+          opacity={notch.opacity < 1 ? notch.opacity : undefined}
+          style={strokeStyle(notch.percent, null)}
+        />
+      ))}
+    </svg>
+  );
+}
+
 /** A profile's fuel, inside the disc and under the blocked dot. Its layout is inline: the face is a grid, so an in-flow
  * svg would push the glyph off centre, and the tick ends just past the bud's own box. */
 function BudFuel({ d, fuel }: { d: number; fuel: BloomFuel }): ReactElement {
+  if (fuel.kind === 'drawn') return <DrawnFuel d={d} fuel={fuel} />;
   const ring = budRing(d, fuel);
   const c = d / 2;
   return (

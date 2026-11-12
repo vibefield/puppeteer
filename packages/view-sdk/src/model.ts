@@ -182,21 +182,82 @@ export interface MonitorAgentRow {
   readonly writable: boolean;
 }
 
+/** A tone of the bloom's own palette for a stroke a host drew: its fuel ink (which inverts with a targeted bud) or the
+ * swarm's orange. */
+export type MonitorSpawnFuelTone = 'ink' | 'hot';
+
+/**
+ * One stroke along a circle about the disc's middle, in its drawing's box: lengths in px, angles in degrees, 0 at three
+ * o'clock, -90 the top, clockwise.
+ */
+export interface MonitorSpawnFuelArc {
+  /** To the stroke's middle. */
+  readonly r: number;
+  readonly width: number;
+  readonly from: number;
+  /** After `from`; a sweep of 359.9 or more is a whole ring, which still starts at `from` (its dash and its seam). */
+  readonly to: number;
+  readonly tone: MonitorSpawnFuelTone;
+  /** The tone's share of the stroke, 0..100. */
+  readonly percent: number;
+  /** 0..1, a number outside it clamped; absent: 1. Present but not a finite number: the stroke is skipped. */
+  readonly opacity?: number | undefined;
+  /** Absent: butt. */
+  readonly cap?: 'round' | 'butt' | undefined;
+  /** A dash and its gap along the arc, px (a near-zero dash with a round cap is a dotted thread). */
+  readonly dash?: readonly [number, number] | undefined;
+}
+
+/** A straight mark across the strokes (a time-gone notch), in its drawing's box. */
+export interface MonitorSpawnFuelNotch {
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number;
+  readonly width: number;
+  readonly tone: MonitorSpawnFuelTone;
+  /** The tone's share of the stroke, 0..100. */
+  readonly percent: number;
+  /** 0..1, a number outside it clamped; absent: 1. Present but not a finite number: the notch is skipped. */
+  readonly opacity?: number | undefined;
+}
+
+/**
+ * A host's whole picture of a bud's fuel for a disc `size` across: its box is `size` square, the middle at `size / 2`.
+ * Strokes draw in order, the arcs then the notches. The numbers are pixels at that size, not fractions of the disc, so
+ * a host whose constants do not scale draws once per size it cares about (the sizes its buds draw at, 48 and 42 today).
+ */
+export interface MonitorSpawnFuelDrawing {
+  readonly size: number;
+  readonly arcs?: readonly MonitorSpawnFuelArc[] | undefined;
+  readonly notches?: readonly MonitorSpawnFuelNotch[] | undefined;
+}
+
 /**
  * What a host knows of a profile's headroom, drawn on its spawn-bloom bud and said when the bud is reached. The host
  * decides everything: which window is tightest, what runs hot, when a reading is old, and the words. It belongs to this
  * profile on THIS desktop's row.
  */
 export interface MonitorSpawnFuel {
-  /** Share of the window used. Not a finite number: no gauge. */
+  /**
+   * Share of the window used. Not a finite number: no gauge.
+   * @deprecated Hand the picture in `drawn`. The one-arc fields carry a gauge's rules inside the bloom; they still
+   * work, and lose to a valid drawing.
+   */
   readonly usedPercent?: number | undefined;
-  /** Share of the window's time gone (the tick). Absent: no tick. */
+  /**
+   * Share of the window's time gone (the tick). Absent: no tick.
+   * @deprecated Hand the picture in `drawn` (a notch); this still works, and loses to a valid drawing.
+   */
   readonly elapsedPercent?: number | undefined;
+  /** @deprecated Hand the picture in `drawn` (a `hot` tone); this still works, and loses to a valid drawing. */
   readonly hot?: boolean | undefined;
+  /** @deprecated Hand the picture in `drawn` (an opacity); this still works, and loses to a valid drawing. */
   readonly stale?: boolean | undefined;
   /**
    * No reading to draw, for a reason worth showing: a dashed thread where the gauge would be. A number in `usedPercent`
    * wins.
+   * @deprecated Hand the picture in `drawn` (a dashed arc); this still works, and loses to a valid drawing.
    */
   readonly unread?: boolean | undefined;
   /**
@@ -204,6 +265,17 @@ export interface MonitorSpawnFuel {
    * (the ring is hidden from the accessibility tree), so a `stale` reading's clause says how old it is.
    */
   readonly word?: string | undefined;
+  /**
+   * The picture, drawn by the host, at one or more disc sizes. The bud draws the drawing made for its own diameter,
+   * else the nearest (the larger on a tie), scaled. A valid drawing (one with a stroke the bud can draw) wins over
+   * `usedPercent` and `unread`, which stay for a host that draws nothing; `hot` and `stale` then do not touch the
+   * picture, since its tones and opacities say them. The bud reads the first 4 valid drawings, 48 arcs and 16 notches
+   * each, looking no further than 4 entries for each it may keep (16 drawings, 192 arcs, 64 notches), and it skips a
+   * stroke that, drawn at the bud's width, reaches more than 2 px past the bud's rim (so a drawing made for another
+   * size is judged as scaled). The picture is hidden from the accessibility tree, so `word` still says everything, a
+   * kept reading's age included.
+   */
+  readonly drawn?: readonly MonitorSpawnFuelDrawing[] | undefined;
 }
 
 /** An Agent Profile the spawn bloom offers under a desktop. */

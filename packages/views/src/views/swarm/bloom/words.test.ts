@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MonitorSpawnDevice, MonitorSpawnFuel, MonitorSpawnProfile } from '@vibefield/puppeteer-view-sdk';
 import type { BloomTextMeasure } from './constants.js';
+import { FUEL_48 } from './fuel-specimens.js';
 import { menuOf, type BloomDeviceItem, type BloomOpenMenu, type BloomProfileItem } from './menu.js';
 import { BLOOM_SCENARIOS } from './scenarios.js';
 import { measureWords, placeWords, wordsFor, type BloomWords } from './words.js';
@@ -307,5 +308,17 @@ describe("the words name a profile's fuel", () => {
     expect(wordsFor(three, { kind: 'profile', item: peer }, 'hold').detail).toBe(
       'UNDER DEFAULT · THE AGENTS’ OWN SIGN-INS',
     );
+  });
+
+  it("a drawn fuel's word reaches the detail as a reading's does", () => {
+    const fuel = { drawn: [FUEL_48], word: 'Plan: 42% of 5 hours' };
+    const words = wordsFor(three, { kind: 'profile', item: wearing(personal, fuel) }, 'hold');
+    expect(words.detail).toBe('ON MINI · ALPHA · BETA SIGNED IN · PLAN: 42% OF 5 HOURS');
+    expect(words.tone).toBe('go');
+  });
+
+  it('a drawn fuel with no word leaves the detail bare', () => {
+    const words = wordsFor(three, { kind: 'profile', item: wearing(personal, { drawn: [FUEL_48] }) }, 'hold');
+    expect(words.detail).toBe('ON MINI · ALPHA · BETA SIGNED IN');
   });
 });
