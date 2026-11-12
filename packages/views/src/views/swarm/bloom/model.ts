@@ -108,7 +108,7 @@ export interface BloomBud {
   readonly face: BloomFace;
   /** An agent under this profile waits on the person: the profile tabs' orange dot. */
   readonly dot: boolean;
-  /** A profile's fuel, as the host reads it. Null: no ring, and always on a desktop's bud. */
+  /** A profile's fuel, as the host reads it. Null: no fuel drawn, and always on a desktop's bud. */
   readonly fuel: BloomFuel | null;
   /** A desktop that cannot take a terminal now: faint, aria-disabled; letting go on it opens nothing. */
   readonly off: boolean;
@@ -288,6 +288,7 @@ function budFor(
 ): Bud {
   s.seq += 1;
   const home = { box: pos.label, short: pos.short };
+  const d = level === 1 ? BLOOM.bud1 : BLOOM.bud2;
   const b: Bud = {
     id: `bud-${Math.round(s.startedAt)}-${s.seq}`,
     level,
@@ -297,12 +298,13 @@ function budFor(
     x: pos.x,
     y: pos.y,
     a: pos.a,
-    d: level === 1 ? BLOOM.bud1 : BLOOM.bud2,
+    d,
     hx: pos.hx,
     hy: pos.hy,
     face,
     dot: item.kind === 'profile' && !!item.profile.blocked,
-    fuel: item.kind === 'profile' ? budFuel(item.profile) : null,
+    // the drawing a host made for this bud's own diameter
+    fuel: item.kind === 'profile' ? budFuel(item.profile, d) : null,
     off: !ready(item.device),
     delay,
     labelDelay: delay + ms(env, BLOOM.reveal),
