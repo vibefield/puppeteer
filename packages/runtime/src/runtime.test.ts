@@ -143,6 +143,7 @@ function preparableProvider(
     disposeCount: number;
     preparedCwd?: string | undefined;
     preparedRuntimeRunId?: string | undefined;
+    preparedProfile?: string | undefined;
     adoptionGate?: Promise<void> | undefined;
   },
 ): AgentProvider {
@@ -154,6 +155,7 @@ function preparableProvider(
       hooks.prepareCount += 1;
       hooks.preparedCwd = options.cwd;
       hooks.preparedRuntimeRunId = options.runtimeRunId;
+      hooks.preparedProfile = options.profile?.id;
       const sessionId = `${kind}-prepared-${hooks.prepareCount}`;
       let disposed = false;
       let adopted: AgentAdapterBinding | undefined;
@@ -3447,10 +3449,153 @@ describe('createAgentRuntime', () => {
     await expect(attribute({})).resolves.toBe('example:native-default');
     // A root Puppeteer did not allocate is left unattributed rather than mislabelled.
     await expect(attribute({ EXAMPLE_HOME: '/somewhere/else' })).resolves.toBeUndefined();
-    // Attribution never rewrites what the adapter was handed.
+    // Attribution never normalizes the invocation again. (Corrected 2026-11-10: this said attribution "never rewrites
+    // what the adapter was handed"; an active account is now handed to the adapter as the run's profile, the next row.)
     expect(normalizeInvocation).toHaveBeenCalledTimes(3);
     await runtime.dispose();
     await rm(root, { recursive: true, force: true });
+  });
+
+  it('prepares a typed invocation under the active account its launch environment names', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-typed-account-'));
+    const hooks: {
+      prepareCount: number;
+      adoptCount: number;
+      disposeCount: number;
+      preparedProfile?: string | undefined;
+    } = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+    const provider: AgentProvider = {
+      ...preparableProvider('example', hooks),
+      descriptor: { id: 'example', label: 'Example' },
+      profiles: exampleProfileService(),
+      launch: {
+        provider: {
+          id: 'example',
+          label: 'Example',
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'example', executable: '/opt/example' }],
+            environmentVariables: ['EXAMPLE_HOME'],
+          },
+        },
+        normalizeInvocation: () => ({ status: 'accepted' as const }),
+      },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+    });
+    const created = await runtime.createProfile({ providerId: 'example', label: 'Work' });
+    if ('status' in created) throw new Error(created.message);
+    // A label puts the account in a managed set of that name, so the set id the run carries is a real one.
+    expect(created.set).toEqual(expect.any(String));
+
+    const launch = async (
+      environment: Record<string, string>,
+    ): Promise<{ handed: string | undefined; labelled: string | undefined; set: string | undefined }> => {
+      const prepared = await runtime.prepareInvocation({
+        providerId: 'example',
+        cwd: root,
+        argv: [],
+        environment,
+        implementation: { kind: 'native' },
+      });
+      if ('error' in prepared) throw new Error(prepared.error.message);
+      const handed = hooks.preparedProfile;
+      const adopted = await runtime.adoptPrepared(prepared.preparationId, {
+        terminalSessionId: `terminal-${prepared.preparationId}`,
+      });
+      if ('error' in adopted) throw new Error(adopted.error.message);
+      await runtime.handleProcessExit(adopted.terminalSessionId, {
+        exitCode: 0,
+        signal: null,
+        reason: 'process-exit',
+      });
+      return { handed, labelled: adopted.profileId, set: adopted.profileSetId };
+    };
+
+    // An active account's own root: the run is prepared under that account, as a spawn that named it would be,
+    // and carries the account's set.
+    await expect(launch({ EXAMPLE_HOME: created.dataRoot })).resolves.toEqual({
+      handed: created.id,
+      labelled: created.id,
+      set: created.set,
+    });
+    // The vendor's own root, and a root Puppeteer did not allocate, are handed no account.
+    await expect(launch({})).resolves.toEqual({
+      handed: undefined,
+      labelled: 'example:native-default',
+      set: 'native',
+    });
+    await expect(launch({ EXAMPLE_HOME: '/somewhere/else' })).resolves.toEqual({
+      handed: undefined,
+      labelled: undefined,
+      set: undefined,
+    });
+    // A signed-out account is never prepared under; its root is still labelled as the account it was, in its set.
+    await runtime.retireProfile(created.id);
+    await expect(launch({ EXAMPLE_HOME: created.dataRoot })).resolves.toEqual({
+      handed: undefined,
+      labelled: created.id,
+      set: created.set,
+    });
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("keeps one creation request one run when a typed invocation's account signs out between tries", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-typed-fingerprint-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-typed-fingerprint-registry-'));
+    const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+    const provider: AgentProvider = {
+      ...preparableProvider('example', hooks),
+      descriptor: { id: 'example', label: 'Example' },
+      profiles: exampleProfileService(),
+      launch: {
+        provider: {
+          id: 'example',
+          label: 'Example',
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'example', executable: '/opt/example' }],
+            environmentVariables: ['EXAMPLE_HOME'],
+          },
+        },
+        normalizeInvocation: () => ({ status: 'accepted' as const }),
+      },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+      creationRegistry: createFileCreationRequestRegistry({ directory: registryDirectory }),
+    });
+    const created = await runtime.createProfile({ providerId: 'example', label: 'Work' });
+    if ('status' in created) throw new Error(created.message);
+    const invocation = {
+      providerId: 'example',
+      cwd: root,
+      argv: [],
+      environment: { EXAMPLE_HOME: created.dataRoot },
+      implementation: { kind: 'native' as const },
+      creationRequestId: 'typed-under-account',
+    };
+
+    const first = await runtime.prepareInvocation(invocation);
+    if ('error' in first) throw new Error(first.error.message);
+    // The account the run is prepared under is not part of what the caller asked for, so a retry after it signed
+    // out is the same request: the same run, never CREATION_REQUEST_CONFLICT.
+    await runtime.retireProfile(created.id);
+    const second = await runtime.prepareInvocation(invocation);
+    if ('error' in second) throw new Error(`${second.error.code}: ${second.error.message}`);
+    expect(second.runtimeRunId).toBe(first.runtimeRunId);
+    expect(hooks.prepareCount).toBe(1);
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+    await rm(registryDirectory, { recursive: true, force: true });
   });
 
   it('reads account usage per profile, stamps the snapshot, and coalesces per account', async () => {
