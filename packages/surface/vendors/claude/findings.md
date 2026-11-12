@@ -1,5 +1,53 @@
 # Phase 0 — Hook Surface Findings
 
+## Turn failure after words (2.1.322, 2026-11-12)
+
+**The question.** Should `turn:failed` carry a failed turn's last assistant text, as `turn:completed` carries Stop's
+`last_assistant_message`? StopFailure has the same key, but every earlier capture of it is a redaction marker, and the
+api-error lanes fail before the model writes anything. So nothing showed whether, after the model has spoken in the
+failing turn, the key holds that turn's words, Claude's own error text, or an earlier turn's message.
+
+**Method.** A new census lane, `turn-failure` (`census/turn-failure.mjs`), is one print session of three turns against
+the scripted loopback model, the later two by `--resume`:
+
+1. `completes`: scripted words, then Stop. This is the control.
+2. `words-then-fail`: the model streams scripted words and a Read call in one message. Claude runs the Read, and the
+   follow-up request that carries its result is answered HTTP 529.
+3. `fail-at-once`: the first request is answered HTTP 529, after two turns that both wrote words.
+
+Every scripted text is a unique sentinel. The harness compares each closing hook's value in memory with those
+sentinels and with Claude's own MessageDisplay and print-result text for that turn. It writes only the verdicts:
+`captures/claude@2.1.322/turn-failure.json`. The run was on darwin-arm64 against the installed 2.1.322 (SHA-256
+`a9d23794…3450`), with no network-deny sandbox; the egress recorder saw no attempt (`SANITIZATION.md` there).
+
+**Result.**
+
+| turn | requests | closing hook | `last_assistant_message` |
+| --- | --- | --- | --- |
+| `completes` | text | Stop | this turn's words (the control holds) |
+| `words-then-fail` | words and a Read call, then 529 | StopFailure `server_error` | **Claude's own error text**: equal to what it displayed and printed, holding the API's error message, not the turn's words |
+| `fail-at-once` | 529 | StopFailure `server_error` | Claude's own error text, not either earlier turn's words |
+
+The ordering agrees: in the second turn the model's words were displayed (MessageDisplay), the Read ran (PreToolUse,
+PostToolUse, PostToolBatch), Claude displayed its error, and StopFailure followed.
+
+**Static read, beside it.** In the 2.1.322 bytes, the StopFailure hook input is built from the failing API-error
+message itself, the object that also carries `error` and `errorDetails`. `last_assistant_message` is that message's
+trimmed text, omitted when it is empty; the builder does not read the conversation's earlier messages. The 2.1.311
+bytes were not on the host, so this read is 2.1.322's only.
+
+**Adapter consequence.** The key is not the model's words, so `turn:failed` gains no text field and
+`normalizeClaudeTurnFailed` keeps ignoring it. Carrying it would hand consumers Claude's error prose as if the agent had
+said it. The failure's meaning already rides `turn:failed`'s `error` (the closed `error` enum). Whether a consumer can
+hear the words a model wrote before its turn failed is a question for the conversation rails, not for this hook.
+
+**Limits.**
+- One release (2.1.322) and one status (529). The committed 2.1.311 StopFailure captures keep the key as a string, which
+  agrees, but its content at 2.1.311 is not measured.
+- darwin-arm64 only, without the sandbox. The lane is in the census's default lane set, but not yet in the protected
+  Linux workflow's `--lanes` list (`agent-adaptation.yml`, pinned by `scripts/agent-surface-promotion-workflow.test.mjs`).
+  Adding it there is the step that would capture it in the sandbox at the next adaptation.
+
 ## 2.1.311 adaptation candidate (2026-11-03)
 
 Claude Code **2.1.311** is the upstream stable release this candidate targets

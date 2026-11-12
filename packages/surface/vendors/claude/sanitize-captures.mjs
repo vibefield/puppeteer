@@ -16,10 +16,11 @@
  * user-authored text, plus the closed StopFailure/SessionEnd enums that must
  * survive as protocol constants. Redaction and detection use the same rules.
  *
- * Beside the hook carriers, the census writes three value-free projections
- * (arrival order, transcript record shapes, status-line key paths). They are
- * copied only after the detector passes them, and declared as semantic
- * projections in capture-fidelity.json.
+ * Beside the hook carriers, the census writes value-free projections (arrival
+ * order, transcript record shapes, status-line key paths, the sandbox proof,
+ * and the turn-failure lane's verdicts). They are copied only after the
+ * detector passes them, and declared as semantic projections in
+ * capture-fidelity.json.
  *
  * Usage: node surface/sanitize-captures.mjs [--check] <input-dir> [output-dir]
  *        node surface/sanitize-captures.mjs --merge <input-dir> <output-dir>
@@ -50,10 +51,11 @@ export const CLAUDE_CAPTURE_PROJECTIONS = [
   'transcript-shape.json',
   'statusline-shape.json',
   'sandbox.json',
+  'turn-failure.json',
 ];
 
 /** Projections whose entries are per capture mode, so two disjoint runs merge by concatenation. */
-const MERGEABLE_PROJECTIONS = new Set(['ordering.json', 'sandbox.json']);
+const MERGEABLE_PROJECTIONS = new Set(['ordering.json', 'sandbox.json', 'turn-failure.json']);
 const LANE_ORDER = Object.values(CLAUDE_CAPTURE_MODES).flat();
 
 export function sanitizeCaptureDirectory(input, output = input) {
@@ -152,6 +154,11 @@ export function claudeCaptureFidelity(output, version, projections) {
       'api-error-<status> modes are print turns against a loopback Messages API that returned that HTTP status to a placeholder token; the native error mapping is real, the failures are synthetic.',
     );
   }
+  if (modes.includes('turn-failure')) {
+    limitations.push(
+      'turn-failure is one session of three print turns against a scripted loopback Messages API with a placeholder token: a turn that completes with scripted words, a turn whose model streams scripted words and a Read call and whose follow-up request is answered HTTP 529, and a turn whose first request is answered HTTP 529; hook payloads, ordering and the native error mapping are real, while the words and failures are synthetic.',
+    );
+  }
   if (modes.includes('interactive') || modes.includes('resume')) {
     limitations.push(
       'interactive and resume modes ran the native TUI in a harness-owned PTY against a scripted loopback model: hook payload shapes, transports, and ordering are native, while assistant text, tool choices, and compaction summaries are synthetic.',
@@ -175,6 +182,11 @@ export function claudeCaptureFidelity(output, version, projections) {
                 ...(projections.includes('sandbox.json')
                   ? [
                       'sandbox.json is the network-deny sandbox observed from inside its namespace before any artifact ran, for the modes each entry names; modes no entry names ran without that sandbox.',
+                    ]
+                  : []),
+                ...(projections.includes('turn-failure.json')
+                  ? [
+                      "turn-failure.json compares each closing hook's last_assistant_message with the lane's own scripted sentinels and with Claude's displayed and printed text for that turn, by equality and containment only; it keeps the verdicts, the loopback request kinds and the print result's enums, never a value.",
                     ]
                   : []),
               ],
