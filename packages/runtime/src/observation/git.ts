@@ -11,11 +11,30 @@ const WATCHER_TOPOLOGY_REFRESH_MS = 5 * 60_000;
 /** Bound on the attach → verify → re-attach loop when refs keep moving underneath it. */
 const WATCHER_ATTACH_ATTEMPTS = 3;
 
-async function git(cwd: string, args: readonly string[]): Promise<string | undefined> {
+/**
+ * The observer runs git in an agent's working tree, whose config the agent may write, so no program that config names
+ * may run: no fsmonitor, no hook, no pager. A new subcommand is checked before it is added here: one that reads the
+ * index or a diff also needs `-c safe.bareRepository=explicit`, and every config key it honours that names a program.
+ */
+const GIT_PREFIX = ['-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null', '--no-pager'] as const;
+
+/** No optional lock is taken in a tree the agent is working in, and git never waits on a prompt. */
+const GIT_ENVIRONMENT = { GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0' } as const;
+
+/**
+ * Runs git with `env` (a host's own environment, never this process's) or, when the host names none, with this
+ * process's environment as before; either way under GIT_ENVIRONMENT.
+ */
+async function git(
+  cwd: string,
+  args: readonly string[],
+  env: Readonly<Record<string, string | undefined>> | undefined,
+): Promise<string | undefined> {
   try {
-    const { stdout } = await execFileAsync('git', ['-C', cwd, ...args], {
+    const { stdout } = await execFileAsync('git', [...GIT_PREFIX, '-C', cwd, ...args], {
       encoding: 'utf8',
       maxBuffer: 1024 * 1024,
+      env: { ...(env ?? process.env), ...GIT_ENVIRONMENT },
     });
     const value = stdout.trim();
     return value || undefined;
@@ -35,9 +54,15 @@ function fromGitPath(cwd: string, value: string | undefined): string | undefined
   return resolve(cwd, value);
 }
 
-/** Resolve branch/head facts for any directory, including worktrees, unborn branches, and detached HEADs. */
-export async function resolveGitState(cwd: string): Promise<AgentGitState | null> {
-  const metadata = await git(cwd, ['rev-parse', '--show-toplevel', '--absolute-git-dir', '--git-common-dir']);
+/**
+ * Resolve branch/head facts for any directory, including worktrees, unborn branches, and detached HEADs. `env` is
+ * the environment git runs with; absent, this process's own.
+ */
+export async function resolveGitState(
+  cwd: string,
+  env?: Readonly<Record<string, string | undefined>>,
+): Promise<AgentGitState | null> {
+  const metadata = await git(cwd, ['rev-parse', '--show-toplevel', '--absolute-git-dir', '--git-common-dir'], env);
   const [toplevel, gitDir, commonDir] = metadata?.split(/\r?\n/) ?? [];
   if (!toplevel) return null;
   // `root` is public in AgentGitState, so it must carry platform separators
@@ -45,8 +70,8 @@ export async function resolveGitState(cwd: string): Promise<AgentGitState | null
   const root = resolve(cwd, toplevel);
 
   const [branch, headSha] = await Promise.all([
-    git(cwd, ['symbolic-ref', '--quiet', '--short', 'HEAD']),
-    git(cwd, ['rev-parse', '--verify', 'HEAD']),
+    git(cwd, ['symbolic-ref', '--quiet', '--short', 'HEAD'], env),
+    git(cwd, ['rev-parse', '--verify', 'HEAD'], env),
   ]);
   const absoluteGitDir = fromGitPath(cwd, gitDir);
   const absoluteCommonDir = fromGitPath(cwd, commonDir);
@@ -75,6 +100,8 @@ export interface GitStateObserverOptions {
   onChange: (state: AgentGitState | null) => void;
   onError?: (error: Error) => void;
   pollIntervalMs?: number;
+  /** The environment git runs with; absent, this process's own. */
+  env?: Readonly<Record<string, string | undefined>> | undefined;
 }
 
 const stableState = (state: AgentGitState | null): string => JSON.stringify(state);
@@ -212,21 +239,25 @@ export function createGitStateObserver(options: GitStateObserverOptions): GitSta
   };
 
   const rebuildWatchers = async (observedCwd: string, observedGeneration: number): Promise<boolean> => {
-    const branchRef = await git(observedCwd, ['symbolic-ref', '--quiet', 'HEAD']);
+    const branchRef = await git(observedCwd, ['symbolic-ref', '--quiet', 'HEAD'], options.env);
     // `--git-dir`, not `--absolute-git-dir`: at the top level it is spelled as --git-common-dir and --git-path are,
     // where the absolute form is canonicalized (macOS's /var tmpdir reads /private/var there). Below the top level
     // --git-dir alone is absolute and canonical, so a cwd under a symlink still reads gitDir ≠ commonDir: that costs
     // one extra tables.list candidate, and in a reftable repository one duplicate watch, nothing else.
-    const gitPaths = await git(observedCwd, [
-      'rev-parse',
-      '--git-dir',
-      '--git-common-dir',
-      '--git-path',
-      'HEAD',
-      '--git-path',
-      'packed-refs',
-      ...(branchRef ? ['--git-path', branchRef] : []),
-    ]);
+    const gitPaths = await git(
+      observedCwd,
+      [
+        'rev-parse',
+        '--git-dir',
+        '--git-common-dir',
+        '--git-path',
+        'HEAD',
+        '--git-path',
+        'packed-refs',
+        ...(branchRef ? ['--git-path', branchRef] : []),
+      ],
+      options.env,
+    );
     const answers = (gitPaths?.split(/\r?\n/) ?? []).map((path) => fromGitPath(observedCwd, path));
     const [gitDir, commonDir, headPath, packedRefsPath, branchPath] = answers;
     if (stopped || generation !== observedGeneration) return false;
@@ -243,7 +274,7 @@ export function createGitStateObserver(options: GitStateObserverOptions): GitSta
     const observedGeneration = generation;
     const observedCwd = cwd;
     try {
-      let state = await resolveGitState(observedCwd);
+      let state = await resolveGitState(observedCwd, options.env);
       if (stopped || generation !== observedGeneration) return;
       // A new branch means a different ref file to watch.
       if (stableState(state) !== last) watcherTopologyDirty = true;
@@ -260,7 +291,7 @@ export function createGitStateObserver(options: GitStateObserverOptions): GitSta
         watchersInitialized = true;
         watcherTopologyRefreshedAt = Date.now();
 
-        const attached = await resolveGitState(observedCwd);
+        const attached = await resolveGitState(observedCwd, options.env);
         if (stopped || generation !== observedGeneration) return;
         if (stableState(attached) === stableState(state)) break;
         // The ref moved while we were attaching to it; the watchers may be on
@@ -318,11 +349,16 @@ export function createGitStateObserver(options: GitStateObserverOptions): GitSta
 
 export interface GitObserverPoolOptions {
   pollIntervalMs?: number | undefined;
+  /** The environment every observer's git runs with; absent, this process's own. */
+  env?: Readonly<Record<string, string | undefined>> | undefined;
 }
 
 export interface GitObserverPool {
-  /** Join the shared observer for `cwd`. The handle moves, refreshes and leaves this subscriber alone. */
-  observe(options: Omit<GitStateObserverOptions, 'pollIntervalMs'>): GitStateObserver;
+  /**
+   * Join the shared observer for `cwd`. The handle moves, refreshes and leaves this subscriber alone. The poll and
+   * the environment are the pool's, so a subscriber names neither.
+   */
+  observe(options: Omit<GitStateObserverOptions, 'pollIntervalMs' | 'env'>): GitStateObserver;
 }
 
 interface GitObserverSubscriber {
@@ -373,6 +409,7 @@ export function createGitObserverPool(options: GitObserverPoolOptions = {}): Git
       observer: createGitStateObserver({
         cwd: key,
         ...(options.pollIntervalMs === undefined ? {} : { pollIntervalMs: options.pollIntervalMs }),
+        ...(options.env === undefined ? {} : { env: options.env }),
         // The observer resolves asynchronously, so `entry` is assigned before either callback can run.
         onChange: (state) => {
           entry.state = { resolved: true, value: state };

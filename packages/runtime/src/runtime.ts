@@ -705,7 +705,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const preparationCleanups = new Map<string, Promise<void>>();
   const workspaceFinalizations = new WeakMap<Workspace, Promise<RuntimeWorkspaceFinalization>>();
   // One git observer per repository cwd, whatever the number of sessions there.
-  const gitObservers = createGitObserverPool();
+  const gitObservers = createGitObserverPool(
+    options.serviceEnvironment === undefined ? {} : { env: options.serviceEnvironment },
+  );
   const inflightCreations = new Map<string, InflightCreation>();
   const pendingCreations = new Set<Promise<CreateAgentSessionResult | PrepareAgentSessionResult>>();
   const prewarmAbort = new AbortController();

@@ -586,6 +586,13 @@ export interface AgentRuntimeOptions {
    * end before its cleaner empties it (files about three days unaccessed, on macOS).
    */
   staging?: { root: string };
+  /**
+   * The environment the programs the runtime itself runs are handed in place of this process's own: today the git
+   * its observers run in each session's working tree. A host whose own environment holds what an agent must not
+   * reach (its secrets, its variables) names the one it means; git adds only GIT_OPTIONAL_LOCKS=0 and
+   * GIT_TERMINAL_PROMPT=0. Absent, they run with this process's environment, as before.
+   */
+  serviceEnvironment?: Readonly<Record<string, string>>;
 }
 
 /** The run a host's launch values are asked for. */
