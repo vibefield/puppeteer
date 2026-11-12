@@ -32,17 +32,23 @@ const ANTIGRAVITY_INSTALL_SCRIPT_URL = 'https://antigravity.google/cli/install.s
 /** Documented kill switch for the CLI's own update check. */
 const ANTIGRAVITY_DISABLE_AUTO_UPDATE_VARIABLE = 'AGY_CLI_DISABLE_AUTO_UPDATE';
 
-/** Injected process execution so unit tests never run a real binary. */
+/** Injected process execution so unit tests never run a real binary. `env` is the environment the run is handed. */
 export type AntigravityDistributionExec = (
   file: string,
   args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
 ) => Promise<{ stdout: string; stderr: string }>;
 
 export interface AntigravityDistributionServiceOptions {
   executable?: string | undefined;
   exec?: AntigravityDistributionExec | undefined;
-  /** Injected so tests never read the developer's own environment. */
+  /**
+   * The environment the service reads; defaults to this process's. Injected so tests never read the developer's own
+   * environment. With `inheritEnvironment: false` it is also the version run's whole environment.
+   */
   env?: NodeJS.ProcessEnv | undefined;
+  /** Default true: the version run inherits this process's environment, as before. */
+  inheritEnvironment?: boolean | undefined;
 }
 
 export const ANTIGRAVITY_DISTRIBUTION_PROVIDER: DistributionProvider = {
@@ -67,12 +73,16 @@ export const ANTIGRAVITY_DISTRIBUTION_PROVIDER: DistributionProvider = {
   nativeUpdateCheck: false,
 };
 
-function defaultExec(file: string, args: readonly string[]): Promise<{ stdout: string; stderr: string }> {
+function defaultExec(
+  file: string,
+  args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolvePromise, reject) => {
     execFile(
       file,
       [...args],
-      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8' },
+      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', ...(options?.env ? { env: options.env } : {}) },
       (error, stdout, stderr) => {
         if (error) reject(error);
         else resolvePromise({ stdout, stderr });
@@ -118,6 +128,9 @@ export function createAntigravityDistributionService(
 ): DistributionService {
   const exec = options.exec ?? defaultExec;
   const env = options.env ?? process.env;
+  // The version run is handed `env` only under `inheritEnvironment: false`; otherwise it starts as before.
+  const versionRun = (file: string, args: string[]) =>
+    options.inheritEnvironment === false ? exec(file, args, { env }) : exec(file, args);
   return {
     provider: ANTIGRAVITY_DISTRIBUTION_PROVIDER,
 
@@ -127,7 +140,7 @@ export function createAntigravityDistributionService(
       const warnings: string[] = [];
       let version: string | undefined;
       try {
-        const { stdout, stderr } = await exec(candidate.executable, [ANTIGRAVITY_VERSION_FLAG]);
+        const { stdout, stderr } = await versionRun(candidate.executable, [ANTIGRAVITY_VERSION_FLAG]);
         version = parseAntigravityVersion(`${stdout}\n${stderr}`);
         if (!version) {
           warnings.push(`${candidate.executable} ${ANTIGRAVITY_VERSION_FLAG} returned an unrecognized version string`);

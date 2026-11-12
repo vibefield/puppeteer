@@ -1,4 +1,5 @@
 import {
+  AGENT_BRIEFING_FIELDS,
   AgentLaunchRefusedError,
   pickAgentBriefing,
   runToolAllowances,
@@ -11,7 +12,8 @@ export const CODEX_BRIEFING_CAPABILITIES = Object.freeze({
   mcpServers: true,
   allowTools: true,
   instructions: true,
-  mcpServerProcess: 'helper',
+  // One private app-server per run, named to the host through `HostIngress.onHelperProcess` before a thread opens.
+  mcpServerProcess: 'run-helper',
 } as const satisfies AgentBriefingCapabilities);
 
 /**
@@ -36,7 +38,8 @@ export function codexBriefingParams(
       args: server.args ?? [],
       env: server.env ?? {},
       enabled: true,
-      required: true,
+      // Never `required`: Codex would fail thread/start when a server cannot start, with an error that names no
+      // field, so `withhold` could not absorb it and a person's own `codex` would exit because a door was full.
       ...(tools.includes('*')
         ? { default_tools_approval_mode: 'approve' }
         : tools.length
@@ -58,7 +61,7 @@ export async function preflightCodexBriefing(
   request: (method: string, params: Record<string, unknown>) => Promise<unknown>,
 ): Promise<void> {
   const briefing = pickAgentBriefing(options);
-  const field = Object.keys(briefing)[0];
+  const field = AGENT_BRIEFING_FIELDS.find((name) => briefing[name] !== undefined);
   if (!field) return;
   const hello = initialized as { userAgent?: unknown } | null;
   const version = typeof hello?.userAgent === 'string' ? /\/(\d+)\.(\d+)\.(\d+)\b/u.exec(hello.userAgent) : null;
@@ -66,6 +69,7 @@ export async function preflightCodexBriefing(
     throw new AgentLaunchRefusedError(
       'UNSUPPORTED_LAUNCH_FIELD',
       `This Codex app-server does not establish support for launch field: ${field} (requires 0.147.0 or newer).`,
+      field,
     );
   }
   const names = Object.keys(briefing.mcpServers ?? {});
@@ -74,11 +78,19 @@ export async function preflightCodexBriefing(
   try {
     result = await request('config/read', { includeLayers: false, ...(cwd === undefined ? {} : { cwd }) });
   } catch {
-    throw new AgentLaunchRefusedError('UNSUPPORTED_LAUNCH_FIELD', 'Codex cannot verify launch field: mcpServers.');
+    throw new AgentLaunchRefusedError(
+      'UNSUPPORTED_LAUNCH_FIELD',
+      'Codex cannot verify launch field: mcpServers.',
+      'mcpServers',
+    );
   }
   const config = (result as { config?: { mcp_servers?: unknown } } | null)?.config;
   if (!config || typeof config !== 'object') {
-    throw new AgentLaunchRefusedError('UNSUPPORTED_LAUNCH_FIELD', 'Codex cannot verify launch field: mcpServers.');
+    throw new AgentLaunchRefusedError(
+      'UNSUPPORTED_LAUNCH_FIELD',
+      'Codex cannot verify launch field: mcpServers.',
+      'mcpServers',
+    );
   }
   if (
     config.mcp_servers &&
@@ -88,6 +100,7 @@ export async function preflightCodexBriefing(
     throw new AgentLaunchRefusedError(
       'CONFLICTING_LAUNCH_FIELD',
       'Launch field mcpServers conflicts with a configured Codex server; use a distinct per-run server name.',
+      'mcpServers',
     );
   }
 }

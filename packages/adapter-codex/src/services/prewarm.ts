@@ -3,12 +3,19 @@ import { AppServerClient, spawnAppServerTransport, type Transport } from '../tra
 
 export interface PrewarmCodexOptions {
   executable?: string | undefined;
-  /** The same account root the eventual native invocation will use. */
+  /**
+   * The same account root the eventual native invocation will use, merged over this process's environment; with
+   * `inheritEnvironment: false` it is the app-server's whole environment instead.
+   */
   env?: Record<string, string> | undefined;
+  /** Default true: `env` goes over this process's environment. */
+  inheritEnvironment?: boolean | undefined;
   signal?: AbortSignal | undefined;
   /** Total budget for this optional background operation, including initialization. */
   timeoutMs?: number | undefined;
-  spawnTransport?: ((options: { executable?: string; env?: Record<string, string> }) => Transport) | undefined;
+  spawnTransport?:
+    | ((options: { executable?: string; env?: Record<string, string>; inheritEnvironment?: boolean }) => Transport)
+    | undefined;
 }
 
 /** Populate Codex's native on-disk model cache without creating a thread or starting a turn. */
@@ -20,6 +27,7 @@ export async function prewarmCodex(options: PrewarmCodexOptions = {}): Promise<v
     (options.spawnTransport ?? spawnAppServerTransport)({
       ...(options.executable ? { executable: options.executable } : {}),
       ...(options.env ? { env: options.env } : {}),
+      ...(options.inheritEnvironment === false ? { inheritEnvironment: false } : {}),
     }),
   );
   const abort = (): void => {

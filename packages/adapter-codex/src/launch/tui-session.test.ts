@@ -57,6 +57,7 @@ describe('Codex TUI preparation', () => {
     fakes.tapDispose.mockResolvedValue(undefined);
     fakes.observerDispose.mockResolvedValue(undefined);
     fakes.spawnServer.mockReturnValue({
+      process: { pid: 4242 },
       endpoint: () => ({ kind: 'unix', path: '/tmp/codex.sock' }),
       ready: fakes.serverReady,
       dispose: fakes.serverDispose,
@@ -89,6 +90,138 @@ describe('Codex TUI preparation', () => {
     expect(JSON.stringify(prepared.launch)).not.toContain('secret');
     expect(JSON.stringify(prepared.launch)).not.toContain('role');
     await prepared.dispose();
+  });
+
+  describe('naming the app-server to the host', () => {
+    const paths = {
+      fresh: {},
+      resume: { resume: 'thread-old' },
+      picker: { resumeInvocation: ['resume'] },
+      imposter: { appServerEnv: { AI_PERSONA: 'codex' } },
+    };
+
+    it.each(Object.entries(paths))('names it before the thread opens (%s)', async (_path, launch) => {
+      let answer!: () => void;
+      const onHelperProcess = vi.fn(() => new Promise<void>((resolve) => (answer = resolve)));
+      const before = Date.now();
+      const preparing = prepareCodexTuiSession({ cwd: '/work', host: host(), ingress: { onHelperProcess }, ...launch });
+      await vi.waitFor(() => expect(onHelperProcess).toHaveBeenCalledOnce());
+      expect(onHelperProcess).toHaveBeenCalledWith({ pid: 4242, startedAtMs: expect.any(Number) });
+      const { startedAtMs } = (onHelperProcess.mock.calls[0] as unknown as [{ startedAtMs: number }])[0];
+      expect(startedAtMs).toBeGreaterThanOrEqual(before);
+      expect(fakes.serverReady.mock.invocationCallOrder[0]).toBeLessThan(onHelperProcess.mock.invocationCallOrder[0]!);
+      // Held until the host answers: nothing that can start an MCP server has gone yet.
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      expect(fakes.createObserver).not.toHaveBeenCalled();
+      answer();
+      const prepared = await preparing;
+      expect(fakes.createObserver).toHaveBeenCalledOnce();
+      await prepared.dispose();
+    });
+
+    it('refuses the launch honestly when the hook throws, and stops the helper', async () => {
+      const onHelperProcess = vi.fn(() => Promise.reject(new Error('the floor said no')));
+      await expect(
+        prepareCodexTuiSession({ cwd: '/work', host: host(), ingress: { onHelperProcess } }),
+      ).rejects.toMatchObject({ code: 'RUN_HELPER_UNNAMED' });
+      expect(fakes.createObserver).not.toHaveBeenCalled();
+      expect(fakes.serverDispose).toHaveBeenCalledOnce();
+    });
+
+    it('prepares as before under a host that has no hook', async () => {
+      const prepared = await prepareCodexTuiSession({ cwd: '/work', host: host(), ingress: { port: 1 } });
+      expect(fakes.createObserver).toHaveBeenCalledOnce();
+      await prepared.dispose();
+    });
+  });
+
+  describe('the directory a briefed resume names', () => {
+    const lastObserver = (): Record<string, unknown> =>
+      fakes.createObserver.mock.lastCall?.[0] as Record<string, unknown>;
+
+    it("leaves a typed resume where its thread ran, and hands the preflight the pane's directory apart", async () => {
+      const prepared = await prepareCodexTuiSession({
+        cwd: '/pane',
+        host: host(),
+        resume: 'thread-old',
+        instructions: 'role',
+        keepThreadCwd: true,
+      });
+      expect(lastObserver().resumeOverrides).toEqual(expect.objectContaining({ instructions: 'role' }));
+      expect(lastObserver().resumeOverrides).not.toHaveProperty('cwd');
+      expect(lastObserver().configCwd).toBe('/pane');
+      await prepared.dispose();
+    });
+
+    it("moves a host's resume to the launch directory, as it always has", async () => {
+      const prepared = await prepareCodexTuiSession({
+        cwd: '/pane',
+        host: host(),
+        resume: 'thread-old',
+        instructions: 'role',
+      });
+      expect(lastObserver().resumeOverrides).toEqual(expect.objectContaining({ cwd: '/pane' }));
+      await prepared.dispose();
+    });
+  });
+
+  describe('under withhold', () => {
+    const conflict = { field: 'mcpServers', code: 'CONFLICTING_LAUNCH_FIELD' };
+
+    it('takes the picker bare, and says so, where it would have refused', async () => {
+      const prepared = await prepareCodexTuiSession({
+        cwd: '/work',
+        host: host(),
+        resumeInvocation: ['resume'],
+        instructions: 'role',
+        briefingRefusal: 'withhold',
+      });
+      expect(prepared.briefingWithheld).toEqual([{ field: 'instructions', code: 'UNSUPPORTED_LAUNCH_FIELD' }]);
+      expect(fakes.spawnServer).toHaveBeenCalledOnce();
+      await prepared.dispose();
+    });
+
+    it('takes the imposter bare too', async () => {
+      const prepared = await prepareCodexTuiSession({
+        cwd: '/work',
+        host: host(),
+        appServerEnv: { AI_PERSONA: 'codex' },
+        mcpServers: { field: { command: 'door' } },
+        briefingRefusal: 'withhold',
+      });
+      expect(prepared.briefingWithheld).toEqual([{ field: 'mcpServers', code: 'UNSUPPORTED_LAUNCH_FIELD' }]);
+      expect(fakes.createObserver.mock.lastCall?.[0]).toMatchObject({ start: { cwd: '/work' } });
+      expect(fakes.createObserver.mock.lastCall?.[0].start).not.toHaveProperty('mcpServers');
+      await prepared.dispose();
+    });
+
+    it('adds what the live connection withheld, on one app-server', async () => {
+      fakes.createObserver.mockResolvedValue({
+        sessionId: 'thread-1',
+        briefingWithheld: [conflict],
+        observationLevel: () => 'structured',
+        threadPath: () => undefined,
+        events: { onCandidate: fakes.observerOnCandidate },
+        attachThread: vi.fn(),
+        dispose: fakes.observerDispose,
+      });
+      const prepared = await prepareCodexTuiSession({
+        cwd: '/work',
+        host: host(),
+        mcpServers: { field: { command: 'door' } },
+        briefingRefusal: 'withhold',
+      });
+      expect(fakes.createObserver).toHaveBeenCalledWith(expect.objectContaining({ briefingRefusal: 'withhold' }));
+      expect(prepared.briefingWithheld).toEqual([conflict]);
+      expect(fakes.spawnServer).toHaveBeenCalledOnce();
+      await prepared.dispose();
+    });
+
+    it('reports nothing when nothing went unapplied', async () => {
+      const prepared = await prepareCodexTuiSession({ cwd: '/work', host: host(), briefingRefusal: 'withhold' });
+      expect(prepared).not.toHaveProperty('briefingWithheld');
+      await prepared.dispose();
+    });
   });
 
   it('refuses a briefed resume picker before starting a helper', async () => {

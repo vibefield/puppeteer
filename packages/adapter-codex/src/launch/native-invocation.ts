@@ -54,6 +54,8 @@ export interface CodexNativeInvocationOptions {
    * starts nothing, nor for the imposter, which has no configuration to read.
    */
   permissionDefaults?: 'configuration' | undefined;
+  /** A typed resume by id: the thread goes on where it ran, whatever directory the command was typed in. */
+  keepThreadCwd?: true | undefined;
   /** Typed settings for the private app-server's own command line. */
   appServerArguments?: string[] | undefined;
   /** Typed arguments for the TUI's command line, after the adapter's `--remote`. */
@@ -236,6 +238,7 @@ function carry(
       options.resumeInvocation = ['resume', ...selectors.map((use) => use.token)];
     } else if (UUID.test(target.value)) {
       resume = target.value;
+      options.keepThreadCwd = true;
     } else {
       refuse(target.index, 'a managed session resumes a session by its id, not by its name, yet', target.value);
     }

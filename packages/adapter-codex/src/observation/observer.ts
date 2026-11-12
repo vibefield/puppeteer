@@ -26,7 +26,16 @@
  * output can be capped at 64 KiB where the live one was not.
  */
 
-import { pickAgentBriefing, validateAgentBriefing, type AgentRunBriefing } from '@vibefield/puppeteer-core';
+import {
+  pickAgentBriefing,
+  validateAgentBriefing,
+  withAgentBriefing,
+  withholdUntilAccepted,
+  type AgentBriefingRefusalPolicy,
+  type AgentBriefingSettlement,
+  type AgentBriefingWithheld,
+  type AgentRunBriefing,
+} from '@vibefield/puppeteer-core';
 import { CODEX_BRIEFING_CAPABILITIES, codexBriefingParams, preflightCodexBriefing } from '../launch/briefing.js';
 import type { CodexResumeOverrides } from './thread-history.js';
 import {
@@ -85,6 +94,13 @@ export interface CreateCodexObserverOptions {
    * to keep the thread's own.
    */
   resumeOverrides?: CodexResumeOverrides | undefined;
+  /** The directory whose effective configuration the preflight reads when a resume names none of its own. */
+  configCwd?: string | undefined;
+  /**
+   * What the preflight does with a field it cannot honour. Under `withhold` the field leaves and the thread starts
+   * without it, on this same connection and app-server, and {@link CodexObserver.briefingWithheld} says so.
+   */
+  briefingRefusal?: AgentBriefingRefusalPolicy | undefined;
   /**
    * Create + materialize a fresh thread on this connection so the session is
    * ready before any TUI attaches. Mutually exclusive with {@link threadId}.
@@ -118,6 +134,8 @@ export interface CodexObserver {
   observationLevel(): ObservationLevel;
   threadPath(): string | undefined;
   readonly events: AgentAdapterEventSource;
+  /** Fields the preflight withheld under `briefingRefusal: 'withhold'`. */
+  readonly briefingWithheld?: readonly AgentBriefingWithheld[] | undefined;
   /** Fires once a thread is picked up and its live stream is open. */
   onThread(listener: (info: CodexThreadInfo) => void): () => void;
   /**
@@ -127,6 +145,17 @@ export interface CodexObserver {
    */
   attachThread(threadId: string): Promise<void>;
   dispose(): Promise<void>;
+}
+
+/** A resume's overrides after its preflight. The directory rides only for a briefing, so it leaves with the last field. */
+function settledResumeOverrides(
+  overrides: CodexResumeOverrides,
+  settled: AgentBriefingSettlement,
+): CodexResumeOverrides {
+  const kept = withAgentBriefing(overrides, settled.briefing);
+  if (settled.withheld.length === 0 || Object.keys(settled.briefing).length > 0) return kept;
+  const { cwd: _cwd, ...unmoved } = kept;
+  return unmoved;
 }
 
 export async function createCodexObserver(opts: CreateCodexObserverOptions): Promise<CodexObserver> {
@@ -148,6 +177,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         }
       : {}),
   };
+  let briefingWithheld: readonly AgentBriefingWithheld[] = [];
   const client = new AppServerClient(opts.transport);
   const history = new CodexThreadHistory(client);
   const modelNames = new Map<string, string>();
@@ -491,12 +521,23 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   try {
     const initialized = await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });
     client.notify('initialized');
-    await preflightCodexBriefing(
-      opts.start ?? opts.resumeOverrides ?? {},
-      initialized,
-      opts.start?.cwd ?? opts.resumeOverrides?.cwd,
-      (method, params) => client.request(method, params),
+    const { settled } = await withholdUntilAccepted(
+      { briefing: pickAgentBriefing(opts.start ?? opts.resumeOverrides ?? {}), withheld: [] },
+      opts.briefingRefusal,
+      (briefing) =>
+        preflightCodexBriefing(
+          briefing,
+          initialized,
+          opts.start?.cwd ?? opts.configCwd ?? opts.resumeOverrides?.cwd,
+          (method, params) => client.request(method, params),
+        ),
     );
+    briefingWithheld = settled.withheld;
+    opts = {
+      ...opts,
+      ...(opts.start ? { start: withAgentBriefing(opts.start, settled.briefing) } : {}),
+      ...(opts.resumeOverrides ? { resumeOverrides: settledResumeOverrides(opts.resumeOverrides, settled) } : {}),
+    };
     // Display names are optional metadata. Neither a slow catalog nor its request
     // timeout belongs on the native thread's ready path.
     void (async () => {
@@ -591,6 +632,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     },
     observationLevel: () => observation,
     threadPath: () => threadPath,
+    briefingWithheld,
     events: {
       onCandidate(listener) {
         const unsubscribe = events.onCandidate(listener);

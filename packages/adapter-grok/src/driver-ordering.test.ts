@@ -93,6 +93,309 @@ describe('Grok leader session materialization ordering', () => {
     },
   );
 
+  describe('a briefed run names its own leader', () => {
+    const mcpServers = { field: { command: 'door', env: { TOKEN: 'secret' } } };
+    /** A leader that exits as soon as it is signalled. */
+    function leaderProcess(pid: number) {
+      const exits: Array<() => void> = [];
+      const child = {
+        pid,
+        exitCode: null as number | null,
+        signalCode: null,
+        killed: false,
+        kill: vi.fn(() => {
+          child.exitCode = 143;
+          queueMicrotask(() => exits.splice(0).forEach((exit) => exit()));
+          return true;
+        }),
+        once: vi.fn((event: string, listener: () => void) => {
+          if (event === 'exit') exits.push(listener);
+          return child;
+        }),
+      };
+      return child;
+    }
+    const leaderArgs = (call: number): string[] => mocks.spawn.mock.calls[call]![1] as string[];
+    const socketOf = (args: string[]): string => args[args.indexOf('--leader-socket') + 1]!;
+
+    it('gives each briefed run a leader of its own, and leaves no briefing on the shared one', async () => {
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        const [plain, again] = [
+          await backend.prepareSession({ cwd: '/a' }),
+          await backend.prepareSession({ cwd: '/b' }),
+        ];
+        expect(mocks.spawn).toHaveBeenCalledTimes(1);
+        const one = await backend.prepareSession({ cwd: '/c', mcpServers });
+        const two = await backend.prepareSession({ cwd: '/d', mcpServers });
+        expect(mocks.spawn).toHaveBeenCalledTimes(3);
+        expect(new Set([socketOf(leaderArgs(0)), socketOf(leaderArgs(1)), socketOf(leaderArgs(2))]).size).toBe(3);
+        // The viewer joins the leader that holds its run's MCP servers.
+        expect(socketOf(one.launch.args)).toBe(socketOf(leaderArgs(1)));
+        expect(socketOf(two.launch.args)).toBe(socketOf(leaderArgs(2)));
+        expect(socketOf(plain.launch.args)).toBe(socketOf(leaderArgs(0)));
+        await Promise.all([plain.dispose(), again.dispose(), one.dispose(), two.dispose()]);
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    it('keeps an empty server map on the shared leader: nothing there needs naming', async () => {
+      const onHelperProcess = vi.fn();
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        const prepared = await backend.prepareSession({ cwd: '/a', mcpServers: {}, ingress: { onHelperProcess } });
+        await backend.prepareSession({ cwd: '/b' });
+        expect(mocks.spawn).toHaveBeenCalledTimes(1);
+        expect(onHelperProcess).not.toHaveBeenCalled();
+        await prepared.dispose();
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    it('holds ACP until the host has the leader pid, on the run leader only', async () => {
+      const child = leaderProcess(7001);
+      mocks.spawn.mockReturnValue(child);
+      let answer!: () => void;
+      const onHelperProcess = vi.fn(() => new Promise<void>((resolve) => (answer = resolve)));
+      const before = Date.now();
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        const preparing = backend.prepareSession({ cwd: '/a', mcpServers, ingress: { onHelperProcess } });
+        await vi.waitFor(() => expect(onHelperProcess).toHaveBeenCalledOnce());
+        expect(onHelperProcess).toHaveBeenCalledWith({ pid: 7001, startedAtMs: expect.any(Number) });
+        const { startedAtMs } = (onHelperProcess.mock.calls[0] as unknown as [{ startedAtMs: number }])[0];
+        expect(startedAtMs).toBeGreaterThanOrEqual(before);
+        expect(mocks.spawn).toHaveBeenCalledTimes(1);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        expect(mocks.createAcpSession).not.toHaveBeenCalled();
+        answer();
+        const prepared = await preparing;
+        expect(mocks.createAcpSession).toHaveBeenCalledWith(expect.objectContaining({ mcpServers }));
+        await prepared.dispose();
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    it("runs a run's leader under the one helper environment the shared leader has", async () => {
+      const helperEnvironment = vi.fn((env: Record<string, string>) => ({ PATH: '/agent/bin', ...env }));
+      const backend = createGrokBackend({ executable: '/real/grok', host: { ...host(), helperEnvironment } });
+      try {
+        const prepared = await backend.prepareSession({ cwd: '/a', mcpServers });
+        expect(helperEnvironment).toHaveBeenCalledTimes(1);
+        expect(mocks.spawn).toHaveBeenCalledWith('/real/grok', expect.arrayContaining(['agent', 'leader']), {
+          stdio: 'ignore',
+          env: { PATH: '/agent/bin' },
+        });
+        await prepared.dispose();
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    it('refuses the launch honestly when the hook throws, and drains the leader it started', async () => {
+      const child = leaderProcess(7002);
+      mocks.spawn.mockReturnValue(child);
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        await expect(
+          backend.prepareSession({
+            cwd: '/a',
+            mcpServers,
+            ingress: { onHelperProcess: () => Promise.reject(new Error('no')) },
+          }),
+        ).rejects.toMatchObject({ code: 'RUN_HELPER_UNNAMED' });
+        expect(mocks.createAcpSession).not.toHaveBeenCalled();
+        expect(child.kill).toHaveBeenCalledWith('SIGTERM');
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    it('drains the leader with its run: an unadopted preparation, then an adopted binding', async () => {
+      const first = leaderProcess(7003);
+      const second = leaderProcess(7004);
+      mocks.spawn.mockReturnValueOnce(first).mockReturnValueOnce(second);
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        const unadopted = await backend.prepareSession({ cwd: '/a', mcpServers });
+        await unadopted.dispose();
+        expect(first.kill).toHaveBeenCalledWith('SIGTERM');
+
+        const prepared = await backend.prepareSession({ cwd: '/b', mcpServers });
+        const control = await mocks.createAcpSession.mock.results.at(-1)!.value;
+        const binding = await prepared.adopt('terminal-2');
+        await vi.waitFor(() => expect(mocks.createAcpSession).toHaveBeenCalledTimes(2));
+        expect(second.kill).not.toHaveBeenCalled();
+        await binding.dispose();
+        // Control leaves first: the leader drains with nobody still talking to it.
+        expect(control.dispose).toHaveBeenCalledOnce();
+        expect((control.dispose as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]).toBeLessThan(
+          second.kill.mock.invocationCallOrder[0]!,
+        );
+        expect(second.kill).toHaveBeenCalledWith('SIGTERM');
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    describe('a resume and a leader still draining', () => {
+      /** A leader that takes its signal and keeps draining until the test says it has exited. */
+      function drainingLeader(pid: number) {
+        const exits: Array<() => void> = [];
+        const child = {
+          pid,
+          exitCode: null as number | null,
+          signalCode: null,
+          killed: false,
+          kill: vi.fn(() => true),
+          once: vi.fn((event: string, listener: () => void) => {
+            if (event === 'exit') exits.push(listener);
+            return child;
+          }),
+          exit() {
+            child.exitCode = 143;
+            exits.splice(0).forEach((exit) => exit());
+          },
+        };
+        return child;
+      }
+      const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 5));
+
+      it("starts a resuming run's leader only after the old leader has exited", async () => {
+        const old = drainingLeader(7101);
+        mocks.spawn.mockReturnValueOnce(old).mockReturnValueOnce(leaderProcess(7102));
+        const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+        try {
+          const first = await backend.prepareSession({ cwd: '/a', mcpServers });
+          const stopping = first.dispose();
+          await vi.waitFor(() => expect(old.kill).toHaveBeenCalledWith('SIGTERM'));
+          const resuming = backend.prepareSession({ cwd: '/a', mcpServers, resume: 'old-session' });
+          await settle();
+          expect(mocks.spawn).toHaveBeenCalledTimes(1);
+          old.exit();
+          await stopping;
+          const resumed = await resuming;
+          expect(mocks.spawn).toHaveBeenCalledTimes(2);
+          await resumed.dispose();
+        } finally {
+          await backend.dispose();
+        }
+      });
+
+      it('waits from the moment the run begins to stop, while its control is still closing', async () => {
+        const old = drainingLeader(7103);
+        mocks.spawn.mockReturnValueOnce(old);
+        let closed!: () => void;
+        const control = controlSession('materialized-session');
+        control.dispose = vi.fn(() => new Promise<void>((resolve) => (closed = resolve)));
+        mocks.createAcpSession.mockImplementationOnce(async () => control);
+        const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+        try {
+          const prepared = await backend.prepareSession({ cwd: '/a', mcpServers });
+          const binding = await prepared.adopt('terminal-1');
+          const disposing = binding.dispose();
+          await vi.waitFor(() => expect(control.dispose).toHaveBeenCalledOnce());
+          // A resume on the shared leader waits too: the old run's leader still writes this session.
+          const resuming = backend.prepareSession({ cwd: '/a', resume: 'old-session' });
+          await settle();
+          expect(mocks.spawn).toHaveBeenCalledTimes(1);
+          expect(mocks.createAcpSession).toHaveBeenCalledTimes(1);
+          closed();
+          await vi.waitFor(() => expect(old.kill).toHaveBeenCalledWith('SIGTERM'));
+          await settle();
+          expect(mocks.spawn).toHaveBeenCalledTimes(1);
+          old.exit();
+          await disposing;
+          const resumed = await resuming;
+          expect(mocks.spawn).toHaveBeenCalledTimes(2);
+          await resumed.dispose();
+        } finally {
+          await backend.dispose();
+        }
+      });
+
+      it('holds a fresh run for nobody', async () => {
+        const old = drainingLeader(7104);
+        mocks.spawn.mockReturnValueOnce(old).mockReturnValueOnce(leaderProcess(7105));
+        const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+        try {
+          const first = await backend.prepareSession({ cwd: '/a', mcpServers });
+          const stopping = first.dispose();
+          await vi.waitFor(() => expect(old.kill).toHaveBeenCalledWith('SIGTERM'));
+          const fresh = await backend.prepareSession({ cwd: '/b', mcpServers });
+          expect(mocks.spawn).toHaveBeenCalledTimes(2);
+          old.exit();
+          await stopping;
+          await fresh.dispose();
+        } finally {
+          await backend.dispose();
+        }
+      });
+    });
+
+    it('stops a run leader the backend still holds when the backend goes', async () => {
+      const child = leaderProcess(7005);
+      mocks.spawn.mockReturnValue(child);
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      await backend.prepareSession({ cwd: '/a', mcpServers });
+      await backend.dispose();
+      expect(child.kill).toHaveBeenCalledWith('SIGTERM');
+    });
+  });
+
+  describe('under withhold', () => {
+    const mcpServers = { field: { command: 'door' } };
+
+    it('launches an imposter bare and says so, on the shared leader', async () => {
+      const backend = createGrokBackend({
+        executable: '/real/grok',
+        host: host(),
+        appServerEnv: { AI_PERSONA: 'grok', PUPPETEER_IMPOSTER_HOME: '/tmp/imposter-withhold' },
+      });
+      try {
+        const prepared = await backend.prepareSession({ cwd: '/repo', mcpServers, briefingRefusal: 'withhold' });
+        expect(prepared.briefingWithheld).toEqual([{ field: 'mcpServers', code: 'UNSUPPORTED_LAUNCH_FIELD' }]);
+        expect(mocks.spawn).toHaveBeenCalledTimes(1);
+        expect(mocks.createAcpSession.mock.calls[0]![0]).not.toHaveProperty('mcpServers');
+        await prepared.dispose();
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    it('withholds instructions Grok has no field for, and keeps the servers on their own leader', async () => {
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        const prepared = await backend.prepareSession({
+          cwd: '/repo',
+          mcpServers,
+          instructions: 'role',
+          briefingRefusal: 'withhold',
+        });
+        expect(prepared.briefingWithheld).toEqual([{ field: 'instructions', code: 'UNSUPPORTED_LAUNCH_FIELD' }]);
+        expect(mocks.createAcpSession).toHaveBeenCalledWith(expect.objectContaining({ mcpServers }));
+        expect(mocks.spawn).toHaveBeenCalledTimes(1);
+        await prepared.dispose();
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    it('says nothing when nothing was withheld', async () => {
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        const prepared = await backend.prepareSession({ cwd: '/repo', briefingRefusal: 'withhold' });
+        expect(prepared).not.toHaveProperty('briefingWithheld');
+        await prepared.dispose();
+      } finally {
+        await backend.dispose();
+      }
+    });
+  });
+
   it('refuses instructions before starting the shared leader', async () => {
     const backend = createGrokBackend({ executable: '/real/grok', host: host() });
     try {

@@ -134,8 +134,12 @@ interface ConsoleAccount {
 
 export interface OpenCodeConsoleOrgsRequest {
   executable: string;
-  /** XDG_DATA_HOME pinned to the root the stores were read from; the rest is inherited, as the backend's is. */
+  /**
+   * XDG_DATA_HOME pinned to the root the stores were read from; the rest is inherited, as the backend's is, or with
+   * `inheritEnvironment: false` this is the server's whole environment.
+   */
   env: Record<string, string>;
+  inheritEnvironment?: boolean;
   timeoutMs: number;
 }
 
@@ -146,6 +150,11 @@ export interface OpenCodeProfileServiceOptions {
   /** Injected so unit tests never read the real home directory. */
   home?: string;
   executable?: string;
+  /**
+   * The environment the org request's server runs with, the root's binding over it; absent, the binding goes over
+   * this process's own.
+   */
+  env?: NodeJS.ProcessEnv;
   now?: () => Date;
   /** Budget for the org request once the server is up; running out costs the org names only. */
   requestTimeoutMs?: number;
@@ -379,11 +388,20 @@ export function openCodeVerificationClient(
  * refresh a Console token within five minutes of expiry and save the new one;
  * this service never handles a token itself.
  */
-const readConsoleOrgsFromServe: OpenCodeConsoleOrgsReader = async ({ executable, env, timeoutMs }) => {
+const readConsoleOrgsFromServe: OpenCodeConsoleOrgsReader = async ({
+  executable,
+  env,
+  inheritEnvironment,
+  timeoutMs,
+}) => {
   const directory = await mkdtemp(join(tmpdir(), 'puppeteer-opencode-verify-'));
   let backend: OpenCodeBackend | undefined;
   try {
-    backend = await startOpenCodeBackend({ executable, env });
+    backend = await startOpenCodeBackend({
+      executable,
+      env,
+      ...(inheritEnvironment === false ? { inheritEnvironment: false } : {}),
+    });
     return await openCodeVerificationClient(backend, directory, timeoutMs).listConsoleOrgs();
   } finally {
     await backend?.dispose();
@@ -403,6 +421,13 @@ export function createOpenCodeProfileService(options: OpenCodeProfileServiceOpti
   const now = options.now ?? (() => new Date());
   const requestTimeoutMs = options.requestTimeoutMs ?? 10_000;
   const readConsoleOrgs = options.readConsoleOrgs ?? readConsoleOrgsFromServe;
+  // The host's environment as a child takes it, its unset names dropped.
+  const hostEnvironment =
+    options.env === undefined
+      ? undefined
+      : Object.fromEntries(
+          Object.entries(options.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+        );
 
   const provider: ProfileProvider = {
     id: 'opencode',
@@ -466,9 +491,18 @@ export function createOpenCodeProfileService(options: OpenCodeProfileServiceOpti
       if (accounts.length > 0) {
         try {
           // The native default's server is pinned to the root the projection
-          // read, whatever XDG_DATA_HOME the host carries.
-          const env = { [OPENCODE_PROFILE_ROOT_VARIABLE]: dataHome(profile) };
-          orgs = openCodeConsoleOrgsFrom(await readConsoleOrgs({ executable, env, timeoutMs: requestTimeoutMs }));
+          // read, whatever XDG_DATA_HOME the host carries. A host that names
+          // the environment hands the server that one, and none of this
+          // process's own.
+          const env = { ...hostEnvironment, [OPENCODE_PROFILE_ROOT_VARIABLE]: dataHome(profile) };
+          orgs = openCodeConsoleOrgsFrom(
+            await readConsoleOrgs({
+              executable,
+              env,
+              ...(hostEnvironment === undefined ? {} : { inheritEnvironment: false }),
+              timeoutMs: requestTimeoutMs,
+            }),
+          );
         } catch {
           // A console out of reach, a server that would not start, or a timeout
           // costs the org names, not the accounts the store holds.

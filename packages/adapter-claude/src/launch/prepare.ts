@@ -25,7 +25,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   AgentLaunchRefusedError,
-  validateAgentBriefing,
+  absorbBriefingRefusal,
+  settleAgentBriefing,
+  type AgentBriefingRefusalPolicy,
+  type AgentBriefingWithheld,
   type AgentForwarderRuntime,
   type AgentRunBriefing,
 } from '@vibefield/puppeteer-core';
@@ -43,6 +46,8 @@ import {
 } from '../observation/status-channel.js';
 
 export interface PrepareClaudeSessionOptions extends AgentRunBriefing {
+  /** Withhold a field a person's own flags conflict with, rather than refuse their launch. */
+  briefingRefusal?: AgentBriefingRefusalPolicy | undefined;
   cwd: string;
   title?: string | undefined;
   /** Reuse a caller-chosen session UUID; otherwise one is generated. */
@@ -143,6 +148,8 @@ export interface PreparedClaudeSession {
   /** The staged forwarder the hooks and status lines run; absent when the host lends a forwarder runtime. */
   forwarderPath?: string | undefined;
   filesToCleanup: string[];
+  /** What of the briefing went unapplied under `briefingRefusal: 'withhold'`. */
+  briefingWithheld?: readonly AgentBriefingWithheld[] | undefined;
 }
 
 /**
@@ -251,9 +258,10 @@ export function statusLineForwarderCommand(
 }
 
 export async function prepareClaudeSession(options: PrepareClaudeSessionOptions): Promise<PreparedClaudeSession> {
-  const briefing = validateAgentBriefing(options, CLAUDE_BRIEFING_CAPABILITIES, 'Claude');
+  const refusal = options.briefingRefusal;
+  let settled = settleAgentBriefing(options, CLAUDE_BRIEFING_CAPABILITIES, 'Claude', refusal);
   if (options.env?.AI_PERSONA === 'claude' || options.env?.PUPPETEER_IMPOSTER_HOME)
-    validateAgentBriefing(briefing, undefined, 'Claude imposter');
+    settled = settleAgentBriefing(settled.briefing, undefined, 'Claude imposter', refusal, settled.withheld);
   const briefingFlags = {
     mcpServers: ['--mcp-config', '--strict-mcp-config'],
     allowTools: ['--allowedTools', '--allowed-tools'],
@@ -267,19 +275,26 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   } as const;
   for (const field of ['mcpServers', 'allowTools', 'instructions'] as const) {
     if (
-      briefing[field] !== undefined &&
+      settled.briefing[field] !== undefined &&
       options.carriedArgs?.some(
         (argument) =>
           argument === '--restricted' ||
           briefingFlags[field].some((flag) => argument === flag || argument.startsWith(`${flag}=`)),
       )
     ) {
-      throw new AgentLaunchRefusedError(
-        'CONFLICTING_LAUNCH_FIELD',
-        `Launch field ${field} conflicts with native Claude arguments.`,
+      // Under withhold a person's own flags win, and the receipt says what of ours they displaced.
+      settled = absorbBriefingRefusal(
+        settled,
+        refusal,
+        new AgentLaunchRefusedError(
+          'CONFLICTING_LAUNCH_FIELD',
+          `Launch field ${field} conflicts with native Claude arguments.`,
+          field,
+        ),
       );
     }
   }
+  const briefing = settled.briefing;
   if (options.resume && options.resumeInvocation) {
     throw new Error('Claude preparation accepts resume or resumeInvocation, not both');
   }
@@ -473,6 +488,7 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
         ...briefingFiles,
         ...(ownsDir ? [dir] : []),
       ],
+      ...(settled.withheld.length > 0 ? { briefingWithheld: settled.withheld } : {}),
     };
   } catch (error) {
     for (const path of ownsDir ? [dir] : briefingFiles)

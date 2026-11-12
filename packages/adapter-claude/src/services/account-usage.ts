@@ -787,9 +787,12 @@ export async function fetchClaudeAccountUsage(
  * they belong to whichever account the shell is logged into and would otherwise
  * report the wrong account's usage under a profile's label.
  */
-function credentialOptionsForProfile(profile: AgentProfile | undefined): ClaudeCredentialOptions {
+function credentialOptionsForProfile(
+  profile: AgentProfile | undefined,
+  base: NodeJS.ProcessEnv | undefined,
+): ClaudeCredentialOptions {
   if (!profile || profile.kind !== 'managed') return {};
-  const env = { ...process.env };
+  const env = { ...(base ?? process.env) };
   delete env.CLAUDE_CODE_OAUTH_TOKEN;
   delete env.CLAUDE_ACCESS_TOKEN;
   delete env.CLAUDE_CONFIG_DIR;
@@ -805,7 +808,10 @@ export async function fetchClaudeAccountUsageForProfileWithDependencies(
   profile: AgentProfile | undefined,
   options: FetchClaudeAccountUsageDependencies = {},
 ): Promise<AccountUsageFetchResult> {
-  const result = await fetchClaudeAccountUsageWithDependencies({ ...options, ...credentialOptionsForProfile(profile) });
+  const result = await fetchClaudeAccountUsageWithDependencies({
+    ...options,
+    ...credentialOptionsForProfile(profile, options.env),
+  });
   if (!profile || result.status !== 'available') return result;
   return { ...result, snapshot: { ...result.snapshot, profileId: profile.id } };
 }
@@ -844,12 +850,25 @@ export interface ClaudeAccountUsageService extends AccountUsageService {
   observeStatusLine(account: { profileId: string }, payload: unknown, receivedAt: string): void;
 }
 
+export interface ClaudeAccountUsageServiceOptions {
+  /**
+   * The environment the credential lookup reads (the config root, the Keychain account names, a token a host's
+   * environment carries); absent, this process's own. It reaches no program.
+   */
+  env?: NodeJS.ProcessEnv;
+}
+
 /** Complete account-usage capability advertised by the Claude adapter, with push listeners of its own. */
-export function createClaudeAccountUsageService(): ClaudeAccountUsageService {
+export function createClaudeAccountUsageService(
+  serviceOptions: ClaudeAccountUsageServiceOptions = {},
+): ClaudeAccountUsageService {
   const listeners = new Set<(result: AccountUsageFetchResult) => void>();
   return {
     provider: CLAUDE_ACCOUNT_USAGE_PROVIDER,
-    fetch: (options) => fetchClaudeAccountUsageForProfile(options?.profile),
+    fetch: (options) =>
+      serviceOptions.env === undefined
+        ? fetchClaudeAccountUsageForProfile(options?.profile)
+        : fetchClaudeAccountUsageForProfileWithDependencies(options?.profile, { env: serviceOptions.env }),
     subscribe(listener) {
       listeners.add(listener);
       return () => {

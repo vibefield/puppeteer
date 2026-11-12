@@ -59,8 +59,15 @@ const flags = Object.fromEntries(
 /** Native version flag from the generated detection surface; reused by the distribution service. */
 export const CLAUDE_VERSION_FLAG = surface.versionFlag;
 
-/** Injected process runner; the default wraps node:child_process execFile. */
-export type ClaudeExec = (file: string, args: string[]) => Promise<{ stdout: string }>;
+/**
+ * Injected process runner; the default wraps node:child_process execFile. `env` is the environment the run is handed;
+ * absent, this process's own.
+ */
+export type ClaudeExec = (
+  file: string,
+  args: string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
+) => Promise<{ stdout: string }>;
 
 export interface ClaudeFlagSupport {
   sessionId: boolean;
@@ -129,7 +136,7 @@ export class ClaudeCapabilityError extends Error {
 const execFileAsync = promisify(execFile);
 const SCRIPT_EXECUTABLE = /\.(mjs|cjs|js|ts)$/;
 
-export const defaultClaudeExec: ClaudeExec = async (file, args) => {
+export const defaultClaudeExec: ClaudeExec = async (file, args, options) => {
   // Adapter/Imposter development commonly supplies a JavaScript entry point. It runs under this process's script
   // runner, as launch preparation runs it; where there is none (a single executable) the probe fails, never runs
   // the script as that executable.
@@ -138,11 +145,13 @@ export const defaultClaudeExec: ClaudeExec = async (file, args) => {
   if (script && runner === undefined) throw new Error(`no program in this process can run the script ${file}`);
   const command = runner ? runner.command : file;
   const commandArgs = runner ? [...runner.args, file, ...args] : args;
+  // The runner's own variables go over the handed environment, never over this process's when one is handed.
+  const env = runner?.env ? { ...(options?.env ?? process.env), ...runner.env } : options?.env;
   const { stdout } = await execFileAsync(command, commandArgs, {
     timeout: 10_000,
     maxBuffer: 1024 * 1024,
     encoding: 'utf8',
-    ...(runner?.env ? { env: { ...process.env, ...runner.env } } : {}),
+    ...(env ? { env } : {}),
   });
   return { stdout };
 };
@@ -324,6 +333,7 @@ export function assertClaudeLaunchCapabilities(
     throw new AgentLaunchRefusedError(
       'UNSUPPORTED_LAUNCH_FIELD',
       `This Claude executable does not support launch field: ${field}.`,
+      field,
     );
   if (missing.length > 0) throw new ClaudeCapabilityError(detection, missing);
 }

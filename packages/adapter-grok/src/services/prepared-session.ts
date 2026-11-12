@@ -12,6 +12,11 @@ export function createPreparedGrokSession(
   disposeUnadopted?: () => void | Promise<void>,
   observe?: () => GrokSessionObserver,
   configured: GrokConfiguredIntent = {},
+  /**
+   * What the run owns beyond its control (a leader of its own), on either way out. Handed control's closing rather than
+   * called after it, so a guard against this run's shutdown sees it begin at once; it goes after `closing` settles.
+   */
+  stopRunResources?: (closing: Promise<unknown>) => void | Promise<void>,
 ): PreparedGrokSession {
   let adoptedRuntimeSessionId: string | undefined;
   let adoptedSession: AgentAdapterBinding | undefined;
@@ -27,14 +32,25 @@ export function createPreparedGrokSession(
       }
       if (adoptedSession) return adoptedSession;
       adoptedRuntimeSessionId = runtimeSessionId;
-      adoptedSession = createPendingControlSession(sessionId, runtimeSessionId, attach, observe?.(), configured);
+      const binding = createPendingControlSession(sessionId, runtimeSessionId, attach, observe?.(), configured);
+      adoptedSession = stopRunResources
+        ? {
+            ...binding,
+            async dispose(options) {
+              await stopRunResources(binding.dispose(options));
+            },
+          }
+        : binding;
       return adoptedSession;
     },
     async dispose(): Promise<void> {
       if (disposed) return;
       disposed = true;
       if (adoptedSession) await adoptedSession.dispose().catch(() => undefined);
-      else await Promise.resolve(disposeUnadopted?.()).catch(() => undefined);
+      else {
+        const closing = Promise.resolve(disposeUnadopted?.()).catch(() => undefined);
+        await (stopRunResources ? stopRunResources(closing) : closing);
+      }
     },
   };
 }

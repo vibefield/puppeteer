@@ -1,9 +1,31 @@
 import { describe, expect, it, vi } from 'vitest';
-import { codexBriefingParams, preflightCodexBriefing } from './briefing.js';
+import { CODEX_BRIEFING_CAPABILITIES, codexBriefingParams, preflightCodexBriefing } from './briefing.js';
 
 const servers = { field: { command: 'door', args: ['--stdio'], env: { TOKEN: 'secret' } } };
 const hello = { userAgent: 'puppeteer/0.147.0 (test)' };
 describe('Codex run briefing', () => {
+  it('never marks a server required: a failing door must not fail thread/start with an error that names no field', () => {
+    const config = codexBriefingParams({ mcpServers: servers }).config!['mcp_servers.field'] as Record<string, unknown>;
+    expect(config).not.toHaveProperty('required');
+    expect(config.enabled).toBe(true);
+  });
+
+  it('names the field each preflight refusal is about', async () => {
+    await expect(
+      preflightCodexBriefing({ mcpServers: servers }, { userAgent: 'x/0.100.0' }, '/w', vi.fn()),
+    ).rejects.toMatchObject({ field: 'mcpServers', code: 'UNSUPPORTED_LAUNCH_FIELD' });
+    await expect(
+      preflightCodexBriefing({ instructions: 'r' }, { userAgent: 'x/0.100.0' }, '/w', vi.fn()),
+    ).rejects.toMatchObject({ field: 'instructions' });
+    await expect(
+      preflightCodexBriefing({ mcpServers: servers }, hello, '/w', () => Promise.reject(new Error('no'))),
+    ).rejects.toMatchObject({ field: 'mcpServers' });
+  });
+
+  it('declares one helper per run: the private app-server names itself before a thread opens', () => {
+    expect(CODEX_BRIEFING_CAPABILITIES.mcpServerProcess).toBe('run-helper');
+  });
+
   it('combines MCP, instructions and effort without widening sandbox or tool visibility', () => {
     expect(
       codexBriefingParams({ mcpServers: servers, allowTools: ['field/read'], instructions: 'new role' }, 'high'),
@@ -14,7 +36,6 @@ describe('Codex run briefing', () => {
         'mcp_servers.field': {
           ...servers.field,
           enabled: true,
-          required: true,
           tools: { read: { approval_mode: 'approve' } },
         },
       },

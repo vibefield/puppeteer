@@ -1,4 +1,4 @@
-import { preflightClaudeLaunch } from './detection.js';
+import { type ClaudeLaunchPreflight, preflightClaudeLaunch } from './detection.js';
 /**
  * Claude session driver — the composition layer (DESIGN §11, §16).
  *
@@ -35,9 +35,12 @@ import {
   type TerminalAutomationOperation,
   type TerminalAutomationResult,
   type AdapterDisposeOptions,
+  type AgentBriefingWithheld,
   type AgentRunBriefing,
   pickAgentBriefing,
-  validateAgentBriefing,
+  settleAgentBriefing,
+  withAgentBriefing,
+  withholdUntilAccepted,
 } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { createHookBridge, type HookBridge, type HookBridgeOptions } from './observation/hook-bridge.js';
@@ -216,6 +219,11 @@ export interface CreateClaudeSessionOptions extends AgentRunBriefing {
    * (`createClaudeAccountUsageService().observeStatusLine`). Absent, it goes nowhere.
    */
   accountUsage?: ClaudeAccountUsageSink | undefined;
+  /**
+   * The preflight a briefed launch is checked with; absent, the shared one. A host whose services run with an
+   * environment of its own hands one built on an exec that runs with it (createClaudeLaunchPreflight).
+   */
+  preflight?: ClaudeLaunchPreflight | undefined;
 }
 
 export interface ClaudeHookRailFaultInjection {
@@ -238,7 +246,10 @@ export interface ClaudeSession extends AgentAdapterBinding {
 export interface PrepareClaudeTuiSessionOptions
   extends
     Omit<CreateClaudeSessionOptions, 'ports'>,
-    Pick<PrepareClaudeSessionOptions, 'carriedArgs' | 'prompt' | 'home' | 'readsNoSettingsFiles' | 'refuseHooksOff'> {
+    Pick<
+      PrepareClaudeSessionOptions,
+      'carriedArgs' | 'prompt' | 'home' | 'readsNoSettingsFiles' | 'refuseHooksOff' | 'briefingRefusal'
+    > {
   /** Route semantic automation to a terminal after the preparation is adopted. */
   automate(runtimeSessionId: string, operation: TerminalAutomationOperation): Promise<TerminalAutomationResult>;
 }
@@ -287,6 +298,8 @@ export interface AttachClaudeTuiSessionOptions extends Pick<
 export interface PreparedClaudeTuiSession {
   readonly sessionId: string;
   readonly launch: PreparedClaudeSession;
+  /** What of the briefing this launch goes ahead without, under `briefingRefusal: 'withhold'`. */
+  readonly briefingWithheld?: readonly AgentBriefingWithheld[] | undefined;
   adopt(runtimeSessionId: string): Promise<ClaudeSession>;
   dispose(): Promise<void>;
 }
@@ -294,12 +307,13 @@ export interface PreparedClaudeTuiSession {
 export async function prepareClaudeTuiSession(
   options: PrepareClaudeTuiSessionOptions,
 ): Promise<PreparedClaudeTuiSession> {
-  const briefing = validateAgentBriefing(options, CLAUDE_BRIEFING_CAPABILITIES, 'Claude');
-  options = { ...options, ...briefing };
+  const refusal = options.briefingRefusal;
+  let settled = settleAgentBriefing(options, CLAUDE_BRIEFING_CAPABILITIES, 'Claude', refusal);
   if (options.env?.AI_PERSONA === 'claude' || options.env?.PUPPETEER_IMPOSTER_HOME)
-    validateAgentBriefing(briefing, undefined, 'Claude imposter');
-  if (Object.keys(briefing).length)
-    await preflightClaudeLaunch({
+    settled = settleAgentBriefing(settled.briefing, undefined, 'Claude imposter', refusal, settled.withheld);
+  ({ settled } = await withholdUntilAccepted(settled, refusal, async (briefing) => {
+    if (Object.keys(briefing).length === 0) return;
+    await (options.preflight ?? preflightClaudeLaunch)({
       ...(options.executable === undefined ? {} : { executable: options.executable }),
       freshSession: options.resume === undefined && options.resumeInvocation === undefined,
       resume: options.resume !== undefined,
@@ -307,6 +321,8 @@ export async function prepareClaudeTuiSession(
       allowTools: (briefing.allowTools?.length ?? 0) > 0,
       instructions: briefing.instructions !== undefined,
     });
+  }));
+  options = withAgentBriefing(options, settled.briefing);
   if (options.resume && options.resumeInvocation) {
     throw new Error('Claude preparation accepts resume or resumeInvocation, not both');
   }
@@ -353,6 +369,7 @@ export async function prepareClaudeTuiSession(
       refuseHooksOff: options.refuseHooksOff,
       forwarderRuntime: options.forwarderRuntime,
       settingsDir: options.stagingDir,
+      briefingRefusal: refusal,
       endpoint: bridge.endpoint(),
       ...(otelUsageEnabled ? { otelLogsEndpoint: bridge.otelLogsEndpoint() } : {}),
       statusLineEndpoint: bridge.statusLineEndpoint(),
@@ -373,9 +390,11 @@ export async function prepareClaudeTuiSession(
         otelUsageUnavailableReason,
         otelUsageVerified,
       );
+      const briefingWithheld = [...settled.withheld, ...(prepared.briefingWithheld ?? [])];
       return {
         sessionId: prepared.sessionId,
         launch: prepared,
+        ...(briefingWithheld.length > 0 ? { briefingWithheld } : {}),
         adopt: observation.adopt,
         dispose: observation.dispose,
       };
@@ -1241,6 +1260,7 @@ export async function createClaudeSession(options: CreateClaudeSessionOptions): 
     observeOtlpUsage: options.observeOtlpUsage,
     observeSubagentStatus: options.observeSubagentStatus,
     accountUsage: options.accountUsage,
+    preflight: options.preflight,
     automate: options.ports.automate,
   });
   try {

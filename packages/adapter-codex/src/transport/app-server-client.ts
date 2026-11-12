@@ -220,19 +220,26 @@ function positiveTimeout(value: number): number {
 /**
  * Default transport: spawn `codex app-server` and speak newline-delimited JSON
  * over stdio. `env` is merged over this process's own environment and carries
- * the account-profile binding (`CODEX_HOME`) when one is selected. `cwd` keeps
- * a read out of whatever repository the host process happens to run in.
+ * the account-profile binding (`CODEX_HOME`) when one is selected; with
+ * `inheritEnvironment: false` it is the child's whole environment instead, so
+ * a host that names the environment its services run with hands none of its
+ * own. `cwd` keeps a read out of whatever repository the host process happens
+ * to run in.
  */
 export function spawnAppServerTransport(opts?: {
   executable?: string | undefined;
   args?: string[] | undefined;
   env?: Record<string, string> | undefined;
+  /** Default true: `env` goes over this process's environment. */
+  inheritEnvironment?: boolean | undefined;
   cwd?: string | undefined;
 }): Transport {
+  const env =
+    opts?.inheritEnvironment === false ? { ...opts.env } : opts?.env ? { ...process.env, ...opts.env } : undefined;
   const child = spawn(resolveCodexExecutable(opts?.executable), ['app-server', ...(opts?.args ?? [])], {
     stdio: ['pipe', 'pipe', 'pipe'],
     ...(opts?.cwd ? { cwd: opts.cwd } : {}),
-    ...(opts?.env ? { env: { ...process.env, ...opts.env } } : {}),
+    ...(env ? { env } : {}),
   });
   const rl = createInterface({ input: child.stdout });
   let onMsg: ((m: unknown) => void) | undefined;

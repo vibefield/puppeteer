@@ -171,6 +171,7 @@ import {
 } from '@vibefield/puppeteer-core';
 import { resolveCodexExecutable } from '../detection.js';
 import { AppServerClient, spawnAppServerTransport, type Transport } from '../transport/app-server-client.js';
+import { definedEnvironment } from './host-environment.js';
 import { codexProfileBinding } from './profiles.js';
 
 const CLIENT_INFO = { name: 'puppeteer-extensions', version: PUPPETEER_VERSION } as const;
@@ -187,13 +188,32 @@ export interface CodexExtensionOptions {
    * reach the real ones.
    */
   home?: string;
+  /**
+   * The environment the service reads. With `inheritEnvironment: false` it is also the whole environment Codex's
+   * processes here run with, the profile's binding over it; otherwise the binding goes over this process's own.
+   */
   env?: NodeJS.ProcessEnv;
+  /** Default true: Codex's processes here inherit this process's environment under the binding. */
+  inheritEnvironment?: boolean | undefined;
   now?: () => Date;
   requestTimeoutMs?: number;
   /** Injected transport factory; the default spawns `codex app-server` in the profile's root with its binding. */
-  spawnTransport?: (options: { executable?: string; env?: Record<string, string>; cwd?: string }) => Transport;
-  /** Injected runner for `codex mcp list --json`, resolving its standard output; the default runs it without a shell. */
-  listServers?: (options: { executable: string; env: Record<string, string>; cwd: string }) => Promise<string>;
+  spawnTransport?: (options: {
+    executable?: string;
+    env?: Record<string, string>;
+    inheritEnvironment?: boolean;
+    cwd?: string;
+  }) => Transport;
+  /**
+   * Injected runner for `codex mcp list --json`, resolving its standard output; the default runs it without a shell,
+   * `env` over this process's environment, or as its whole environment with `inheritEnvironment: false`.
+   */
+  listServers?: (options: {
+    executable: string;
+    env: Record<string, string>;
+    inheritEnvironment?: boolean;
+    cwd: string;
+  }) => Promise<string>;
 }
 
 type Json = Record<string, unknown>;
@@ -220,6 +240,7 @@ function codexArgv(executable: string, args: readonly string[]): string[] {
 function defaultListServers(options: {
   executable: string;
   env: Record<string, string>;
+  inheritEnvironment?: boolean;
   cwd: string;
 }): Promise<string> {
   const [command, ...args] = codexArgv(options.executable, ['mcp', 'list', '--json']);
@@ -229,7 +250,7 @@ function defaultListServers(options: {
       args,
       {
         cwd: options.cwd,
-        env: { ...process.env, ...options.env },
+        env: options.inheritEnvironment === false ? { ...options.env } : { ...process.env, ...options.env },
         timeout: 20_000,
         maxBuffer: 4 * 1024 * 1024,
         encoding: 'utf8',
@@ -1836,8 +1857,14 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
     },
   };
 
-  // A test home pins everything Codex reads to it, whatever this process inherited.
+  // A test home pins everything Codex reads to it, whatever this process inherited. A host that names the whole
+  // environment (`env` with `inheritEnvironment: false`) hands Codex that one under the binding, and none of this
+  // process's own; `env` alone changes nothing Codex is spawned with, as before.
+  const hostEnvironment = options.inheritEnvironment === false ? definedEnvironment(options.env ?? {}) : undefined;
+  const inheritance: { inheritEnvironment?: false } =
+    hostEnvironment === undefined ? {} : { inheritEnvironment: false };
   const environmentFor = (profile: AgentProfile): Record<string, string> => ({
+    ...hostEnvironment,
     ...codexProfileBinding(profile),
     ...(options.home !== undefined ? { HOME: options.home, CODEX_HOME: profile.dataRoot } : {}),
   });
@@ -1846,7 +1873,7 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
     let transport: Transport | undefined;
     let client: AppServerClient | undefined;
     try {
-      transport = spawnTransport({ executable, env, cwd: root });
+      transport = spawnTransport({ executable, env, cwd: root, ...inheritance });
       client = new AppServerClient(transport, { requestTimeoutMs });
       await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });
       client.notify('initialized');
@@ -2012,7 +2039,7 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
     };
     io.signal?.addEventListener('abort', onAbort, { once: true });
     try {
-      transport = spawnTransport({ executable, env: environmentFor(profile), cwd: root });
+      transport = spawnTransport({ executable, env: environmentFor(profile), cwd: root, ...inheritance });
       client = new AppServerClient(transport, { requestTimeoutMs });
       await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });
       client.notify('initialized');
@@ -2054,7 +2081,7 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
       }
       const [session, listing, marketplaces] = await Promise.allSettled([
         readSession(env, root),
-        listServers({ executable, env, cwd: root }),
+        listServers({ executable, env, cwd: root, ...inheritance }),
         readMarketplaces(root, home),
       ]);
       if (session.status === 'rejected') {
