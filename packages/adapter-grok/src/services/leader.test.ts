@@ -65,18 +65,22 @@ describe('Grok leader socket path', () => {
     expect(grokLeaderSocketFits(`C:\\${'a'.repeat(200)}\\leader.sock`, 'win32')).toBe(true);
   });
 
-  it('refuses with the reason, not a 20 second silence, when the temp directory is too deep', async () => {
-    const root = mkdtempSync(join(realpathSync(tmpdir()), `puppeteer-deep-${'x'.repeat(100)}`));
-    vi.stubEnv('TMPDIR', root);
-    try {
-      const service = createGrokLeaderService({ executable: '/bin/false' });
-      await expect(service.ensure()).rejects.toThrow(/socket path/);
-      await service.dispose();
-    } finally {
-      vi.unstubAllEnvs();
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+  // A Unix socket's row: Windows hashes the path into a named pipe (the row above), and its tmpdir() reads TEMP.
+  it.skipIf(process.platform === 'win32')(
+    'refuses with the reason, not a 20 second silence, when the temp directory is too deep',
+    async () => {
+      const root = mkdtempSync(join(realpathSync(tmpdir()), `puppeteer-deep-${'x'.repeat(100)}`));
+      vi.stubEnv('TMPDIR', root);
+      try {
+        const service = createGrokLeaderService({ executable: '/bin/false' });
+        await expect(service.ensure()).rejects.toThrow(/socket path/);
+        await service.dispose();
+      } finally {
+        vi.unstubAllEnvs();
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 describe('Grok leader shutdown', () => {
