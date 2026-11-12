@@ -1,4 +1,4 @@
-import { preflightClaudeLaunch } from './detection.js';
+import { type ClaudeLaunchPreflight, preflightClaudeLaunch } from './detection.js';
 /**
  * Claude session driver — the composition layer (DESIGN §11, §16).
  *
@@ -219,6 +219,11 @@ export interface CreateClaudeSessionOptions extends AgentRunBriefing {
    * (`createClaudeAccountUsageService().observeStatusLine`). Absent, it goes nowhere.
    */
   accountUsage?: ClaudeAccountUsageSink | undefined;
+  /**
+   * The preflight a briefed launch is checked with; absent, the shared one. A host whose services run with an
+   * environment of its own hands one built on an exec that runs with it (createClaudeLaunchPreflight).
+   */
+  preflight?: ClaudeLaunchPreflight | undefined;
 }
 
 export interface ClaudeHookRailFaultInjection {
@@ -308,7 +313,7 @@ export async function prepareClaudeTuiSession(
     settled = settleAgentBriefing(settled.briefing, undefined, 'Claude imposter', refusal, settled.withheld);
   ({ settled } = await withholdUntilAccepted(settled, refusal, async (briefing) => {
     if (Object.keys(briefing).length === 0) return;
-    await preflightClaudeLaunch({
+    await (options.preflight ?? preflightClaudeLaunch)({
       ...(options.executable === undefined ? {} : { executable: options.executable }),
       freshSession: options.resume === undefined && options.resumeInvocation === undefined,
       resume: options.resume !== undefined,
@@ -1255,6 +1260,7 @@ export async function createClaudeSession(options: CreateClaudeSessionOptions): 
     observeOtlpUsage: options.observeOtlpUsage,
     observeSubagentStatus: options.observeSubagentStatus,
     accountUsage: options.accountUsage,
+    preflight: options.preflight,
     automate: options.ports.automate,
   });
   try {

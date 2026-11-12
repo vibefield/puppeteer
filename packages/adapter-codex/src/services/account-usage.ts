@@ -235,10 +235,17 @@ export interface FetchCodexAccountUsageOptions {
   executable?: string | undefined;
   requestTimeoutMs?: number | undefined;
   now?: (() => Date) | undefined;
-  /** Extra app-server environment, merged over this process's own. Carries the profile binding. */
+  /**
+   * Extra app-server environment, merged over this process's own. Carries the profile binding. With
+   * `inheritEnvironment: false` it is the app-server's whole environment instead.
+   */
   env?: Record<string, string> | undefined;
+  /** Default true: `env` goes over this process's environment. */
+  inheritEnvironment?: boolean | undefined;
   /** Injected transport factory; the default spawns `codex app-server` over stdio. */
-  spawnTransport?: ((options: { executable?: string; env?: Record<string, string> }) => Transport) | undefined;
+  spawnTransport?:
+    | ((options: { executable?: string; env?: Record<string, string>; inheritEnvironment?: boolean }) => Transport)
+    | undefined;
 }
 
 function codexFailure(error: unknown): AccountUsageFetchResult {
@@ -284,6 +291,7 @@ export async function fetchCodexAccountUsage(
       (options.spawnTransport ?? spawnAppServerTransport)({
         ...(options.executable !== undefined ? { executable: options.executable } : {}),
         ...(options.env ? { env: options.env } : {}),
+        ...(options.inheritEnvironment === false ? { inheritEnvironment: false } : {}),
       });
     client = new AppServerClient(transport, { requestTimeoutMs: options.requestTimeoutMs });
     await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });

@@ -152,10 +152,11 @@ describe("Codex's app-server and `mcp list` runs", () => {
 
   it("hands the account usage read the service's environment", async () => {
     vi.stubEnv('HOST_ONLY_CANARY_FOR_TESTS', 'daemon-only');
-    // `env` is named by the change; until then this type carries it.
-    const options: Parameters<typeof createCodexAccountUsageService>[0] & { env?: Record<string, string> } = {
+    // `env` alone is an overlay on this process's environment; `inheritEnvironment: false` makes it the whole one.
+    const options: Parameters<typeof createCodexAccountUsageService>[0] = {
       executable: EXECUTABLE,
       env: ENV,
+      inheritEnvironment: false,
       requestTimeoutMs: 50,
     };
     await createCodexAccountUsageService(options)
