@@ -35,16 +35,20 @@ const COPILOT_VERSION_FLAG = '--version';
 /** Documented kill switch for the startup update check; Copilot has no update oracle. */
 const COPILOT_AUTO_UPDATE_VARIABLE = 'COPILOT_AUTO_UPDATE';
 
-/** Injected process execution so unit tests never run a real binary. */
+/** Injected process execution so unit tests never run a real binary. `env` is the environment the run is handed. */
 export type CopilotDistributionExec = (
   file: string,
   args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
 ) => Promise<{ stdout: string; stderr: string }>;
 
 export interface CopilotDistributionServiceOptions {
   executable?: string | undefined;
   exec?: CopilotDistributionExec | undefined;
-  /** Injected so tests never read the developer's own environment. */
+  /**
+   * The environment the service reads and its version run is handed; defaults to this process's. Injected so tests
+   * never read the developer's own environment, and so a host's own variables never reach the vendor's program.
+   */
   env?: NodeJS.ProcessEnv | undefined;
 }
 
@@ -72,12 +76,16 @@ export const COPILOT_DISTRIBUTION_PROVIDER: DistributionProvider = {
   nativeUpdateCheck: false,
 };
 
-function defaultExec(file: string, args: readonly string[]): Promise<{ stdout: string; stderr: string }> {
+function defaultExec(
+  file: string,
+  args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolvePromise, reject) => {
     execFile(
       file,
       [...args],
-      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8' },
+      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', env: options?.env },
       (error, stdout, stderr) => {
         if (error) reject(error);
         else resolvePromise({ stdout, stderr });
@@ -129,7 +137,7 @@ export function createCopilotDistributionService(options: CopilotDistributionSer
       const warnings: string[] = [];
       let version: string | undefined;
       try {
-        const { stdout, stderr } = await exec(candidate.executable, [COPILOT_VERSION_FLAG]);
+        const { stdout, stderr } = await exec(candidate.executable, [COPILOT_VERSION_FLAG], { env });
         version = parseCopilotVersion(`${stdout}\n${stderr}`);
         if (!version) {
           warnings.push(`${candidate.executable} ${COPILOT_VERSION_FLAG} returned an unrecognized version string`);

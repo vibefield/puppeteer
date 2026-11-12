@@ -32,16 +32,20 @@ const ANTIGRAVITY_INSTALL_SCRIPT_URL = 'https://antigravity.google/cli/install.s
 /** Documented kill switch for the CLI's own update check. */
 const ANTIGRAVITY_DISABLE_AUTO_UPDATE_VARIABLE = 'AGY_CLI_DISABLE_AUTO_UPDATE';
 
-/** Injected process execution so unit tests never run a real binary. */
+/** Injected process execution so unit tests never run a real binary. `env` is the environment the run is handed. */
 export type AntigravityDistributionExec = (
   file: string,
   args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
 ) => Promise<{ stdout: string; stderr: string }>;
 
 export interface AntigravityDistributionServiceOptions {
   executable?: string | undefined;
   exec?: AntigravityDistributionExec | undefined;
-  /** Injected so tests never read the developer's own environment. */
+  /**
+   * The environment the service reads and its version run is handed; defaults to this process's. Injected so tests
+   * never read the developer's own environment, and so a host's own variables never reach the vendor's program.
+   */
   env?: NodeJS.ProcessEnv | undefined;
 }
 
@@ -67,12 +71,16 @@ export const ANTIGRAVITY_DISTRIBUTION_PROVIDER: DistributionProvider = {
   nativeUpdateCheck: false,
 };
 
-function defaultExec(file: string, args: readonly string[]): Promise<{ stdout: string; stderr: string }> {
+function defaultExec(
+  file: string,
+  args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolvePromise, reject) => {
     execFile(
       file,
       [...args],
-      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8' },
+      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', env: options?.env },
       (error, stdout, stderr) => {
         if (error) reject(error);
         else resolvePromise({ stdout, stderr });
@@ -127,7 +135,7 @@ export function createAntigravityDistributionService(
       const warnings: string[] = [];
       let version: string | undefined;
       try {
-        const { stdout, stderr } = await exec(candidate.executable, [ANTIGRAVITY_VERSION_FLAG]);
+        const { stdout, stderr } = await exec(candidate.executable, [ANTIGRAVITY_VERSION_FLAG], { env });
         version = parseAntigravityVersion(`${stdout}\n${stderr}`);
         if (!version) {
           warnings.push(`${candidate.executable} ${ANTIGRAVITY_VERSION_FLAG} returned an unrecognized version string`);

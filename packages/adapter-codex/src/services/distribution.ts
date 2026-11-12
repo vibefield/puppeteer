@@ -48,10 +48,17 @@ export const CODEX_INSTALL_SCRIPT_URL = 'https://chatgpt.com/codex/install.sh';
 const execFileAsync = promisify(execFile);
 const SCRIPT_EXECUTABLE = /\.(mjs|cjs|js|ts)$/;
 
-/** Injected process runner; the default wraps node:child_process execFile without a shell. */
-export type CodexExec = (file: string, args: string[]) => Promise<{ stdout: string }>;
+/**
+ * Injected process runner; the default wraps node:child_process execFile without a shell. `env` is the environment
+ * the run is handed; absent, this process's own.
+ */
+export type CodexExec = (
+  file: string,
+  args: string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
+) => Promise<{ stdout: string }>;
 
-const defaultCodexExec: CodexExec = async (file, args) => {
+const defaultCodexExec: CodexExec = async (file, args, options) => {
   // npm installs expose a `.js` shim, and Imposter supplies a JavaScript entry
   // point; run those under Node rather than relying on the shebang.
   const isScript = SCRIPT_EXECUTABLE.test(file);
@@ -61,6 +68,7 @@ const defaultCodexExec: CodexExec = async (file, args) => {
     timeout: 10_000,
     maxBuffer: 1024 * 1024,
     encoding: 'utf8',
+    ...(options?.env ? { env: options.env } : {}),
   });
   return { stdout };
 };
@@ -185,7 +193,7 @@ export function createCodexDistributionService(options: CodexDistributionOptions
       let version: string | undefined;
       let banner: string | undefined;
       try {
-        banner = (await exec(candidate.executable, [CODEX_VERSION_FLAG])).stdout;
+        banner = (await exec(candidate.executable, [CODEX_VERSION_FLAG], { env: environment })).stdout;
         version = parseCodexVersion(banner);
         if (!version) warnings.push(`could not parse a version from \`${candidate.executable} ${CODEX_VERSION_FLAG}\``);
       } catch (error) {

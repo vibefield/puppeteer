@@ -89,6 +89,10 @@ export interface ClaudeDistributionOptions {
   readFile?: ((path: string) => Promise<string>) | undefined;
   /** Home directory the native layouts hang off; defaults to the process home. */
   home?: string | undefined;
+  /**
+   * The environment the service reads and its version run is handed; defaults to this process's, so a host's own
+   * variables reach the vendor's program only when it names none.
+   */
   env?: NodeJS.ProcessEnv | undefined;
   now?: (() => Date) | undefined;
 }
@@ -284,7 +288,7 @@ export function createClaudeDistributionService(options: ClaudeDistributionOptio
       let version: string | undefined;
       let banner: string | undefined;
       try {
-        banner = (await exec(candidate.executable, [CLAUDE_VERSION_FLAG])).stdout;
+        banner = (await exec(candidate.executable, [CLAUDE_VERSION_FLAG], { env })).stdout;
         version = parseClaudeVersion(banner);
         if (!version) {
           warnings.push(`could not parse a version from \`${candidate.executable} ${CLAUDE_VERSION_FLAG}\``);

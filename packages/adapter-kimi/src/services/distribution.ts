@@ -38,10 +38,11 @@ const KIMI_INSTALL_SCRIPT_URL = 'https://code.kimi.com/kimi-code/install.sh';
 const KIMI_COMMANDS = ['kimi'];
 const KIMI_VERSION_FLAG = '--version';
 
-/** Injected process execution so unit tests never run a real binary. */
+/** Injected process execution so unit tests never run a real binary. `env` is the environment the run is handed. */
 export type KimiDistributionExec = (
   file: string,
   args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
 ) => Promise<{ stdout: string; stderr: string }>;
 
 export interface KimiDistributionServiceOptions {
@@ -49,6 +50,11 @@ export interface KimiDistributionServiceOptions {
   exec?: KimiDistributionExec | undefined;
   /** The install script is a bash script; defaults to this process's platform. */
   platform?: NodeJS.Platform | undefined;
+  /**
+   * The environment the version run is handed; absent, this process's own. A host names it so its own variables
+   * never reach the vendor's program.
+   */
+  env?: NodeJS.ProcessEnv | undefined;
 }
 
 export const KIMI_DISTRIBUTION_PROVIDER: DistributionProvider = {
@@ -73,12 +79,16 @@ export const KIMI_DISTRIBUTION_PROVIDER: DistributionProvider = {
   nativeUpdateCheck: false,
 };
 
-function defaultExec(file: string, args: readonly string[]): Promise<{ stdout: string; stderr: string }> {
+function defaultExec(
+  file: string,
+  args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolvePromise, reject) => {
     execFile(
       file,
       [...args],
-      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8' },
+      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', env: options?.env },
       (error, stdout, stderr) => {
         if (error) reject(error);
         else resolvePromise({ stdout, stderr });
@@ -121,7 +131,7 @@ export function createKimiDistributionService(options: KimiDistributionServiceOp
       const warnings: string[] = [];
       let version: string | undefined;
       try {
-        const { stdout, stderr } = await exec(candidate.executable, [KIMI_VERSION_FLAG]);
+        const { stdout, stderr } = await exec(candidate.executable, [KIMI_VERSION_FLAG], { env: options.env });
         version = parseKimiVersion(`${stdout}\n${stderr}`);
         if (!version) {
           warnings.push(`${candidate.executable} ${KIMI_VERSION_FLAG} returned an unrecognized version string`);
