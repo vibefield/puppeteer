@@ -121,6 +121,18 @@ export const NARROW_HERO = Object.freeze({
   listInsetPx: 10,
 });
 
+/**
+ * The chart's caption (item 291 · 3b): its window in words, long and short, and the face spend.css sets it in (the
+ * sheet is the authority; test/spend-sheet.test.ts holds the two together), which the view measures the long words
+ * in. Where they would overrun the plot, as on a phone, the short words stand in their place.
+ */
+export const COLCAP = Object.freeze({
+  long: 'Spent in the last 10 minutes',
+  short: 'Last 10 minutes',
+  face: '600 10px',
+  trackingEm: 0.07,
+});
+
 /** What the hero's caption is made of. */
 export interface HeroCaptionFacts {
   /** The agents no price reaches that had started by the moment: one not yet running is not missing. */

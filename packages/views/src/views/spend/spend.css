@@ -256,11 +256,26 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   font: 600 10.5px/1 var(--vf-font-sans, sans-serif);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--mv-spend-t3);
   cursor: default;
+}
+
+/* The head's two labels stand 8 px apart at least. Where both do not fit, the first ("N of M started") is cut,
+   and the second, which names the money column, stays whole (item 291 · 2, James's A). */
+.mv-spend .vf-monitor-spend-head span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mv-spend .vf-monitor-spend-head span:last-child {
+  flex: none;
+  white-space: nowrap;
 }
 
 /* The compact form keeps a slim header, so "Total" still names the money column beside the chart's window
