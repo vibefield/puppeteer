@@ -904,7 +904,9 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
         }}
         onPointerLeave={onHitLeave}
       />
-      <div className="vf-monitor-spend-colcap" style={{ left: g.x0, top: g.y0 + 8 }} aria-hidden="true">{colcap}</div>
+      <div className="vf-monitor-spend-colcap" style={{ left: g.x0, top: g.y0 + 8 }} aria-hidden="true">
+        {colcap}
+      </div>
       <div className="vf-monitor-spend-y" aria-hidden="true">
         {/* The money labels, $0 among them 4 px higher: its line then ends above now's chip, which stands centred on
             the plot's right edge at every width (item 291 · 4). */}
