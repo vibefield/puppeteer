@@ -74,9 +74,21 @@ describe("a Claude Code install's version run", () => {
 
   it("is handed the service's environment, and nothing of this process's own", async () => {
     vi.stubEnv('HOST_ONLY_CANARY_FOR_TESTS', 'daemon-only');
-    await createClaudeDistributionService({ env: ENV, home: `${NOWHERE}/home`, readFile }).inspect(candidate);
+    await createClaudeDistributionService({
+      env: ENV,
+      inheritEnvironment: false,
+      home: `${NOWHERE}/home`,
+      readFile,
+    }).inspect(candidate);
     const run = calls.find((call) => call.file === candidate.executable);
     expect(run).toBeDefined();
     expect(envCheck(run?.options?.env)).toEqual(CLEAN);
+  });
+
+  it('is started as before when the service is given env alone, with no environment handed to the run', async () => {
+    await createClaudeDistributionService({ env: {}, home: `${NOWHERE}/home`, readFile }).inspect(candidate);
+    const run = calls.find((call) => call.file === candidate.executable);
+    expect(run).toBeDefined();
+    expect(run?.options !== undefined && 'env' in run.options).toBe(false);
   });
 });

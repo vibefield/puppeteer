@@ -46,10 +46,12 @@ export interface CopilotDistributionServiceOptions {
   executable?: string | undefined;
   exec?: CopilotDistributionExec | undefined;
   /**
-   * The environment the service reads and its version run is handed; defaults to this process's. Injected so tests
-   * never read the developer's own environment, and so a host's own variables never reach the vendor's program.
+   * The environment the service reads; defaults to this process's. Injected so tests never read the developer's own
+   * environment. With `inheritEnvironment: false` it is also the version run's whole environment.
    */
   env?: NodeJS.ProcessEnv | undefined;
+  /** Default true: the version run inherits this process's environment, as before. */
+  inheritEnvironment?: boolean | undefined;
 }
 
 export const COPILOT_DISTRIBUTION_PROVIDER: DistributionProvider = {
@@ -85,7 +87,7 @@ function defaultExec(
     execFile(
       file,
       [...args],
-      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', env: options?.env },
+      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', ...(options?.env ? { env: options.env } : {}) },
       (error, stdout, stderr) => {
         if (error) reject(error);
         else resolvePromise({ stdout, stderr });
@@ -128,6 +130,9 @@ function errorMessage(error: unknown): string {
 export function createCopilotDistributionService(options: CopilotDistributionServiceOptions = {}): DistributionService {
   const exec = options.exec ?? defaultExec;
   const env = options.env ?? process.env;
+  // The version run is handed `env` only under `inheritEnvironment: false`; otherwise it starts as before.
+  const versionRun = (file: string, args: string[]) =>
+    options.inheritEnvironment === false ? exec(file, args, { env }) : exec(file, args);
   return {
     provider: COPILOT_DISTRIBUTION_PROVIDER,
 
@@ -137,7 +142,7 @@ export function createCopilotDistributionService(options: CopilotDistributionSer
       const warnings: string[] = [];
       let version: string | undefined;
       try {
-        const { stdout, stderr } = await exec(candidate.executable, [COPILOT_VERSION_FLAG], { env });
+        const { stdout, stderr } = await versionRun(candidate.executable, [COPILOT_VERSION_FLAG]);
         version = parseCopilotVersion(`${stdout}\n${stderr}`);
         if (!version) {
           warnings.push(`${candidate.executable} ${COPILOT_VERSION_FLAG} returned an unrecognized version string`);

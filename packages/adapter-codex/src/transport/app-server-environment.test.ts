@@ -130,7 +130,14 @@ describe("Codex's app-server and `mcp list` runs", () => {
 
   it("hands a profile's verify the service's environment under its binding", async () => {
     vi.stubEnv('HOST_ONLY_CANARY_FOR_TESTS', 'daemon-only');
-    await createCodexProfileService({ executable: EXECUTABLE, env: ENV, home: `${NOWHERE}/home`, requestTimeoutMs: 50 })
+    // `env` alone is what the service reads; `inheritEnvironment: false` makes it the app-server's whole environment.
+    await createCodexProfileService({
+      executable: EXECUTABLE,
+      env: ENV,
+      inheritEnvironment: false,
+      home: `${NOWHERE}/home`,
+      requestTimeoutMs: 50,
+    })
       .verify(profile)
       .catch(() => undefined);
     expectServiceEnvironment(spawned.find((call) => call.args.includes('app-server')));
@@ -141,6 +148,7 @@ describe("Codex's app-server and `mcp list` runs", () => {
     await createCodexExtensionService({
       executable: EXECUTABLE,
       env: ENV,
+      inheritEnvironment: false,
       home: `${NOWHERE}/home`,
       requestTimeoutMs: 50,
     })

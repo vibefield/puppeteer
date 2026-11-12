@@ -57,10 +57,12 @@ export interface OpenCodeDistributionServiceOptions {
   exec?: OpenCodeDistributionExec | undefined;
   readConfigFile?: OpenCodeDistributionReadFile | undefined;
   /**
-   * The environment the service reads and its version run is handed; defaults to this process's. Injected so tests
-   * never read the developer's own environment, and so a host's own variables never reach the vendor's program.
+   * The environment the service reads; defaults to this process's. Injected so tests never read the developer's own
+   * environment. With `inheritEnvironment: false` it is also the version run's whole environment.
    */
   env?: NodeJS.ProcessEnv | undefined;
+  /** Default true: the version run inherits this process's environment, as before. */
+  inheritEnvironment?: boolean | undefined;
   /** Injected so tests never read the real home directory. */
   home?: string | undefined;
 }
@@ -98,7 +100,7 @@ function defaultExec(
     execFile(
       file,
       [...args],
-      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', env: options?.env },
+      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', ...(options?.env ? { env: options.env } : {}) },
       (error, stdout, stderr) => {
         if (error) reject(error);
         else resolvePromise({ stdout, stderr });
@@ -256,6 +258,9 @@ export function createOpenCodeDistributionService(
   const exec = options.exec ?? defaultExec;
   const readConfigFile = options.readConfigFile ?? ((path: string) => readFile(path, 'utf8'));
   const env = options.env ?? process.env;
+  // The version run is handed `env` only under `inheritEnvironment: false`; otherwise it starts as before.
+  const versionRun = (file: string, args: string[]) =>
+    options.inheritEnvironment === false ? exec(file, args, { env }) : exec(file, args);
   const home = options.home ?? homedir();
   // Config lives beside the XDG config root, not the data root a profile binds.
   const configRoot = join(env.XDG_CONFIG_HOME ?? join(home, '.config'), 'opencode');
@@ -269,7 +274,7 @@ export function createOpenCodeDistributionService(
       const warnings: string[] = [];
       let version: string | undefined;
       try {
-        const { stdout } = await exec(candidate.executable, [OPENCODE_VERSION_FLAG], { env });
+        const { stdout } = await versionRun(candidate.executable, [OPENCODE_VERSION_FLAG]);
         version = parseOpenCodeVersion(stdout);
         if (!version) {
           warnings.push(`${candidate.executable} ${OPENCODE_VERSION_FLAG} returned an unrecognized version string`);

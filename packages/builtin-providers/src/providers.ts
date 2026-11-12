@@ -301,7 +301,10 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
   // One environment for every service, when the host names one; each service hands it on as its whole environment.
   const serviceEnvironment = options.serviceEnvironment;
   const envOption = serviceEnvironment === undefined ? {} : { env: serviceEnvironment };
-  // Codex's usage read and prewarm take `env` as an overlay unless told not to inherit.
+  // A distribution that took `env` before reads it; `inheritEnvironment: false` makes it the version run's whole one.
+  const distributionOption =
+    serviceEnvironment === undefined ? {} : { env: serviceEnvironment, inheritEnvironment: false as const };
+  // Codex's profiles, extensions, usage read and prewarm take `env` as an overlay unless told not to inherit.
   const codexEnvironment = (binding: Record<string, string> = {}) =>
     serviceEnvironment === undefined
       ? {}
@@ -332,14 +335,14 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
   // read or a sign-out must reach the install the host chose, not whatever PATH holds.
   const services = {
     claude: {
-      distribution: createClaudeDistributionService({ executable: resolved.claude, ...envOption }),
+      distribution: createClaudeDistributionService({ executable: resolved.claude, ...distributionOption }),
       profiles: createClaudeProfileService({ ...chosen(resolved.claude), ...homeOption, ...envOption }),
       extensions: createClaudeExtensionService({ ...chosen(resolved.claude), ...homeOption, ...envOption }),
     },
     codex: {
-      distribution: createCodexDistributionService({ executable: resolved.codex, ...envOption }),
-      profiles: createCodexProfileService({ ...chosen(resolved.codex), ...homeOption, ...envOption }),
-      extensions: createCodexExtensionService({ ...chosen(resolved.codex), ...homeOption, ...envOption }),
+      distribution: createCodexDistributionService({ executable: resolved.codex, ...distributionOption }),
+      profiles: createCodexProfileService({ ...chosen(resolved.codex), ...homeOption, ...codexEnvironment() }),
+      extensions: createCodexExtensionService({ ...chosen(resolved.codex), ...homeOption, ...codexEnvironment() }),
     },
     grok: {
       distribution: createGrokDistributionService({ executable: resolved.grok, ...envOption }),
@@ -352,7 +355,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       extensions: createKimiExtensionService({ ...homeOption, ...envOption }),
     },
     opencode: {
-      distribution: createOpenCodeDistributionService({ executable: resolved.opencode, ...envOption }),
+      distribution: createOpenCodeDistributionService({ executable: resolved.opencode, ...distributionOption }),
       profiles: createOpenCodeProfileService({ ...chosen(resolved.opencode), ...homeOption, ...envOption }),
       extensions: createOpenCodeExtensionService({ ...chosen(resolved.opencode), ...homeOption, ...envOption }),
     },
@@ -362,12 +365,12 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       extensions: createHermesExtensionService({ ...chosen(resolved.hermes), ...homeOption, ...envOption }),
     },
     antigravity: {
-      distribution: createAntigravityDistributionService({ executable: resolved.antigravity, ...envOption }),
+      distribution: createAntigravityDistributionService({ executable: resolved.antigravity, ...distributionOption }),
       profiles: createAntigravityProfileService({ ...chosen(resolved.antigravity), ...homeOption, ...envOption }),
       extensions: createAntigravityExtensionService({ ...chosen(resolved.antigravity), ...homeOption, ...envOption }),
     },
     copilot: {
-      distribution: createCopilotDistributionService({ executable: resolved.copilot, ...envOption }),
+      distribution: createCopilotDistributionService({ executable: resolved.copilot, ...distributionOption }),
       profiles: createCopilotProfileService({ ...chosen(resolved.copilot), ...homeOption, ...envOption }),
     },
     pi: {

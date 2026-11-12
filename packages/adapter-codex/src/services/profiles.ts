@@ -92,10 +92,12 @@ export interface CodexProfileOptions {
   /** Home directory the native default root hangs off; defaults to the process home. */
   home?: string;
   /**
-   * The environment the service reads and its app-server runs with, the profile's binding over it; absent, the
-   * binding goes over this process's own.
+   * The environment the service reads. With `inheritEnvironment: false` it is also the app-server's whole
+   * environment, the profile's binding over it; otherwise the binding goes over this process's own, as before.
    */
   env?: NodeJS.ProcessEnv;
+  /** Default true: the app-server inherits this process's environment under the binding. */
+  inheritEnvironment?: boolean | undefined;
   now?: () => Date;
   requestTimeoutMs?: number;
   /** Injected transport factory; the default spawns `codex app-server` with the profile binding. */
@@ -188,8 +190,8 @@ export function createCodexProfileService(options: CodexProfileOptions = {}): Pr
       try {
         transport = spawnTransport({
           executable,
-          ...(options.env !== undefined
-            ? { env: { ...definedEnvironment(options.env), ...binding }, inheritEnvironment: false }
+          ...(options.inheritEnvironment === false
+            ? { env: { ...definedEnvironment(options.env ?? {}), ...binding }, inheritEnvironment: false }
             : Object.keys(binding).length > 0
               ? { env: binding }
               : {}),

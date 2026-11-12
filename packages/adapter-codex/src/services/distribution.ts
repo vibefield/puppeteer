@@ -80,7 +80,13 @@ function posixish(path: string): string {
 export interface CodexDistributionOptions {
   executable?: string | undefined;
   exec?: CodexExec | undefined;
+  /**
+   * The environment the service reads; defaults to this process's. With `inheritEnvironment: false` it is also the
+   * version run's whole environment.
+   */
   env?: NodeJS.ProcessEnv | undefined;
+  /** Default true: the version run inherits this process's environment, as before. */
+  inheritEnvironment?: boolean | undefined;
   now?: (() => Date) | undefined;
 }
 
@@ -180,6 +186,9 @@ function errMessage(error: unknown): string {
 export function createCodexDistributionService(options: CodexDistributionOptions = {}): DistributionService {
   const exec = options.exec ?? defaultCodexExec;
   const environment = options.env ?? process.env;
+  // The version run is handed `env` only under `inheritEnvironment: false`; otherwise it starts as before.
+  const versionRun = (file: string, args: string[]) =>
+    options.inheritEnvironment === false ? exec(file, args, { env: environment }) : exec(file, args);
   const now = options.now ?? (() => new Date());
   const configured = resolveCodexExecutable(options.executable, environment);
 
@@ -193,7 +202,7 @@ export function createCodexDistributionService(options: CodexDistributionOptions
       let version: string | undefined;
       let banner: string | undefined;
       try {
-        banner = (await exec(candidate.executable, [CODEX_VERSION_FLAG], { env: environment })).stdout;
+        banner = (await versionRun(candidate.executable, [CODEX_VERSION_FLAG])).stdout;
         version = parseCodexVersion(banner);
         if (!version) warnings.push(`could not parse a version from \`${candidate.executable} ${CODEX_VERSION_FLAG}\``);
       } catch (error) {

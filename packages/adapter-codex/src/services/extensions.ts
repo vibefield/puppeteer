@@ -189,10 +189,12 @@ export interface CodexExtensionOptions {
    */
   home?: string;
   /**
-   * The environment Codex's processes here run with, the profile's binding over it; absent, the binding goes over
-   * this process's own.
+   * The environment the service reads. With `inheritEnvironment: false` it is also the whole environment Codex's
+   * processes here run with, the profile's binding over it; otherwise the binding goes over this process's own.
    */
   env?: NodeJS.ProcessEnv;
+  /** Default true: Codex's processes here inherit this process's environment under the binding. */
+  inheritEnvironment?: boolean | undefined;
   now?: () => Date;
   requestTimeoutMs?: number;
   /** Injected transport factory; the default spawns `codex app-server` in the profile's root with its binding. */
@@ -1855,9 +1857,10 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
     },
   };
 
-  // A test home pins everything Codex reads to it, whatever this process inherited. A host that names the environment
-  // hands Codex that one under the binding, and none of this process's own.
-  const hostEnvironment = options.env === undefined ? undefined : definedEnvironment(options.env);
+  // A test home pins everything Codex reads to it, whatever this process inherited. A host that names the whole
+  // environment (`env` with `inheritEnvironment: false`) hands Codex that one under the binding, and none of this
+  // process's own; `env` alone changes nothing Codex is spawned with, as before.
+  const hostEnvironment = options.inheritEnvironment === false ? definedEnvironment(options.env ?? {}) : undefined;
   const inheritance: { inheritEnvironment?: false } =
     hostEnvironment === undefined ? {} : { inheritEnvironment: false };
   const environmentFor = (profile: AgentProfile): Record<string, string> => ({

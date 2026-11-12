@@ -70,9 +70,16 @@ describe("a Copilot install's version run", () => {
 
   it("is handed the service's environment, and nothing of this process's own", async () => {
     vi.stubEnv('HOST_ONLY_CANARY_FOR_TESTS', 'daemon-only');
-    await createCopilotDistributionService({ env: ENV }).inspect(candidate);
+    await createCopilotDistributionService({ env: ENV, inheritEnvironment: false }).inspect(candidate);
     const run = calls.find((call) => call.file === candidate.executable);
     expect(run).toBeDefined();
     expect(envCheck(run?.options?.env)).toEqual(CLEAN);
+  });
+
+  it('is started as before when the service is given env alone, with no environment handed to the run', async () => {
+    await createCopilotDistributionService({ env: {} }).inspect(candidate);
+    const run = calls.find((call) => call.file === candidate.executable);
+    expect(run).toBeDefined();
+    expect(run?.options !== undefined && 'env' in run.options).toBe(false);
   });
 });
