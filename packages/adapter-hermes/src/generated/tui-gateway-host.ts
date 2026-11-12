@@ -148,6 +148,10 @@ def enable_session_event_fanout() -> None:
 
 
 def main() -> None:
+    # The checkout the launch's hermes wrapper names, when the adapter found one:
+    # Hermes is imported from there.
+    if len(sys.argv) > 1:
+        sys.path.insert(0, sys.argv[1])
     token = read_gateway_token(sys.stdin)
 
     from fastapi import FastAPI, WebSocket
