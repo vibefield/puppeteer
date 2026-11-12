@@ -44,16 +44,20 @@ import {
   createClaudeAccountUsageService,
   createClaudeDistributionService,
   createClaudeExtensionService,
+  createClaudeLaunchPreflight,
   createClaudeProfileService,
   createClaudeModelService,
   captureClaudeContinuationState,
   attachClaudeTuiSession,
   createClaudeSession,
+  defaultClaudeExec,
+  identifyClaudeExecutable,
   normalizeClaudeNativeInvocation,
   preflightClaudeLaunch,
   prepareClaudeTuiSession,
   restoreClaudeContinuationState,
   type ClaudeAccountUsageSink,
+  type ClaudeLaunchPreflight,
   type ClaudeNativeInvocationOptions,
 } from '@vibefield/puppeteer-adapter-claude';
 import {
@@ -201,6 +205,14 @@ export interface BuiltinProviderOptions {
    * real home.
    */
   home?: string | undefined;
+  /**
+   * The environment every service here reads and hands the vendor programs it
+   * runs for a lookup (a version, a sign-in, usage, models, extensions, Claude's
+   * launch preflight, Codex's prewarm), in place of this process's own. A host
+   * whose own environment holds what an agent must not reach names the one it
+   * means. Absent, the services read and hand this process's, as before.
+   */
+  serviceEnvironment?: Readonly<Record<string, string>> | undefined;
 }
 
 const BUILTIN_PROVIDER_DESCRIPTORS = {
@@ -286,6 +298,22 @@ function withLaunchEnvironment<
 export function createBuiltinProviders(options: BuiltinProviderOptions = {}): AgentProvider[] {
   const { executables = {}, acpConnector } = options;
   const homeOption = options.home === undefined ? {} : { home: options.home };
+  // One environment for every service, when the host names one; each service hands it on as its whole environment.
+  const serviceEnvironment = options.serviceEnvironment;
+  const envOption = serviceEnvironment === undefined ? {} : { env: serviceEnvironment };
+  // Codex's usage read and prewarm take `env` as an overlay unless told not to inherit.
+  const codexEnvironment = (binding: Record<string, string> = {}) =>
+    serviceEnvironment === undefined
+      ? {}
+      : { env: { ...serviceEnvironment, ...binding }, inheritEnvironment: false as const };
+  // Claude's launch preflight runs `claude --version` and `--help`: under a named environment, on an exec with it.
+  const claudePreflight: ClaudeLaunchPreflight | undefined =
+    serviceEnvironment === undefined
+      ? undefined
+      : createClaudeLaunchPreflight((file, args) => defaultClaudeExec(file, args, { env: serviceEnvironment }), {
+          identify: (executable) => identifyClaudeExecutable(executable, serviceEnvironment),
+        });
+  const preflightOption = claudePreflight === undefined ? {} : { preflight: claudePreflight };
   const resolved = {
     claude: executables.claude ?? process.env.PUPPETEER_CLAUDE_BIN,
     codex: executables.codex ?? process.env.PUPPETEER_CODEX_BIN,
@@ -304,48 +332,48 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
   // read or a sign-out must reach the install the host chose, not whatever PATH holds.
   const services = {
     claude: {
-      distribution: createClaudeDistributionService({ executable: resolved.claude }),
-      profiles: createClaudeProfileService({ ...chosen(resolved.claude), ...homeOption }),
-      extensions: createClaudeExtensionService({ ...chosen(resolved.claude), ...homeOption }),
+      distribution: createClaudeDistributionService({ executable: resolved.claude, ...envOption }),
+      profiles: createClaudeProfileService({ ...chosen(resolved.claude), ...homeOption, ...envOption }),
+      extensions: createClaudeExtensionService({ ...chosen(resolved.claude), ...homeOption, ...envOption }),
     },
     codex: {
-      distribution: createCodexDistributionService({ executable: resolved.codex }),
-      profiles: createCodexProfileService({ ...chosen(resolved.codex), ...homeOption }),
-      extensions: createCodexExtensionService({ ...chosen(resolved.codex), ...homeOption }),
+      distribution: createCodexDistributionService({ executable: resolved.codex, ...envOption }),
+      profiles: createCodexProfileService({ ...chosen(resolved.codex), ...homeOption, ...envOption }),
+      extensions: createCodexExtensionService({ ...chosen(resolved.codex), ...homeOption, ...envOption }),
     },
     grok: {
-      distribution: createGrokDistributionService({ executable: resolved.grok }),
-      profiles: createGrokProfileService({ ...chosen(resolved.grok), ...homeOption }),
-      extensions: createGrokExtensionService({ ...chosen(resolved.grok), ...homeOption }),
+      distribution: createGrokDistributionService({ executable: resolved.grok, ...envOption }),
+      profiles: createGrokProfileService({ ...chosen(resolved.grok), ...homeOption, ...envOption }),
+      extensions: createGrokExtensionService({ ...chosen(resolved.grok), ...homeOption, ...envOption }),
     },
     kimi: {
-      distribution: createKimiDistributionService({ executable: resolved.kimi }),
-      profiles: createKimiProfileService({ ...chosen(resolved.kimi), ...homeOption }),
-      extensions: createKimiExtensionService(homeOption),
+      distribution: createKimiDistributionService({ executable: resolved.kimi, ...envOption }),
+      profiles: createKimiProfileService({ ...chosen(resolved.kimi), ...homeOption, ...envOption }),
+      extensions: createKimiExtensionService({ ...homeOption, ...envOption }),
     },
     opencode: {
-      distribution: createOpenCodeDistributionService({ executable: resolved.opencode }),
-      profiles: createOpenCodeProfileService({ ...chosen(resolved.opencode), ...homeOption }),
-      extensions: createOpenCodeExtensionService({ ...chosen(resolved.opencode), ...homeOption }),
+      distribution: createOpenCodeDistributionService({ executable: resolved.opencode, ...envOption }),
+      profiles: createOpenCodeProfileService({ ...chosen(resolved.opencode), ...homeOption, ...envOption }),
+      extensions: createOpenCodeExtensionService({ ...chosen(resolved.opencode), ...homeOption, ...envOption }),
     },
     hermes: {
-      distribution: createHermesDistributionService({ executable: resolved.hermes }),
-      profiles: createHermesProfileService({ ...chosen(resolved.hermes), ...homeOption }),
-      extensions: createHermesExtensionService({ ...chosen(resolved.hermes), ...homeOption }),
+      distribution: createHermesDistributionService({ executable: resolved.hermes, ...envOption }),
+      profiles: createHermesProfileService({ ...chosen(resolved.hermes), ...homeOption, ...envOption }),
+      extensions: createHermesExtensionService({ ...chosen(resolved.hermes), ...homeOption, ...envOption }),
     },
     antigravity: {
-      distribution: createAntigravityDistributionService({ executable: resolved.antigravity }),
-      profiles: createAntigravityProfileService({ ...chosen(resolved.antigravity), ...homeOption }),
-      extensions: createAntigravityExtensionService({ ...chosen(resolved.antigravity), ...homeOption }),
+      distribution: createAntigravityDistributionService({ executable: resolved.antigravity, ...envOption }),
+      profiles: createAntigravityProfileService({ ...chosen(resolved.antigravity), ...homeOption, ...envOption }),
+      extensions: createAntigravityExtensionService({ ...chosen(resolved.antigravity), ...homeOption, ...envOption }),
     },
     copilot: {
-      distribution: createCopilotDistributionService({ executable: resolved.copilot }),
-      profiles: createCopilotProfileService({ ...chosen(resolved.copilot), ...homeOption }),
+      distribution: createCopilotDistributionService({ executable: resolved.copilot, ...envOption }),
+      profiles: createCopilotProfileService({ ...chosen(resolved.copilot), ...homeOption, ...envOption }),
     },
     pi: {
-      distribution: createPiDistributionService({ executable: resolved.pi }),
-      profiles: createPiProfileService({ ...chosen(resolved.pi), ...homeOption }),
-      extensions: createPiExtensionService({ ...chosen(resolved.pi), ...homeOption }),
+      distribution: createPiDistributionService({ executable: resolved.pi, ...envOption }),
+      profiles: createPiProfileService({ ...chosen(resolved.pi), ...homeOption, ...envOption }),
+      extensions: createPiExtensionService({ ...chosen(resolved.pi), ...homeOption, ...envOption }),
     },
   };
   const claudeLaunchFor = async (
@@ -366,7 +394,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       { briefing: pickAgentBriefing(asked), withheld: [] },
       refusal,
       (briefing) =>
-        preflightClaudeLaunch({
+        (claudePreflight ?? preflightClaudeLaunch)({
           executable,
           freshSession: resume === undefined && launch?.resumeInvocation === undefined,
           resume: resume !== undefined,
@@ -388,7 +416,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
   // One Claude usage service for the composition: each session's status line reaches its listeners, stamped with the
   // registered account the session's root names (session-account.ts). A root no registered account names (a typed
   // root, an imposter) is handed no sink: the registry is the account authority, so its quota is shown nowhere.
-  const claudeAccountUsage = createClaudeAccountUsageService();
+  const claudeAccountUsage = createClaudeAccountUsageService(envOption);
   const claudeAccountUsageSink = (
     cwd: string,
     profile: AgentProfile | undefined,
@@ -436,7 +464,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.claude.distribution,
       profiles: services.claude.profiles,
-      models: createClaudeModelService({ ...chosen(resolved.claude), ...homeOption }),
+      models: createClaudeModelService({ ...chosen(resolved.claude), ...homeOption, ...envOption }),
       extensions: services.claude.extensions,
       accountUsage: claudeAccountUsage,
       launch: {
@@ -487,6 +515,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch, briefing);
         return createClaudeSession({
           ...pickAgentBriefing(briefing),
+          ...preflightOption,
           cwd,
           resume,
           title,
@@ -578,6 +607,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         );
         const prepared = await prepareClaudeTuiSession({
           ...settled.briefing,
+          ...preflightOption,
           ...(briefingRefusal === undefined ? {} : { briefingRefusal }),
           cwd,
           resume,
@@ -619,13 +649,17 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.codex.distribution,
       profiles: services.codex.profiles,
-      models: createCodexModelService({ ...chosen(resolved.codex), ...homeOption }),
+      models: createCodexModelService({ ...chosen(resolved.codex), ...homeOption, ...envOption }),
       extensions: services.codex.extensions,
-      accountUsage: createCodexAccountUsageService({ executable: resolved.codex }),
+      accountUsage: createCodexAccountUsageService({ executable: resolved.codex, ...codexEnvironment() }),
       prewarm: ({ profile, signal }) =>
         prewarmCodex({
           executable: resolved.codex,
-          ...(profile ? { env: services.codex.profiles.bindingEnvironment(profile) } : {}),
+          ...(serviceEnvironment === undefined
+            ? profile
+              ? { env: services.codex.profiles.bindingEnvironment(profile) }
+              : {}
+            : codexEnvironment(profile ? services.codex.profiles.bindingEnvironment(profile) : {})),
           signal,
         }),
       launch: {
@@ -743,9 +777,12 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.grok.distribution,
       profiles: services.grok.profiles,
-      models: createGrokModelService({ ...chosen(resolved.grok), ...homeOption }),
+      models: createGrokModelService({ ...chosen(resolved.grok), ...homeOption, ...envOption }),
       extensions: services.grok.extensions,
-      accountUsage: createGrokAccountUsageService({ executable: resolved.grok }),
+      accountUsage: createGrokAccountUsageService({
+        executable: resolved.grok,
+        ...(serviceEnvironment === undefined ? {} : { ambient: serviceEnvironment }),
+      }),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.grok,
@@ -826,9 +863,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.kimi.distribution,
       profiles: services.kimi.profiles,
-      models: createKimiModelService({ ...chosen(resolved.kimi), ...homeOption }),
+      models: createKimiModelService({ ...chosen(resolved.kimi), ...homeOption, ...envOption }),
       extensions: services.kimi.extensions,
-      accountUsage: createKimiAccountUsageService(),
+      accountUsage: createKimiAccountUsageService(envOption),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.kimi,
@@ -912,7 +949,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.opencode.distribution,
       profiles: services.opencode.profiles,
-      models: createOpenCodeModelService({ ...chosen(resolved.opencode), ...homeOption }),
+      models: createOpenCodeModelService({ ...chosen(resolved.opencode), ...homeOption, ...envOption }),
       extensions: services.opencode.extensions,
       launch: {
         provider: {
@@ -996,9 +1033,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.antigravity.distribution,
       profiles: services.antigravity.profiles,
-      models: createAntigravityModelService({ ...chosen(resolved.antigravity), ...homeOption }),
+      models: createAntigravityModelService({ ...chosen(resolved.antigravity), ...homeOption, ...envOption }),
       extensions: services.antigravity.extensions,
-      accountUsage: createAntigravityAccountUsageService({ executable: resolved.antigravity }),
+      accountUsage: createAntigravityAccountUsageService({ executable: resolved.antigravity, ...envOption }),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.antigravity,
@@ -1092,7 +1129,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.copilot.distribution,
       profiles: services.copilot.profiles,
-      models: createCopilotModelService({ ...chosen(resolved.copilot), ...homeOption }),
+      models: createCopilotModelService({ ...chosen(resolved.copilot), ...homeOption, ...envOption }),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.copilot,
@@ -1179,7 +1216,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.pi.distribution,
       profiles: services.pi.profiles,
-      models: createPiModelService({ ...chosen(resolved.pi), ...homeOption }),
+      models: createPiModelService({ ...chosen(resolved.pi), ...homeOption, ...envOption }),
       extensions: services.pi.extensions,
       launch: {
         provider: {
@@ -1260,7 +1297,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.hermes.distribution,
       profiles: services.hermes.profiles,
-      models: createHermesModelService({ ...chosen(resolved.hermes), ...homeOption }),
+      models: createHermesModelService({ ...chosen(resolved.hermes), ...homeOption, ...envOption }),
       extensions: services.hermes.extensions,
       launch: {
         provider: {

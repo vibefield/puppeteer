@@ -12,9 +12,14 @@ type Call = {
 type Done = (...a: unknown[]) => void;
 const executed = vi.hoisted(() => [] as Call[]);
 const seen = vi.hoisted(() => new Map<string, unknown[]>());
+// Every `create…Service` an adapter exports is wrapped, not only the table's: a factory the composition starts calling
+// later is recorded too, and the guard row below fails until the table names it and it is handed the environment.
 const wrap = vi.hoisted(() => (actual: Record<string, unknown>, names: readonly string[]): Record<string, unknown> => {
   const out: Record<string, unknown> = { ...actual };
-  for (const name of names) {
+  const factories = Object.keys(actual).filter(
+    (name) => /^create[A-Za-z]+Service$/.test(name) && typeof actual[name] === 'function',
+  );
+  for (const name of new Set([...names, ...factories])) {
     const original = actual[name] as (...args: unknown[]) => unknown;
     out[name] = (...args: unknown[]) => {
       seen.set(name, [...(seen.get(name) ?? []), args[0]]);
@@ -108,12 +113,22 @@ function envCheck(env: Record<string, string | undefined> | undefined) {
   };
 }
 const CLEAN = { handed: true, planted: true, extra: 0, canary: false };
-type WithEnv = { env?: Record<string, string | undefined>; inheritEnvironment?: unknown } | undefined;
+type WithEnv =
+  | {
+      env?: Record<string, string | undefined>;
+      ambient?: Record<string, string | undefined>;
+      inheritEnvironment?: unknown;
+    }
+  | undefined;
+// The option each factory takes the environment by: `env`, but for grok's usage, whose `env` goes over what its
+// `ambient` gives the probe (a named list drawn from it), so the environment is its `ambient`.
+const environmentOf = (name: string, options: WithEnv) =>
+  name === 'createGrokAccountUsageService' ? options?.ambient : options?.env;
+const FACTORY_NAME = /^create[A-Za-z]+Service$/;
 
 function compose() {
   seen.clear();
-  // `serviceEnvironment` is named by the change; until then this type carries it.
-  const options: BuiltinProviderOptions & { serviceEnvironment?: Record<string, string> } = {
+  const options: BuiltinProviderOptions = {
     executables: Object.fromEntries(AGENTS.map((agent) => [agent, `${NOWHERE}/bin/${agent}`])),
     home: `${NOWHERE}/home`,
     serviceEnvironment: ENV,
@@ -132,8 +147,18 @@ describe('the environment the built-in providers hand every service', () => {
     for (const name of names) {
       const handed = seen.get(name) ?? [];
       expect(handed.length, `${name} was not called`).toBeGreaterThan(0);
-      for (const options of handed) expect(envCheck((options as WithEnv)?.env), name).toEqual(CLEAN);
+      for (const options of handed) expect(envCheck(environmentOf(name, options as WithEnv)), name).toEqual(CLEAN);
     }
+  });
+
+  it('calls no service factory the table does not name, so a new one cannot miss the environment', () => {
+    compose();
+    const called = [...seen.keys()].filter((name) => FACTORY_NAME.test(name)).sort();
+    const table = Object.values(FACTORIES).flat().sort();
+    // Factory names only: a red here prints the names, never an environment.
+    expect(called.filter((name) => !table.includes(name))).toEqual([]);
+    expect(table.filter((name) => !called.includes(name))).toEqual([]);
+    expect(table.length).toBe(40);
   });
 
   it("builds Claude Code's launch preflight on an exec that runs with the host's environment", async () => {
