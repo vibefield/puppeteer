@@ -7,7 +7,10 @@
  * - `errorReply` answers every Messages request with one HTTP error so a
  *   print turn ends in Claude's API-error path (StopFailure);
  * - `plan` scripts streamed replies, including tool_use blocks, from markers
- *   the interactive lane types into its own prompts.
+ *   the interactive and turn-failure lanes type into their own prompts. A plan
+ *   step may also be words followed by a tool call in one message
+ *   (`text-then-tool`), or an HTTP error for that one request (`error`), so a
+ *   turn can fail after the model has written something.
  *
  * The lane itself only sees the artifact's native hooks, status lines, and
  * transcripts; this server's request log is census diagnostics, not evidence
@@ -20,6 +23,24 @@ export const LOOPBACK_AUTH_TOKEN = 'puppeteer-not-a-real-token';
 
 function sendEvent(response, type, data) {
   response.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`);
+}
+
+function streamText(response, index, text) {
+  sendEvent(response, 'content_block_start', { index, content_block: { type: 'text', text: '' } });
+  sendEvent(response, 'content_block_delta', { index, delta: { type: 'text_delta', text } });
+  sendEvent(response, 'content_block_stop', { index });
+}
+
+function streamTool(response, index, step) {
+  sendEvent(response, 'content_block_start', {
+    index,
+    content_block: { type: 'tool_use', id: step.toolUseId, name: step.name, input: {} },
+  });
+  sendEvent(response, 'content_block_delta', {
+    index,
+    delta: { type: 'input_json_delta', partial_json: JSON.stringify(step.input) },
+  });
+  sendEvent(response, 'content_block_stop', { index });
 }
 
 function stream(response, id, model, step) {
@@ -40,24 +61,15 @@ function stream(response, id, model, step) {
       usage: { input_tokens: 40, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
     },
   });
-  if (step.kind === 'tool') {
-    sendEvent(response, 'content_block_start', {
-      index: 0,
-      content_block: { type: 'tool_use', id: step.toolUseId, name: step.name, input: {} },
-    });
-    sendEvent(response, 'content_block_delta', {
-      index: 0,
-      delta: { type: 'input_json_delta', partial_json: JSON.stringify(step.input) },
-    });
-    sendEvent(response, 'content_block_stop', { index: 0 });
+  if (step.kind === 'tool' || step.kind === 'text-then-tool') {
+    if (step.kind === 'text-then-tool') streamText(response, 0, step.text);
+    streamTool(response, step.kind === 'text-then-tool' ? 1 : 0, step);
     sendEvent(response, 'message_delta', {
       delta: { stop_reason: 'tool_use', stop_sequence: null },
       usage: { output_tokens: 12 },
     });
   } else {
-    sendEvent(response, 'content_block_start', { index: 0, content_block: { type: 'text', text: '' } });
-    sendEvent(response, 'content_block_delta', { index: 0, delta: { type: 'text_delta', text: step.text } });
-    sendEvent(response, 'content_block_stop', { index: 0 });
+    streamText(response, 0, step.text);
     sendEvent(response, 'message_delta', {
       delta: { stop_reason: 'end_turn', stop_sequence: null },
       usage: { output_tokens: 7 },
@@ -65,6 +77,11 @@ function stream(response, id, model, step) {
   }
   sendEvent(response, 'message_stop', {});
   response.end();
+}
+
+function sendError(response, { status, type, message }) {
+  response.writeHead(status, { 'content-type': 'application/json' });
+  response.end(JSON.stringify({ type: 'error', error: { type, message } }));
 }
 
 /**
@@ -98,14 +115,16 @@ export async function startLoopbackModel({ errorReply, plan } = {}) {
       if (request.method === 'POST' && route.startsWith('/v1/messages')) {
         if (errorReply) {
           requests.push({ method: request.method, route, kind: `error-${errorReply.status}` });
-          response.writeHead(errorReply.status, { 'content-type': 'application/json' });
-          response.end(
-            JSON.stringify({ type: 'error', error: { type: errorReply.type, message: errorReply.message } }),
-          );
+          sendError(response, errorReply);
           return;
         }
         const step = plan(body);
-        if (step.kind === 'tool') {
+        if (step.kind === 'error') {
+          requests.push({ method: request.method, route, kind: `error-${step.status}` });
+          sendError(response, step);
+          return;
+        }
+        if (step.kind === 'tool' || step.kind === 'text-then-tool') {
           toolSequence += 1;
           step.toolUseId = `toolu_loopback_${toolSequence}`;
         }
@@ -113,6 +132,7 @@ export async function startLoopbackModel({ errorReply, plan } = {}) {
         const id = `msg_loopback_${requests.length}`;
         const model = typeof body?.model === 'string' ? body.model : LOOPBACK_MODEL;
         if (body?.stream !== true) {
+          const words = step.kind === 'text-then-tool';
           response.writeHead(200, { 'content-type': 'application/json' });
           response.end(
             JSON.stringify({
@@ -120,8 +140,13 @@ export async function startLoopbackModel({ errorReply, plan } = {}) {
               type: 'message',
               role: 'assistant',
               model,
-              content: [{ type: 'text', text: step.text ?? 'ok' }],
-              stop_reason: 'end_turn',
+              content: words
+                ? [
+                    { type: 'text', text: step.text },
+                    { type: 'tool_use', id: step.toolUseId, name: step.name, input: step.input },
+                  ]
+                : [{ type: 'text', text: step.text ?? 'ok' }],
+              stop_reason: words ? 'tool_use' : 'end_turn',
               stop_sequence: null,
               usage: { input_tokens: 40, output_tokens: 3, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
             }),
