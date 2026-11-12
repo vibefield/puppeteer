@@ -653,6 +653,12 @@ export interface DistributionRuntimeOptions {
   /** The home the providers' install directories are read under; defaults to the user's home. */
   home?: string;
   /**
+   * The Homebrew prefixes the inventory looks for installs under. Absent, it
+   * keeps its own default (the standard prefixes); an empty list probes none,
+   * as a host's harness wants when only its search path should be read.
+   */
+  brewPrefixes?: readonly string[];
+  /**
    * Runs an update's or an install's command; injected so a host's tests never
    * run a vendor's. Defaults to the update runner.
    */

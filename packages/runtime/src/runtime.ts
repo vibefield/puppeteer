@@ -790,6 +790,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     }),
     ...(options.distribution?.searchPath === undefined ? {} : { searchPath: options.distribution.searchPath }),
     ...(options.distribution?.home === undefined ? {} : { home: options.distribution.home }),
+    ...(options.distribution?.brewPrefixes === undefined ? {} : { brewPrefixes: options.distribution.brewPrefixes }),
     onError: report,
   });
   const releaseCache = createReleaseEtagCache();
