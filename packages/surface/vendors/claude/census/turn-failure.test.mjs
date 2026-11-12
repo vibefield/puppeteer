@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { checkRecord } from '@vibefield/puppeteer-surface/sanitize';
 import { claudeCaptureRules } from '../privacy.mjs';
@@ -30,7 +31,8 @@ describe('turn-failure loopback plan', () => {
         kind: 'text-then-tool',
         text: wordsThenFail.words,
         name: 'Read',
-        input: { file_path: '/workspace/CLAUDE.md' },
+        // The plan joins with the host's separator, as the harness's real workspace path needs on Windows.
+        input: { file_path: join('/workspace', 'CLAUDE.md') },
       },
     );
     expect(plan({ tools: READ, messages: [user(turnFailurePrompt(failAtOnce))] })).toEqual({
