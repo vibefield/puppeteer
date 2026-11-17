@@ -10,6 +10,7 @@ import {
   inputProblems,
   observeScenario,
   recordPayload,
+  refusalSummary,
   routeShape,
   runtimeEvidence,
   sampledEventDocument,
@@ -108,6 +109,39 @@ describe('HTTP documents from the runtime OpenAPI 3.1', () => {
     expect(document.confidence).toBe('unverified');
     expect(document.evidence.existence).toEqual(['opencode-generated-openapi']);
     expect(document).not.toHaveProperty('fixture');
+  });
+
+  it('never verifies an operation the census saw only refused, and says what it saw', () => {
+    const refused = observeScenario(emptyObservations(), 'turn', {
+      http: [
+        { direction: 'client-to-agent', request: { method: 'GET', route: '/api/session/:sessionID' } },
+        { direction: 'agent-to-client', response: { method: 'GET', route: '/api/session/:sessionID', status: 401 } },
+        { direction: 'client-to-agent', request: { method: 'POST', route: '/api/session/:sessionID/interrupt' } },
+        {
+          direction: 'agent-to-client',
+          response: { method: 'POST', route: '/api/session/:sessionID/interrupt', status: 404 },
+        },
+      ],
+    });
+    observeScenario(refused, 'resume', {
+      http: [
+        { direction: 'client-to-agent', request: { method: 'GET', route: '/api/session/:sessionID' } },
+        { direction: 'agent-to-client', response: { method: 'GET', route: '/api/session/:sessionID', status: 404 } },
+      ],
+    });
+    expect([...refused.requests.keys()]).toEqual([]);
+    expect([...refused.responses.keys()]).toEqual([]);
+    expect(refusalSummary(refused.refusals.get('GET /api/session/:*'))).toBe('401 (turn), 404 (resume)');
+    const document = httpEventDocument(
+      operations.find((operation) => operation.operationId === 'session.get'),
+      refused,
+      '2.2.5',
+    );
+    expect(document.confidence).toBe('unverified');
+    expect(document.evidence.existence).toEqual(['opencode-generated-openapi']);
+    expect(document.evidence.result).toEqual(['opencode-generated-openapi']);
+    expect(document).not.toHaveProperty('fixture');
+    expect(document.notes).toContain('Runtime non-2xx answers (not verification): 401 (turn), 404 (resume).');
   });
 });
 

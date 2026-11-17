@@ -34,6 +34,7 @@ import {
   openApiHttpOperations,
 } from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
+import { displayPath, replaceableDestination } from './harness-common.mjs';
 
 export const VERSION_2 = /^2\.\d+\.\d+$/;
 export const HARNESS = 'packages/surface/vendors/opencode/census/harness-v2.mjs';
@@ -59,36 +60,71 @@ export function claimID(scenario) {
   return `opencode-runtime-${scenario}`;
 }
 
-/** Fold one scenario's records into the observation maps. 1.x seed traffic (`line: "1.x"`) is not 2.x evidence. */
+const observe = (map, key, scenario, sample) => {
+  const entry = map.get(key) ?? { scenarios: new Set(), samples: [] };
+  entry.scenarios.add(scenario);
+  entry.samples.push(sample);
+  map.set(key, entry);
+};
+
+const successful = (status) => Number.isInteger(status) && status >= 200 && status < 300;
+
+/**
+ * Fold one scenario's records into the observation maps. 1.x seed traffic
+ * (`line: "1.x"`) is not 2.x evidence. Only a 2xx answer verifies an
+ * operation: the response itself, and the request it answers (the trace
+ * writes each request just before its response). A non-2xx answer (the
+ * census's deliberate 401, 400 and 404 probes) is kept apart in `refusals`,
+ * with its status, so it can be cited as what it is and never upgrades an
+ * operation or its result schema.
+ */
 export function observeScenario(observed, scenario, { events = [], http = [] }) {
   for (const record of events) {
     if (typeof record?.type !== 'string') continue;
-    const entry = observed.events.get(record.type) ?? { scenarios: new Set(), samples: [] };
-    entry.scenarios.add(scenario);
-    entry.samples.push({ scenario, payload: recordPayload(record), record });
-    observed.events.set(record.type, entry);
+    observe(observed.events, record.type, scenario, { scenario, payload: recordPayload(record), record });
   }
+  let pending;
   for (const record of http) {
     if (record?.line === '1.x') continue;
-    for (const [side, map] of [
-      ['request', observed.requests],
-      ['response', observed.responses],
-    ]) {
-      const carrier = record?.[side];
-      if (!carrier || typeof carrier.route !== 'string') continue;
-      const key = `${carrier.method} ${routeShape(carrier.route)}`;
-      const entry = map.get(key) ?? { scenarios: new Set(), samples: [] };
-      entry.scenarios.add(scenario);
-      entry.samples.push({ scenario, payload: carrier, record });
-      map.set(key, entry);
+    const request = record?.request;
+    if (request && typeof request.route === 'string') {
+      pending = { key: `${request.method} ${routeShape(request.route)}`, carrier: request, record };
+      continue;
     }
+    const response = record?.response;
+    if (!response || typeof response.route !== 'string') continue;
+    const key = `${response.method} ${routeShape(response.route)}`;
+    if (successful(response.status)) {
+      observe(observed.responses, key, scenario, { scenario, payload: response, record });
+      if (pending?.key === key) {
+        observe(observed.requests, key, scenario, { scenario, payload: pending.carrier, record: pending.record });
+      }
+    } else {
+      observe(observed.refusals, key, scenario, { scenario, status: response.status, record });
+    }
+    pending = undefined;
   }
   if (!observed.scenarios.includes(scenario)) observed.scenarios.push(scenario);
   return observed;
 }
 
 export function emptyObservations() {
-  return { events: new Map(), requests: new Map(), responses: new Map(), scenarios: [] };
+  return { events: new Map(), requests: new Map(), responses: new Map(), refusals: new Map(), scenarios: [] };
+}
+
+/** The non-2xx answers the census saw for an operation, as `401 (turn), 404 (resume)`; empty when none. */
+export function refusalSummary(observation) {
+  if (!observation) return '';
+  const seen = new Map();
+  for (const sample of observation.samples) {
+    const scenarios = seen.get(sample.status) ?? new Set();
+    scenarios.add(sample.scenario);
+    seen.set(sample.status, scenarios);
+  }
+  return [...seen]
+    .sort(([left], [right]) => left - right)
+    .map(([status, scenarios]) => `${status} (${[...scenarios].sort().join(', ')})`)
+    .join(', ');
 }
 
 function jsonLines(path) {
@@ -129,6 +165,7 @@ export function httpEventDocument(operation, observed, version) {
   const key = `${operation.method} ${routeShape(operation.route)}`;
   const request = runtimeEvidence(observed.requests.get(key));
   const result = runtimeEvidence(observed.responses.get(key));
+  const refusals = refusalSummary(observed.refusals?.get(key));
   const event = `http/${operation.operationId}`;
   return {
     surface: 'opencode',
@@ -160,7 +197,9 @@ export function httpEventDocument(operation, observed, version) {
           fixture: `captures/opencode@${version}/${request.scenario}/http-roundtrip.jsonl`,
         }
       : {}),
-    notes: `OpenAPI operationId ${operation.operationId}; ${operation.method} ${operation.path}.`,
+    notes:
+      `OpenAPI operationId ${operation.operationId}; ${operation.method} ${operation.path}.` +
+      (refusals ? ` Runtime non-2xx answers (not verification): ${refusals}.` : ''),
   };
 }
 
@@ -357,10 +396,15 @@ if (invokedDirectly) {
   const referencesDir = resolve(flag('--references') ?? join(vendorRoot, 'references', `opencode@${version}`));
   const contractPath = join(referencesDir, 'source', 'event-contract.json');
   const behaviorPath = resolve(flag('--behavior') ?? join(vendorRoot, 'census', 'behavior-v2.seed.json'));
-  const out = resolve(flag('--out') ?? join(vendorRoot, 'model', `opencode@${version}`));
+  // Replaced whole below: an existing destination must be model/opencode@<2.x.y>.
+  const out = replaceableDestination(
+    flag('--out') ?? join(vendorRoot, 'model', `opencode@${version}`),
+    join(vendorRoot, 'model'),
+  );
   if (!existsSync(behaviorPath)) {
     throw new Error(
-      `reviewed 2.x behavior seed not found: ${behaviorPath}. Author it from the census event order (C5) first.`,
+      `reviewed 2.x behavior seed not found: ${displayPath(behaviorPath, repoRoot)}. ` +
+        'Author it from the census event order (C5) first.',
     );
   }
 
@@ -540,6 +584,6 @@ if (invokedDirectly) {
 
   console.log(`opencode@${version}: ${httpCount} HTTP operation(s), ${generated.size} SSE event type(s)`);
   console.log(`  observed: ${observed.requests.size} HTTP request route(s), ${observed.events.size} SSE event type(s)`);
-  console.log(`  -> ${out}`);
+  console.log(`  -> ${displayPath(out, repoRoot)}`);
   console.log('groundtruth.json is unchanged: it flips only in the switch PR.');
 }

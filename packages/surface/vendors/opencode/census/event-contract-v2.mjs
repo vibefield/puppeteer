@@ -24,6 +24,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { displayPath } from './harness-common.mjs';
 
 export const SCHEMA_SOURCE_ROOT = 'packages/schema/src';
 
@@ -334,5 +335,5 @@ if (invokedDirectly) {
   });
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, `${JSON.stringify(contract, null, 2)}\n`);
-  console.log(`${Object.keys(contract.events).length} public event type(s) -> ${out}`);
+  console.log(`${Object.keys(contract.events).length} public event type(s) -> ${displayPath(out, repoRoot)}`);
 }
