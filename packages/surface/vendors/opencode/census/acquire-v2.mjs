@@ -24,8 +24,8 @@
 
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { chmodSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   downloadAgentArtifact,
@@ -33,6 +33,7 @@ import {
   fetchArtifact,
   resolveArtifactDownload,
 } from '../../../../../scripts/download-agent-artifact.mjs';
+import { displayPath } from './harness-common.mjs';
 
 export const REGISTRY_HOST = 'registry.npmjs.org';
 export const CLI_PACKAGE = '@opencode/cli';
@@ -195,19 +196,44 @@ async function acquireCensusBinary({ version, platform, output }) {
   return { executable, artifact };
 }
 
+/** The name an acquired executable has until its digest is checked: never the path the census is pointed at. */
+export function unverifiedName(target) {
+  return `${target}.unverified`;
+}
+
+/**
+ * The seed goes through the governed downloader under an unverified name and
+ * is made non-executable at once; only bytes equal to the ledger's digest are
+ * renamed to the final path (and made executable again). Bytes that do not
+ * match are removed, so nothing unverified waits where step 4 points
+ * `--seed-artifact`. The ledger is read before anything is fetched.
+ */
 async function acquireSeed({ platform, output }) {
+  const ledger = JSON.parse(readFileSync(join(repoRoot, 'support', 'agents.json'), 'utf8'));
+  const expected = ledgerArtifactSha256(ledger, platform);
   const target = join(output, 'opencode');
+  const staging = unverifiedName(target);
+  const executable = !platform.startsWith('windows-');
   const result = await downloadAgentArtifact({
     vendor: 'opencode',
     version: SEED_VERSION,
     platform,
-    output: relative(repoRoot, target),
+    output: relative(repoRoot, staging),
   });
-  const ledger = JSON.parse(readFileSync(join(repoRoot, 'support', 'agents.json'), 'utf8'));
-  const expected = ledgerArtifactSha256(ledger, platform);
-  const actual = sha256(readFileSync(target));
-  if (actual !== expected) throw new Error(`seed sha256 ${actual} does not match the ledger's ${expected}`);
-  const artifact = { ...result, sha256: actual, ledgerVerified: true };
+  if (executable) chmodSync(staging, 0o600);
+  const actual = sha256(readFileSync(staging));
+  if (actual !== expected) {
+    rmSync(staging, { force: true });
+    throw new Error(`seed sha256 ${actual} does not match the ledger's ${expected}; the download was removed`);
+  }
+  renameSync(staging, target);
+  if (executable) chmodSync(target, 0o755);
+  const artifact = {
+    ...result,
+    output: relative(repoRoot, target).split(sep).join('/'),
+    sha256: actual,
+    ledgerVerified: true,
+  };
   writeFileSync(join(output, 'artifact.json'), `${JSON.stringify(artifact, null, 2)}\n`, { mode: 0o644 });
   return { executable: target, artifact };
 }
@@ -230,7 +256,7 @@ if (invokedDirectly) {
     const output = resolve(flag('--output') ?? join(artifactsRoot, `opencode@${SEED_VERSION}`, platform));
     const { executable, artifact } = await acquireSeed({ platform, output });
     console.log(`seed ${artifact.version} ${platform} sha256 ${artifact.sha256} (matches the ledger)`);
-    console.log(`  -> ${executable}`);
+    console.log(`  -> ${displayPath(executable, repoRoot)}`);
   } else {
     const version = flag('--version') ?? process.env.PUPPETEER_OPENCODE_VERSION;
     if (!version || !VERSION_2.test(version)) throw new Error('--version <2.x.y> is required');
@@ -254,8 +280,8 @@ if (invokedDirectly) {
       const { executable, artifact } = await acquireCensusBinary({ version, platform, output });
       console.log(`${artifact.package} sha256 ${artifact.sha256} (tarball sha512 matches the registry)`);
       if (artifact.teamIdentifier) console.log(`  TeamIdentifier ${artifact.teamIdentifier}`);
-      console.log(`  -> ${executable}`);
-      console.log(`  metadata -> ${join(output, 'artifact.json')}`);
+      console.log(`  -> ${displayPath(executable, repoRoot)}`);
+      console.log(`  metadata -> ${displayPath(join(output, 'artifact.json'), repoRoot)}`);
     }
   }
 }

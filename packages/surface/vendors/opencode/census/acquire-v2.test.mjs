@@ -11,6 +11,7 @@ import {
   registryMetadataURL,
   registryVersionProblems,
   teamIdentifier,
+  unverifiedName,
 } from './acquire-v2.mjs';
 
 describe('2.x census acquisition policy', () => {
@@ -109,5 +110,12 @@ describe('seed digest', () => {
     expect(() => ledgerArtifactSha256(ledger, 'linux-x64')).toThrow('names no linux-x64 artifact');
     const promoted = { agents: [{ ...ledger.agents[0], currentVersion: '2.2.5' }] };
     expect(() => ledgerArtifactSha256(promoted, 'darwin-arm64')).toThrow('is not at 1.19.5');
+  });
+
+  it('keeps unverified seed bytes off the path the census is pointed at', () => {
+    expect(unverifiedName('artifacts/opencode@1.19.5/darwin-arm64/opencode')).toBe(
+      'artifacts/opencode@1.19.5/darwin-arm64/opencode.unverified',
+    );
+    expect(unverifiedName('opencode')).not.toBe('opencode');
   });
 });
