@@ -828,18 +828,25 @@ async function runScenarioV2(name, options) {
             { headers: { accept: 'text/event-stream', authorization: authHeader(password) }, signal },
             { trace: httpTrace, path },
           );
+          // The subscription is an HTTP exchange too: its request and its answer (status and
+          // the stream headers, never the body, which is the record stream itself).
+          httpTrace.push({ direction: 'client-to-agent', request: { method: 'GET', ...routeCarrierV2(path) } });
           httpTrace.push({
             direction: 'agent-to-client',
-            stream: {
+            response: {
               method: 'GET',
               ...routeCarrierV2(path),
-              phase,
               status: response.status,
-              headers: Object.fromEntries(
-                ['content-type', 'cache-control', 'x-accel-buffering']
-                  .map((header) => [header, response.headers.get(header)])
-                  .filter(([, value]) => value !== null),
-              ),
+              // Not `headers`: the 2.x privacy rules redact every value of a `headers` container,
+              // and these three are protocol facts (plan §2.3), not request metadata.
+              stream: {
+                phase,
+                wireHeaders: Object.fromEntries(
+                  ['content-type', 'cache-control', 'x-accel-buffering']
+                    .map((header) => [header, response.headers.get(header)])
+                    .filter(([, value]) => value !== null),
+                ),
+              },
             },
           });
           return response;
