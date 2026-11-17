@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { REDACTED_EPOCH_MS, checkRecord, sanitizeRecord } from '@vibefield/puppeteer-surface/sanitize';
-import { opencodeRules, opencodeV2Rules } from './privacy.mjs';
+import { opencodeRules, opencodeV2Rules, unpinnedEpochIssues } from './privacy.mjs';
 
 describe('OpenCode capture privacy', () => {
   it('redacts native IDs, clocks, paths, prose, and unknown tool input while preserving protocol enums', () => {
@@ -241,5 +241,76 @@ describe('OpenCode 2.x capture privacy', () => {
   it('is a superset of the 1.x rules', () => {
     const legacy = { properties: { sessionID, time: { start: 1_786_346_178_979 }, slug: 'private-session-slug' } };
     expect(sanitizeRecord(legacy, opencodeV2Rules)).toEqual(sanitizeRecord(legacy, opencodeRules));
+  });
+
+  // Field names from draft/opencode-2/event-contract.json (session.step.started, project.updated,
+  // session.viewed); `assistantMessageID` was in every a5 step, text and reasoning frame.
+  it('pins the step clock, keeps a duration, and aliases every assistant message id', () => {
+    const step = {
+      type: 'session.step.started',
+      data: {
+        sessionID,
+        assistantMessageID: 'msg_fea8786db0011OswCkQS3Huj0J',
+        agent: 'build',
+        model: { providerID: 'test', modelID: 'test-model' },
+        started: 1_786_346_178_990,
+      },
+    };
+    expect(checkRecord(step, opencodeV2Rules).length).toBeGreaterThan(0);
+    const sanitized = sanitizeRecord(step, opencodeV2Rules);
+    expect(checkRecord(sanitized, opencodeV2Rules)).toEqual([]);
+    expect(sanitized.data.started).toBe(REDACTED_EPOCH_MS);
+    expect(sanitized.data.assistantMessageID).toMatch(/^msg_a11a5ed0/);
+    expect(sanitized.data.agent).toBe('build');
+    expect(sanitized.data.model).toEqual({ providerID: 'test', modelID: 'test-model' });
+    expect(sanitizeRecord({ data: { idle: 1_786_346_178_990 } }, opencodeV2Rules).data.idle).toBe(REDACTED_EPOCH_MS);
+    expect(sanitizeRecord({ data: { idle: 1200 } }, opencodeV2Rules).data.idle).toBe(1200);
+    expect(sanitizeRecord({ integrationID: 'test' }, opencodeV2Rules).integrationID).toBe('test');
+  });
+
+  it('redacts the project canonical path and its sandboxes, which no 1.x key names', () => {
+    const project = {
+      type: 'project.updated',
+      data: {
+        id: 'prj_fea8786db0011OswCkQS3Huj0J',
+        canonical: '/Volumes/Scratch/census/workspace',
+        sandboxes: ['/Volumes/Scratch/census/workspace-sandbox'],
+        time: { created: 1_786_346_178_990 },
+      },
+    };
+    expect(checkRecord(project, opencodeV2Rules)).toEqual(
+      expect.arrayContaining([
+        '<record>.data.canonical: unsanitized sensitive field canonical',
+        '<record>.data.sandboxes[0]: unsanitized sensitive field sandboxes',
+      ]),
+    );
+    const sanitized = sanitizeRecord(project, opencodeV2Rules);
+    expect(checkRecord(sanitized, opencodeV2Rules)).toEqual([]);
+    expect(JSON.stringify(sanitized)).not.toContain('Volumes');
+  });
+});
+
+describe('OpenCode 2.x key-independent clock detector', () => {
+  it('flags an epoch-ms number under any key, integer or not, and nothing else', () => {
+    expect(
+      unpinnedEpochIssues({
+        data: { unknownClock: 1_786_346_178_990, fractional: 1_786_346_178_990.5, list: [1_786_346_178_990] },
+      }),
+    ).toEqual([
+      '<record>.data.unknownClock: epoch-ms-sized number at unknownClock',
+      '<record>.data.fractional: epoch-ms-sized number at fractional',
+      '<record>.data.list[0]: epoch-ms-sized number at list',
+    ]);
+    expect(
+      unpinnedEpochIssues({
+        created: REDACTED_EPOCH_MS,
+        durable: { seq: 4, version: 2 },
+        tokens: { input: 1_000_010, output: 7 },
+        cost: 0.25,
+        bytes: 259_169_160,
+        seconds: 1_786_346_178,
+      }),
+    ).toEqual([]);
+    expect(unpinnedEpochIssues(1_786_346_178_990, 'run.json')).toEqual(['run.json: epoch-ms-sized number at <root>']);
   });
 });

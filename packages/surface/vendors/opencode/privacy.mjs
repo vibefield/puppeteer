@@ -1,5 +1,5 @@
 /** OpenCode-specific capture privacy rules layered on the shared conservative gate. */
-import { defaultRules, extendRules, jsonEncodedValue } from '@vibefield/puppeteer-surface/sanitize';
+import { REDACTED_EPOCH_MS, defaultRules, extendRules, jsonEncodedValue } from '@vibefield/puppeteer-surface/sanitize';
 
 export const opencodeRules = extendRules(
   {
@@ -74,12 +74,19 @@ export const OPENCODE_2_STRUCTURAL_VALUES = [
  *
  * - ids: the durable record's `aggregateID` (a session or project id), the
  *   inbox id (`inboxID`, the user message id), form (`frm_`) and saved
- *   permission rule (`psv_`) ids, credential ids, and the session/project ids
- *   2.x sends the model provider as `x-opencode-*` / `x-session-*` headers;
- * - paths: `location.directory` (covered by `directory`) and the
- *   `x-opencode-directory` scope header;
- * - clocks: the envelope's `created` (covered by 1.x) and the short `at` /
- *   `until` / `deadline` names a retry or schedule record may use;
+ *   permission rule (`psv_`) ids, credential ids, the session/project ids
+ *   2.x sends the model provider as `x-opencode-*` / `x-session-*` headers,
+ *   and every other `…ID` key (`assistantMessageID` on every step, text,
+ *   reasoning and tool record, `inputID`, `ptyID`, …) except the provider,
+ *   model and integration ids, which stay readable as on 1.x;
+ * - paths: `location.directory` (covered by `directory`), the
+ *   `x-opencode-directory` scope header, and the AbsolutePath fields of the
+ *   event contract that no 1.x key names: `project.updated` `canonical` and its
+ *   `sandboxes` list;
+ * - clocks: the envelope's `created` (covered by 1.x), the short `at` /
+ *   `until` / `deadline` names a retry or schedule record may use,
+ *   `session.step.started` `started` and `session.viewed` `idle` (only
+ *   epoch-sized integers are pinned, so a duration under either name is kept);
  * - prose and secrets: permission `resources`, shell `stdout`/`stderr`,
  *   credential `key`/`apiKey`, the provider `baseURL`, and whole containers
  *   for request headers, credentials, forms, provider settings/options and
@@ -87,13 +94,17 @@ export const OPENCODE_2_STRUCTURAL_VALUES = [
  * - the decode-before-redact hook for `data`, which the OpenAPI declares as an
  *   encoded JSON string although the server sends an object (§2.3): either
  *   form is sanitized as the same document and keeps its own type.
+ *
+ * A clock under a key no rule names is a number, which no text pattern sees;
+ * `unpinnedEpochIssues` is the key-independent detector the 2.x sanitizer runs
+ * on top of these rules, so such a key fails the promotion instead of shipping.
  */
 export const opencodeV2Rules = extendRules(
   {
     idKey:
-      /^(?:aggregateID|inboxID|formID|credentialID|ruleID|x-opencode-session|x-opencode-session-id|x-session-id|x-session-affinity|x-opencode-project)$/,
-    pathKey: /^(?:x-opencode-directory)$/,
-    timestampKey: /^(?:at|until|deadline)$/,
+      /^(?:aggregateID|inboxID|formID|credentialID|ruleID|x-opencode-session|x-opencode-session-id|x-session-id|x-session-affinity|x-opencode-project)$|^(?!(?:provider|model|integration)ID$)[A-Za-z0-9]*[a-z0-9]ID$/,
+    pathKey: /^(?:x-opencode-directory|canonical|sandboxes)$/,
+    timestampKey: /^(?:at|until|deadline|started|idle)$/,
     sensitiveTextKey: /^(?:resources|resource|stdout|stderr|key|apiKey|baseURL)$/,
     sensitiveContainer: /^(?:headers|credential|credentials|form|settings|options|value|env)$/,
     structuralEnumValue: new RegExp(`^(?:${OPENCODE_2_STRUCTURAL_VALUES.join('|')})$`),
@@ -105,3 +116,36 @@ export const opencodeV2Rules = extendRules(
   },
   opencodeRules,
 );
+
+/** Epoch milliseconds from 2017-07-14 to 2039-09-19: the range a 2.x wall clock falls in. */
+export const EPOCH_MS_RANGE = Object.freeze([1_500_000_000_000, 2_200_000_000_000]);
+
+/**
+ * Every finite number in the epoch-ms range other than the pinned epoch, under
+ * ANY key, as `<location>: epoch-ms-sized number at <key>`. The shared detector
+ * flags a numeric clock only under a `timestampKey`, so a 2.x clock under a
+ * name no rule lists (an integer or a float) would pass it; this one fails
+ * closed instead. Token counts, costs, sequence numbers, ordinals, ports and
+ * byte sizes in a census are all far below the range.
+ */
+export function unpinnedEpochIssues(value, location = '<record>') {
+  const [low, high] = EPOCH_MS_RANGE;
+  const issues = [];
+  const visit = (node, at, key) => {
+    if (typeof node === 'number') {
+      if (Number.isFinite(node) && node >= low && node <= high && node !== REDACTED_EPOCH_MS) {
+        issues.push(`${at}: epoch-ms-sized number at ${key || '<root>'}`);
+      }
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach((entry, index) => visit(entry, `${at}[${index}]`, key));
+      return;
+    }
+    if (node !== null && typeof node === 'object') {
+      for (const [childKey, child] of Object.entries(node)) visit(child, `${at}.${childKey}`, childKey);
+    }
+  };
+  visit(value, location, '');
+  return issues;
+}
