@@ -17,7 +17,7 @@
         "payload": {
           "tool_id": "call_live_interaction",
           "name": "terminal",
-          "context": "rm -rf '/private/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-he...",
+          "context": "rm -rf '/private/var/folders/zz/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/T/puppeteer-he...",
           "args": {
             "command": "rm -rf '<redacted:root>/workspace/approval-scratch'"
           }
