@@ -27,9 +27,25 @@ export const TUI_SCENARIOS = ['screens', 'basic-chat', 'resume', 'tool-success',
 export const TUI_CAPTURE_VERSION = '1.4.12';
 const JOURNAL_SCENARIOS = new Set(TUI_SCENARIOS.filter((scenario) => scenario !== 'screens'));
 const PLACEHOLDER_LEAKS = ['$OPERATOR_HOME'];
+const OPERATOR_NAME_KEY = /"\$OPERATOR_NAME"\s*:/;
 
 function json(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
+}
+
+/**
+ * The committed pin a capture is held to: `references/antigravity@<version>/artifact.json`. The digest the runner
+ * passed (`ANTIGRAVITY_TUI_CAPTURE_SHA256`) only shows the capture agreed with itself; this is what makes it evidence
+ * for `version`.
+ */
+export function pinnedTuiArtifact(version) {
+  const path = join(vendorRoot, 'references', `antigravity@${version}`, 'artifact.json');
+  if (!existsSync(path)) throw new Error(`no committed artifact pin for antigravity ${version}`);
+  const artifact = json(path);
+  if (!/^[0-9a-f]{64}$/.test(artifact.sha256 ?? '') || typeof artifact.platform !== 'string') {
+    throw new Error(`the antigravity ${version} artifact pin names no sha256 and platform`);
+  }
+  return { sha256: artifact.sha256, platform: artifact.platform };
 }
 
 function writeJson(path, value) {
@@ -90,7 +106,7 @@ export function summarizeTuiCapture(input) {
   });
 }
 
-function validate(scenario, capture, version, options) {
+function validate(scenario, capture, version, artifact, options) {
   const problems = [];
   if (capture.format !== TUI_CAPTURE_FORMAT) problems.push(`${scenario}: not a ${TUI_CAPTURE_FORMAT} capture`);
   if (capture.outcome !== 'passed') problems.push(`${scenario}: outcome ${capture.outcome}; re-run it or set it aside`);
@@ -98,8 +114,13 @@ function validate(scenario, capture, version, options) {
     problems.push(`${scenario}: the binary reported ${capture.version?.parsed ?? 'no version'}, expected ${version}`);
   }
   const executable = capture.executable ?? {};
-  if (executable.unchanged !== true || executable.sha256Before !== executable.expectedSha256) {
-    problems.push(`${scenario}: the executable digest was not the pinned one before and after`);
+  const pinned = executable.sha256Before === artifact.sha256 && executable.sha256After === artifact.sha256;
+  if (executable.unchanged !== true || !pinned) {
+    problems.push(`${scenario}: the executable was not the committed ${version} pin before and after`);
+  }
+  if (capture.host?.platform !== artifact.platform) {
+    const platform = capture.host?.platform ?? 'no platform';
+    problems.push(`${scenario}: captured on ${platform}, the pin is ${artifact.platform}`);
   }
   if (capture.network?.confinement !== 'sandbox-exec') problems.push(`${scenario}: not run under sandbox-exec`);
   if ((capture.privacy?.operatorHomeHits ?? 0) > 0) {
@@ -136,11 +157,18 @@ function sanitizeJournals(source, destination) {
         .split('\n')
         .filter((line) => line.trim())
         .map((line, lineIndex) => {
-          try {
-            return JSON.stringify(sanitizeRecord(JSON.parse(line), antigravityRules));
-          } catch {
-            throw new Error(`${prefix}${file}:${lineIndex + 1} is not valid JSON`);
+          const where = `${prefix}${file}:${lineIndex + 1}`;
+          // The raw scrubber replaced a whole-word account name; in a key it changed the native shape.
+          if (OPERATOR_NAME_KEY.test(line)) {
+            throw new Error(`${where}: the account-name placeholder replaced a native key; re-run as another account`);
           }
+          let record;
+          try {
+            record = JSON.parse(line);
+          } catch {
+            throw new Error(`${where} is not valid JSON`);
+          }
+          return JSON.stringify(sanitizeRecord(record, antigravityRules));
         });
       mkdirSync(dirname(join(base, file)), { recursive: true });
       writeFileSync(join(base, file), lines.length ? `${lines.join('\n')}\n` : '');
@@ -178,6 +206,8 @@ export function sanitizeAntigravityTuiCaptureSet({
   output = join(vendorRoot, 'captures', `antigravity@${version}-tui`),
   replace = false,
   acceptOperatorNameHits = false,
+  // Tests inject a pin; the command line always holds a capture to the committed one.
+  artifact = pinnedTuiArtifact(version),
 }) {
   const root = resolve(input);
   if (!existsSync(root)) throw new Error('raw TUI capture directory is missing');
@@ -185,7 +215,7 @@ export function sanitizeAntigravityTuiCaptureSet({
   if (scenarios.length === 0) throw new Error('no TUI capture scenarios in the raw directory');
   const captures = new Map(scenarios.map((scenario) => [scenario, json(join(root, scenario, 'capture.json'))]));
   const problems = scenarios.flatMap((scenario) =>
-    validate(scenario, captures.get(scenario), version, { acceptOperatorNameHits }),
+    validate(scenario, captures.get(scenario), version, artifact, { acceptOperatorNameHits }),
   );
   const digests = new Set([...captures.values()].map((capture) => capture.executable?.sha256Before));
   if (digests.size > 1) problems.push('scenarios were captured from different executables');

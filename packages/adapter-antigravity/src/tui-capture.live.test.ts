@@ -19,8 +19,8 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { arch, release, tmpdir } from 'node:os';
-import { isAbsolute, join } from 'node:path';
+import { arch, homedir, release, tmpdir } from 'node:os';
+import { isAbsolute, join, sep } from 'node:path';
 import type { TerminalSpec } from '@vibefield/puppeteer-core';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { describe, expect, it } from 'vitest';
@@ -37,15 +37,23 @@ import {
   type AntigravityCaptureToolVariant,
 } from './test-support/capture-model.js';
 import {
+  ANTIGRAVITY_CAPTURE_PATH,
   ANTIGRAVITY_CAPTURE_SANDBOX_EXEC,
   ANTIGRAVITY_CAPTURE_SANDBOX_PROFILE,
+  ANTIGRAVITY_CAPTURE_SHELL,
   ANTIGRAVITY_FIRST_RUN_PATTERNS,
   AntigravityCapturePtyHost,
   AntigravityVendorLoginError,
   firstRunMatches,
   looksLikeLoginScreen,
 } from './test-support/capture-pty-host.js';
-import { CaptureScrubber, copyConversationLogs, inventory, journalHolds } from './test-support/capture-store.js';
+import {
+  CaptureScrubber,
+  copyConversationLogs,
+  inventory,
+  journalHolds,
+  type CopiedJournals,
+} from './test-support/capture-store.js';
 import { delay } from './test-support/live-harness.js';
 import { isolatedAntigravityLiveEnvironment } from './test-support/live-model.js';
 
@@ -82,6 +90,12 @@ function captureConfig(scenario: Scenario): CaptureConfig {
   if (!isAbsolute(executable) || !existsSync(executable) || !statSync(executable).isFile()) {
     throw new Error('PUPPETEER_ANTIGRAVITY_BIN must name the exact executable by absolute path (no PATH lookup)');
   }
+  const operatorHome = homedir();
+  const underHome = (path: string): boolean =>
+    operatorHome.length > 1 && (path === operatorHome || path.startsWith(`${operatorHome}${sep}`));
+  if (underHome(executable) || underHome(realpathSync(executable))) {
+    throw new Error("PUPPETEER_ANTIGRAVITY_BIN must live outside the runner's home; a binary under it names the home");
+  }
   const expectedSha256 = process.env.ANTIGRAVITY_TUI_CAPTURE_SHA256 ?? '';
   if (!/^[0-9a-f]{64}$/.test(expectedSha256)) {
     throw new Error('ANTIGRAVITY_TUI_CAPTURE_SHA256 must be the pinned executable SHA-256 (64 lowercase hex)');
@@ -102,8 +116,13 @@ function sha256File(path: string): string {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
+/** The attested lane's isolated environment with `PATH` and `SHELL` fixed, so no runner home path is passed on. */
 function captureEnvironment(root: string, home: string, baseUrl: string): Record<string, string> {
-  const env = isolatedAntigravityLiveEnvironment(root, home, baseUrl);
+  const env: Record<string, string> = {
+    ...isolatedAntigravityLiveEnvironment(root, home, baseUrl),
+    PATH: ANTIGRAVITY_CAPTURE_PATH,
+    SHELL: ANTIGRAVITY_CAPTURE_SHELL,
+  };
   writeFileSync(join(home, '.gemini', 'antigravity-cli', 'settings.json'), JSON.stringify(CAPTURE_SETTINGS));
   if (env.AGY_CLI_DISABLE_AUTO_UPDATE !== 'true') throw new Error("AGY_CLI_DISABLE_AUTO_UPDATE must be 'true'");
   return env;
@@ -210,21 +229,25 @@ async function runCapture(scenario: Scenario): Promise<void> {
   const cwd = join(root, 'workspace');
   const home = join(root, 'home');
   const dataRoot = join(home, '.gemini', 'antigravity-cli');
-  mkdirSync(cwd, { recursive: true });
   const variant = toolVariant(scenario);
-  const provider = await startAntigravityCaptureProvider({ tool: variant });
-  const env = captureEnvironment(root, home, provider.baseUrl);
   const host = new AntigravityCapturePtyHost({ termsApproved: config.termsApproved });
   const notes: Record<string, unknown> = {};
   const prompts: string[] = [];
   const adapterEvents: Array<ReturnType<typeof adapterEventSummary>> = [];
   const live: Array<{ phase: string; session: CaptureSession; projection: CaptureProjection }> = [];
   const cleanupErrors: string[] = [];
-  const sha256Before = sha256File(config.executable);
+  let provider: AntigravityCaptureProvider | undefined;
+  let env: Record<string, string> = {};
+  let sha256Before: string | null = null;
+  let sha256After: string | null = null;
   let version: ReturnType<typeof probeVersion> | undefined;
   let screens: Awaited<ReturnType<typeof captureScreens>>['result'] | undefined;
   let failure: unknown;
 
+  const running = (): AntigravityCaptureProvider => {
+    if (!provider) throw new Error('the capture provider is not running');
+    return provider;
+  };
   const start = async (phase: string, resume?: string): Promise<CaptureSession> => {
     const session = await createAntigravityTuiSession({
       cwd,
@@ -243,7 +266,7 @@ async function runCapture(scenario: Scenario): Promise<void> {
     prompts.push(prompt);
     const receipt = await session.services.prompt.submit({ text: prompt });
     notes[`receipt:${token}`] = receipt.status;
-    await waitForJournal(dataRoot, token, host, session.runtimeSessionId, provider);
+    await waitForJournal(dataRoot, token, host, session.runtimeSessionId, running());
     await delay(SETTLE_MS);
     host.record(session.runtimeSessionId, `after:${token}`);
   };
@@ -262,6 +285,12 @@ async function runCapture(scenario: Scenario): Promise<void> {
   };
 
   try {
+    // Setup is inside the try: a throw here still reaches the copy, the provider's close and the root's removal.
+    mkdirSync(cwd, { recursive: true });
+    const started = await startAntigravityCaptureProvider({ tool: variant });
+    provider = started;
+    env = captureEnvironment(root, home, started.baseUrl);
+    sha256Before = sha256File(config.executable);
     expect(sha256Before, 'the executable is not the pinned artifact').toBe(config.expectedSha256);
     version = probeVersion(config.executable, env, join(root, 'probe-home'));
     if (scenario === 'screens') {
@@ -280,7 +309,7 @@ async function runCapture(scenario: Scenario): Promise<void> {
       const sessionId = first.sessionId;
       notes.sessionId = sessionId;
       await stopSession(first);
-      notes.providerRequestsBeforeResume = provider.records.length;
+      notes.providerRequestsBeforeResume = started.records.length;
       const resumed = await start('resumed', sessionId);
       notes.resumedSameSession = resumed.sessionId === sessionId;
       await turn(resumed, antigravityCaptureReplyPrompt('RESUME'), antigravityCaptureReplyToken('RESUME'));
@@ -291,8 +320,8 @@ async function runCapture(scenario: Scenario): Promise<void> {
       await turn(session, ANTIGRAVITY_CAPTURE_TOOL_PROMPT, ANTIGRAVITY_CAPTURE_TOOL_REPLY);
       notes.sessionId = session.sessionId;
       await stopSession(session);
-      expect(provider.functionCallsIssued(), 'the provider issued no run_command call').toBe(1);
-      expect(provider.functionResponsesSeen(), 'the binary never reported the command result').toBeGreaterThan(0);
+      expect(started.functionCallsIssued(), 'the provider issued no run_command call').toBe(1);
+      expect(started.functionResponsesSeen(), 'the binary never reported the command result').toBeGreaterThan(0);
     }
   } catch (error) {
     failure = error;
@@ -306,33 +335,52 @@ async function runCapture(scenario: Scenario): Promise<void> {
       cleanupErrors.push(errorText(error));
     }
   }
+  /** One cleanup or copy step: a throw is recorded and never skips the steps after it, the manifest or the removal. */
+  const keep = async (label: string, step: () => void | Promise<void>): Promise<void> => {
+    try {
+      await step();
+    } catch (error) {
+      cleanupErrors.push(`${label}: ${errorText(error)}`);
+    }
+  };
+  await keep('host', () => host.dispose());
+  if (provider) await keep('provider', () => running().close());
   try {
-    await host.dispose();
+    sha256After = sha256File(config.executable);
   } catch (error) {
-    cleanupErrors.push(errorText(error));
+    cleanupErrors.push(`executable digest after: ${errorText(error)}`);
   }
-  await provider.close();
-  const sha256After = sha256File(config.executable);
 
   // Everything leaves the disposable root before it is removed.
-  mkdirSync(config.output, { recursive: true });
-  const screensDocument = screens ? { stages: host.stages, screensOnly: screens } : { stages: host.stages };
-  scrubber.writeJson(join(config.output, 'screens.json'), screensDocument);
-  scrubber.writeJson(join(config.output, 'provider-requests.json'), {
-    runCommandDeclaration: provider.runCommandDeclaration() ?? null,
-    requests: provider.records,
+  let journals: CopiedJournals = { conversations: [], copied: [], withheldBinary: [], unreadable: [] };
+  await keep('output directory', () => {
+    mkdirSync(config.output, { recursive: true });
   });
-  scrubber.writeJson(join(config.output, 'adapter-events.json'), adapterEvents);
-  const journals = copyConversationLogs(dataRoot, config.output, scrubber);
-  scrubber.writeJson(join(config.output, 'store-inventory.json'), {
-    home: inventory(root, home, scrubber),
-    workspace: inventory(root, cwd, scrubber),
+  await keep('screens', () => {
+    const screensDocument = screens ? { stages: host.stages, screensOnly: screens } : { stages: host.stages };
+    scrubber.writeJson(join(config.output, 'screens.json'), screensDocument);
   });
-  try {
+  await keep('provider requests', () => {
+    scrubber.writeJson(join(config.output, 'provider-requests.json'), {
+      runCommandDeclaration: provider?.runCommandDeclaration() ?? null,
+      requests: provider?.records ?? [],
+    });
+  });
+  await keep('adapter events', () => {
+    scrubber.writeJson(join(config.output, 'adapter-events.json'), adapterEvents);
+  });
+  await keep('journals', () => {
+    journals = copyConversationLogs(dataRoot, config.output, scrubber);
+  });
+  await keep('store inventory', () => {
+    scrubber.writeJson(join(config.output, 'store-inventory.json'), {
+      home: inventory(root, home, scrubber),
+      workspace: inventory(root, cwd, scrubber),
+    });
+  });
+  await keep('disposable root not removed', () => {
     rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
-  } catch (error) {
-    cleanupErrors.push(`disposable root not removed: ${errorText(error)}`);
-  }
+  });
   scrubber.writeJson(join(config.output, 'capture.json'), {
     format: CAPTURE_FORMAT,
     vendor: 'antigravity',
@@ -347,20 +395,23 @@ async function runCapture(scenario: Scenario): Promise<void> {
       expectedSha256: config.expectedSha256,
       sha256Before,
       sha256After,
-      unchanged: sha256Before === sha256After,
+      unchanged: sha256Before !== null && sha256Before === sha256After,
     },
     version: version ?? null,
     network: { confinement: 'sandbox-exec', profile: ANTIGRAVITY_CAPTURE_SANDBOX_PROFILE },
     provider: {
       kind: 'loopback-gemini',
       apiKey: 'dummy',
-      requests: provider.records.length,
+      requests: provider?.records.length ?? 0,
+      wrappedRequests: provider?.records.filter((record) => record.wrapped).length ?? 0,
       toolVariant: variant ?? null,
       command: variant ? ANTIGRAVITY_CAPTURE_COMMANDS[variant] : null,
-      functionCallsIssued: provider.functionCallsIssued(),
-      functionResponsesSeen: provider.functionResponsesSeen(),
+      functionCallsIssued: provider?.functionCallsIssued() ?? 0,
+      functionResponsesSeen: provider?.functionResponsesSeen() ?? 0,
     },
     environment: {
+      PATH: env.PATH ?? null,
+      SHELL: env.SHELL ?? null,
       AGY_CLI_DISABLE_AUTO_UPDATE: env.AGY_CLI_DISABLE_AUTO_UPDATE ?? null,
       AGY_CLI_HIDE_ACCOUNT_INFO: env.AGY_CLI_HIDE_ACCOUNT_INFO ?? null,
       ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED: config.termsApproved ? '1' : 'not used (no keys sent)',
@@ -376,8 +427,9 @@ async function runCapture(scenario: Scenario): Promise<void> {
     privacy: { operatorHomeHits: scrubber.operatorHomeHits, operatorNameHits: scrubber.operatorNameHits },
   });
 
-  if (failure !== undefined) throw failure;
-  expect(cleanupErrors).toEqual([]);
+  // What reaches the runner's console is scrubbed too (not counted: the counts above are what was written).
+  if (failure !== undefined) throw new Error(scrubber.redact(errorText(failure)));
+  expect(cleanupErrors.map((error) => scrubber.redact(error))).toEqual([]);
   expect(sha256After, 'the executable changed during the capture').toBe(config.expectedSha256);
 }
 
@@ -388,7 +440,8 @@ describe.runIf(ENABLED && process.platform !== 'darwin')('Antigravity native-TUI
 });
 
 describe.runIf(ENABLED && process.platform === 'darwin')('Antigravity native-TUI capture (evidence only)', () => {
-  it('names only known scenarios', () => {
+  it('names at least one scenario, and only known ones', () => {
+    expect(SELECTED.length, 'ANTIGRAVITY_TUI_CAPTURE_SCENARIOS names no scenario').toBeGreaterThan(0);
     expect(SELECTED.filter((name) => !(SCENARIOS as readonly string[]).includes(name))).toEqual([]);
   });
   for (const scenario of SCENARIOS) {

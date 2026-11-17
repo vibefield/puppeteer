@@ -6,18 +6,22 @@ import { checkCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import { antigravityRules } from '../privacy.mjs';
 import {
   TUI_CAPTURE_FORMAT,
+  pinnedTuiArtifact,
   sanitizeAntigravityTuiCaptureSet,
   summarizeTuiCapture,
 } from './sanitize-tui-captures.mjs';
 
 const DIGEST = 'b'.repeat(64);
+const OTHER_DIGEST = 'c'.repeat(64);
+/** The synthetic pin the fixtures are held to; one case holds them to the committed 1.4.12 pin instead. */
+const PIN = { sha256: DIGEST, platform: 'darwin-arm64' };
 const CONVERSATION = '123e4567-e89b-42d3-a456-426614174000';
 
 function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function rawToolFailure(root, overrides = {}) {
+function rawToolFailure(root, overrides = {}, extraRecords = []) {
   const scenario = join(root, 'tool-failure');
   mkdirSync(join(scenario, 'logs', CONVERSATION), { recursive: true });
   writeJson(join(scenario, 'capture.json'), {
@@ -48,13 +52,18 @@ function rawToolFailure(root, overrides = {}) {
       type: 'PLANNER_RESPONSE',
       step_index: 1,
       input_tokens: 27,
-      tool_calls: [{ name: 'run_command', args: { CommandLine: '"sh -c \'exit 3\'"', Cwd: '$CAPTURE_ROOT/workspace' } }],
+      tool_calls: [
+        {
+          name: 'run_command',
+          args: { CommandLine: '"sh -c \'exit 3\'"', Cwd: '$CAPTURE_ROOT/workspace' },
+        },
+      ],
     },
     { type: 'GENERIC', step_index: 2, status: 'DONE', content: 'Command exited with code 3.' },
   ];
   writeFileSync(
     join(scenario, 'logs', CONVERSATION, 'transcript.jsonl'),
-    `${records.map((record) => JSON.stringify(record)).join('\n')}\n`,
+    `${[...records, ...extraRecords].map((record) => JSON.stringify(record)).join('\n')}\n`,
   );
   writeJson(join(scenario, 'screens.json'), {
     stages: [{ stage: 'composer', atMs: 12, screen: '? for shortcuts', matches: ['welcome', 'composer'] }],
@@ -93,7 +102,7 @@ describe('Antigravity native-TUI capture sanitizer', () => {
     const output = join(temporary, 'out');
     try {
       rawToolFailure(raw);
-      const result = sanitizeAntigravityTuiCaptureSet({ input: raw, output });
+      const result = sanitizeAntigravityTuiCaptureSet({ input: raw, output, artifact: PIN });
       expect(result).toMatchObject({ scenarios: ['tool-failure'], records: 3 });
       const transcript = jsonl(join(output, 'tool-failure', 'transcript.jsonl'));
       expect(transcript.map((record) => record.type)).toEqual(['USER_INPUT', 'PLANNER_RESPONSE', 'GENERIC']);
@@ -110,22 +119,64 @@ describe('Antigravity native-TUI capture sanitizer', () => {
     }
   });
 
-  it('refuses a failed run, another version, and an unreviewed account-name hit', () => {
+  it('refuses a failed run, another version, a digest or platform off the pin, and an unreviewed account name', () => {
     const temporary = mkdtempSync(join(tmpdir(), 'antigravity-tui-refuse-'));
     try {
+      const unpinned = {
+        expectedSha256: OTHER_DIGEST,
+        sha256Before: OTHER_DIGEST,
+        sha256After: OTHER_DIGEST,
+        unchanged: true,
+      };
       const cases = [
         [{ outcome: 'failed' }, /outcome failed/],
         [{ version: { status: 0, output: '1.5.0', parsed: '1.5.0' } }, /reported 1\.5\.0/],
+        // The runner's own digest agreed with itself, but it is not the pin.
+        [{ executable: unpinned }, /not the committed 1\.4\.12 pin/],
+        [{ host: { platform: 'darwin-x64' } }, /captured on darwin-x64, the pin is darwin-arm64/],
         [{ privacy: { operatorHomeHits: 0, operatorNameHits: 2 } }, /account/],
       ];
       cases.forEach(([overrides, message], index) => {
         const raw = join(temporary, `raw-${index}`);
+        const output = join(temporary, `out-${index}`);
         rawToolFailure(raw, overrides);
-        expect(() => sanitizeAntigravityTuiCaptureSet({ input: raw, output: join(temporary, `out-${index}`) })).toThrow(
-          message,
-        );
-        expect(existsSync(join(temporary, `out-${index}`))).toBe(false);
+        expect(() => sanitizeAntigravityTuiCaptureSet({ input: raw, output, artifact: PIN })).toThrow(message);
+        expect(existsSync(output)).toBe(false);
       });
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  });
+
+  it('holds a capture to the committed artifact pin when none is injected', () => {
+    const temporary = mkdtempSync(join(tmpdir(), 'antigravity-tui-pin-'));
+    try {
+      const raw = join(temporary, 'raw');
+      rawToolFailure(raw);
+      expect(pinnedTuiArtifact('1.4.12')).toEqual({
+        sha256: '34423fc9b0af3841e7646aa72a2d40ffeab8218b22d1cb99eac7355f9eba31e3',
+        platform: 'darwin-arm64',
+      });
+      expect(() => sanitizeAntigravityTuiCaptureSet({ input: raw, output: join(temporary, 'out') })).toThrow(
+        /not the committed 1\.4\.12 pin/,
+      );
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a journal whose native key the account-name placeholder replaced, even once accepted', () => {
+    const temporary = mkdtempSync(join(tmpdir(), 'antigravity-tui-name-key-'));
+    try {
+      const raw = join(temporary, 'raw');
+      const output = join(temporary, 'out');
+      rawToolFailure(raw, { privacy: { operatorHomeHits: 0, operatorNameHits: 1 } }, [
+        { type: 'GENERIC', step_index: 3, $OPERATOR_NAME: 'kept' },
+      ]);
+      expect(() =>
+        sanitizeAntigravityTuiCaptureSet({ input: raw, output, artifact: PIN, acceptOperatorNameHits: true }),
+      ).toThrow(/replaced a native key/);
+      expect(existsSync(output)).toBe(false);
     } finally {
       rmSync(temporary, { recursive: true, force: true });
     }

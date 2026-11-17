@@ -43,6 +43,8 @@ export interface AntigravityCaptureRequestRecord {
   index: number;
   route: string;
   streamed: boolean;
+  /** The body came in the Code Assist envelope `{ request: { contents, tools } }`; the answer is wrapped to match. */
+  wrapped: boolean;
   toolNames: string[];
   runCommandDeclared: boolean;
   answer: 'text' | 'function-call' | 'count-tokens' | 'models' | 'not-found';
@@ -65,9 +67,7 @@ export interface AntigravityCaptureProvider {
 type Json = Record<string, unknown>;
 
 type CaptureCue =
-  | { kind: 'function-response'; responses: unknown[] }
-  | { kind: 'tool' }
-  | { kind: 'reply'; name: string };
+  { kind: 'function-response'; responses: unknown[] } | { kind: 'tool' } | { kind: 'reply'; name: string };
 
 const COMMAND_KEYS = new Set(['commandline', 'command', 'cmd']);
 
@@ -174,7 +174,7 @@ export async function startAntigravityCaptureProvider(
   let declaration: Json | undefined;
   let callsIssued = 0;
   let responsesSeen = 0;
-  const answer = (record: AntigravityCaptureRequestRecord, request: Json): unknown => {
+  const generate = (record: AntigravityCaptureRequestRecord, request: Json): unknown => {
     const declared = declarations(request);
     record.toolNames = names(declared);
     const runCommand = declared.find((entry) => entry.name === 'run_command');
@@ -202,6 +202,14 @@ export async function startAntigravityCaptureProvider(
     record.replyText = text;
     return generated({ text });
   };
+  const answer = (record: AntigravityCaptureRequestRecord, body: Json): unknown => {
+    // Print mode sent `contents` and `tools` at the top level (Rosetta's farm); nobody has read what the TUI sends,
+    // so the Code Assist envelope is unwrapped too, recorded, and answered in the same envelope.
+    const inner = body.request;
+    record.wrapped = isObject(inner);
+    const value = generate(record, isObject(inner) ? inner : body);
+    return record.wrapped ? { response: value } : value;
+  };
   const server = createServer(async (request, response) => {
     let body = '';
     for await (const chunk of request) body += chunk.toString();
@@ -211,6 +219,7 @@ export async function startAntigravityCaptureProvider(
       index: records.length,
       route,
       streamed: route.includes(':streamGenerateContent'),
+      wrapped: false,
       toolNames: [],
       runCommandDeclared: false,
       answer: 'not-found',

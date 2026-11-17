@@ -2,20 +2,40 @@ import { stripVTControlCharacters } from 'node:util';
 import { Terminal } from '@xterm/headless';
 import type { AgentHost, TerminalAutomationOperation, TerminalSpec } from '@vibefield/puppeteer-core';
 import { spawn, type IPty } from 'node-pty';
-import { delay, inheritedProcessEnvironment } from './live-harness.js';
+import { delay } from './live-harness.js';
 
 /**
- * macOS Seatbelt policy for the capture, the same as Rosetta's farm `--loopback-only`: the agent may reach the
- * loopback provider and local Unix sockets, and the kernel refuses every other outbound connection.
+ * macOS Seatbelt policy for the capture: Rosetta's farm `--loopback-only` (the agent may reach the loopback provider
+ * and local Unix sockets, and the kernel refuses every other outbound connection) plus one rule. `/usr/bin/open` may
+ * not run, so a sign-in flow cannot hand an OAuth URL to a browser that would start outside the sandbox.
  */
 export const ANTIGRAVITY_CAPTURE_SANDBOX_PROFILE = `(version 1)
 (allow default)
 (deny network-outbound)
 (allow network-outbound (remote ip "localhost:*"))
 (allow network-outbound (remote unix-socket))
+(deny process-exec (literal "/usr/bin/open"))
 `;
 
 export const ANTIGRAVITY_CAPTURE_SANDBOX_EXEC = '/usr/bin/sandbox-exec';
+
+/** The capture's fixed `PATH` and `SHELL`: nothing under the runner's home reaches the binary's environment. */
+export const ANTIGRAVITY_CAPTURE_PATH = '/usr/bin:/bin:/usr/sbin:/sbin';
+export const ANTIGRAVITY_CAPTURE_SHELL = '/bin/sh';
+
+/** The base of every capture launch; the launch's own environment is laid over it. Nothing else is inherited. */
+function captureBaseEnvironment(): Record<string, string> {
+  const base: Record<string, string> = {
+    PATH: ANTIGRAVITY_CAPTURE_PATH,
+    SHELL: ANTIGRAVITY_CAPTURE_SHELL,
+    TERM: 'xterm-256color',
+  };
+  for (const name of ['LANG', 'LC_ALL']) {
+    const value = process.env[name];
+    if (value !== undefined) base[name] = value;
+  }
+  return base;
+}
 
 /**
  * The first-run screen patterns `live-pty-host.ts` answers, copied so the capture can report which of them the
@@ -33,10 +53,12 @@ export const ANTIGRAVITY_FIRST_RUN_PATTERNS: ReadonlyArray<{ readonly id: string
   { id: 'composer', pattern: /\? for shortcuts/ },
 ];
 
-/** A screen asking for an account. The capture never signs in: it stops and the runner escalates. */
+/**
+ * A line asking for an account, on any screen: a sign-in banner beside the composer counts as much as a sign-in
+ * page. The capture never signs in: it stops and the runner escalates.
+ */
 const LOGIN_SCREEN = /\bsign[ -]?in\b|\blog[ -]?in\b|google account|authenticat/i;
 const FIRST_RUN = new Map(ANTIGRAVITY_FIRST_RUN_PATTERNS.map(({ id, pattern }) => [id, pattern] as const));
-const KNOWN_SCREEN = FIRST_RUN.get('welcome')!;
 const LOGIN_SETTLE_MS = 3_000;
 
 export class AntigravityVendorLoginError extends Error {
@@ -57,7 +79,7 @@ export function firstRunMatches(screen: string): string[] {
 }
 
 export function looksLikeLoginScreen(screen: string): boolean {
-  return LOGIN_SCREEN.test(screen) && !KNOWN_SCREEN.test(screen);
+  return LOGIN_SCREEN.test(screen);
 }
 
 interface PtyRecord {
@@ -69,10 +91,11 @@ interface PtyRecord {
 }
 
 /**
- * PTY host for the evidence capture only. It differs from the attested lane's host in three ways:
+ * PTY host for the evidence capture only. It differs from the attested lane's host in four ways:
  *
  * - every launch runs under `sandbox-exec` with the loopback-only profile, so the vendor binary has no egress;
- * - it records the text of each first-run screen it meets (`stages`), and stops at a sign-in screen;
+ * - it inherits nothing but `LANG`/`LC_ALL`: `PATH` and `SHELL` are fixed, so no runner home path is passed on;
+ * - it records the text of each first-run screen it meets (`stages`), and stops at a standing sign-in line;
  * - disposal never lists processes (no `ps`): it signals the PTY's process group and probes it with signal 0.
  */
 export class AntigravityCapturePtyHost implements AgentHost {
@@ -100,7 +123,7 @@ export class AntigravityCapturePtyHost implements AgentHost {
       cols: spec.cols ?? 120,
       rows: spec.rows ?? 40,
       cwd: spec.cwd,
-      env: { ...inheritedProcessEnvironment(), TERM: 'xterm-256color', ...spec.env },
+      env: { ...captureBaseEnvironment(), ...spec.env },
     });
     const runtimeSessionId = `antigravity-capture-terminal-${terminal.pid}`;
     let resolveExit: () => void = () => undefined;
