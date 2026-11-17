@@ -49,6 +49,10 @@ No hook fires when a person answers a permission prompt: `PostToolUse` arrives w
 
 Workflow journal observation was removed on 2026-09-11. The adapter does not discover or read workflow journals, reconstruct membership, or infer completion from idle time. The public workflow and team models were also removed on 2026-09-12. OTLP workflow IDs/names and name-only teammate hints remain native evidence; proven child identities contribute only unified child metrics and activity.
 
+## Grok's durable log
+
+A launch or resume replay of `updates.jsonl` is a baseline; only an attach keeps open work. The observer closes what the replay left open before the first live record (`adapter-grok/docs/event-map.html` states the boundary and the closers), so a resumed session never shows a dead process's turn, tools, subagents, pending interactions or compaction. Grok offers no attach yet; one that arrives passes `attached`, as Claude's does, and skips the settle.
+
 ## Usage rules learned from the burn-rate probe
 
 The shared live-only usage boundary and USD accounting path are specified in
@@ -128,6 +132,18 @@ a turn boundary the user did not choose. Three additions make the bridge a stabl
   stays allocated, no `process:exited` is dispatched or recorded, and the host that comes back re-attaches. A plain
   `dispose` still closes the runs for good; `handleProcessExit` is unchanged.
 
+> **Errata (2026-11-06, RV), to the attach bullet above:**
+> - **#14:** "following `/clear` as a spawned session does" says less than the attach now does. An attached session,
+>   like a spawned one, also follows an in-pane `/resume` (a `SessionStart` with source `resume` straight after the
+>   observed session's `SessionEnd` with reason `resume`): one session selection serves both (adapter-claude
+>   `observation/session-selection.ts`). A `fork` start moves neither.
+> - **#66, #110:** "a taken port fails before anything is adopted, so the host knows the ingress is lost and resumes
+>   instead" no longer holds. A port another listener holds is refused with `next: 'retry'` and the neutral code
+>   `endpoint-held` (core `AgentAttachRefusedError`, carried as the failure's `error.refusal`), and the host's ladder
+>   retries it: in a host's replace or supersession window the holder is its predecessor's bridge, which a retry
+>   outlasts; still held after the retries, another program holds the agent's hook connection (spawn-through-hosts.md
+>   §8). Any other bind failure is still a plain error.
+
 **Amended 2026-09-13 (PU-1b, after VibeField's AR-4 review).** _A release keeps what the process depends on._ The
 detach path disposes each binding with `{ release: true }` (`AdapterDisposeOptions`, core `binding.ts`): the Claude
 binding closes its bridge by DRAINING (in-flight posts complete, a bounded moment, then force) and leaves the staged
@@ -143,6 +159,14 @@ and a workspace the attach merely resumed is never destroyed. _A rotation the ho
 typed while no host listened rotates the id unheard; on attach the first authenticated hook under a new id — before
 the pinned id has spoken — is taken as that rotation when the new id already has a transcript under the same root,
 and the transcript is observed. Configured intent is not published for an attached process (it is a launch fact).
+
+> **Erratum (2026-11-06, RV #13):** "a released run's staged files are cleaned by the close that eventually ends it" was
+> false when written. A re-attached Claude binding cleans nothing: its cleanup has been a no-op since the attach landed
+> (`d013fef8`; `attachClaudeTuiSession`'s `cleanup: async () => undefined`, `adapter-claude/src/driver.ts`), so a
+> released run left its files behind however it ended. Nor was the temp dir a safe home for them while the run lived:
+> macOS empties files there that have gone about three days unaccessed (spawn-through-hosts.md §3), and a running Claude
+> execs its staged forwarder on every command hook. Since the amendment of the same date below, the runtime removes a
+> run's staging directory when the run is marked terminal, for a host that names a staging root.
 
 What stays with the host: choosing to pin, persisting what was bound (owner-only, like every other credential the
 host keeps), knowing which terminals are still alive after it returns, and the resume fallback for providers with no
@@ -180,3 +204,32 @@ existing records are no longer only a silent baseline for an attach: Claude's fi
 and the tools still open as replay, and a question the agent waits on live, once (`partitionAttachBootstrap`), and the
 hook rail adopts those tools, so their PostToolUse closes them. A launch, a resume and a picker rebind keep the silent
 baseline: their process is not in the middle of what the record last shows.
+
+**Amended 2026-11-06 (RV #1, a packaged host's forwarders).** _The forwarders are one host-run entry with an
+append-only word protocol._ Claude's command-only hooks and both status lines relay through one self-contained module
+(`adapter-claude/src/launch/forwarder.ts`, Node's builtins only), dispatched by a versioned first argument:
+`claude.hook.v1 <endpoint> <token variable> <timeout ms>` and `claude.statusline.v1 [subagent]`; an unknown word is one
+line and exit 127. The words are a protocol across releases, since a host that updates in place under a running agent
+leaves that agent running the next build's entry; a shipped word keeps its arguments and meaning, and a change is a new
+word. _Which program runs it is the host's or the runner's, never assumed._ A host that is a Node single executable
+runs only its own sealed entry, so `process.execPath` is no Node for a script: it seals
+`@vibefield/puppeteer-builtin-providers/forwarder` and lends the program that runs it (`AgentHost.forwarderRuntime`),
+and the settings name `<command> <args...> <word> <word args...>` with nothing staged. Every other host lends none:
+the launch stages ONE `<id>.forwarder.mjs` (generated from the module, `generated/forwarder-source.ts`) and runs it
+with native-observation's `resolveScriptRunner`, the one authority for which Node runs a script (a real Node, a Node on
+`PATH` under Electron, else Electron as Node). A process with neither refuses the launch
+(`FORWARDER_RUNTIME_UNAVAILABLE`) before anything is written. A released run keeps that one staged file, as it kept the
+two it replaces.
+
+**Amended 2026-11-06 (RV #13, a run's staging directory).** _The runtime owns where a run's launch files live, and
+when they go._ A host names a root (`AgentRuntimeOptions.staging`, absolute, outside the OS temp directory). For each
+launch or preparation the runtime makes `<root>/<runtimeRunId>`, 0700 and empty, once the run and its workspace exist
+and just before the provider is asked, and hands it over as `stagingDir` (core `AgentTuiSessionOptions`). The adapter
+writes its launch files inside and never removes the directory: Claude's settings, its staged forwarder and its
+briefing files live there. The runtime removes the directory when the run is marked terminal (an exit, a plain
+`dispose`, a failed launch, a cancelled or expired preparation) and keeps it on `dispose({ detach: true })`. An attached
+run's directory is found by its id, which must be one plain path segment, and goes at that run's end; the attach
+itself writes nothing and is handed none. `sweepStaging({ keep })` removes every other entry under the root and always
+keeps the runtime's own live runs and open preparations: what runs that ended while no host listened left behind,
+for a host that is back. Without a root an adapter stages in the OS temp directory as before, a limit for a host whose
+runs outlive its cleaner.

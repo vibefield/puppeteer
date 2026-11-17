@@ -58,16 +58,22 @@ const GrokUpdateCheckSchema = z.object({
   error: z.string().nullish(),
 });
 
-/** Injected process execution so unit tests never run a real binary. */
+/** Injected process execution so unit tests never run a real binary. `env` is the environment the run is handed. */
 export type GrokDistributionExec = (
   file: string,
   args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
 ) => Promise<{ stdout: string; stderr: string }>;
 
 export interface GrokDistributionServiceOptions {
   /** Executable the runtime launches, when the host configured one. */
   executable?: string | undefined;
   exec?: GrokDistributionExec | undefined;
+  /**
+   * The environment the version run and the update check are handed; absent, this process's own. A host names it so
+   * its own variables never reach the vendor's program.
+   */
+  env?: NodeJS.ProcessEnv | undefined;
 }
 
 export const GROK_DISTRIBUTION_PROVIDER: DistributionProvider = {
@@ -100,12 +106,16 @@ export const GROK_DISTRIBUTION_PROVIDER: DistributionProvider = {
   nativeUpdateCheck: true,
 };
 
-function defaultExec(file: string, args: readonly string[]): Promise<{ stdout: string; stderr: string }> {
+function defaultExec(
+  file: string,
+  args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolvePromise, reject) => {
     execFile(
       file,
       [...args],
-      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8' },
+      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', env: options?.env },
       (error, stdout, stderr) => {
         if (error) reject(error);
         else resolvePromise({ stdout, stderr });
@@ -144,6 +154,7 @@ function errorMessage(error: unknown): string {
 
 export function createGrokDistributionService(options: GrokDistributionServiceOptions = {}): DistributionService {
   const exec = options.exec ?? defaultExec;
+  const run = { env: options.env };
   return {
     provider: GROK_DISTRIBUTION_PROVIDER,
 
@@ -154,7 +165,7 @@ export function createGrokDistributionService(options: GrokDistributionServiceOp
       let version: string | undefined;
       let channel: string | undefined;
       try {
-        const { stdout, stderr } = await exec(candidate.executable, [GROK_VERSION_FLAG]);
+        const { stdout, stderr } = await exec(candidate.executable, [GROK_VERSION_FLAG], run);
         const parsed = parseGrokVersion(`${stdout}\n${stderr}`);
         if (parsed) {
           version = parsed.version;
@@ -200,7 +211,7 @@ export function createGrokDistributionService(options: GrokDistributionServiceOp
       const executable = resolveGrokExecutable(install.executable ?? options.executable);
       let payload: unknown;
       try {
-        const { stdout } = await exec(executable, GROK_UPDATE_CHECK_ARGS);
+        const { stdout } = await exec(executable, GROK_UPDATE_CHECK_ARGS, run);
         payload = JSON.parse(stdout);
       } catch (error) {
         return {

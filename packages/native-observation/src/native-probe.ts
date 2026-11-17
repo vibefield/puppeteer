@@ -1,5 +1,6 @@
 /** Bounded subprocess reads for native metadata. No provider names, model policy, or Core dependencies. */
 import { spawn } from 'node:child_process';
+import { ownScriptRunnerFacts, resolveScriptRunner } from './script-runner.js';
 
 export class NativeProbeError extends Error {
   constructor(
@@ -67,12 +68,15 @@ function ownProcess(options: NativeProbeOptions, onData: (chunk: Buffer) => void
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 120_000)
     throw new RangeError('metadata timeout must be between 1 and 120000 ms');
   const script = /\.(?:mjs|cjs|js)$/iu.test(options.executable);
+  const runner = script ? resolveScriptRunner(ownScriptRunnerFacts()) : undefined;
+  // Nothing in this process can run a script (a single executable): the native agent cannot be started from here.
+  if (script && runner === undefined) throw new NativeProbeError('not-found');
   const child = spawn(
-    script ? process.execPath : options.executable,
-    [...(script ? [options.executable] : []), ...options.args],
+    runner ? runner.command : options.executable,
+    [...(runner ? [...runner.args, options.executable] : []), ...options.args],
     {
       cwd: options.cwd,
-      env: { ...options.env, ...(script && process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}) },
+      env: { ...options.env, ...runner?.env },
       stdio: ['pipe', 'pipe', 'pipe'],
       detached: process.platform !== 'win32',
       windowsHide: true,

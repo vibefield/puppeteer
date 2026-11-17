@@ -83,6 +83,14 @@ const PARAMETERS = parameterDefaults(SPEND_MANIFEST);
 const NOW = Date.parse('2026-10-03T21:12:15.000Z');
 const MIN = 60_000;
 const WIDE = { width: 1178, height: 638 };
+/** The lab's narrowest plate: a window at its narrowest. */
+const NARROW = { width: 400, height: 260 };
+/** Still narrow (under 640), with room beside the hero's number and burn for its short caption whole. */
+const NARROW_ROOMY = { width: 600, height: 260 };
+/** The phone's stage, as VibeField's kit draws the spend view (402 × 781): narrow, its plot 166 px. */
+const PHONE = { width: 402, height: 781 };
+/** Godview's compact stage (680 × 170) past its usage column (46 px, the lab's `?chrome=46`): narrow, but roomy. */
+const GODVIEW_COMPACT = { width: 634, height: 170 };
 
 interface Mounted {
   readonly root: HTMLElement;
@@ -161,6 +169,16 @@ async function setMoment(view: Mounted, t: number, box = WIDE): Promise<void> {
   await act(async () => {
     hit.dispatchEvent(new PointerEvent('pointerdown', init));
     hit.dispatchEvent(new PointerEvent('pointerup', init));
+  });
+}
+
+/** Rest a pointer on the chart at `t`, near the plot's top, pressing nothing: a moment the pointer sets, not held. */
+async function pointAt(view: Mounted, t: number, box = WIDE): Promise<void> {
+  const g = geometryFor(box.width, box.height);
+  const x = g.x0 + ((t - (NOW - SPEND_WINDOW_MS)) / SPEND_WINDOW_MS) * (g.x1 - g.x0);
+  const hit = view.root.querySelector('.vf-monitor-spend-hit')!;
+  await act(async () => {
+    hit.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: x, clientY: g.y0 + 2, pointerId: 1 }));
   });
 }
 
@@ -266,6 +284,43 @@ describe('the spend view', () => {
     expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['since each agent started, at API prices']);
   });
 
+  it('at a narrow stage the hero still says who it leaves out: one by name, several by how many with no price', async () => {
+    // The caption's first words do not fit beside the number and the burn; who the total leaves out stays, in short,
+    // and here whole: the window has room for it.
+    const agents = afternoon();
+    const view = await mount({ agents }, NARROW_ROOMY);
+    expect(view.root.querySelector('.vf-monitor-spend-hero')?.className).toContain('is-narrow');
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['not counting swarm-lab']);
+    // A second agent no price reaches: how many, in the rows' own "no price".
+    const scratch = agentViewFixture({ id: 'scratch', project: { name: 'scratch' }, createdAt: NOW - 30 * MIN });
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: [...agents, scratch] }));
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['2 with no price']);
+    // Nobody left out: the number and the burn alone, and no empty caption beside them.
+    const priced = agents.filter((agent) => agent.id !== 'swarm-lab');
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: priced }));
+    expect(view.root.querySelector('.vf-monitor-spend-cap i')).toBeNull();
+    expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(/^\$[\d.]+\/hr now$/);
+  });
+
+  it('at the narrowest plate the hero cuts who it leaves out to the room its number and burn leave, keeping the count', async () => {
+    // B' (rv-godview-honesty (2), ruled 2026-11-06): the hero's one line runs from the plot's left edge to the list's
+    // inset short of its column (10 px, the list's own padding), and the number, its 10 px gap, the burn and its 8 px
+    // gap come first (spend.css); this file measures 6.4 px a glyph in any face.
+    const agents = afternoon();
+    const view = await mount({ agents }, NARROW);
+    const g = geometryFor(NARROW.width, NARROW.height);
+    const glyphs = (selector: string): number => text(view.root, selector)[0]!.length * 6.4;
+    const room = g.lx0 - 10 - g.x0 - glyphs('.vf-monitor-spend-big') - 10 - glyphs('.vf-monitor-spend-cap b') - 8;
+    // About 58 px: "1 with…" fits and "1 with no…" does not, nor a word of swarm-lab after "not counting".
+    expect(room).toBeGreaterThanOrEqual('1 with…'.length * 6.4);
+    expect(room).toBeLessThan('1 with no…'.length * 6.4);
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['1 with…']);
+    // A second agent no price reaches: its count, cut at the same word.
+    const scratch = agentViewFixture({ id: 'scratch', project: { name: 'scratch' }, createdAt: NOW - 30 * MIN });
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: [...agents, scratch] }));
+    expect(text(view.root, '.vf-monitor-spend-cap i')).toEqual(['2 with…']);
+  });
+
   it("prints another desktop's total now and draws it no line; before now it says in words that nobody recorded it (SV-D2)", async () => {
     const agents = afternoon();
     const peer = agents.find((agent) => agent.id === 'notes')!;
@@ -295,7 +350,7 @@ describe('the spend view', () => {
       `Total by ${formatClock(moment)}`,
     ]);
     expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(
-      new RegExp(`^by ${formatClock(moment)} · \\$[\\d.]+/hr then$`),
+      new RegExp(`^by ${formatClock(moment)} · \\$[\\d.]+/hr$`),
     );
     const young = rowOf(view.root, 'changelog');
     expect(young.className).toContain('is-before');
@@ -410,6 +465,78 @@ describe('the spend view', () => {
   });
 });
 
+// Item 291 (James's A on each of item 285's five marks, 2026-11-10): at a held moment and at a narrow stage, the
+// view keeps its words apart. A moment is held with a press, as a person holds one (`setMoment`).
+describe('the spend view at a held moment and at a narrow stage (item 291)', () => {
+  it('stands the Now button under the chart’s caption, 4 px clear of its line (291 · 3)', async () => {
+    const view = await mount({ agents: afternoon() });
+    const g = geometryFor(WIDE.width, WIDE.height);
+    await setMoment(view, NOW - 6 * MIN);
+    const back = view.root.querySelector<HTMLElement>('.vf-monitor-spend-back')!;
+    const caption = view.root.querySelector<HTMLElement>('.vf-monitor-spend-colcap')!;
+    expect(back.style.top).toBe(`${g.y0 + 22}px`);
+    // The caption's one line is 10 px tall (spend.css, `10px/1`).
+    const captionFoot = Number.parseFloat(caption.style.top) + 10;
+    expect(Number.parseFloat(back.style.top) - captionFoot).toBeGreaterThanOrEqual(4);
+  });
+
+  it('lifts the money axis’s $0 clear of now’s chip at the plot’s corner (291 · 4)', async () => {
+    const view = await mount({ agents: afternoon() });
+    const g = geometryFor(WIDE.width, WIDE.height);
+    const zero = view.root.querySelector<HTMLElement>('.vf-monitor-spend-y span')!;
+    const chip = view.root.querySelector<HTMLElement>('.vf-monitor-spend-x .vf-monitor-spend-chip')!;
+    expect(zero.textContent).toBe('$0');
+    expect(zero.style.top).toBe(`${g.y1 - 11}px`);
+    // Its 14 px line (spend.css) ends above the chip's top: the two boxes do not meet.
+    expect(Number.parseFloat(zero.style.top) + 14).toBeLessThan(Number.parseFloat(chip.style.top));
+  });
+
+  it('says a moment’s burn without “then”: by when, and how fast, held or pointed (291 · 1)', async () => {
+    const view = await mount({ agents: afternoon() });
+    const moment = NOW - 6 * MIN;
+    const burn = new RegExp(`^by ${formatClock(moment)} · \\$[\\d.]+/hr$`);
+    // A pointer resting on the chart sets the moment too, unheld: the same words (Q1, as leant: any moment).
+    await pointAt(view, moment);
+    expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(burn);
+    await setMoment(view, moment);
+    expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(burn);
+  });
+
+  it('heads the money column alone at a moment once every row had started, held or pointed (291 · 2)', async () => {
+    const view = await mount({ agents: afternoon() });
+    // changelog, the afternoon's youngest, was born 4.5 minutes before now: 4 minutes before, every row had started.
+    const moment = NOW - 4 * MIN;
+    const head = ['', `Total by ${formatClock(moment)}`];
+    // A pointer resting on the chart sets the moment too, unheld: the same head (Q1, as leant: any moment).
+    await pointAt(view, moment);
+    expect(text(view.root, '.vf-monitor-spend-head span')).toEqual(head);
+    await setMoment(view, moment);
+    expect(text(view.root, '.vf-monitor-spend-head span')).toEqual(head);
+  });
+
+  it('keeps who had started beside “Total by <clock>” at a held moment, at the narrowest plate (291 · 2)', async () => {
+    // Before changelog's birth (4.5 minutes before now) one row had not started: the count stands, as it did. happy-dom
+    // applies no stylesheet, so the 8 px between the two and the first one's cut are the sheet test's.
+    const view = await mount({ agents: afternoon() }, NARROW);
+    const moment = NOW - 6 * MIN;
+    await setMoment(view, moment, NARROW);
+    expect(text(view.root, '.vf-monitor-spend-head span')).toEqual([
+      '9 of 10 started',
+      `Total by ${formatClock(moment)}`,
+    ]);
+  });
+
+  it('says the chart’s window short where the long words overrun the plot: the phone’s 402 (291 · 3b)', async () => {
+    const view = await mount({ agents: afternoon() }, PHONE);
+    expect(text(view.root, '.vf-monitor-spend-colcap')).toEqual(['Last 10 minutes']);
+  });
+
+  it('keeps the long words wherever they fit: Godview’s compact stage, narrow but roomy (291 · 3b)', async () => {
+    const view = await mount({ agents: afternoon() }, GODVIEW_COMPACT);
+    expect(text(view.root, '.vf-monitor-spend-colcap')).toEqual(['Spent in the last 10 minutes']);
+  });
+});
+
 describe('the spend view’s motion', () => {
   it('waves a waiting head on the frame loop while motion is on', async () => {
     const view = await mount({ agents: afternoon() });
@@ -451,6 +578,52 @@ describe('the spend view’s motion', () => {
     );
     await act(async () => frames.step(3));
     expect(frames.pending).toBe(0);
+  });
+
+  it('asks for no frame while nothing waves, motion on, and runs the loop once a head waits', async () => {
+    // The stage is the root as it lays out, so the first render and the measured one draw one scale: nothing eases.
+    const stage = {
+      width: WIDE.width,
+      height: WIDE.height,
+      insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      obstacles: [],
+    };
+    // The afternoon's own rows, no head waiting and no reply unseen: nothing on the chart moves. Publishing the
+    // afternoon moves no scale either, so the frame it then asks for is the loop's alone.
+    const calm = afternoon().map((agent): AgentView => ({
+      ...agent,
+      status: agent.status === 'blocked' ? 'idle' : agent.status,
+      unread: false,
+      wait: undefined,
+    }));
+    const view = await mount({ agents: calm, stage });
+    expect(view.view.dataset.motion).toBe('on');
+    await act(async () => frames.step(2));
+    expect(frames.pending).toBe(0);
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: afternoon(), stage }));
+    expect(frames.pending).toBeGreaterThan(0);
+  });
+
+  it('rests out of sight: no clock, no paint and no frame; shown, it paints once, at now, and keeps time again', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const view = await mount({ agents: afternoon(), theme: fixtureTheme('dark', { hidden: true }) });
+    const paints = (): number => calls.filter((call) => call.op === 'clearRect').length;
+    calls.length = 0;
+    for (let step = 0; step < 4; step += 1) {
+      clock.advance(30_000);
+      await act(async () => {
+        vi.advanceTimersByTime(30_000);
+        frames.step();
+      });
+    }
+    expect(paints()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(frames.pending).toBe(0);
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: afternoon(), theme: fixtureTheme('dark') }));
+    expect(paints()).toBe(1);
+    // The one paint is of now, two minutes on, never of the moment the stage left sight.
+    expect(view.root.querySelector('.vf-monitor-spend-chip')?.textContent).toBe(formatClock(clock.now()));
+    expect(vi.getTimerCount()).toBe(1);
   });
 });
 

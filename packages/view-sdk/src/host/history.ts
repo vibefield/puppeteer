@@ -5,14 +5,15 @@
  *   host reads only while a mounted view declares `capabilities.optional:
  *   ['history']`, over the fixed window `[now − 24 h, now]` (T2).
  * - `keepPast`: a re-read that brings nothing new keeps the snapshot it had,
- *   so everything keyed on it stays put; a changed `readAt` alone is nothing new.
+ *   so everything keyed on it stays put; a moved window or `readAt` alone is
+ *   nothing new.
  * - `lendHistory`: the snapshot as the view sees it, built ONCE per snapshot
  *   (and per theme or filter), never per publish: each ended lane coloured with
  *   the replica's theme function (L7), so an ended lane and a live one in the
  *   same project wear the same ink, and receded by the window's own rule.
  */
 
-import type { MonitorEndedRow, MonitorPastSnapshot } from '../model.js';
+import type { MonitorEndedRow, MonitorPastSnapshot, MonitorPastSpan } from '../model.js';
 import type { EndedLaneView, MonitorHistory, MonitorView } from '../view.js';
 
 /** The day a view's past covers (T2). */
@@ -35,12 +36,30 @@ function sameData(a: unknown, b: unknown): boolean {
   return keys.every((key) => sameData(left[key], right[key]));
 }
 
-/** `previous` when `next` says nothing new (its `readAt` aside), else `next`. */
+/**
+ * What a snapshot holds from `since` on: its window and `readAt` left out, and every span's start clamped to `since`.
+ * Nothing is removed, so a span or a run that ended before `since` stays, clamped to nothing.
+ */
+function heldFrom(past: MonitorPastSnapshot, since: number): object {
+  const { sinceMs: _sinceMs, untilMs: _untilMs, readAt: _readAt, live, ended, ...rest } = past;
+  const clamp = (spans: readonly MonitorPastSpan[]): MonitorPastSpan[] =>
+    spans.map((span) => ({ ...span, from: Math.max(span.from, since) }));
+  return {
+    ...rest,
+    live: live.map((lane) => ({ ...lane, spans: clamp(lane.spans) })),
+    ended: ended.map((lane) => ({ ...lane, spans: clamp(lane.spans) })),
+  };
+}
+
+/**
+ * `previous` when `next` holds nothing new, else `next`. Every read asks the day before it, so a re-read moves its
+ * window, its `readAt` and each span start the window clipped; what is compared is what both hold from `next`'s start
+ * on. A span or a run that only aged out of the window is still news, so the snapshot kept never holds what `next`
+ * let go.
+ */
 export function keepPast<T extends MonitorPastSnapshot>(previous: T | undefined, next: T): T {
   if (previous === undefined || previous === next) return next;
-  const { readAt: _previousReadAt, ...before } = previous;
-  const { readAt: _nextReadAt, ...after } = next;
-  return sameData(before, after) ? previous : next;
+  return sameData(heldFrom(previous, next.sinceMs), heldFrom(next, next.sinceMs)) ? previous : next;
 }
 
 export interface LendHistoryOptions {

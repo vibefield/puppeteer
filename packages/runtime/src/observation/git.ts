@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
-import { existsSync, watch, type FSWatcher } from 'node:fs';
+import { statSync, watch, type FSWatcher } from 'node:fs';
 import { realpath } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import type { AgentGitState } from '@vibefield/puppeteer-core';
 
@@ -11,11 +11,30 @@ const WATCHER_TOPOLOGY_REFRESH_MS = 5 * 60_000;
 /** Bound on the attach → verify → re-attach loop when refs keep moving underneath it. */
 const WATCHER_ATTACH_ATTEMPTS = 3;
 
-async function git(cwd: string, args: readonly string[]): Promise<string | undefined> {
+/**
+ * The observer runs git in an agent's working tree, whose config the agent may write, so no program that config names
+ * may run: no fsmonitor, no hook, no pager. A new subcommand is checked before it is added here: one that reads the
+ * index or a diff also needs `-c safe.bareRepository=explicit`, and every config key it honours that names a program.
+ */
+const GIT_PREFIX = ['-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null', '--no-pager'] as const;
+
+/** No optional lock is taken in a tree the agent is working in, and git never waits on a prompt. */
+const GIT_ENVIRONMENT = { GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0' } as const;
+
+/**
+ * Runs git with `env` (a host's own environment, never this process's) or, when the host names none, with this
+ * process's environment as before; either way under GIT_ENVIRONMENT.
+ */
+async function git(
+  cwd: string,
+  args: readonly string[],
+  env: Readonly<Record<string, string | undefined>> | undefined,
+): Promise<string | undefined> {
   try {
-    const { stdout } = await execFileAsync('git', ['-C', cwd, ...args], {
+    const { stdout } = await execFileAsync('git', [...GIT_PREFIX, '-C', cwd, ...args], {
       encoding: 'utf8',
       maxBuffer: 1024 * 1024,
+      env: { ...(env ?? process.env), ...GIT_ENVIRONMENT },
     });
     const value = stdout.trim();
     return value || undefined;
@@ -35,9 +54,15 @@ function fromGitPath(cwd: string, value: string | undefined): string | undefined
   return resolve(cwd, value);
 }
 
-/** Resolve branch/head facts for any directory, including worktrees, unborn branches, and detached HEADs. */
-export async function resolveGitState(cwd: string): Promise<AgentGitState | null> {
-  const metadata = await git(cwd, ['rev-parse', '--show-toplevel', '--absolute-git-dir', '--git-common-dir']);
+/**
+ * Resolve branch/head facts for any directory, including worktrees, unborn branches, and detached HEADs. `env` is
+ * the environment git runs with; absent, this process's own.
+ */
+export async function resolveGitState(
+  cwd: string,
+  env?: Readonly<Record<string, string | undefined>>,
+): Promise<AgentGitState | null> {
+  const metadata = await git(cwd, ['rev-parse', '--show-toplevel', '--absolute-git-dir', '--git-common-dir'], env);
   const [toplevel, gitDir, commonDir] = metadata?.split(/\r?\n/) ?? [];
   if (!toplevel) return null;
   // `root` is public in AgentGitState, so it must carry platform separators
@@ -45,8 +70,8 @@ export async function resolveGitState(cwd: string): Promise<AgentGitState | null
   const root = resolve(cwd, toplevel);
 
   const [branch, headSha] = await Promise.all([
-    git(cwd, ['symbolic-ref', '--quiet', '--short', 'HEAD']),
-    git(cwd, ['rev-parse', '--verify', 'HEAD']),
+    git(cwd, ['symbolic-ref', '--quiet', '--short', 'HEAD'], env),
+    git(cwd, ['rev-parse', '--verify', 'HEAD'], env),
   ]);
   const absoluteGitDir = fromGitPath(cwd, gitDir);
   const absoluteCommonDir = fromGitPath(cwd, commonDir);
@@ -75,14 +100,98 @@ export interface GitStateObserverOptions {
   onChange: (state: AgentGitState | null) => void;
   onError?: (error: Error) => void;
   pollIntervalMs?: number;
+  /** The environment git runs with; absent, this process's own. */
+  env?: Readonly<Record<string, string | undefined>> | undefined;
 }
 
 const stableState = (state: AgentGitState | null): string => JSON.stringify(state);
 
+/** What a path is, for planning watches; `undefined` when it is missing or unreachable. */
+export type GitPathProbe = (path: string) => 'file' | 'directory' | undefined;
+
+/** The paths one `git rev-parse` names for a watch plan, each resolved against the observed cwd. */
+export interface GitWatchPaths {
+  gitDir: string;
+  commonDir: string;
+  headPath: string;
+  /** The branch ref HEAD points at; absent when HEAD is detached. */
+  branchPath?: string | undefined;
+  packedRefsPath: string;
+}
+
+/** One fs.watch target. A `name` watch is a directory heard only for the entry of that name. */
+export interface PlannedWatch {
+  target: string;
+  name?: string;
+}
+
+const isStrictlyInside = (directory: string, path: string): boolean => {
+  const fromDirectory = relative(directory, path);
+  return (
+    fromDirectory !== '' &&
+    fromDirectory !== '..' &&
+    !fromDirectory.startsWith(`..${sep}`) &&
+    !isAbsolute(fromDirectory)
+  );
+};
+
 /**
- * Watches Git's actual indirection paths and also polls as a correctness
- * fallback. Polling covers atomic ref replacement, packed refs, and network
- * filesystems where fs.watch can miss a transition.
+ * The files whose change can move what an observer reports, and nothing busier. Exported for its tests; the
+ * package index does not export it.
+ *
+ * - HEAD, when it is a file.
+ * - The branch ref HEAD points at, when it is a file. While it is not (an unborn branch, or a ref that lives only in
+ *   packed-refs), its directory, heard only for the ref's own name, so a fresh repository's first commit is seen at
+ *   once and a session does not wake for other branches. Only a DIRECTORY strictly inside `<commonDir>/refs/`: a
+ *   reftable repository's refs/heads is a file, and a nested branch whose directory does not exist yet is the poll's.
+ * - packed-refs only when it exists, never its parent: its appearance (pack-refs, gc) moves no ref.
+ * - reftable's tables.list, best effort: the common stack's and, in a linked worktree, the worktree's own (its HEAD
+ *   among its refs). reftable rewrites tables.list on every ref update.
+ *
+ * No target is ever the git directory or the common directory: git makes and renames index.lock there on every
+ * status, add and commit by any agent or editor. Such an entry is dropped, never thrown.
+ */
+export function planGitWatches(paths: GitWatchPaths, probe: GitPathProbe): PlannedWatch[] {
+  const planned: PlannedWatch[] = [];
+  if (probe(paths.headPath) === 'file') planned.push({ target: paths.headPath });
+  if (paths.branchPath !== undefined) {
+    const parent = dirname(paths.branchPath);
+    if (probe(paths.branchPath) === 'file') planned.push({ target: paths.branchPath });
+    else if (isStrictlyInside(join(paths.commonDir, 'refs'), parent) && probe(parent) === 'directory') {
+      planned.push({ target: parent, name: basename(paths.branchPath) });
+    }
+  }
+  if (probe(paths.packedRefsPath) === 'file') planned.push({ target: paths.packedRefsPath });
+  const tableLists = [join(paths.commonDir, 'reftable', 'tables.list')];
+  if (paths.gitDir !== paths.commonDir) tableLists.push(join(paths.gitDir, 'reftable', 'tables.list'));
+  for (const tableList of tableLists) if (probe(tableList) === 'file') planned.push({ target: tableList });
+  return planned.filter(({ target }) => target !== paths.gitDir && target !== paths.commonDir);
+}
+
+/** A `name` watch hears only its own entry; an event that names nothing is relevant. Exported for its tests. */
+export function isRelevantWatchEvent(planned: PlannedWatch, filename: string | null): boolean {
+  return planned.name === undefined || filename === null || filename === planned.name;
+}
+
+const probeGitPath: GitPathProbe = (path) => {
+  try {
+    const stats = statSync(path);
+    if (stats.isFile()) return 'file';
+    if (stats.isDirectory()) return 'directory';
+  } catch {
+    // Missing, or behind something that is not a directory: nothing to watch there.
+  }
+  return undefined;
+};
+
+/**
+ * Watches the files that carry a repository's HEAD and branch, and polls as the correctness fallback. The watches
+ * (`planGitWatches`): HEAD; the branch ref, or its directory heard only for the ref's name while the ref has no loose
+ * file; packed-refs when it exists; reftable's tables.list. A missing packed-refs is never watched through its
+ * parent: that parent is the git directory, the busiest one git has (index.lock on every status, add and commit), and
+ * packed-refs appearing moves no ref. The poll covers what the plan leaves out or a watcher misses: a nested branch
+ * whose directory does not exist yet, an atomic replacement between rebuilds, network filesystems, and a repository
+ * created after observation begins.
  */
 export function createGitStateObserver(options: GitStateObserverOptions): GitStateObserver {
   let cwd = resolve(options.cwd);
@@ -117,12 +226,11 @@ export function createGitStateObserver(options: GitStateObserverOptions): GitSta
     schedule();
   };
 
-  const watchPath = (path: string | undefined): void => {
-    if (!path) return;
-    const target = existsSync(path) ? path : dirname(path);
-    if (!existsSync(target)) return;
+  const watchPlanned = (planned: PlannedWatch): void => {
     try {
-      const watcher = watch(target, { persistent: false }, scheduleFromWatcher);
+      const watcher = watch(planned.target, { persistent: false }, (_event, filename) => {
+        if (isRelevantWatchEvent(planned, filename)) scheduleFromWatcher();
+      });
       watcher.on('error', scheduleFromWatcher);
       watchers.push(watcher);
     } catch {
@@ -131,21 +239,33 @@ export function createGitStateObserver(options: GitStateObserverOptions): GitSta
   };
 
   const rebuildWatchers = async (observedCwd: string, observedGeneration: number): Promise<boolean> => {
-    const branchRef = await git(observedCwd, ['symbolic-ref', '--quiet', 'HEAD']);
-    const gitPaths = await git(observedCwd, [
-      'rev-parse',
-      '--git-path',
-      'HEAD',
-      '--git-path',
-      'packed-refs',
-      ...(branchRef ? ['--git-path', branchRef] : []),
-    ]);
-    const [headPath, packedRefs, branchPath] = gitPaths?.split(/\r?\n/) ?? [];
+    const branchRef = await git(observedCwd, ['symbolic-ref', '--quiet', 'HEAD'], options.env);
+    // `--git-dir`, not `--absolute-git-dir`: at the top level it is spelled as --git-common-dir and --git-path are,
+    // where the absolute form is canonicalized (macOS's /var tmpdir reads /private/var there). Below the top level
+    // --git-dir alone is absolute and canonical, so a cwd under a symlink still reads gitDir ≠ commonDir: that costs
+    // one extra tables.list candidate, and in a reftable repository one duplicate watch, nothing else.
+    const gitPaths = await git(
+      observedCwd,
+      [
+        'rev-parse',
+        '--git-dir',
+        '--git-common-dir',
+        '--git-path',
+        'HEAD',
+        '--git-path',
+        'packed-refs',
+        ...(branchRef ? ['--git-path', branchRef] : []),
+      ],
+      options.env,
+    );
+    const answers = (gitPaths?.split(/\r?\n/) ?? []).map((path) => fromGitPath(observedCwd, path));
+    const [gitDir, commonDir, headPath, packedRefsPath, branchPath] = answers;
     if (stopped || generation !== observedGeneration) return false;
     clearWatchers();
-    watchPath(fromGitPath(observedCwd, headPath));
-    watchPath(fromGitPath(observedCwd, packedRefs));
-    watchPath(fromGitPath(observedCwd, branchPath));
+    if (gitDir && commonDir && headPath && packedRefsPath) {
+      const paths: GitWatchPaths = { gitDir, commonDir, headPath, branchPath, packedRefsPath };
+      for (const planned of planGitWatches(paths, probeGitPath)) watchPlanned(planned);
+    }
     return true;
   };
 
@@ -154,7 +274,7 @@ export function createGitStateObserver(options: GitStateObserverOptions): GitSta
     const observedGeneration = generation;
     const observedCwd = cwd;
     try {
-      let state = await resolveGitState(observedCwd);
+      let state = await resolveGitState(observedCwd, options.env);
       if (stopped || generation !== observedGeneration) return;
       // A new branch means a different ref file to watch.
       if (stableState(state) !== last) watcherTopologyDirty = true;
@@ -171,7 +291,7 @@ export function createGitStateObserver(options: GitStateObserverOptions): GitSta
         watchersInitialized = true;
         watcherTopologyRefreshedAt = Date.now();
 
-        const attached = await resolveGitState(observedCwd);
+        const attached = await resolveGitState(observedCwd, options.env);
         if (stopped || generation !== observedGeneration) return;
         if (stableState(attached) === stableState(state)) break;
         // The ref moved while we were attaching to it; the watchers may be on
@@ -223,6 +343,133 @@ export function createGitStateObserver(options: GitStateObserverOptions): GitSta
       generation += 1;
       clearInterval(poller);
       clearWatchers();
+    },
+  };
+}
+
+export interface GitObserverPoolOptions {
+  pollIntervalMs?: number | undefined;
+  /** The environment every observer's git runs with; absent, this process's own. */
+  env?: Readonly<Record<string, string | undefined>> | undefined;
+}
+
+export interface GitObserverPool {
+  /**
+   * Join the shared observer for `cwd`. The handle moves, refreshes and leaves this subscriber alone. The poll and
+   * the environment are the pool's, so a subscriber names neither.
+   */
+  observe(options: Omit<GitStateObserverOptions, 'pollIntervalMs' | 'env'>): GitStateObserver;
+}
+
+interface GitObserverSubscriber {
+  onChange: (state: AgentGitState | null) => void;
+  onError?: ((error: Error) => void) | undefined;
+}
+
+interface SharedGitObserver {
+  observer: GitStateObserver;
+  subscribers: Set<GitObserverSubscriber>;
+  state: { resolved: false } | { resolved: true; value: AgentGitState | null };
+}
+
+/**
+ * One git observer per repository cwd, shared by every subscriber there: the runtime's sessions in one checkout
+ * hold one set of watches and one poll, not one each. Exported for the runtime; the package index does not export
+ * it.
+ *
+ * The key is the resolved cwd, not the git directory: two worktrees of one repository report different roots and
+ * branches. Two spellings of one directory (a symlink) get two observers, which is harmless. A subscriber that joins
+ * an observer which has already resolved hears that state on a microtask, never inside its own join, and only if it
+ * is still joined then; the observer itself announces only changes. An observer stops when its last subscriber
+ * leaves.
+ */
+export function createGitObserverPool(options: GitObserverPoolOptions = {}): GitObserverPool {
+  const shared = new Map<string, SharedGitObserver>();
+
+  const fail = (subscriber: GitObserverSubscriber, error: unknown): void => {
+    try {
+      subscriber.onError?.(error instanceof Error ? error : new Error(String(error)));
+    } catch {
+      // One subscriber's fault stays out of the others' deliveries.
+    }
+  };
+
+  const deliver = (subscriber: GitObserverSubscriber, state: AgentGitState | null): void => {
+    try {
+      subscriber.onChange(state);
+    } catch (error) {
+      fail(subscriber, error);
+    }
+  };
+
+  const open = (key: string): SharedGitObserver => {
+    const entry: SharedGitObserver = {
+      subscribers: new Set(),
+      state: { resolved: false },
+      observer: createGitStateObserver({
+        cwd: key,
+        ...(options.pollIntervalMs === undefined ? {} : { pollIntervalMs: options.pollIntervalMs }),
+        ...(options.env === undefined ? {} : { env: options.env }),
+        // The observer resolves asynchronously, so `entry` is assigned before either callback can run.
+        onChange: (state) => {
+          entry.state = { resolved: true, value: state };
+          for (const subscriber of [...entry.subscribers]) {
+            if (entry.subscribers.has(subscriber)) deliver(subscriber, state);
+          }
+        },
+        onError: (error) => {
+          for (const subscriber of [...entry.subscribers]) {
+            if (entry.subscribers.has(subscriber)) fail(subscriber, error);
+          }
+        },
+      }),
+    };
+    shared.set(key, entry);
+    return entry;
+  };
+
+  return {
+    observe(subscription) {
+      const subscriber: GitObserverSubscriber = { onChange: subscription.onChange, onError: subscription.onError };
+      let joined: { key: string; entry: SharedGitObserver } | undefined;
+
+      const enter = (cwd: string): void => {
+        const key = resolve(cwd);
+        const entry = shared.get(key) ?? open(key);
+        entry.subscribers.add(subscriber);
+        const membership = { key, entry };
+        joined = membership;
+        const known = entry.state;
+        if (!known.resolved) return;
+        // A newer announcement before this microtask has already reached the subscriber, and a subscriber that has
+        // left (or left and come back) by then hears nothing from this join.
+        queueMicrotask(() => {
+          if (joined === membership && entry.state === known) deliver(subscriber, known.value);
+        });
+      };
+
+      const leave = (): void => {
+        if (!joined) return;
+        const { key, entry } = joined;
+        joined = undefined;
+        entry.subscribers.delete(subscriber);
+        if (entry.subscribers.size > 0) return;
+        if (shared.get(key) === entry) shared.delete(key);
+        entry.observer.stop();
+      };
+
+      enter(subscription.cwd);
+      return {
+        setCwd(nextCwd) {
+          if (!joined || resolve(nextCwd) === joined.key) return;
+          leave();
+          enter(nextCwd);
+        },
+        refresh() {
+          joined?.entry.observer.refresh();
+        },
+        stop: leave,
+      };
     },
   };
 }

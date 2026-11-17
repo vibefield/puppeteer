@@ -11,8 +11,8 @@ import {
 import { Buffer } from 'node:buffer';
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { basename, dirname, join } from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isAgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 import {
   ClaudeHooksOffError,
@@ -23,9 +23,11 @@ import {
   type PreparedClaudeSession,
 } from './prepare.js';
 import { generateHookSettings } from './settings.js';
+import { getHookSpec } from '../generated/registry.js';
 import { readClaudeInvocation } from './invocation-grammar.js';
 import { normalizeClaudeNativeInvocation } from './native-invocation.js';
 import { createHookBridge } from '../observation/hook-bridge.js';
+import { prepareClaudeTuiSession } from '../driver.js';
 
 // Windows starts PowerShell as well as Node; cold startup on hosted runners can exceed the usual test budget.
 const statusLineTestTimeout = process.platform === 'win32' ? 45_000 : 10_000;
@@ -97,14 +99,14 @@ describe('prepareClaudeSession', () => {
     const dir = mkdtempSync(join(tmpdir(), 'prepare-test-'));
     const p = await prepare({ settingsDir: dir });
     expect(existsSync(p.settingsPath)).toBe(true);
-    expect(existsSync(p.hookForwarderPath)).toBe(true);
+    expect(existsSync(p.forwarderPath!)).toBe(true);
     const onDisk = JSON.parse(readFileSync(p.settingsPath, 'utf8'));
+    // A test run is a real Node: its own executable runs the staged forwarder.
     expect(onDisk).toEqual(
       generateHookSettings({
         endpoint: BASE.endpoint,
         tokenEnvVar: BASE.tokenEnvVar,
-        commandForwarderPath: p.hookForwarderPath,
-        commandExecutable: process.execPath,
+        forwarder: { command: process.execPath, args: [p.forwarderPath!] },
       }),
     );
 
@@ -124,7 +126,7 @@ describe('prepareClaudeSession', () => {
   it('a caller-supplied settingsDir is not scheduled for removal', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'prepare-keep-'));
     const p = await prepare({ settingsDir: dir });
-    expect(p.filesToCleanup).toEqual([p.settingsPath, p.hookForwarderPath]);
+    expect(p.filesToCleanup).toEqual([p.settingsPath, p.forwarderPath]);
     await cleanupClaudeSession(p);
     expect(existsSync(dir)).toBe(true); // caller's dir survives
   });
@@ -135,7 +137,7 @@ describe('prepareClaudeSession', () => {
     const text = readFileSync(p.settingsPath, 'utf8');
     expect(text).not.toContain(BASE.token);
     expect(text).toContain('$PUPPETEER_HOOK_TOKEN');
-    expect(readFileSync(p.hookForwarderPath, 'utf8')).not.toContain(BASE.token);
+    expect(readFileSync(p.forwarderPath!, 'utf8')).not.toContain(BASE.token);
     expect(p.env).toEqual({ PUPPETEER_HOOK_TOKEN: BASE.token });
   });
 
@@ -159,7 +161,7 @@ describe('prepareClaudeSession', () => {
     expect(hasClaudeOtelExporterConflict({ CLAUDE_CODE_ENABLE_TELEMETRY: '1' })).toBe(false);
   });
 
-  it('posts command-only hooks through the generated Node forwarder', async () => {
+  it('posts command-only hooks through the staged forwarder', async () => {
     const received: Record<string, unknown>[] = [];
     const bridge = createHookBridge({
       token: BASE.token,
@@ -515,6 +517,22 @@ describe('prepareClaudeSession', () => {
     expect(p.args).toContain('--resume');
   });
 
+  it('finds a resume under the launch environment’s CLAUDE_CONFIG_DIR, the root an attach reads', async () => {
+    const resumeId = '64a61b19-f4d8-4f96-ba56-07024b470815';
+    const root = conversationRoot(resumeId);
+    // only the launch environment names the root: no explicit configDir, and nothing in this process
+    vi.stubEnv('CLAUDE_CONFIG_DIR', undefined);
+    try {
+      const p = await prepare({ resume: resumeId, env: { CLAUDE_CONFIG_DIR: root } });
+      expect(p.args[p.args.indexOf('--resume') + 1]).toBe(resumeId);
+      // the process is launched on the root the conversation was found under
+      expect(p.env.CLAUDE_CONFIG_DIR).toBe(root);
+    } finally {
+      vi.unstubAllEnvs();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('preserves a native resume picker invocation without forcing --session-id', async () => {
     const p = await prepare({ resumeInvocation: ['--resume'] });
     expect(p.args[0]).toBe('--resume');
@@ -522,7 +540,7 @@ describe('prepareClaudeSession', () => {
     expect(p.args).toEqual(expect.arrayContaining(['--settings', p.settingsPath]));
   });
 
-  it('wraps a script executable with the current node (emulator bin, shims)', async () => {
+  it('runs a script executable under this process’s runner (the Imposter bin, shims)', async () => {
     const p = await prepare({ executable: '/abs/path/bin.mjs' });
     expect(p.command).toBe(process.execPath);
     expect(p.args[0]).toBe('/abs/path/bin.mjs');
@@ -546,6 +564,105 @@ describe('prepareClaudeSession', () => {
     }
   });
 
+  describe('the forwarder a launch’s hooks and status lines run', () => {
+    /** A host that lends a runtime: a single executable in its forwarder role, say. */
+    const LENT = { command: '/opt/Host/host-executable', args: ['--host-role=agent-forwarder'] };
+    const RUNNER = { command: '/opt/runner/node', args: ['--no-warnings'], env: { RUNNER_SWITCH: '1' } };
+    const hookTimeoutSec = getHookSpec('SessionStart')!.timeoutSec;
+    const statusLines = {
+      statusLineEndpoint: 'http://127.0.0.1:4100/statusline',
+      subagentStatusLineEndpoint: 'http://127.0.0.1:4100/subagent-statusline',
+      existingStatusLine: null,
+      existingSubagentStatusLine: null,
+    };
+    const settingsOf = (p: PreparedClaudeSession) =>
+      JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
+        hooks: Record<string, Array<{ hooks: Array<Record<string, unknown>> }>>;
+        statusLine: { command: string };
+        subagentStatusLine: { command: string };
+      };
+
+    it('refuses a launch nothing here can run a forwarder for, before anything is written', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-no-runner-'));
+      // A single executable with no runtime lent: it would run the staged forwarder as itself.
+      const refusal = prepare({ settingsDir: dir, scriptRunner: null, ...statusLines });
+      await expect(refusal).rejects.toMatchObject({ code: 'FORWARDER_RUNTIME_UNAVAILABLE' });
+      await expect(refusal).rejects.toSatisfy(isAgentLaunchRefusedError);
+      expect(readdirSync(dir)).toEqual([]);
+    });
+
+    it('runs the host’s lent runtime with each word and stages nothing', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-lent-'));
+      // A host that lends a runtime needs no runner here.
+      const p = await prepare({ settingsDir: dir, forwarderRuntime: LENT, scriptRunner: null, ...statusLines });
+      const settings = settingsOf(p);
+      expect(settings.hooks.SessionStart![0]!.hooks[0]).toEqual({
+        type: 'command',
+        command: LENT.command,
+        args: [...LENT.args, 'claude.hook.v1', BASE.endpoint, BASE.tokenEnvVar, String(hookTimeoutSec * 1000)],
+        timeout: hookTimeoutSec,
+      });
+      expect(settings.statusLine.command).toBe(
+        statusLineForwarderCommand(LENT.command, [...LENT.args, 'claude.statusline.v1']),
+      );
+      expect(settings.subagentStatusLine.command).toBe(
+        statusLineForwarderCommand(LENT.command, [...LENT.args, 'claude.statusline.v1', 'subagent']),
+      );
+      expect(p.forwarderPath).toBeUndefined();
+      expect(readdirSync(dir)).toEqual([basename(p.settingsPath)]);
+      expect(p.filesToCleanup).toEqual([p.settingsPath]);
+      expect(p.env).not.toHaveProperty('ELECTRON_RUN_AS_NODE');
+    });
+
+    it('stages one forwarder that the hooks and both status lines run under this process’s runner', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-runner-'));
+      const p = await prepare({ settingsDir: dir, scriptRunner: RUNNER, ...statusLines });
+      const forwarderPath = join(dir, `${p.sessionId}.forwarder.mjs`);
+      expect(p.forwarderPath).toBe(forwarderPath);
+      expect(readdirSync(dir).sort()).toEqual([`${p.sessionId}.forwarder.mjs`, `${p.sessionId}.settings.json`].sort());
+      expect(readFileSync(forwarderPath, 'utf8')).toContain('claude.statusline.v1');
+      expect(readFileSync(forwarderPath, 'utf8')).not.toContain(BASE.token);
+      const settings = settingsOf(p);
+      expect(settings.hooks.SessionStart![0]!.hooks[0]).toMatchObject({
+        command: RUNNER.command,
+        args: [
+          ...RUNNER.args,
+          forwarderPath,
+          'claude.hook.v1',
+          BASE.endpoint,
+          BASE.tokenEnvVar,
+          String(hookTimeoutSec * 1000),
+        ],
+      });
+      expect(settings.statusLine.command).toBe(
+        statusLineForwarderCommand(RUNNER.command, [...RUNNER.args, forwarderPath, 'claude.statusline.v1']),
+      );
+      expect(settings.subagentStatusLine.command).toBe(
+        statusLineForwarderCommand(RUNNER.command, [...RUNNER.args, forwarderPath, 'claude.statusline.v1', 'subagent']),
+      );
+      expect(p.env.RUNNER_SWITCH).toBe('1');
+      expect(p.filesToCleanup).toEqual([p.settingsPath, forwarderPath]);
+
+      // A script executable runs under the same runner.
+      const script = await prepare({ executable: '/abs/path/bin.mjs', scriptRunner: RUNNER });
+      expect(script.command).toBe(RUNNER.command);
+      expect(script.args.slice(0, 3)).toEqual(['--no-warnings', '/abs/path/bin.mjs', '--session-id']);
+    });
+
+    it('refuses a script executable nothing here can run, even when the host lends a forwarder', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-script-no-runner-'));
+      const refusal = prepare({
+        settingsDir: dir,
+        executable: '/abs/path/bin.mjs',
+        forwarderRuntime: LENT,
+        scriptRunner: null,
+      });
+      await expect(refusal).rejects.toMatchObject({ code: 'SCRIPT_RUNNER_UNAVAILABLE' });
+      await expect(refusal).rejects.toSatisfy(isAgentLaunchRefusedError);
+      expect(readdirSync(dir)).toEqual([]);
+    });
+  });
+
   it("wires FileChanged only when a caller supplies Claude's filename matcher", async () => {
     const p = await prepare({ fileChangeMatcher: '.envrc|.env' });
     const settings = JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
@@ -557,17 +674,17 @@ describe('prepareClaudeSession', () => {
   it('encodes Windows status-line paths without exposing them to either outer shell', () => {
     const executable = 'C:\\Program Files\\Node $Runtime\\node.exe';
     const script = "C:\\Users\\O'Brien\\hook `status`.mjs";
-    const command = statusLineForwarderCommand(executable, script, 'win32');
+    const command = statusLineForwarderCommand(executable, [script, 'claude.statusline.v1'], 'win32');
     const encoded = command.split(' ').at(-1)!;
     expect(command).not.toContain(executable);
     expect(command).not.toContain(script);
     expect(Buffer.from(encoded, 'base64').toString('utf16le')).toBe(
-      `& '${executable}' '${script.replaceAll("'", "''")}'`,
+      `& '${executable}' '${script.replaceAll("'", "''")}' 'claude.statusline.v1'`,
     );
 
-    const childCommand = statusLineForwarderCommand(executable, script, 'win32', 'subagent');
+    const childCommand = statusLineForwarderCommand(executable, [script, 'claude.statusline.v1', 'subagent'], 'win32');
     expect(Buffer.from(childCommand.split(' ').at(-1)!, 'base64').toString('utf16le')).toBe(
-      `& '${executable}' '${script.replaceAll("'", "''")}' 'subagent'`,
+      `& '${executable}' '${script.replaceAll("'", "''")}' 'claude.statusline.v1' 'subagent'`,
     );
   });
 
@@ -622,8 +739,8 @@ describe('prepareClaudeSession', () => {
         };
       };
 
-      expect(p.statusLineForwarderPath).toBeDefined();
-      expect(existsSync(p.statusLineForwarderPath!)).toBe(true);
+      expect(p.forwarderPath).toBeDefined();
+      expect(existsSync(p.forwarderPath!)).toBe(true);
       expect(settings.statusLine).toMatchObject({
         type: 'command',
         padding: 2,
@@ -636,7 +753,7 @@ describe('prepareClaudeSession', () => {
         PUPPETEER_STATUSLINE_DELEGATE: delegate,
         PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: BASE.tokenEnvVar,
       });
-      expect(readFileSync(p.statusLineForwarderPath!, 'utf8')).not.toContain(BASE.token);
+      expect(readFileSync(p.forwarderPath!, 'utf8')).not.toContain(BASE.token);
 
       await expect(
         runStatusLine(settings.statusLine.command, JSON.stringify({ session_id: 'session-42' }), p.env),
@@ -766,3 +883,102 @@ it.each(['--append-system-prompt=old', '--system-prompt-snapshot=on', '--restric
     });
   },
 );
+
+describe('a person’s own flags under withhold', () => {
+  const briefing = {
+    mcpServers: { field: { command: '/opt/door' } },
+    allowTools: ['field/read'],
+    instructions: 'role briefing',
+  };
+  const withholds = (field: string) => ({ field, code: 'CONFLICTING_LAUNCH_FIELD' });
+
+  it.each([
+    [['--mcp-config', 'mine.json'], ['mcpServers', 'allowTools'], ['instructions']],
+    [['--strict-mcp-config'], ['mcpServers', 'allowTools'], ['instructions']],
+    [['--allowedTools', 'Bash'], ['allowTools'], ['mcpServers', 'instructions']],
+    [['--system-prompt=mine'], ['instructions'], ['mcpServers', 'allowTools']],
+    [['--restricted'], ['mcpServers', 'allowTools', 'instructions'], []],
+  ])('launches %j without what it conflicts with, and says so', async (carriedArgs, out, kept) => {
+    const session = await prepare({ ...briefing, carriedArgs, briefingRefusal: 'withhold' });
+    expect(session.briefingWithheld).toEqual(out.map(withholds));
+    // The person’s own words stay; nothing of ours rides beside them.
+    for (const word of carriedArgs) expect(session.args).toContain(word);
+    expect(session.args.filter((arg) => arg === '--mcp-config')).toHaveLength(
+      Number(kept.includes('mcpServers')) + Number(carriedArgs.includes('--mcp-config')),
+    );
+    expect(session.args.some((arg) => arg.includes('mcp__field__read'))).toBe(kept.includes('allowTools'));
+    expect(session.args.includes('--append-system-prompt-file')).toBe(kept.includes('instructions'));
+  });
+
+  it('reports nothing withheld when nothing conflicts', async () => {
+    const session = await prepare({ ...briefing, carriedArgs: ['--verbose'], briefingRefusal: 'withhold' });
+    expect(session.briefingWithheld ?? []).toEqual([]);
+    expect(session.args).toContain('--mcp-config');
+  });
+
+  it('keeps refusing by default', async () => {
+    await expect(prepareClaudeSession({ ...BASE, ...briefing, carriedArgs: ['--restricted'] })).rejects.toMatchObject({
+      code: 'CONFLICTING_LAUNCH_FIELD',
+    });
+  });
+
+  it('withholds what the imposter cannot execute, rather than failing a typed launch', async () => {
+    const session = await prepare({ env: { AI_PERSONA: 'claude' }, instructions: 'role', briefingRefusal: 'withhold' });
+    expect(session.briefingWithheld).toEqual([{ field: 'instructions', code: 'UNSUPPORTED_LAUNCH_FIELD' }]);
+  });
+
+  it('withholds what the executable has no flag for, end to end through a preparation', async () => {
+    // /usr/bin/true answers every probe with nothing: every briefing flag is missing, and no agent runs.
+    const stagingDir = mkdtempSync(join(tmpdir(), 'prepare-withhold-'));
+    const configDir = mkdtempSync(join(tmpdir(), 'prepare-withhold-config-'));
+    const session = await prepareClaudeTuiSession({
+      cwd: BASE.cwd,
+      home: BASE.home,
+      configDir,
+      stagingDir,
+      executable: '/usr/bin/true',
+      ...briefing,
+      briefingRefusal: 'withhold',
+      automate: async () => ({ accepted: true }),
+    });
+    try {
+      expect(session.briefingWithheld).toEqual([
+        { field: 'mcpServers', code: 'UNSUPPORTED_LAUNCH_FIELD' },
+        { field: 'allowTools', code: 'UNSUPPORTED_LAUNCH_FIELD' },
+        { field: 'instructions', code: 'UNSUPPORTED_LAUNCH_FIELD' },
+      ]);
+      expect(session.launch.args).not.toContain('--mcp-config');
+    } finally {
+      await session.dispose();
+      rmSync(stagingDir, { recursive: true, force: true });
+      rmSync(configDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('a run’s staging directory, the runtime’s (PU-C)', () => {
+  it('writes every launch file in the directory it is handed, and removes the files, never the directory', async () => {
+    const stagingDir = mkdtempSync(join(tmpdir(), 'prepare-staging-'));
+    const configDir = mkdtempSync(join(tmpdir(), 'prepare-staging-config-'));
+    const session = await prepareClaudeTuiSession({
+      cwd: BASE.cwd,
+      home: BASE.home,
+      configDir,
+      stagingDir,
+      automate: async () => ({ accepted: true }),
+    });
+    try {
+      const { settingsPath, forwarderPath } = session.launch;
+      expect([dirname(settingsPath), dirname(forwarderPath!)]).toEqual([stagingDir, stagingDir]);
+      expect(readdirSync(stagingDir).sort()).toEqual([basename(settingsPath), basename(forwarderPath!)].sort());
+      expect(session.launch.filesToCleanup).not.toContain(stagingDir);
+    } finally {
+      await session.dispose();
+    }
+    // the files go with the session; the directory is the runtime's, removed when the run is over
+    expect(existsSync(stagingDir)).toBe(true);
+    expect(readdirSync(stagingDir)).toEqual([]);
+    rmSync(stagingDir, { recursive: true, force: true });
+    rmSync(configDir, { recursive: true, force: true });
+  });
+});

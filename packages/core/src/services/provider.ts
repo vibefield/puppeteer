@@ -15,9 +15,11 @@ export const AgentBriefingCapabilitiesSchema = z.strictObject({
   instructions: z.boolean(),
   /**
    * Where stdio servers run. A host that authenticates by terminal ancestry must require `terminal`;
-   * a helper needs a separate trusted process-to-run association, and an external ACP agent owns its topology.
+   * `run-helper` is one helper process per run outside the terminal, named to the host through
+   * `HostIngress.onHelperProcess` before anything can start a server; a `helper` needs a separate trusted
+   * process-to-run association, and an external ACP agent owns its topology.
    */
-  mcpServerProcess: z.enum(['terminal', 'helper', 'external']).optional(),
+  mcpServerProcess: z.enum(['terminal', 'helper', 'run-helper', 'external']).optional(),
 });
 export type AgentBriefingCapabilities = z.infer<typeof AgentBriefingCapabilitiesSchema>;
 

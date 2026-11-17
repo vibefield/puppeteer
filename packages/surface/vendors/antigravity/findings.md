@@ -3,10 +3,10 @@
 ## Current baseline: 1.1.20
 
 Status: canonical ground truth, adapter, Imposter persona, built-in provider,
-and local conformance are implemented for `1.1.20`. The baseline remains
-`baseline-pending`: no support-promotion claim is made until a guarded,
-matching-platform native-TUI/resume lane is implemented and has produced
-artifact-bound durable-observation receipts on all four platforms.
+and local conformance are implemented for `1.1.20`. Protected promotion
+[run 41891078677](https://github.com/vibefield/puppeteer/actions/runs/41891078677) passed the native-TUI/resume lane on all
+four platforms, so 1.1.20 is verified. 1.4.12 is still in progress (draft
+PR #60) and is not supported.
 
 The vendor-root `groundtruth.json` is the single Puppeteer truth artifact. It
 is generated from the complete Rosetta `rosetta-groundtruth/1` inventory and
@@ -87,7 +87,8 @@ the 1.1.20 adapter does not handle:
 The corpus is not imported. Rosetta pins the newest farmed release that has
 writer evidence, and its only protobuf grammar is the 1.2.9 FileDescriptorSet
 extraction, so 1.4.12 first needs its own descriptor extraction, plus Rosetta
-raw types for the transcript drift. The ledger's blockers list these steps.
+raw types for the transcript drift. That work is in progress on
+`adapt/antigravity-1.4.12` (draft PR #60).
 
 On 2026-11-04 the six writer message schemas were independently extracted from
 1.4.12's official darwin-arm64 executable. Their projected field shapes match

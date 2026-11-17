@@ -1,14 +1,16 @@
 /** Grok durable-log tailing service. */
 
-import { open, readdir, readFile, stat } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
+import { open, readFile, stat } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { GrokUpdateNormalizer } from '../normalization/pipeline.js';
 import {
+  GROK_REPLAY_SETTLED,
   grokRecordTimestamp,
   type GrokObservedEvent,
   type GrokSessionObserver,
   type GrokUpdateRecord,
 } from '../normalization/types.js';
+import { findGrokSessionDirectory, measureGrokReplayBoundary } from './session-discovery.js';
 
 interface GrokSignals {
   contextTokensUsed?: number;
@@ -28,7 +30,12 @@ interface GrokSummary {
 }
 
 export interface GrokSessionObserverOptions {
+  /** The fast cadence, while a file changed or the rail woke the observer within `idleAfterMs`. */
   pollIntervalMs?: number;
+  /** How long a change or a wake holds the fast cadence. */
+  idleAfterMs?: number;
+  /** The idle cadence. It is never faster than `pollIntervalMs`. */
+  idlePollIntervalMs?: number;
   signalsPath?: string;
   summaryPath?: string;
   modelsCachePath?: string;
@@ -38,6 +45,18 @@ export interface GrokSessionObserverOptions {
   maxRecordBytes?: number;
   /** Yield after this many newly appended bytes; the next poll continues. */
   maxBytesPerPoll?: number;
+  /**
+   * The log's size when the session was opened: records below it are history, every later record is live. The caller
+   * that opened the session knows it (0 for a session nothing has written to yet; else `measureGrokReplayBoundary`,
+   * before a prompt can reach Grok). Without it the observer measures the log as it stands at construction, the same
+   * way, and never at a poll.
+   */
+  replayBoundary?: number;
+}
+
+/** A file as one stat sees it: a rewrite changes the key. */
+function fileKey({ mtimeMs, size, ino }: { mtimeMs: number; size: number; ino: number }): string {
+  return `${mtimeMs}:${size}:${ino}`;
 }
 
 export function createGrokSessionObserver(
@@ -55,21 +74,37 @@ export function createGrokSessionObserver(
   let lastCompactionCount: number | undefined;
   let lastEnvironment: string | undefined;
   let lastModelId: string | undefined;
+  /** Each JSON file's key at its last successful parse, so a partial in-place rewrite is read again. */
+  let parsedSignalsKey: string | undefined;
+  let parsedSummaryKey: string | undefined;
   let currentUpdatesPath = updatesPath;
   let currentSessionDirectory = dirname(updatesPath);
-  const sessionId = basename(currentSessionDirectory);
   const sessionsRoot = dirname(dirname(currentSessionDirectory));
   let lastRelocationSearch = 0;
   let relocationSearch: Promise<void> | undefined;
   let stopped = false;
   let polling: Promise<void> | undefined;
+  const pollIntervalMs = options.pollIntervalMs ?? 75;
+  const idleAfterMs = options.idleAfterMs ?? 1_000;
+  const idlePollIntervalMs = Math.max(pollIntervalMs, options.idlePollIntervalMs ?? 1_000);
+  /** When a file last changed or the rail last woke the observer. */
+  let lastActivityAt = Date.now();
+  let pollTimer: ReturnType<typeof setTimeout> | undefined;
+  let pollTimerDueAt = 0;
   let bootstrap = true;
-  let bootstrapTargetOffset: number | undefined;
-  let bootstrapUpdatesComplete = false;
+  /**
+   * The log's size when the session was opened: a record whose first byte lies before it is replay, and any other is
+   * live. It is drawn before the binding can carry a prompt, never at a poll: the first poll starts unawaited at
+   * adoption and races the prompt a host submits at once, and a line drawn after that prompt's first records would
+   * replay them and settle a live turn.
+   */
+  const bootstrapTargetOffset = options.replayBoundary ?? measureGrokReplayBoundary(updatesPath);
   const readChunkBytes = Math.max(1, Math.floor(options.readChunkBytes ?? 64 * 1024));
   const maxRecordBytes = Math.max(readChunkBytes, Math.floor(options.maxRecordBytes ?? 1024 * 1024));
   const maxBytesPerPoll = Math.max(readChunkBytes, Math.floor(options.maxBytesPerPoll ?? 4 * 1024 * 1024));
   let pendingUpdate = Buffer.alloc(0);
+  /** The file offset of the first byte of the record being read. */
+  let updateStartOffset = 0;
   let discardingOversizedUpdate = false;
 
   const report = (error: unknown): void => {
@@ -97,11 +132,31 @@ export function createGrokSessionObserver(
     report(new Error(`Grok update record exceeds the ${maxRecordBytes}-byte safety limit`));
   };
 
-  const normalizeUpdateLine = (line: Buffer): void => {
+  /**
+   * A replay is a baseline: a launch or resume process is not in the middle of what the log last shows. What it left
+   * open ends here, ahead of any live record, and a marker says so. A log with nothing to replay has neither.
+   */
+  const endReplay = (): void => {
+    if (!bootstrap) return;
+    if (bootstrapTargetOffset) {
+      for (const event of normalizer.settleReplay()) emit({ ...event, phase: 'bootstrap' });
+      emit({
+        event: { type: 'adapter:native-event', adapter: 'grok', nativeType: GROK_REPLAY_SETTLED },
+        phase: 'bootstrap',
+        source: 'runtime',
+        confidence: 'derived',
+        nativeEvent: { code: 'grok-replay-settled' },
+      });
+    }
+    bootstrap = false;
+  };
+
+  const normalizeUpdateLine = (line: Buffer, startOffset: number): void => {
     if (line.length === 0) return;
+    if (startOffset >= bootstrapTargetOffset) endReplay();
     try {
       const record = JSON.parse(line.toString('utf8')) as GrokUpdateRecord;
-      for (const event of normalizer.normalize(record)) {
+      for (const event of normalizer.normalize(record, { replay: bootstrap })) {
         emit({ ...event, phase: bootstrap ? 'bootstrap' : 'live' });
       }
       // Grok writes signals.json at turn boundaries. During a long tool loop,
@@ -137,8 +192,8 @@ export function createGrokSessionObserver(
     }
   };
 
-  /** Consume arbitrary file chunks while retaining at most one bounded partial line. */
-  const consumeUpdateBytes = (chunk: Buffer): void => {
+  /** Consume arbitrary file chunks, read from `chunkOffset`, while retaining at most one bounded partial line. */
+  const consumeUpdateBytes = (chunk: Buffer, chunkOffset: number): void => {
     let cursor = 0;
     while (cursor < chunk.length) {
       if (discardingOversizedUpdate) {
@@ -146,6 +201,7 @@ export function createGrokSessionObserver(
         if (newline < 0) return;
         discardingOversizedUpdate = false;
         cursor = newline + 1;
+        updateStartOffset = chunkOffset + cursor;
         continue;
       }
 
@@ -161,34 +217,25 @@ export function createGrokSessionObserver(
       } else {
         const complete = pendingUpdate.length === 0 ? fragment : Buffer.concat([pendingUpdate, fragment]);
         pendingUpdate = Buffer.alloc(0);
-        normalizeUpdateLine(complete);
+        normalizeUpdateLine(complete, updateStartOffset);
       }
       if (newline < 0) return;
       cursor = newline + 1;
+      updateStartOffset = chunkOffset + cursor;
     }
   };
 
+  /** A file is missing: the session's directory may be in another cwd bucket. One search at a time, one a second. */
   const locateRelocatedSession = async (): Promise<void> => {
     if (relocationSearch) return relocationSearch;
     const now = Date.now();
     if (now - lastRelocationSearch < 1_000) return;
     lastRelocationSearch = now;
     const pending = (async (): Promise<void> => {
-      try {
-        for (const cwdDirectory of await readdir(sessionsRoot)) {
-          const candidate = join(sessionsRoot, cwdDirectory, sessionId);
-          try {
-            await stat(join(candidate, 'summary.json'));
-            currentSessionDirectory = candidate;
-            currentUpdatesPath = join(candidate, 'updates.jsonl');
-            return;
-          } catch {
-            // Continue scanning cwd buckets.
-          }
-        }
-      } catch {
-        // The next regular poll retries.
-      }
+      const directory = await findGrokSessionDirectory(updatesPath);
+      if (directory === undefined) return;
+      currentSessionDirectory = directory;
+      currentUpdatesPath = join(directory, 'updates.jsonl');
     })();
     relocationSearch = pending;
     try {
@@ -201,49 +248,36 @@ export function createGrokSessionObserver(
   const pollUpdates = async (): Promise<void> => {
     let handle: Awaited<ReturnType<typeof open>> | undefined;
     try {
-      handle = await open(currentUpdatesPath, 'r');
-      const info = await handle.stat();
-      bootstrapTargetOffset ??= info.size;
+      const info = await stat(currentUpdatesPath);
       if (info.size < offset) {
         offset = 0;
+        updateStartOffset = 0;
         pendingUpdate = Buffer.alloc(0);
         discardingOversizedUpdate = false;
       }
-      let remaining = Math.min(info.size - offset, maxBytesPerPoll);
-      while (remaining > 0) {
-        const requested = Math.min(readChunkBytes, remaining);
-        const chunk = Buffer.allocUnsafe(requested);
-        const { bytesRead } = await handle.read(chunk, 0, requested, offset);
-        if (bytesRead === 0) break;
-        offset += bytesRead;
-        remaining -= bytesRead;
-        consumeUpdateBytes(chunk.subarray(0, bytesRead));
+      if (info.size !== offset) {
+        lastActivityAt = Date.now();
+        handle = await open(currentUpdatesPath, 'r');
+        let remaining = Math.min(info.size - offset, maxBytesPerPoll);
+        while (remaining > 0) {
+          const requested = Math.min(readChunkBytes, remaining);
+          const chunk = Buffer.allocUnsafe(requested);
+          const { bytesRead } = await handle.read(chunk, 0, requested, offset);
+          if (bytesRead === 0) break;
+          const chunkOffset = offset;
+          offset += bytesRead;
+          remaining -= bytesRead;
+          consumeUpdateBytes(chunk.subarray(0, bytesRead), chunkOffset);
+        }
       }
-      if (
-        bootstrapTargetOffset !== undefined &&
-        offset >= bootstrapTargetOffset &&
-        pendingUpdate.length === 0 &&
-        !discardingOversizedUpdate
-      ) {
-        bootstrapUpdatesComplete = true;
-      }
+      // Every replayed record is out once the next record, whole or not, starts at or past the boundary.
+      if (updateStartOffset >= bootstrapTargetOffset) endReplay();
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // Find the log, never measure it: the next poll reads it where it is, against the boundary drawn at open. A
+        // session with no log when it was opened has nothing to replay, so its replay ends here.
         await locateRelocatedSession();
-        if (bootstrapTargetOffset === undefined) {
-          try {
-            bootstrapTargetOffset = (await stat(currentUpdatesPath)).size;
-          } catch (relocatedError) {
-            if ((relocatedError as NodeJS.ErrnoException).code === 'ENOENT') {
-              // No durable log existed at adoption, so any later file content
-              // is live rather than replayed history.
-              bootstrapTargetOffset = 0;
-              bootstrapUpdatesComplete = true;
-            } else {
-              report(relocatedError);
-            }
-          }
-        }
+        if (bootstrapTargetOffset === 0) endReplay();
       } else report(error);
     } finally {
       await handle?.close().catch(() => undefined);
@@ -253,8 +287,10 @@ export function createGrokSessionObserver(
   const pollSignals = async (): Promise<void> => {
     const signalsPath = options.signalsPath ?? join(currentSessionDirectory, 'signals.json');
     try {
+      const info = await stat(signalsPath);
+      const key = fileKey(info);
+      if (key === parsedSignalsKey) return;
       const raw = await readFile(signalsPath, 'utf8');
-      const signalsTimestamp = (await stat(signalsPath)).mtimeMs;
       let signals: GrokSignals;
       try {
         signals = JSON.parse(raw) as GrokSignals;
@@ -263,6 +299,8 @@ export function createGrokSessionObserver(
         // must be retried on the next poll rather than surfaced as corruption.
         return;
       }
+      parsedSignalsKey = key;
+      lastActivityAt = Date.now();
 
       const compactionCount = signals.compactionCount;
       const compacted =
@@ -307,9 +345,9 @@ export function createGrokSessionObserver(
       const fingerprint = `${usedTokens}:${capacityTokens}:${modelId ?? ''}`;
       if (fingerprint === lastSignalsMeasurement) return;
       lastSignalsMeasurement = fingerprint;
-      if (signalsTimestamp < lastContextTimestamp) return;
+      if (info.mtimeMs < lastContextTimestamp) return;
       contextCapacity = capacityTokens;
-      lastContextTimestamp = signalsTimestamp;
+      lastContextTimestamp = info.mtimeMs;
       lastContextMeasurement = `${usedTokens}:${capacityTokens}`;
       emit({
         event: { type: 'context-window:updated', usedTokens, capacityTokens, modelId },
@@ -326,7 +364,11 @@ export function createGrokSessionObserver(
   const pollSummary = async (): Promise<void> => {
     const summaryPath = options.summaryPath ?? join(currentSessionDirectory, 'summary.json');
     try {
+      const key = fileKey(await stat(summaryPath));
+      if (key === parsedSummaryKey) return;
       const summary = JSON.parse(await readFile(summaryPath, 'utf8')) as GrokSummary;
+      parsedSummaryKey = key;
+      lastActivityAt = Date.now();
       const currentCwd =
         typeof summary.info?.cwd === 'string'
           ? summary.info.cwd
@@ -385,17 +427,26 @@ export function createGrokSessionObserver(
     polling = pollSignals()
       .then(pollSummary)
       .then(pollUpdates)
-      .then(() => {
-        if (bootstrapUpdatesComplete) bootstrap = false;
-      })
       .finally(() => {
         polling = undefined;
       });
     return polling;
   };
 
-  const interval = setInterval(() => void poll(), options.pollIntervalMs ?? 75);
-  interval.unref?.();
+  /** One timer at a time: the next delay is chosen when a poll ends, so polls never overlap. */
+  const schedulePoll = (delayMs: number): void => {
+    clearTimeout(pollTimer);
+    pollTimerDueAt = Date.now() + delayMs;
+    pollTimer = setTimeout(() => {
+      pollTimer = undefined;
+      void poll().finally(() => {
+        if (stopped) return;
+        schedulePoll(Date.now() - lastActivityAt < idleAfterMs ? pollIntervalMs : idlePollIntervalMs);
+      });
+    }, delayMs);
+    pollTimer.unref?.();
+  };
+  schedulePoll(pollIntervalMs);
 
   return {
     onEvent(listener) {
@@ -407,10 +458,16 @@ export function createGrokSessionObserver(
       return () => errorListeners.delete(listener);
     },
     poll,
+    wake() {
+      if (stopped) return;
+      lastActivityAt = Date.now();
+      // Pull a slow timer forward. A nearer one, or a poll in flight, already keeps the fast cadence.
+      if (pollTimer !== undefined && pollTimerDueAt - lastActivityAt > pollIntervalMs) schedulePoll(pollIntervalMs);
+    },
     stop() {
       if (stopped) return;
       stopped = true;
-      clearInterval(interval);
+      clearTimeout(pollTimer);
       eventListeners.clear();
       errorListeners.clear();
     },

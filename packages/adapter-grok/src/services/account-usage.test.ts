@@ -1,5 +1,5 @@
 import { AccountUsageSnapshotSchema, type AgentProfile } from '@vibefield/puppeteer-core';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createGrokAccountUsageService,
   fetchGrokAccountUsage,
@@ -8,6 +8,10 @@ import {
 } from './account-usage.js';
 import { GROK_PROFILE_ROOT_VARIABLE } from './profiles.js';
 import { GROK_BILLING_ACP_METHOD, type GrokAgentTransport } from '../transport/agent-client.js';
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 const creditsFixture = {
   config: {
@@ -297,6 +301,18 @@ describe('Grok account usage per profile', () => {
     createdAt: '2026-09-06T00:00:00.000Z',
   };
   const nativeDefault: AgentProfile = { ...managed, id: 'grok:native-default', kind: 'native-default' };
+  /** What a host may hand this process: credentials that sign Grok in, a root, and its own variables. */
+  const ambient = {
+    PATH: '/usr/bin:/bin',
+    HOME: '/Users/test',
+    XAI_API_KEY: 'xai-ambient-key',
+    GROK_CODE_XAI_API_KEY: 'xai-legacy-key',
+    GROK_AUTH: '{"key":"inline"}',
+    GROK_AUTH_PATH: '/elsewhere/auth.json',
+    GROK_HOME: '/ambient',
+    FIELDD_DATA_DIR: '/ambient/fieldd',
+  };
+  const probe = { PATH: '/usr/bin:/bin', HOME: '/Users/test' };
 
   function recordingSpawn(): {
     spawnTransport: (options: { executable?: string; env?: Record<string, string> }) => GrokAgentTransport;
@@ -318,46 +334,58 @@ describe('Grok account usage per profile', () => {
 
   it('binds the agent to the profile root and stamps the profile id', async () => {
     const spawn = recordingSpawn();
-    const result = await fetchGrokAccountUsageForProfile(managed, { spawnTransport: spawn.spawnTransport });
+    const result = await fetchGrokAccountUsageForProfile(managed, { ambient, spawnTransport: spawn.spawnTransport });
 
     expect(result).toMatchObject({ status: 'available' });
     if (result.status !== 'available') return;
     expect(result.snapshot.profileId).toBe('grok:7a10');
-    expect(spawn.spawns).toEqual([
-      { env: { [GROK_PROFILE_ROOT_VARIABLE]: '/Users/test/.puppeteer/profiles/grok/7a10' } },
-    ]);
+    expect(spawn.spawns).toEqual([{ env: { ...probe, [GROK_PROFILE_ROOT_VARIABLE]: managed.dataRoot } }]);
   });
 
-  it('reads the native default account without a binding', async () => {
+  it('reads the native default account in the allow-list alone, with no credential and no ambient root', async () => {
     const spawn = recordingSpawn();
-    const result = await fetchGrokAccountUsageForProfile(nativeDefault, { spawnTransport: spawn.spawnTransport });
+    const result = await fetchGrokAccountUsageForProfile(nativeDefault, {
+      ambient,
+      spawnTransport: spawn.spawnTransport,
+    });
 
     expect(result).toMatchObject({ status: 'available' });
     if (result.status !== 'available') return;
     expect(result.snapshot.profileId).toBe('grok:native-default');
-    expect(spawn.spawns).toEqual([{}]);
+    expect(spawn.spawns).toEqual([{ env: probe }]);
   });
 
   it('leaves a snapshot unstamped when no profile was selected', async () => {
     const spawn = recordingSpawn();
-    const result = await fetchGrokAccountUsageForProfile(undefined, { spawnTransport: spawn.spawnTransport });
+    const result = await fetchGrokAccountUsageForProfile(undefined, { ambient, spawnTransport: spawn.spawnTransport });
 
     expect(result).toMatchObject({ status: 'available' });
     if (result.status !== 'available') return;
     expect(result.snapshot.profileId).toBeUndefined();
-    expect(spawn.spawns).toEqual([{}]);
+    expect(spawn.spawns).toEqual([{ env: probe }]);
+  });
+
+  it("draws on this process's own environment by default, through the same allow-list", async () => {
+    vi.stubEnv('LANG', 'en_GB.UTF-8');
+    vi.stubEnv('XAI_API_KEY', 'xai-ambient-key');
+    vi.stubEnv('GROK_HOME', '/ambient');
+    const spawn = recordingSpawn();
+    await fetchGrokAccountUsageForProfile(undefined, { spawnTransport: spawn.spawnTransport });
+
+    const env = spawn.spawns[0]?.env;
+    expect(env?.LANG).toBe('en_GB.UTF-8');
+    expect(env).not.toHaveProperty('XAI_API_KEY');
+    expect(env).not.toHaveProperty('GROK_HOME');
   });
 
   it('routes the service fetch through the selected profile', async () => {
     const spawn = recordingSpawn();
-    const service = createGrokAccountUsageService({ spawnTransport: spawn.spawnTransport });
+    const service = createGrokAccountUsageService({ ambient, spawnTransport: spawn.spawnTransport });
     const result = await service.fetch({ profile: managed });
 
     expect(result).toMatchObject({ status: 'available' });
     if (result.status !== 'available') return;
     expect(result.snapshot.profileId).toBe('grok:7a10');
-    expect(spawn.spawns).toEqual([
-      { env: { [GROK_PROFILE_ROOT_VARIABLE]: '/Users/test/.puppeteer/profiles/grok/7a10' } },
-    ]);
+    expect(spawn.spawns).toEqual([{ env: { ...probe, [GROK_PROFILE_ROOT_VARIABLE]: managed.dataRoot } }]);
   });
 });

@@ -18,9 +18,11 @@
 //    reports it (`commands.report({ physics })`), so a silent fall-back to the
 //    main thread shows up as a failed row rather than as a working swarm.
 //
-// A worker that dies AFTER it proved itself is not rebuilt: replaying a whole
-// world into a new thread mid-gesture would be half a fix. It is said out loud
-// (`onError`) and the mode stays `worker`.
+// An `error` event AFTER the worker proved itself is an exception it did not
+// catch, not its end: a dedicated worker keeps running and takes the commands
+// that follow. It is passed on (`onError`, for the view's log) and the mode
+// stays `worker`. Nothing is rebuilt: replaying a whole world into a new thread
+// mid-gesture would be half a fix.
 //
 // How a view names its worker so that every host's bundler finds it is in
 // README.md beside this file ("Workers and bundlers").
@@ -72,7 +74,7 @@ export interface WorkerDriverOptions<Command, Message> {
   readyTimeoutMs?: number;
   /** The simulation is running in this thread instead: why. For the host's log, never a toast. */
   onDemote?(reason: string): void;
-  /** A worker that had proved itself died. The view says so on its stage. */
+  /** A worker that had proved itself raised an error it did not catch. It keeps running; the mode stays `worker`. */
   onError?(detail: string, error: unknown): void;
 }
 

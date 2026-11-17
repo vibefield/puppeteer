@@ -304,6 +304,12 @@ export interface RuntimeMonitorInput {
   kind: 'runtime';
   schemaVersion: 1;
   eventId: string;
+  /**
+   * Who minted `eventId`. A 'source' identity can be delivered again (a replay or a reconnect), so the
+   * reducer rejects its repeat for the run's life. A 'delivery' identity is minted unique per input by the
+   * runtime, so the reducer neither checks nor retains it. Absent reads 'source'.
+   */
+  identity?: 'source' | 'delivery' | undefined;
   runtimeRunId: RuntimeRunId;
   runtimeEpoch: number;
   phase: 'bootstrap' | 'live';
@@ -467,10 +473,17 @@ export interface MonitorStoredEntry {
   /** Original live boundary retained when a later correction replaces this entry. */
   rateEligible: boolean;
   rateAt?: string | undefined;
+  /**
+   * `Date.parse(rateAt ?? effectiveAt ?? observedAt)`, taken once when the reducer stores the entry, and
+   * NEGATIVE_INFINITY when that is not a timestamp: the usage ledger orders and windows by it without parsing
+   * again. An entry built outside the reducer may omit it; readers parse it then.
+   */
+  timeMs?: number | undefined;
 }
 
 export interface MonitorRuntimeSlice {
   seenEventIds: ReadonlySet<string>;
+  /** The plane's claims of every family but usage, which lives in `MonitorAccumulatorState.usage`. */
   entries: ReadonlyMap<string, MonitorStoredEntry>;
   lastAcceptedAt?: string | undefined;
 }
@@ -489,6 +502,7 @@ export interface MonitorSemanticProducerState {
 export interface MonitorSemanticSlice {
   seenBatchIds: ReadonlySet<string>;
   producers: ReadonlyMap<string, MonitorSemanticProducerState>;
+  /** The plane's claims of every family but usage, which lives in `MonitorAccumulatorState.usage`. */
   entries: ReadonlyMap<string, MonitorStoredEntry>;
   /** Invisible replacement slices keyed by producer until a ready barrier commits them. */
   resyncs: ReadonlyMap<
@@ -505,12 +519,24 @@ export interface MonitorSemanticSlice {
 
 export interface MonitorWorkspaceSlice {
   seenRecordIds: ReadonlySet<string>;
+  /** The plane's claims of every family but usage, which lives in `MonitorAccumulatorState.usage`. */
   entries: ReadonlyMap<string, MonitorStoredEntry>;
   provenance: ReadonlyMap<string, MonitorWorkspaceProvenanceState>;
   /** Most recent private workspace-plane input, including provenance-only records. */
   lastAcceptedAt?: string | undefined;
   /** Most recent workspace input that can change the public monitor projection. */
   lastPublicAcceptedAt?: string | undefined;
+}
+
+/**
+ * The live usage ledger (RFC 008) of every plane, kept apart from the planes' other claims: usage changes only on
+ * a usage update, so any other input shares this slice as it is, and so does the index derived from it.
+ */
+export interface MonitorUsageSlice {
+  /** Every plane's usage claims by storage key, in the order each plane stored them. */
+  entries: ReadonlyMap<string, MonitorStoredEntry>;
+  /** The storage keys holding each `[plane, ownerId, usageId]` identity: the cross-epoch lookup's index. */
+  byOwnerUsageId: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 export interface CreateMonitorAccumulatorOptions {
@@ -539,8 +565,8 @@ export interface MonitorAccumulatorState {
   runtime: MonitorRuntimeSlice;
   semantic: MonitorSemanticSlice;
   workspace: MonitorWorkspaceSlice;
+  usage: MonitorUsageSlice;
   expiredLeaseIds: ReadonlySet<string>;
-  emittedNotificationIds: ReadonlySet<string>;
   compactionCount: number;
 }
 

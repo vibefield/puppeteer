@@ -526,3 +526,163 @@ describe('run briefings alongside model selection', () => {
     expect(runtime.launchProviders()[0]!.briefing!.instructions).toBe(true);
   });
 });
+
+describe('a typed launch carries a briefing', () => {
+  const briefing = () => ({
+    mcpServers: { field: { command: 'door', env: { TOKEN: 'run-secret' } } },
+    allowTools: ['field/*'],
+    instructions: 'role briefing',
+  });
+  const everything = { mcpServers: true, allowTools: true, instructions: true };
+  const invocation = (cwd: string) => ({
+    providerId: 'example',
+    cwd,
+    argv: [],
+    environment: {},
+    implementation: { kind: 'native' as const },
+  });
+
+  async function typedSetup(
+    capabilities: { mcpServers: boolean; allowTools: boolean; instructions: boolean } = everything,
+    adapterWithheld?: readonly { field: 'mcpServers' | 'allowTools' | 'instructions'; code: string }[],
+  ) {
+    const cwd = await realpath(await mkdtemp(join(tmpdir(), 'runtime-typed-')));
+    cleanups.push(() => rm(cwd, { recursive: true, force: true }));
+    const prepare = vi.fn(async (options: { cwd: string }) => ({
+      sessionId: 'typed-native',
+      launch: { command: 'example', args: [], cwd: options.cwd },
+      ...(adapterWithheld === undefined ? {} : { briefingWithheld: adapterWithheld }),
+      async adopt(runtimeSessionId: string): Promise<AgentAdapterBinding> {
+        return {
+          sessionId: 'typed-native',
+          runtimeSessionId,
+          observationLevel: () => 'structured',
+          events: { onCandidate: () => () => {} },
+          services: { prompt: { submit: async () => ({ status: 'confirmed', turnId: 'turn' }) } },
+          async dispose() {},
+        };
+      },
+      async dispose() {},
+    }));
+    const provider: AgentProvider = {
+      descriptor: { id: 'example', label: 'Example', briefing: capabilities },
+      createSession: vi.fn(async () => {
+        throw new Error('a typed launch is prepared, never created');
+      }),
+      prepareSession: prepare,
+      launch: {
+        provider: {
+          id: 'example',
+          label: 'Example',
+          resume: true,
+          nativeInvocation: { commands: [{ name: 'example', executable: 'example' }], environmentVariables: [] },
+        },
+        normalizeInvocation: () => ({ status: 'accepted' }),
+      },
+    };
+    const runtime = createAgentRuntime({
+      defaultCwd: cwd,
+      providers: [provider],
+      host: {
+        async spawnTerminal() {
+          throw new Error('unexpected terminal');
+        },
+        async automateTerminal() {
+          return { accepted: true };
+        },
+      },
+    });
+    cleanups.push(async () => {
+      await runtime.dispose();
+    });
+    return { runtime, prepare, cwd };
+  }
+
+  it('hands the adapter the briefing and the policy, and says what applied', async () => {
+    const { runtime, prepare, cwd } = await typedSetup();
+    const prepared = await runtime.prepareInvocation({
+      ...invocation(cwd),
+      ...briefing(),
+      briefingRefusal: 'withhold',
+    });
+    if ('error' in prepared) throw new Error(prepared.error.message);
+    expect(prepare).toHaveBeenCalledWith(expect.objectContaining({ ...briefing(), briefingRefusal: 'withhold' }));
+    expect(prepared.briefing).toEqual({ applied: ['mcpServers', 'allowTools', 'instructions'], withheld: [] });
+    expect(JSON.stringify(prepared.briefing)).not.toContain('run-secret');
+    await runtime.cancelPrepared(prepared.preparationId);
+  });
+
+  it('refuses by default, as every launch door does', async () => {
+    const { runtime, prepare, cwd } = await typedSetup({ ...everything, instructions: false });
+    const refused = await runtime.prepareInvocation({ ...invocation(cwd), instructions: 'role briefing' });
+    expect(refused).toMatchObject({
+      error: { code: 'AGENT_LAUNCH_REFUSED', refusal: { code: 'UNSUPPORTED_LAUNCH_FIELD' } },
+    });
+    expect(prepare).not.toHaveBeenCalled();
+  });
+
+  it('withholds what this provider cannot take and launches with the rest', async () => {
+    const { runtime, prepare, cwd } = await typedSetup({ mcpServers: true, allowTools: false, instructions: false });
+    const prepared = await runtime.prepareInvocation({
+      ...invocation(cwd),
+      ...briefing(),
+      briefingRefusal: 'withhold',
+    });
+    if ('error' in prepared) throw new Error(prepared.error.message);
+    const [handed] = prepare.mock.calls[0]! as unknown as [Record<string, unknown>];
+    expect(handed.mcpServers).toEqual(briefing().mcpServers);
+    expect(handed).not.toHaveProperty('allowTools');
+    expect(handed).not.toHaveProperty('instructions');
+    expect(prepared.briefing).toEqual({
+      applied: ['mcpServers'],
+      withheld: [
+        { field: 'allowTools', code: 'UNSUPPORTED_LAUNCH_FIELD' },
+        { field: 'instructions', code: 'UNSUPPORTED_LAUNCH_FIELD' },
+      ],
+    });
+    await runtime.cancelPrepared(prepared.preparationId);
+  });
+
+  it('adds what the adapter withheld at launch, and the adopted session says the same', async () => {
+    const conflict = [
+      { field: 'mcpServers', code: 'CONFLICTING_LAUNCH_FIELD' },
+      { field: 'allowTools', code: 'CONFLICTING_LAUNCH_FIELD' },
+    ] as const;
+    const { runtime, cwd } = await typedSetup(everything, conflict);
+    const prepared = await runtime.prepareInvocation({
+      ...invocation(cwd),
+      ...briefing(),
+      briefingRefusal: 'withhold',
+    });
+    if ('error' in prepared) throw new Error(prepared.error.message);
+    const receipt = { applied: ['instructions'], withheld: [...conflict] };
+    expect(prepared.briefing).toEqual(receipt);
+    const adopted = await runtime.adoptPrepared(prepared.preparationId, { terminalSessionId: 'pane-1' });
+    if ('error' in adopted) throw new Error(adopted.error.message);
+    expect(adopted.briefing).toEqual(receipt);
+  });
+
+  it('says nothing about a launch that asked for nothing', async () => {
+    const { runtime, cwd } = await typedSetup();
+    const prepared = await runtime.prepareInvocation({ ...invocation(cwd), briefingRefusal: 'withhold' });
+    if ('error' in prepared) throw new Error(prepared.error.message);
+    expect(prepared).not.toHaveProperty('briefing');
+    const adopted = await runtime.adoptPrepared(prepared.preparationId, { terminalSessionId: 'pane-2' });
+    if ('error' in adopted) throw new Error(adopted.error.message);
+    expect(adopted).not.toHaveProperty('briefing');
+  });
+
+  it('reports a spawned run its whole briefing as applied', async () => {
+    const { runtime } = await setup();
+    const agent = await runtime.spawn({ agent: 'example', ...briefing() });
+    if ('error' in agent) throw new Error(agent.error.message);
+    expect(agent.info.briefing).toEqual({ applied: ['mcpServers', 'allowTools', 'instructions'], withheld: [] });
+  });
+
+  it('counts the policy in creation identity: withhold is not refuse', async () => {
+    const { runtime } = await setup({ creationRegistry: true });
+    const input = { agent: 'example', creationRequestId: 'typed-retry', ...briefing() };
+    expect(await runtime.prepareSession({ ...input, briefingRefusal: 'withhold' })).not.toHaveProperty('error');
+    expect(await runtime.prepareSession(input)).toHaveProperty('error.code', 'CREATION_REQUEST_CONFLICT');
+  });
+});

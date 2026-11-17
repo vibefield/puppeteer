@@ -419,6 +419,28 @@ describe('monitor accumulator', () => {
     expect(semanticDuplicate.state).toBe(semanticFirst.state);
   });
 
+  it('retains a source identity for the run and never a delivery identity the runtime minted', () => {
+    let state = initial();
+    for (let sequence = 1; sequence <= 1_000; sequence++) {
+      const delivered = { ...runtime({ type: 'session:ready' }, sequence), identity: 'delivery' as const };
+      const reduced = reduceMonitorAccumulator(state, delivered);
+      expect(reduced.accepted).toBe(true);
+      state = reduced.state;
+    }
+    expect(state.runtime.seenEventIds.size).toBe(0);
+
+    const sourced = {
+      ...runtime({ type: 'session:ready' }, 1_001, { eventId: 'source-1' }),
+      identity: 'source' as const,
+    };
+    const first = reduceMonitorAccumulator(state, sourced);
+    const duplicate = reduceMonitorAccumulator(first.state, sourced);
+    expect(first.accepted).toBe(true);
+    expect([...first.state.runtime.seenEventIds]).toEqual(['source-1']);
+    expect(duplicate).toMatchObject({ accepted: false, notifications: [] });
+    expect(duplicate.state).toBe(first.state);
+  });
+
   it('does not restamp live usage samples repeated by the provider', () => {
     const sample = (id: string, cumulativeTokens: number) => ({
       key: id,

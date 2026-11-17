@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AccountUsageFetchResult, AccountUsageProvider, AccountUsageSource } from '@vibefield/puppeteer-core';
+import type {
+  AccountUsageAvailable,
+  AccountUsageCredits,
+  AccountUsageFetchResult,
+  AccountUsageMetric,
+  AccountUsageMetricGroup,
+  AccountUsageProvider,
+  AccountUsageSource,
+} from '@vibefield/puppeteer-core';
 import {
   accountUsageEntryKey,
   createAccountUsageMonitor,
@@ -216,25 +224,45 @@ describe('per-account readings', () => {
     expect(accountUsageEntryKey('push-agent', 'e2f0a1b2')).not.toBe(accountUsageEntryKey('push-agent'));
   });
 
-  it('routes a push update to the account its snapshot names', async () => {
+  it('routes a push update to the account its snapshot names, and drops one no row owns', async () => {
+    let nowMs = Date.parse('2026-07-23T20:00:00.000Z');
+    const fetchUsage = vi.fn(async (providerId: string, profileId?: string) => availableFor(providerId, profileId));
     const monitor = createAccountUsageMonitor({
       providers: PROVIDERS,
-      fetchUsage: async (providerId: string, profileId?: string) => availableFor(providerId, profileId),
+      fetchUsage,
       listProfiles: () => Promise.resolve(PROFILES),
       publish: () => undefined,
-      now: () => new Date('2026-07-23T20:00:00.000Z'),
+      now: () => new Date(nowMs),
     });
-    await monitor.refreshProfiles();
+    const reconciled = await monitor.refreshProfiles();
 
-    const pushed = monitor.ingest('push-agent', {
+    // A push naming no account, for a provider with two rows, has no row: it is dropped, and no unkeyed row is made
+    // to hold it, a row the poll would then read as an account of its own. A failure names no account either.
+    const unattributed = monitor.ingest('push-agent', availableFor('push-agent'));
+    expect(unattributed.entries.filter((entry) => entry.provider.id === 'push-agent')).toHaveLength(2);
+    expect(unattributed).toBe(reconciled);
+    const failed = monitor.ingest('push-agent', {
       status: 'unauthenticated',
       provider: 'push-agent',
       message: 'sign in required',
       retryable: false,
     });
-    // Without a profile in the payload an ambiguous provider keeps its rows and
-    // gains one unkeyed row rather than overwriting a registered account.
-    expect(pushed.entries.filter((entry) => entry.provider.id === 'push-agent')).toHaveLength(3);
+    expect(failed).toBe(reconciled);
+    fetchUsage.mockClear();
+    nowMs += 30 * 60_000;
+    await monitor.refresh();
+    expect(fetchUsage.mock.calls.filter(([providerId]) => providerId === 'push-agent')).toEqual([
+      ['push-agent', 'push-agent:native-default'],
+      ['push-agent', 'e2f0a1b2'],
+    ]);
+
+    // A provider with one row is unambiguous: a push naming no account is that row's.
+    const statusLine: AccountUsageSource = { kind: 'native-statusline', stability: 'documented' };
+    const single = monitor.ingest('fast-agent', available('fast-agent', statusLine));
+    expect(single.entries.find((entry) => entry.provider.id === 'fast-agent')).toMatchObject({
+      profileId: 'fast-agent:native-default',
+      result: { status: 'available', snapshot: { source: statusLine } },
+    });
 
     const targeted = monitor.ingest('push-agent', availableFor('push-agent', 'e2f0a1b2'));
     const second = targeted.entries.find((entry) => entry.profileId === 'e2f0a1b2');
@@ -278,6 +306,65 @@ describe('per-account readings', () => {
       ['fast-agent', undefined],
       ['slow-agent', undefined],
     ]);
+  });
+
+  it('lands every push on the single unkeyed row when no registry is injected, whatever account it names', () => {
+    const monitor = createAccountUsageMonitor({
+      providers: PROVIDERS,
+      fetchUsage: async (providerId: string) => available(providerId),
+      publish: () => undefined,
+      now: () => new Date('2026-07-23T20:00:00.000Z'),
+    });
+
+    const batch = monitor.ingest('push-agent', availableFor('push-agent', 'push-agent:native-default'));
+    expect(batch.entries.map((entry) => [entry.provider.id, entry.profileId])).toEqual([
+      ['push-agent', undefined],
+      ['fast-agent', undefined],
+      ['slow-agent', undefined],
+    ]);
+    expect(batch.entries[0]?.result.status).toBe('available');
+  });
+
+  it('keeps a push that names an account before the registry first answers, under that account', async () => {
+    const monitor = createAccountUsageMonitor({
+      providers: PROVIDERS,
+      fetchUsage: async (providerId: string, profileId?: string) => availableFor(providerId, profileId),
+      listProfiles: () => Promise.resolve(PROFILES),
+      publish: () => undefined,
+      now: () => new Date('2026-07-23T20:00:00.000Z'),
+    });
+
+    const early = monitor.ingest('push-agent', availableFor('push-agent', 'e2f0a1b2'));
+    expect(early.entries.find((entry) => entry.profileId === 'e2f0a1b2')?.result.status).toBe('available');
+
+    // The registry's first answer names the row, and the reading kept under the bare id takes its label then.
+    const reconciled = await monitor.refreshProfiles({ poll: false });
+    const rows = reconciled.entries.filter((entry) => entry.provider.id === 'push-agent');
+    expect(rows.map((entry) => entry.profileId).sort()).toEqual(['e2f0a1b2', 'push-agent:native-default']);
+    const kept = rows.find((entry) => entry.profileId === 'e2f0a1b2');
+    expect(kept?.result.status).toBe('available');
+    expect(kept?.profileLabel).toBe('Second seat');
+  });
+
+  it('drops a push naming an account the registry, once it has answered, does not list', async () => {
+    const monitor = createAccountUsageMonitor({
+      providers: PROVIDERS,
+      fetchUsage: async (providerId: string, profileId?: string) => availableFor(providerId, profileId),
+      listProfiles: () => Promise.resolve(PROFILES),
+      publish: () => undefined,
+      now: () => new Date('2026-07-23T20:00:00.000Z'),
+    });
+    const reconciled = await monitor.refreshProfiles();
+
+    // An account the registry does not list, or no longer lists, is not drawn: the registry is the account authority.
+    const unlisted = monitor.ingest('push-agent', availableFor('push-agent', 'retired-seat'));
+    expect(unlisted.entries.map((entry) => entry.profileId)).toEqual([
+      'push-agent:native-default',
+      'e2f0a1b2',
+      'fast-agent:native-default',
+      undefined,
+    ]);
+    expect(unlisted).toBe(reconciled);
   });
 });
 
@@ -411,6 +498,35 @@ describe('account usage after sign-in', () => {
     nowMs = 'retryAt' in refusal ? 60_000 : 30_000 + 30 * 60_000;
     expect((await monitor.refresh()).entries[0]?.result.status).toBe('available');
     expect(fetchUsage).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([
+    { status: 'unavailable' as const, code: 'rate-limited' as const, retryable: true },
+    { status: 'unauthenticated' as const, retryable: false },
+  ])('keeps a poll’s server backoff through a sign-in though a push has merged since: %j', async (refusal) => {
+    let nowMs = 0;
+    const fetchUsage = vi.fn(async (): Promise<AccountUsageFetchResult> => available('push-agent'));
+    const monitor = createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      listProfiles: async () => [PROFILES[1]!],
+      publish: () => undefined,
+      now: () => new Date(nowMs),
+    });
+    await monitor.refreshProfiles();
+    nowMs = 30_000;
+    const retryAt = new Date(120_000).toISOString();
+    fetchUsage.mockResolvedValueOnce({ provider: 'push-agent', message: 'Please wait', retryAt, ...refusal });
+    await monitor.refresh({ force: true });
+    nowMs = 40_000;
+    monitor.ingest('push-agent', available('push-agent', { kind: 'native-statusline', stability: 'documented' }));
+
+    const invalidated = await monitor.invalidateProfileAuthentication('work');
+    expect(invalidated.entries[0]?.result).toMatchObject({ status: refusal.status, retryAt });
+    nowMs = 60_000;
+    await monitor.refresh({ force: true, profileIds: ['work'] });
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
   });
 
   it('discards a recent successful reading when login may have switched accounts', async () => {
@@ -558,4 +674,464 @@ it('manual clicks respect the 30s guard even with a shorter product polling over
   // The automatic cadence remains independent of the manual-click guard.
   await monitor.refresh();
   expect(fetchUsage).toHaveBeenCalledTimes(2);
+});
+
+describe('a push is a reading of the meters it carries: merged by id, and never the poll’s clock', () => {
+  const T0 = Date.parse('2026-07-23T20:00:00.000Z');
+  const MINUTE = 60_000;
+  const at = (ms: number): string => new Date(ms).toISOString();
+  const SONNET: AccountUsageMetricGroup = { id: 'scope:sonnet', label: 'Sonnet only' };
+  const STATUS_LINE: AccountUsageSource = { kind: 'native-statusline', stability: 'documented' };
+  const meter = (id: string, usedPercent: number, group?: AccountUsageMetricGroup): AccountUsageMetric => ({
+    id,
+    label: id.toUpperCase(),
+    kind: 'window',
+    usedPercent,
+    ...(group ? { group } : {}),
+  });
+  const reading = (
+    fetchedAtMs: number,
+    metrics: AccountUsageMetric[],
+    extra: { credits?: AccountUsageCredits; source?: AccountUsageSource } = {},
+  ): AccountUsageFetchResult => ({
+    status: 'available',
+    snapshot: {
+      provider: 'push-agent',
+      fetchedAt: at(fetchedAtMs),
+      scope: 'subscription',
+      source: extra.source ?? { kind: 'oauth-endpoint', stability: 'experimental' },
+      metrics,
+      ...(extra.credits ? { credits: extra.credits } : {}),
+    },
+  });
+  /** The 30-minute push agent alone (its pushes defer a poll 30 minutes), on a clock the test moves. */
+  const monitorOn = (clock: { ms: number }, fetchUsage: () => Promise<AccountUsageFetchResult>) =>
+    createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      publish: () => undefined,
+      now: () => new Date(clock.ms),
+    });
+
+  it('a push that carries fewer meters than the last poll keeps the rest, each with its own age', async () => {
+    const clock = { ms: T0 };
+    const credits = { balance: '$12.00' };
+    const polled = [meter('5h', 10), meter('7d', 20), meter('sonnet-7d', 50, SONNET)];
+    const monitor = monitorOn(clock, async () => reading(T0, polled, { credits }));
+    await monitor.refresh();
+
+    clock.ms = T0 + MINUTE;
+    const pushed = reading(clock.ms, [meter('5h', 15), meter('7d', 25)], { source: STATUS_LINE });
+    const merged = monitor.ingest('push-agent', pushed).entries[0]!.result as AccountUsageAvailable;
+
+    expect(merged.snapshot.metrics.map((metric) => metric.id)).toEqual(['5h', '7d', 'sonnet-7d']);
+    expect(merged.snapshot.metrics[0]).toEqual(meter('5h', 15));
+    expect(merged.snapshot.metrics[2]).toEqual({ ...meter('sonnet-7d', 50, SONNET), fetchedAt: at(T0) });
+    expect(merged.snapshot).toMatchObject({ fetchedAt: at(T0 + MINUTE), source: STATUS_LINE, credits });
+  });
+
+  it.each([
+    { push: 'leaves out a meter of the poll', polled: ['5h', '7d', 'sonnet-7d'], pollsAt30: 1, pollsAt50: 0 },
+    { push: 'carries every meter of the poll', polled: ['5h', '7d'], pollsAt30: 0, pollsAt50: 1 },
+  ])('a push that $push defers the next poll only when it covers it', async ({ polled, pollsAt30, pollsAt50 }) => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () =>
+      reading(
+        clock.ms,
+        polled.map((id) => meter(id, 10)),
+      ),
+    );
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    fetchUsage.mockClear();
+
+    clock.ms = T0 + 20 * MINUTE;
+    monitor.ingest('push-agent', reading(clock.ms, [meter('5h', 15), meter('7d', 25)], { source: STATUS_LINE }));
+    clock.ms = T0 + 30 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(pollsAt30);
+    clock.ms = T0 + 50 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(pollsAt30 + pollsAt50);
+  });
+
+  it.each([
+    { push: 'covering', carried: ['5h', '7d'] },
+    { push: 'partial', carried: ['5h'] },
+  ])('no $push push brings a poll before Retry-After, nor lets a forced Refresh through it', async ({ carried }) => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    clock.ms = T0 + 30 * MINUTE;
+    fetchUsage.mockResolvedValueOnce({
+      status: 'unavailable',
+      provider: 'push-agent',
+      message: 'Please wait',
+      retryable: true,
+      code: 'rate-limited',
+      retryAt: at(T0 + 180 * MINUTE),
+    });
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+
+    clock.ms = T0 + 31 * MINUTE;
+    monitor.ingest(
+      'push-agent',
+      reading(
+        clock.ms,
+        carried.map((id) => meter(id, 30)),
+        { source: STATUS_LINE },
+      ),
+    );
+    clock.ms = T0 + 61 * MINUTE;
+    await monitor.refresh();
+    clock.ms = T0 + 62 * MINUTE;
+    await monitor.refresh({ force: true });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+
+    clock.ms = T0 + 180 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+  });
+
+  it('a partial push does not satisfy the manual guard: a forced Refresh is judged by the last poll', async () => {
+    const clock = { ms: T0 };
+    const polled = [meter('5h', 10), meter('7d', 20), meter('sonnet-7d', 50)];
+    const fetchUsage = vi.fn(async () => reading(clock.ms, polled));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+
+    clock.ms = T0 + 60_000;
+    monitor.ingest('push-agent', reading(clock.ms, [meter('5h', 15), meter('7d', 25)], { source: STATUS_LINE }));
+    clock.ms = T0 + 65_000;
+    await monitor.refresh({ force: true });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
+  it('a failed push shows beside the last reading and moves nothing of the poll', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+
+    clock.ms = T0 + MINUTE;
+    const failed = monitor.ingest('push-agent', {
+      status: 'unavailable',
+      provider: 'push-agent',
+      message: 'malformed push',
+      retryable: true,
+    });
+    expect(failed.entries[0]).toMatchObject({
+      stale: true,
+      result: { status: 'available' },
+      refreshFailure: { message: 'malformed push' },
+    });
+    clock.ms = T0 + 5 * MINUTE;
+    await monitor.refresh({ force: true });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    { status: 'unavailable' as const, retryable: true, code: 'rate-limited' as const, retryAt: at(T0 + 180 * MINUTE) },
+    { status: 'unavailable' as const, retryable: true },
+  ])('a push keeps a passing failure of the poll beside its reading until a poll succeeds: %j', async (refusal) => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    clock.ms = T0 + 30 * MINUTE;
+    const failure: AccountUsageFetchResult = { provider: 'push-agent', message: 'Please wait', ...refusal };
+    fetchUsage.mockResolvedValueOnce(failure);
+    await monitor.refresh();
+
+    const push = (minutes: number, used: number) => {
+      clock.ms = T0 + minutes * MINUTE;
+      const pushed = reading(clock.ms, [meter('5h', used), meter('7d', used)], { source: STATUS_LINE });
+      return monitor.ingest('push-agent', pushed).entries[0];
+    };
+    expect(push(31, 30)).toMatchObject({
+      stale: true,
+      refreshFailure: failure,
+      result: {
+        status: 'available',
+        snapshot: { fetchedAt: at(T0 + 31 * MINUTE), metrics: [meter('5h', 30), meter('7d', 30)] },
+      },
+    });
+
+    // A failed push shows beside the reading as before; the next good one keeps the poll's failure, not its own.
+    clock.ms = T0 + 32 * MINUTE;
+    monitor.ingest('push-agent', {
+      status: 'unavailable',
+      provider: 'push-agent',
+      message: 'malformed push',
+      retryable: true,
+    });
+    expect(push(33, 35)).toMatchObject({ stale: true, refreshFailure: failure });
+
+    clock.ms = T0 + 180 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+    const recovered = push(181, 40);
+    expect(recovered?.stale).toBeUndefined();
+    expect(recovered?.refreshFailure).toBeUndefined();
+  });
+
+  it('no covering push defers a failed poll’s retry: the failure beside the pushes ends at that retry', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    clock.ms = T0 + 30 * MINUTE;
+    const failure: AccountUsageFetchResult = {
+      status: 'unavailable',
+      provider: 'push-agent',
+      message: 'Please wait',
+      retryable: true,
+    };
+    fetchUsage.mockResolvedValueOnce(failure);
+    await monitor.refresh();
+
+    const push = (minutes: number) => {
+      clock.ms = T0 + minutes * MINUTE;
+      const pushed = reading(clock.ms, [meter('5h', minutes), meter('7d', minutes)], { source: STATUS_LINE });
+      return monitor.ingest('push-agent', pushed).entries[0];
+    };
+    // Each push covers the poll and lands before the failure's backoff (T0+60m), which none of them moves.
+    for (const minutes of [40, 50, 59]) {
+      expect(push(minutes)).toMatchObject({ stale: true, refreshFailure: failure });
+    }
+    clock.ms = T0 + 60 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+    const recovered = push(61);
+    expect(recovered?.stale).toBeUndefined();
+    expect(recovered?.refreshFailure).toBeUndefined();
+  });
+
+  it('a push answers a sign-in failure of the poll and leaves the poll its clock', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    clock.ms = T0 + 30 * MINUTE;
+    fetchUsage.mockResolvedValueOnce({
+      status: 'unauthenticated',
+      provider: 'push-agent',
+      message: 'Sign in required',
+      retryable: false,
+    });
+    const refused = (await monitor.refresh()).entries[0];
+    expect(refused).toMatchObject({ stale: true, refreshFailure: { status: 'unauthenticated' } });
+
+    clock.ms = T0 + 31 * MINUTE;
+    const pushed = reading(clock.ms, [meter('5h', 30), meter('7d', 40)], { source: STATUS_LINE });
+    const answered = monitor.ingest('push-agent', pushed).entries[0];
+    expect(answered?.result).toMatchObject({ status: 'available', snapshot: { fetchedAt: at(T0 + 31 * MINUTE) } });
+    expect(answered?.stale).toBeUndefined();
+    expect(answered?.refreshFailure).toBeUndefined();
+
+    clock.ms = T0 + 35 * MINUTE;
+    await monitor.refresh({ force: true });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+    clock.ms = T0 + 61 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+  });
+
+  it('a push before the first poll does not postpone it', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [meter('5h', 10), meter('7d', 20)]));
+    const monitor = monitorOn(clock, fetchUsage);
+    monitor.ingest('push-agent', reading(clock.ms, [meter('5h', 15), meter('7d', 25)], { source: STATUS_LINE }));
+
+    monitor.start();
+    await monitor.refresh();
+    monitor.stop();
+    expect(fetchUsage).toHaveBeenCalledOnce();
+  });
+});
+
+describe('a reading is due again at its earliest reset', () => {
+  const T0 = Date.parse('2026-07-23T20:00:00.000Z');
+  const MINUTE = 60_000;
+  const at = (ms: number): string => new Date(ms).toISOString();
+  const OAUTH: AccountUsageSource = { kind: 'oauth-endpoint', stability: 'experimental' };
+  const STATUS_LINE: AccountUsageSource = { kind: 'native-statusline', stability: 'documented' };
+  /** The short window, full, resetting at `resetsAtMs`. */
+  const fiveHour = (resetsAtMs: number): AccountUsageMetric => ({
+    id: '5h',
+    label: '5H',
+    kind: 'window',
+    usedPercent: 100,
+    resetsAt: at(resetsAtMs),
+  });
+  const WEEK: AccountUsageMetric = {
+    id: '7d',
+    label: '7D',
+    kind: 'window',
+    usedPercent: 40,
+    resetsAt: at(T0 + 7 * 24 * 60 * MINUTE),
+  };
+  const reading = (
+    fetchedAtMs: number,
+    metrics: AccountUsageMetric[],
+    source: AccountUsageSource = OAUTH,
+  ): AccountUsageFetchResult => ({
+    status: 'available',
+    snapshot: { provider: 'push-agent', fetchedAt: at(fetchedAtMs), scope: 'subscription', source, metrics },
+  });
+  /** The 30-minute push agent alone, on a clock the test moves. */
+  const monitorOn = (clock: { ms: number }, fetchUsage: () => Promise<AccountUsageFetchResult>) =>
+    createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      publish: () => undefined,
+      now: () => new Date(clock.ms),
+    });
+
+  it('reads again at a reading’s earliest reset, not only at its poll', async () => {
+    let nowMs = T0;
+    const fetchUsage = vi.fn(async (providerId: string) =>
+      providerId === 'push-agent' ? reading(nowMs, [fiveHour(T0 + 5 * MINUTE), WEEK]) : available(providerId),
+    );
+    const monitor = createAccountUsageMonitor({
+      providers: PROVIDERS,
+      fetchUsage,
+      publish: () => undefined,
+      now: () => new Date(nowMs),
+    });
+    await monitor.refresh();
+    fetchUsage.mockClear();
+
+    nowMs = T0 + 5 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage.mock.calls.map(([providerId]) => providerId)).toEqual(['push-agent', 'fast-agent']);
+  });
+
+  it.each([
+    { reset: 'before', resetsAtMs: T0 - MINUTE },
+    { reset: 'at', resetsAtMs: T0 },
+  ])('a reset $reset the read adds no read: the next is at the poll', async ({ resetsAtMs }) => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [fiveHour(resetsAtMs), WEEK]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+
+    clock.ms = T0 + 1_000;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledOnce();
+    clock.ms = T0 + 30 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
+  it('a push that does not cover the poll never brings its read forward, whatever reset it names', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [fiveHour(T0 + 5 * 60 * MINUTE), WEEK]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+
+    clock.ms = T0 + MINUTE;
+    monitor.ingest('push-agent', reading(clock.ms, [fiveHour(T0 + 5 * MINUTE)], STATUS_LINE));
+    clock.ms = T0 + 5 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledOnce();
+    clock.ms = T0 + 30 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
+  it('a covering push defers a read no later than the reading’s reset, and never before a Retry-After', async () => {
+    const clock = { ms: T0 - 30 * MINUTE };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [fiveHour(T0 + 5 * MINUTE), WEEK]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+    clock.ms = T0;
+    fetchUsage.mockResolvedValueOnce({
+      status: 'unavailable',
+      provider: 'push-agent',
+      message: 'Please wait',
+      retryable: true,
+      code: 'rate-limited',
+      retryAt: at(T0 + 30 * MINUTE),
+    });
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+
+    clock.ms = T0 + MINUTE;
+    monitor.ingest('push-agent', reading(clock.ms, [fiveHour(T0 + 5 * MINUTE), WEEK], STATUS_LINE));
+    clock.ms = T0 + 5 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+    clock.ms = T0 + 30 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+  });
+
+  it('a covering push after a good poll defers its read to the reading’s reset, no later', async () => {
+    const clock = { ms: T0 };
+    const fetchUsage = vi.fn(async () => reading(clock.ms, [fiveHour(T0 + 40 * MINUTE), WEEK]));
+    const monitor = monitorOn(clock, fetchUsage);
+    await monitor.refresh();
+
+    clock.ms = T0 + 20 * MINUTE;
+    monitor.ingest('push-agent', reading(clock.ms, [fiveHour(T0 + 40 * MINUTE), WEEK], STATUS_LINE));
+    clock.ms = T0 + 30 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledOnce();
+    clock.ms = T0 + 40 * MINUTE;
+    await monitor.refresh();
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
+  it('wakes at a reading’s reset though its tick is the 30-minute poll, and not once stopped', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0);
+    try {
+      const fetchUsage = vi.fn(async () => reading(Date.now(), [fiveHour(T0 + 5 * MINUTE), WEEK]));
+      const monitor = createAccountUsageMonitor({
+        providers: [PROVIDERS[0]!],
+        fetchUsage,
+        publish: () => undefined,
+      });
+      monitor.start();
+      await monitor.snapshot();
+      expect(fetchUsage).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(5 * MINUTE);
+      expect(fetchUsage).toHaveBeenCalledTimes(2);
+
+      monitor.stop();
+      await vi.advanceTimersByTimeAsync(60 * MINUTE);
+      expect(fetchUsage).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reads a poll that took a second to answer at its due, not a tick later', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0);
+    try {
+      const fetchUsage = vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+        return reading(Date.now(), []);
+      });
+      const monitor = createAccountUsageMonitor({
+        providers: [PROVIDERS[0]!],
+        fetchUsage,
+        publish: () => undefined,
+      });
+      monitor.start();
+      await vi.advanceTimersByTimeAsync(30 * MINUTE + 1_000);
+      expect(fetchUsage).toHaveBeenCalledTimes(2);
+
+      monitor.stop();
+      await vi.advanceTimersByTimeAsync(60 * MINUTE);
+      expect(fetchUsage).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

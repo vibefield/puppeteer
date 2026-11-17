@@ -11,6 +11,9 @@
  * - Unmounted, it leaves its root empty, asks for no more frames, and leaves
  *   no listener on the window or the document.
  * - With animations off, or motion reduced, no frame loop runs.
+ * - Out of sight (`theme.hidden`), it rests: it asks for no frame, not even
+ *   for an update, and keeps no timer standing (an interval not cleared, or a
+ *   timeout with a delay neither fired nor cleared).
  * - It binds no keys on the window or the document (keys are bound on its own
  *   root, only while focused, MV-D8).
  *
@@ -46,7 +49,13 @@ import { createFrameDriver, type FrameDriver } from './frames.js';
 import { overrideProperty } from './override.js';
 
 export type ConformanceCheckId =
-  'renders' | 'immutable-input' | 'own-root' | 'cleans-up' | 'still-when-asked' | 'no-global-keys';
+  | 'renders'
+  | 'immutable-input'
+  | 'own-root'
+  | 'cleans-up'
+  | 'still-when-asked'
+  | 'rests-when-hidden'
+  | 'no-global-keys';
 
 export const CONFORMANCE_CHECKS: readonly { readonly id: ConformanceCheckId; readonly title: string }[] = [
   { id: 'renders', title: 'mounts, updates and unmounts at every agent count, in both schemes, at every stage size' },
@@ -54,6 +63,7 @@ export const CONFORMANCE_CHECKS: readonly { readonly id: ConformanceCheckId; rea
   { id: 'own-root', title: 'keeps every node it makes inside its root' },
   { id: 'cleans-up', title: 'leaves nothing behind when it unmounts' },
   { id: 'still-when-asked', title: 'runs no frame loop while animations are off or motion is reduced' },
+  { id: 'rests-when-hidden', title: 'asks for no frame and keeps no timer while its stage is out of sight' },
   { id: 'no-global-keys', title: 'binds no keys on the window or the document' },
 ];
 
@@ -196,7 +206,64 @@ function trackGlobalListeners() {
   };
 }
 
-/** Runs the suite. Needs a DOM; installs its own animation frame for the duration. */
+type TimerFunction = (...args: unknown[]) => unknown;
+type TimerName = 'setTimeout' | 'setInterval' | 'clearTimeout' | 'clearInterval';
+
+/**
+ * Which timers armed on the window still stand while the suite runs: an interval until it is cleared, a timeout with
+ * a delay until it fires or is cleared. A timeout of 0 ms is never counted: it is the next task (the suite's own
+ * settle is one), never a clock.
+ */
+function trackTimers() {
+  const standing = new Map<unknown, string>();
+  const targets = new Set<object>([globalThis, window]);
+  const restores = [...targets].flatMap((target) => {
+    const timers = target as Record<TimerName, TimerFunction>;
+    const arm = timers.setTimeout;
+    const repeat = timers.setInterval;
+    const cancelTimeout = timers.clearTimeout;
+    const cancelInterval = timers.clearInterval;
+    const timeout: TimerFunction = (handler, delay, ...args) => {
+      const ms = Number(delay);
+      if (typeof handler !== 'function' || !(ms > 0)) return arm.call(target, handler, delay, ...args);
+      const run = handler;
+      let handle: unknown;
+      const fire = (...given: unknown[]): unknown => {
+        standing.delete(handle);
+        return run(...given);
+      };
+      handle = arm.call(target, fire, delay, ...args);
+      standing.set(handle, `a timeout of ${ms} ms`);
+      return handle;
+    };
+    const interval: TimerFunction = (handler, delay, ...args) => {
+      const handle = repeat.call(target, handler, delay, ...args);
+      standing.set(handle, `an interval of ${Number(delay) || 0} ms`);
+      return handle;
+    };
+    const clear = (cancel: TimerFunction, handle: unknown): unknown => {
+      standing.delete(handle);
+      return cancel.call(target, handle);
+    };
+    return [
+      overrideProperty(target, 'setTimeout', timeout),
+      overrideProperty(target, 'setInterval', interval),
+      overrideProperty(target, 'clearTimeout', (handle: unknown) => clear(cancelTimeout, handle)),
+      overrideProperty(target, 'clearInterval', (handle: unknown) => clear(cancelInterval, handle)),
+    ];
+  });
+  return {
+    standing: (): string[] => [...standing.values()],
+    clear(): void {
+      standing.clear();
+    },
+    restore(): void {
+      for (const restore of restores.reverse()) restore();
+    },
+  };
+}
+
+/** Runs the suite. Needs a DOM; installs its own animation frame, and watches the timers, for the duration. */
 export async function checkConformance(
   view: MonitorView,
   options: ConformanceOptions = {},
@@ -240,6 +307,7 @@ export async function checkConformance(
   };
   window.addEventListener('error', onWindowError);
   const listeners = trackGlobalListeners();
+  const timers = trackTimers();
   const environment = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
   const actEnvironment = environment.IS_REACT_ACT_ENVIRONMENT;
   const reactAct = (React as unknown as { act?: (callback: () => Promise<void>) => Promise<void> }).act;
@@ -287,7 +355,7 @@ export async function checkConformance(
       readonly name: string;
       readonly input: (previous: MonitorViewInput | undefined) => MonitorViewInput;
     }[],
-    afterSteps?: () => Promise<void>,
+    afterSteps?: (instance: MonitorViewInstance, input: MonitorViewInput) => Promise<void>,
   ): Promise<void> => {
     cases += 1;
     const container = document.createElement('div');
@@ -322,7 +390,9 @@ export async function checkConformance(
       checkOutside();
       previous = input;
     }
-    if (afterSteps !== undefined && instance !== undefined) await afterSteps();
+    if (afterSteps !== undefined && instance !== undefined && previous !== undefined) {
+      await afterSteps(instance, previous);
+    }
     where = `${label} · unmount`;
     if (instance !== undefined) {
       await act(() => instance?.unmount());
@@ -373,7 +443,29 @@ export async function checkConformance(
         },
       );
     }
+    // Out of sight, motion otherwise allowed: no frame once mounted, none for an update, and no timer standing.
+    const outOfSight = fixtureTheme('dark', { hidden: true });
+    const other = counts.find((count) => count !== most) ?? most;
+    timers.clear();
+    await runCase(
+      'hidden',
+      [{ name: `${most} agents`, input: () => inputFor(most, outOfSight, 'default', undefined) }],
+      async (instance, input) => {
+        where = 'hidden';
+        await act(() => frames.step(settleFrames));
+        // a loop that never rests is said once: its update's frame is not news
+        const looping = frames.pending > 0;
+        if (looping) fail('rests-when-hidden', `still asks for a frame out of sight after ${settleFrames} frames`);
+        await act(() => instance.update(inputFor(other, outOfSight, 'default', input)));
+        if (!looping && frames.pending > 0) {
+          fail('rests-when-hidden', 'asks for a frame out of sight when an update arrives');
+        }
+        await act(() => frames.step(3));
+        for (const timer of timers.standing()) fail('rests-when-hidden', `keeps ${timer} out of sight`);
+      },
+    );
   } finally {
+    timers.restore();
     listeners.restore();
     window.removeEventListener('error', onWindowError);
     restoreFrames();

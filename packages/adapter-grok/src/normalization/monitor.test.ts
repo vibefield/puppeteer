@@ -56,6 +56,11 @@ function candidate(update: Record<string, unknown>, event?: AgentEvent): Adapter
   } as AdapterEventCandidate;
 }
 
+/** A control candidate from adapter-acp's session/load replay. */
+function replayedCandidate(update: Record<string, unknown>): AdapterEventCandidate {
+  return { ...candidate(update), replay: true } as AdapterEventCandidate;
+}
+
 /** A live control candidate as adapter-acp publishes it, carrying the exact ACP frame. */
 function frame(
   nativeEvent: { method?: string; params: Record<string, unknown> },
@@ -789,6 +794,83 @@ describe('GrokMonitorEvidence', () => {
         candidate({ sessionUpdate: 'goal_updated', goal_id: 'goal-1', objective: 'private goal' }),
       ),
     ).toBeNull();
+  });
+
+  it('settles what a replay opened, on either rail, in one bootstrap batch', () => {
+    const projector = evidence();
+    const opened = [
+      projector.observedBatch(
+        observed(
+          { type: 'adapter:native-event', adapter: 'grok', nativeType: 'pending_interaction' },
+          record({ sessionUpdate: 'pending_interaction', tool_call_id: 'q-log', kind: 'question' }),
+        ),
+        AT,
+      ),
+      projector.controlCandidateBatch(
+        replayedCandidate({ sessionUpdate: 'pending_interaction', tool_call_id: 'q-acp', kind: 'question' }),
+      ),
+      projector.observedBatch(
+        observed(
+          { type: 'delegation:subagent-started', subagentId: 'child-1' },
+          record({ sessionUpdate: 'subagent_spawned', subagent_id: 'child-1', child_session_id: 'child-session' }),
+        ),
+        AT,
+      ),
+      projector.observedBatch(
+        observed(
+          { type: 'adapter:native-event', adapter: 'grok', nativeType: 'auto_compact_started' },
+          record({ sessionUpdate: 'auto_compact_started' }),
+        ),
+        AT,
+      ),
+    ];
+    const open = monitorOf(opened);
+    expect(open.blockers.map(({ id }) => id).sort()).toEqual(['q-acp', 'q-log']);
+    expect(open.subagents).toEqual([expect.objectContaining({ id: 'child-1', working: true })]);
+    expect(open.compaction.active).toBe(true);
+
+    const settled = projector.settleReplayBatch(AT);
+    expect(settled?.phase).toBe('bootstrap');
+    // The bare accumulator's run is still allocated, so its activity reads Starting; the composition's idle is
+    // control-session.test.ts's row.
+    expect(monitorOf([...opened, settled])).toMatchObject({
+      blockers: [],
+      subagents: [expect.objectContaining({ id: 'child-1', working: false })],
+      compaction: { active: false },
+      activity: { kind: 'starting' },
+    });
+    expect(projector.settleReplayBatch(AT)).toBeNull();
+  });
+
+  it('settles nothing a replay opened and the log closed, or that anything live has seen', () => {
+    const projector = evidence();
+    const update = (sessionUpdate: string, fields: Record<string, unknown>) =>
+      observed(
+        { type: 'adapter:native-event', adapter: 'grok', nativeType: sessionUpdate },
+        record({ sessionUpdate, ...fields }),
+      );
+    const batches = [
+      projector.observedBatch(update('pending_interaction', { tool_call_id: 'q-closed', kind: 'question' }), AT),
+      projector.observedBatch(update('interaction_resolved', { tool_call_id: 'q-closed' }), AT),
+      projector.observedBatch(update('subagent_spawned', { subagent_id: 'child-closed' }), AT),
+      projector.observedBatch(update('subagent_finished', { subagent_id: 'child-closed' }), AT),
+      projector.observedBatch(update('auto_compact_started', {}), AT),
+      projector.observedBatch(update('auto_compact_completed', {}), AT),
+      projector.observedBatch(update('pending_interaction', { tool_call_id: 'q-live', kind: 'question' }), AT),
+      projector.observedBatch(update('subagent_spawned', { subagent_id: 'child-live' }), AT),
+      projector.controlCandidateBatch(
+        candidate({ sessionUpdate: 'pending_interaction', tool_call_id: 'q-live', kind: 'question' }),
+      ),
+      projector.controlCandidateBatch(candidate({ sessionUpdate: 'subagent_progress', subagent_id: 'child-live' })),
+    ];
+    expect(projector.settleReplayBatch(AT)).toBeNull();
+    expect(monitorOf(batches)).toMatchObject({
+      blockers: [expect.objectContaining({ id: 'q-live' })],
+      subagents: [
+        expect.objectContaining({ id: 'child-live', working: true }),
+        expect.objectContaining({ id: 'child-closed', working: false }),
+      ],
+    });
   });
 
   it('degrades control readiness without a lifecycle claim or sensitive reason', () => {

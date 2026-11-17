@@ -1,0 +1,71 @@
+{
+  "projection": "turn-failure lane: per scripted turn, the loopback request kinds, the print result enums, and each closing hook last_assistant_message compared by equality and containment with the lane sentinels and Claude displayed error text; verdicts only, never a value",
+  "entries": [
+    {
+      "mode": "turn-failure",
+      "turn": "completes",
+      "exit": 0,
+      "requests": [
+        "text"
+      ],
+      "isError": false,
+      "terminalReason": "completed",
+      "apiErrorStatus": null,
+      "ranAsScripted": true,
+      "closingHooks": [
+        {
+          "hook": "Stop",
+          "lastAssistantMessageIs": "this-turn-words",
+          "holdsThisTurnWords": true,
+          "holdsEarlierTurnWords": false,
+          "holdsLoopbackErrorText": false
+        }
+      ]
+    },
+    {
+      "mode": "turn-failure",
+      "turn": "words-then-fail",
+      "exit": 1,
+      "requests": [
+        "text-then-tool",
+        "error-529"
+      ],
+      "isError": true,
+      "terminalReason": "api_error",
+      "apiErrorStatus": 529,
+      "ranAsScripted": true,
+      "closingHooks": [
+        {
+          "hook": "StopFailure",
+          "error": "server_error",
+          "lastAssistantMessageIs": "error-text",
+          "holdsThisTurnWords": false,
+          "holdsEarlierTurnWords": false,
+          "holdsLoopbackErrorText": true
+        }
+      ]
+    },
+    {
+      "mode": "turn-failure",
+      "turn": "fail-at-once",
+      "exit": 1,
+      "requests": [
+        "error-529"
+      ],
+      "isError": true,
+      "terminalReason": "api_error",
+      "apiErrorStatus": 529,
+      "ranAsScripted": true,
+      "closingHooks": [
+        {
+          "hook": "StopFailure",
+          "error": "server_error",
+          "lastAssistantMessageIs": "error-text",
+          "holdsThisTurnWords": false,
+          "holdsEarlierTurnWords": false,
+          "holdsLoopbackErrorText": true
+        }
+      ]
+    }
+  ]
+}

@@ -51,10 +51,10 @@ read config from the same places and share one data file (§2.2). Whatever the o
 the lines apart from `--version` (`1.19.5` vs `opencode v2.2.5`), never from the path.
 
 **Detector consequence.** `upstream.json`'s `github-stable` detector takes the first non-draft, non-prerelease tag
-that matches `^v(\d+\.\d+\.\d+)$` in API order. v2 releases are non-prerelease, so the detector can report a 2.x
-version, and the 1.x acquisition URLs (`opencode-<platform>@2.x`) then 404. Detection stays as it is for now so the
-2.x line keeps showing as upstream activity. Since the 1.19.5 promotion the ledger row carries no blocker, so this plan
-is the only place a reviewer sees why. Whether the pattern is narrowed later depends on the decision in §3.
+that matches `^v(\d+\.\d+\.\d+)$` in API order. v2 releases are non-prerelease and are created after the matching v1
+releases, so the detector can report a 2.x version. The 1.x acquisition URLs (`opencode-<platform>@2.x`) then 404.
+Detection stays as it is on purpose, so the 2.x line keeps showing as upstream activity. The ledger row carries no blocker,
+so this plan is how reviewers see it. Narrowing the tag pattern to `v1.` would hide a real upstream change.
 
 ## 2. Why 2.x is a new integration family
 

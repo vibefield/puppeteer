@@ -89,7 +89,13 @@ export interface ClaudeDistributionOptions {
   readFile?: ((path: string) => Promise<string>) | undefined;
   /** Home directory the native layouts hang off; defaults to the process home. */
   home?: string | undefined;
+  /**
+   * The environment the service reads; defaults to this process's. With `inheritEnvironment: false` it is also the
+   * version run's whole environment, so a host's own variables reach the vendor's program only when it names none.
+   */
   env?: NodeJS.ProcessEnv | undefined;
+  /** Default true: the version run inherits this process's environment, as before. */
+  inheritEnvironment?: boolean | undefined;
   now?: (() => Date) | undefined;
 }
 
@@ -271,6 +277,9 @@ export function createClaudeDistributionService(options: ClaudeDistributionOptio
   const read = options.readFile ?? ((path: string) => readFileFromDisk(path, 'utf8'));
   const home = options.home ?? homedir();
   const env = options.env ?? process.env;
+  // The version run is handed `env` only under `inheritEnvironment: false`; otherwise it starts as before.
+  const versionRun = (file: string, args: string[]) =>
+    options.inheritEnvironment === false ? exec(file, args, { env }) : exec(file, args);
   const now = options.now ?? (() => new Date());
   const configured = resolveClaudeExecutable(options.executable, env);
 
@@ -284,7 +293,7 @@ export function createClaudeDistributionService(options: ClaudeDistributionOptio
       let version: string | undefined;
       let banner: string | undefined;
       try {
-        banner = (await exec(candidate.executable, [CLAUDE_VERSION_FLAG])).stdout;
+        banner = (await versionRun(candidate.executable, [CLAUDE_VERSION_FLAG])).stdout;
         version = parseClaudeVersion(banner);
         if (!version) {
           warnings.push(`could not parse a version from \`${candidate.executable} ${CLAUDE_VERSION_FLAG}\``);

@@ -99,9 +99,13 @@ describe('createPromptInjector', () => {
     expect(operations).toEqual([{ kind: 'paste', text: 'staged', submit: false }]);
   });
 
-  it('rejects empty prompts before touching the terminal', async () => {
+  it('rejects empty prompts for good, before touching the terminal', async () => {
     const { operations, injector } = harness();
-    expect((await injector.submit({ text: '\n' })).status).toBe('rejected');
+    expect(await injector.submit({ text: '\n' })).toEqual({
+      status: 'rejected',
+      reason: 'empty prompt',
+      retryable: false,
+    });
     expect(operations).toHaveLength(0);
   });
 

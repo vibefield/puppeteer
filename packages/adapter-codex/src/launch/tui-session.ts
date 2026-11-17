@@ -19,7 +19,14 @@
  * best-effort `confirmed` (the structured driver has deterministic receipts).
  */
 
-import { pickAgentBriefing, validateAgentBriefing, type AgentRunBriefing } from '@vibefield/puppeteer-core';
+import {
+  announceRunHelper,
+  pickAgentBriefing,
+  settleAgentBriefing,
+  withAgentBriefing,
+  type AgentBriefingWithheld,
+  type AgentRunBriefing,
+} from '@vibefield/puppeteer-core';
 import { CODEX_BRIEFING_CAPABILITIES } from './briefing.js';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -79,6 +86,8 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions, Ag
    * reports the wait as a pending permission.
    */
   onApproval?: ((req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>) | undefined;
+  /** A typed resume: `thread/resume` names no directory, so the thread goes on where it ran. A host's resume moves it. */
+  keepThreadCwd?: boolean | undefined;
   /** Preserve a native `codex resume ...` selection flow on the private app-server. */
   resumeInvocation?: string[] | undefined;
   /** Settings for the private app-server's own command line (`--config=…`, `--enable=…`, `--disable=…`). */
@@ -111,18 +120,23 @@ export interface CodexTuiSession extends AgentAdapterBinding {
 export interface PreparedCodexTuiSession {
   readonly sessionId: string;
   readonly launch: TerminalSpec;
+  /** What of the briefing this launch goes ahead without, under `briefingRefusal: 'withhold'`. */
+  readonly briefingWithheld?: readonly AgentBriefingWithheld[] | undefined;
   adopt(runtimeSessionId: string): Promise<CodexTuiSession>;
   dispose(): Promise<void>;
 }
 
 /** Prepare the private app-server, owned thread, and native TUI recipe without spawning the TUI. */
 export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions): Promise<PreparedCodexTuiSession> {
-  const briefing = validateAgentBriefing(opts, CODEX_BRIEFING_CAPABILITIES, 'Codex');
-  opts = { ...opts, ...briefing };
+  const refusal = opts.briefingRefusal;
+  let settled = settleAgentBriefing(opts, CODEX_BRIEFING_CAPABILITIES, 'Codex', refusal);
   // A picker loads its thread before the controller can apply thread overrides.
-  if (opts.resumeInvocation) validateAgentBriefing(briefing, undefined, 'Codex resume picker');
+  if (opts.resumeInvocation)
+    settled = settleAgentBriefing(settled.briefing, undefined, 'Codex resume picker', refusal, settled.withheld);
   if (opts.appServerEnv?.AI_PERSONA === 'codex' || opts.appServerEnv?.PUPPETEER_IMPOSTER_HOME)
-    validateAgentBriefing(briefing, undefined, 'Codex imposter');
+    settled = settleAgentBriefing(settled.briefing, undefined, 'Codex imposter', refusal, settled.withheld);
+  const briefing = settled.briefing;
+  opts = withAgentBriefing(opts, briefing);
   if (opts.resume && opts.resumeInvocation) {
     throw new Error('Codex preparation accepts resume or resumeInvocation, not both');
   }
@@ -142,6 +156,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   // The app-server runs the agent's turns and tools: under a host that composes a helper
   // environment it gets the agent's, never this process's own.
   const helperEnvironment = host.helperEnvironment?.(opts.appServerEnv ?? {});
+  const startedAtMs = Date.now();
   const server = spawnAppServer({
     executable,
     ...(opts.appServerTransport ? { transport: opts.appServerTransport } : {}),
@@ -154,6 +169,9 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   });
   try {
     await server.ready();
+    // MCP servers start inside thread/start and thread/resume, below (briefing.live.test.ts). A host that names callers
+    // by process ancestry must hold this pid first, so every path (fresh, resume, picker, imposter) waits for its answer.
+    await announceRunHelper(opts.ingress, { pid: server.process.pid, startedAtMs }, 'Codex');
   } catch (err) {
     await server.dispose();
     throw err;
@@ -169,11 +187,14 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
       transport: connectAppServerEndpoint(serverEndpoint),
       selectThread: opts.selectThread,
       onApproval: opts.onApproval,
+      ...(refusal === undefined ? {} : { briefingRefusal: refusal }),
       ...(opts.resumeInvocation
         ? {}
         : opts.resume
           ? {
               threadId: opts.resume,
+              // The preflight reads the effective configuration of the directory the launch came from.
+              ...(Object.keys(briefing).length ? { configCwd: opts.cwd } : {}),
               // The TUI's own `resume --remote` cannot set them on a held thread (C7).
               ...(opts.model || opts.effort || Object.keys(briefing).length
                 ? {
@@ -181,7 +202,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
                       model: opts.model,
                       effort: opts.effort,
                       ...briefing,
-                      ...(Object.keys(briefing).length ? { cwd: opts.cwd } : {}),
+                      ...(Object.keys(briefing).length && !opts.keepThreadCwd ? { cwd: opts.cwd } : {}),
                     },
                   }
                 : {}),
@@ -257,9 +278,12 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
     await server.dispose();
   }
 
+  // Settled before the launch recipe exists, on the one connection and app-server this run has.
+  const briefingWithheld = [...settled.withheld, ...(observer.briefingWithheld ?? [])];
   return {
     sessionId: threadId,
     launch,
+    ...(briefingWithheld.length > 0 ? { briefingWithheld } : {}),
     async adopt(runtimeSessionId): Promise<CodexTuiSession> {
       if (disposed) throw new Error('prepared Codex session is disposed');
       if (adoptedRuntimeSessionId && adoptedRuntimeSessionId !== runtimeSessionId) {

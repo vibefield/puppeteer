@@ -85,6 +85,12 @@
   stroke: var(--vf-orange);
 }
 
+/* A window read before its reset, which has since passed: its last fill,
+   faint, until the next reading. */
+.vf-usage-fill.is-kept {
+  stroke: var(--text-faint);
+}
+
 /* The mark: the provider's own, 9px, in the ink; orange only when rate limited. */
 .vf-usage-mark {
   position: relative;
@@ -308,6 +314,14 @@
 
 .vf-usage-popup-row.is-hot > strong {
   color: var(--vf-orange);
+}
+
+.vf-usage-popup-row.is-kept > i::after {
+  background: var(--text-faint);
+}
+
+.vf-usage-popup-row.is-kept > strong {
+  color: var(--text-faint);
 }
 
 .vf-usage-popup-row > span {

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
-import type { MonitorPastSnapshot, MonitorPastSpanKind } from '../model.js';
+import type { MonitorEndedRow, MonitorPastSnapshot, MonitorPastSpan, MonitorPastSpanKind } from '../model.js';
 import {
   agentViewFixture,
   agentViewsFixture,
@@ -54,6 +54,54 @@ const LEND = {
   receded: (lane: { profileSet?: string | undefined }) => lane.profileSet !== 'work',
 };
 
+// A production read asks the day before it, `[now − 24 h, now]` (T2), and the backend starts a span that began before
+// the window at the window's start.
+const NOW = Date.UTC(2026, 0, 2, 12);
+const HOUR = 3_600_000;
+const SINCE = NOW - HISTORY_WINDOW_MS;
+/** How much later the next read comes. */
+const LATER = 30_000;
+const DESK = { id: 'desk', name: 'Desk', self: true };
+
+/** The day read at NOW: a live row and an ended run whose records both began before it, so the window clips both. */
+const DAY: MonitorPastSnapshot = {
+  sinceMs: SINCE,
+  untilMs: NOW,
+  readAt: NOW,
+  fidelity: 'turns',
+  state: 'complete',
+  live: [
+    {
+      id: 'agent-1',
+      seamAt: NOW - HOUR,
+      spans: [
+        { kind: 'quiet', from: SINCE, to: NOW - 2 * HOUR },
+        { kind: 'worked', from: NOW - 2 * HOUR, to: NOW - HOUR },
+      ],
+    },
+  ],
+  ended: [
+    {
+      id: 'past:claude:long',
+      title: 'Split the invoice writer',
+      project: { name: 'billing-api', seq: 3 },
+      device: DESK,
+      startedAt: SINCE - HOUR,
+      endedAt: NOW - 3 * HOUR,
+      spans: [
+        { kind: 'quiet', from: SINCE, to: NOW - 4 * HOUR },
+        { kind: 'worked', from: NOW - 4 * HOUR, to: NOW - 3 * HOUR },
+      ],
+    },
+  ],
+};
+
+/** A lane as the read LATER answers it: its first span starts at the moved window's start. */
+function clippedLater<Lane extends { readonly spans: readonly MonitorPastSpan[] }>(lane: Lane): Lane {
+  const [first, ...rest] = lane.spans;
+  return { ...lane, spans: [{ ...first!, from: SINCE + LATER }, ...rest] };
+}
+
 describe('the history capability (a minor: plain data in place of `never`)', () => {
   it('is the record’s past a view receives; a view asks nothing, and the kinds cannot say blocked or unseen', () => {
     expectTypeOf<NonNullable<MonitorCapabilities['history']>>().toEqualTypeOf<MonitorHistory>();
@@ -95,6 +143,50 @@ describe('the history capability (a minor: plain data in place of `never`)', () 
     expect(keepPast(PAST, moved)).toBe(moved);
     const partial: MonitorPastSnapshot = { ...reread, state: 'partial', detail: 'The agent index is starting' };
     expect(keepPast(PAST, partial)).toBe(partial);
+  });
+
+  it('keepPast keeps a re-read whose window moved and whose past did not', () => {
+    // half a minute on, a production re-read moves its window, its readAt and every start the window clips, and
+    // nothing the day holds
+    const reread: MonitorPastSnapshot = JSON.parse(
+      JSON.stringify({
+        ...DAY,
+        sinceMs: SINCE + LATER,
+        untilMs: NOW + LATER,
+        readAt: NOW + LATER,
+        live: DAY.live.map(clippedLater),
+        ended: DAY.ended.map(clippedLater),
+      }),
+    );
+    expect(keepPast(DAY, reread)).toBe(DAY);
+    // a span new inside the window is news: the row's status moved on, and its past reaches it
+    const [lane] = reread.live;
+    const lived: MonitorPastSnapshot = {
+      ...reread,
+      live: [{ ...lane!, seamAt: NOW, spans: [...lane!.spans, { kind: 'quiet', from: NOW - HOUR, to: NOW }] }],
+    };
+    expect(keepPast(DAY, lived)).toBe(lived);
+    // so is a state or a detail
+    const partial: MonitorPastSnapshot = { ...reread, state: 'partial', detail: 'The agent index is starting' };
+    expect(keepPast(DAY, partial)).toBe(partial);
+    // and so is a run the moved window left: kept with no span, its last activity at the window's new start
+    const early: MonitorEndedRow = {
+      id: 'past:claude:early',
+      project: { name: '' },
+      device: DESK,
+      startedAt: SINCE + 10_000,
+      endedAt: SINCE + LATER,
+      spans: [{ kind: 'bounds', from: SINCE + 10_000, to: SINCE + LATER }],
+    };
+    const emptied: MonitorPastSnapshot = { ...reread, ended: [...reread.ended, { ...early, spans: [] }] };
+    expect(keepPast({ ...DAY, ended: [...DAY.ended, early] }, emptied)).toBe(emptied);
+    // or gone, ended before it
+    const gone: MonitorEndedRow = {
+      ...early,
+      endedAt: SINCE + 20_000,
+      spans: [{ kind: 'bounds', from: SINCE + 10_000, to: SINCE + 20_000 }],
+    };
+    expect(keepPast({ ...DAY, ended: [...DAY.ended, gone] }, reread)).toBe(reread);
   });
 
   it('reaches a mounted view’s input as the same object until the host lends another', () => {

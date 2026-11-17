@@ -24,8 +24,8 @@ const reference = (file: string) =>
 const OPTS = {
   endpoint: 'http://127.0.0.1:59999/hooks',
   tokenEnvVar: 'PUPPETEER_HOOK_TOKEN',
-  commandForwarderPath: '/tmp/puppeteer hooks.mjs',
-  commandExecutable: '/opt/Node Runtime/bin/node',
+  // A script runner on a staged forwarder: its path is the runner's last argument, before the word.
+  forwarder: { command: '/opt/Node Runtime/bin/node', args: ['/tmp/puppeteer forwarder.mjs'] },
 };
 
 describe('generateHookSettings', () => {
@@ -61,9 +61,10 @@ describe('generateHookSettings', () => {
         expect(handler.timeout).toBe(spec.timeoutSec);
       } else {
         expect(handler.timeout).toBe(spec.timeoutSec);
-        expect(handler.command).toBe(OPTS.commandExecutable);
+        expect(handler.command).toBe(OPTS.forwarder.command);
         expect(handler.args).toEqual([
-          OPTS.commandForwarderPath,
+          ...OPTS.forwarder.args,
+          'claude.hook.v1',
           OPTS.endpoint,
           OPTS.tokenEnvVar,
           String(spec.timeoutSec * 1000),
@@ -104,8 +105,8 @@ describe('generateHookSettings', () => {
     expect(block[0]!.hooks[0]!.type).toBe(censusBlock[0].hooks[0].type);
     expect(block[0]!.hooks[0]!).toMatchObject({
       type: 'command',
-      command: OPTS.commandExecutable,
-      args: [OPTS.commandForwarderPath, OPTS.endpoint, OPTS.tokenEnvVar, '5000'],
+      command: OPTS.forwarder.command,
+      args: [...OPTS.forwarder.args, 'claude.hook.v1', OPTS.endpoint, OPTS.tokenEnvVar, '5000'],
       timeout: 5,
     });
   });
@@ -121,16 +122,20 @@ describe('generateHookSettings', () => {
     const handler = generateHookSettings({ ...OPTS, events: [spec] }).hooks.SessionEnd![0]!.hooks[0]!;
     expect(handler.type).toBe('command');
     if (handler.type === 'command') {
-      expect(handler.command).toBe(OPTS.commandExecutable);
-      expect(handler.args).toEqual([OPTS.commandForwarderPath, OPTS.endpoint, OPTS.tokenEnvVar, '5000']);
+      expect(handler.command).toBe(OPTS.forwarder.command);
+      expect(handler.args).toEqual([...OPTS.forwarder.args, 'claude.hook.v1', OPTS.endpoint, OPTS.tokenEnvVar, '5000']);
       expect(handler.timeout).toBe(5);
     }
   });
 
-  it('keeps direct settings-generation callers compatible with the current Node executable', () => {
-    const { commandExecutable: _commandExecutable, ...legacyOptions } = OPTS;
-    const handler = generateHookSettings(legacyOptions).hooks.SessionStart![0]!.hooks[0]!;
-    expect(handler).toMatchObject({ type: 'command', command: process.execPath });
+  it('runs a host’s lent forwarder runtime as given: its arguments, then the word, and no staged path', () => {
+    const forwarder = { command: '/opt/Host/host-executable', args: ['--host-role=agent-forwarder'] };
+    const handler = generateHookSettings({ ...OPTS, forwarder }).hooks.SessionStart![0]!.hooks[0]!;
+    expect(handler).toMatchObject({
+      type: 'command',
+      command: forwarder.command,
+      args: ['--host-role=agent-forwarder', 'claude.hook.v1', OPTS.endpoint, OPTS.tokenEnvVar, expect.any(String)],
+    });
   });
 
   it('opts FileChanged in only with a real watch matcher', () => {

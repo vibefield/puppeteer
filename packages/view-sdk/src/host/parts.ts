@@ -36,14 +36,18 @@ export function keepStage(current: StageGeometry, next: StageGeometry): StageGeo
   return same ? current : next;
 }
 
-/** The tokens compare by identity: the host's palette reader already keeps an unchanged palette's object. */
+/**
+ * The tokens compare by identity: the host's palette reader already keeps an unchanged palette's object. An absent
+ * `hidden` reads false, so a host that spells it out changes nothing.
+ */
 export function keepTheme(current: MonitorTheme, next: MonitorTheme): MonitorTheme {
   const same =
     current === next ||
     (current.scheme === next.scheme &&
       current.tokens === next.tokens &&
       current.reducedMotion === next.reducedMotion &&
-      current.animations === next.animations);
+      current.animations === next.animations &&
+      (current.hidden ?? false) === (next.hidden ?? false));
   return same ? current : next;
 }
 

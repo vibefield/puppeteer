@@ -14,7 +14,9 @@ import type { FindAgent } from './find-agent.js';
 
 export const FIND_DEBOUNCE_MS = 120;
 export const FIND_MAX_SNIPPETS = 3;
-/** Live runs may have been resumed; a little slack keeps their first words in scope. */
+/** The time fallback's slack (the port's `afterMs`): a little room before the earliest start keeps a run's first
+ * words in scope. No slack covers a conversation resumed from an earlier day; that is the fallback's limit, as the
+ * port's doc says, and why a host whose daemon scopes by session never applies it. */
 const SCOPE_SLACK_MS = 5 * 60_000;
 
 /** The provider-native id a live row joins on, once its provider has said one. */

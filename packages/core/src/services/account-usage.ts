@@ -42,7 +42,8 @@ export const AccountUsageMetricGroupSchema = z.strictObject({
   /**
    * An allowance the provider draws on only after the plan's own limits run
    * out. Untouched, it says nothing about the plan, so a consumer may keep it
-   * out of sight until it is used or those limits are spent.
+   * out of sight until it is used or those limits are spent
+   * (`accountUsageMetricInPlay`).
    */
   standby: z.literal(true).optional(),
 });
@@ -68,6 +69,11 @@ export const AccountUsageMetricSchema = z.strictObject({
   resetsAt: TimestampSchema.optional(),
   /** Absent for the plan's own meters; `label` stays unique across groups. */
   group: AccountUsageMetricGroupSchema.optional(),
+  /**
+   * When this meter was read, present only when earlier than its snapshot's `fetchedAt`: a meter a later, partial
+   * reading (a push) did not carry, kept from the reading that did.
+   */
+  fetchedAt: TimestampSchema.optional(),
 });
 export type AccountUsageMetric = z.infer<typeof AccountUsageMetricSchema>;
 
@@ -93,7 +99,10 @@ export const AccountUsageSnapshotSchema = z
     source: AccountUsageSourceSchema,
     /** Adapter-ranked metrics. Generic consumers preserve this order. */
     metrics: z.array(AccountUsageMetricSchema),
-    /** Account-wide credits that are not represented by a percentage meter. */
+    /**
+     * Account-wide credits that are not represented by a percentage meter. A push that does not carry them keeps the
+     * last reading's, which have no age of their own.
+     */
     credits: AccountUsageCreditsSchema.optional(),
     /** Present when the snapshot was read for one registered profile rather than the native default. */
     profileId: AgentProfileIdSchema.optional(),
@@ -113,6 +122,25 @@ export const AccountUsageSnapshotSchema = z
   });
 export type AccountUsageSnapshot = z.infer<typeof AccountUsageSnapshotSchema>;
 
+/** The fields the in-play rule reads, so a host's own copy of the metric contract fits as well as this one. */
+type InPlayMetric = {
+  kind: string;
+  usedPercent: number;
+  group?: { id: string; standby?: boolean | undefined } | undefined;
+};
+
+/**
+ * Whether a meter belongs in sight, by the rule `standby` states: a standby allowance is in play once any meter of
+ * its group is used, or once one of the plan's own windows (no group) is spent; every other meter always is. The one
+ * place that rule is written, so every consumer of a reading keeps the same meters out of sight.
+ */
+export function accountUsageMetricInPlay(metric: InPlayMetric, metrics: readonly InPlayMetric[]): boolean {
+  const group = metric.group;
+  if (group?.standby !== true) return true;
+  if (metrics.some((other) => other.group?.id === group.id && other.usedPercent > 0)) return true;
+  return metrics.some((other) => other.group === undefined && other.kind === 'window' && other.usedPercent >= 100);
+}
+
 export const AccountUsageAvailableSchema = z.strictObject({
   status: z.literal('available'),
   snapshot: AccountUsageSnapshotSchema,
@@ -130,6 +158,19 @@ export const AccountUsageFailureSchema = z.strictObject({
 });
 export type AccountUsageFailure = z.infer<typeof AccountUsageFailureSchema>;
 
+/** The fields the passing rule reads, so a host's own copy of the failure contract fits as well as this one. */
+type PassingFailure = { status: string; code?: string | undefined };
+
+/**
+ * Whether a failed refresh is passing: a read that failed or was rate limited says nothing of the account, so the
+ * last reading still describes it and stands beside the failure. A failure that names the account (a refused sign-in,
+ * limits it does not expose) says it cannot be read: that failure, not a kept reading, is the row. The one place that
+ * rule is written, so every consumer of a retained reading tells the two apart alike.
+ */
+export function accountUsageFailurePasses(failure: PassingFailure): boolean {
+  return failure.status === 'unavailable' || failure.code === 'rate-limited';
+}
+
 export const AccountUsageFetchResultSchema = z.union([AccountUsageAvailableSchema, AccountUsageFailureSchema]);
 export type AccountUsageFetchResult = z.infer<typeof AccountUsageFetchResultSchema>;
 
@@ -138,7 +179,11 @@ export const AccountUsageProviderSchema = z.strictObject({
   ...AgentProviderDescriptorSchema.shape,
   refresh: z.strictObject({
     pollIntervalMs: PositiveSafeIntegerSchema,
-    /** Poll delay after a push update; defaults to `pollIntervalMs`. */
+    /**
+     * The delay before the next poll after a push that carries every meter the last poll did, or less when the
+     * reading names a reset sooner; defaults to `pollIntervalMs`. A push never brings a poll forward, and defers
+     * none while a poll's failure stands: that poll's retry is the failure's backoff or Retry-After.
+     */
     pushUpdatePollIntervalMs: PositiveSafeIntegerSchema.optional(),
   }),
 });
@@ -160,6 +205,7 @@ export const AccountUsageEntrySchema = z.strictObject({
   profileLabel: NonEmptyStringSchema.optional(),
   /** The last good snapshot is retained when a later refresh fails. */
   stale: z.boolean().optional(),
+  /** That failure. Whether the kept reading still stands for the account is `accountUsageFailurePasses`. */
   refreshFailure: AccountUsageFailureSchema.optional(),
 });
 export type AccountUsageEntry = z.infer<typeof AccountUsageEntrySchema>;

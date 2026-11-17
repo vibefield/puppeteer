@@ -24,6 +24,7 @@ import { spawnThroughLayout } from './layout.js';
 import {
   SPAWN_THROUGH_EXIT_REFUSED,
   SPAWN_THROUGH_EXIT_UNAVAILABLE,
+  boundSpawnThroughLaunch,
   boundSpawnThroughText,
   isSpawnThroughCommandName,
   isSpawnThroughHostLabel,
@@ -267,7 +268,9 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
     const value = process.env[variable];
     if (typeof value === 'string') environment[variable] = value;
   }
-  const launch = {
+  // Held to the gateway's bounds, and marked when cut: a shell execs far more than the gateway reads. Only the
+  // request is cut; the fallback runs originalArgv, whole.
+  const launch = boundSpawnThroughLaunch({
     type: 'launch',
     providerId: provider.id,
     cwd: originalCwd,
@@ -280,7 +283,7 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
     // `isatty`, never `process.stdin.isTTY`: that getter opens the terminal as a stream, and libuv leaves
     // fd 0 non-blocking — a state the agent would inherit at exec.
     interactive: isatty(0) && isatty(1),
-  };
+  });
 
   /**
    * THE RULE OF REFUSAL, held here when the host cannot hold it — an answer

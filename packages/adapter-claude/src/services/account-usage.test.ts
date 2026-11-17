@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   CLAUDE_OAUTH_BETA,
   CLAUDE_USAGE_ENDPOINT,
@@ -11,19 +11,12 @@ import {
   fetchClaudeAccountUsageForProfileWithDependencies,
   fetchClaudeAccountUsageWithDependencies,
   findClaudeAccessToken,
-  getClaudeStatusLineAccountUsage,
   normalizeClaudeAccountUsage,
-  observeClaudeStatusLineAccountUsage,
-  onClaudeAccountUsage,
-  resetClaudeAccountUsageObserversForTests,
   resolveClaudeAccessToken,
 } from './account-usage.js';
 import * as publicApi from '../index.js';
 
 describe('Claude account usage', () => {
-  afterEach(() => {
-    resetClaudeAccountUsageObserversForTests();
-  });
   it('advertises its provider identity, safe polling cadence, and push channel', () => {
     const service = createClaudeAccountUsageService();
     expect(service.provider).toEqual({
@@ -431,33 +424,47 @@ describe('Claude account usage', () => {
     expect(claudeAccountUsageFromStatusLine({ context_window: { used_percentage: 10 } })).toBeUndefined();
   });
 
-  it('notifies process-global status-line usage observers', () => {
-    const listener = vi.fn();
-    const unsubscribe = onClaudeAccountUsage(listener);
+  it('hands a status line’s quota to its own service’s listeners alone, stamped with the session’s account', () => {
+    const own = createClaudeAccountUsageService();
+    const other = createClaudeAccountUsageService();
+    const heard = vi.fn();
+    const elsewhere = vi.fn();
+    const unsubscribe = own.subscribe(heard);
+    other.subscribe(elsewhere);
+    const statusLine = (usedPercent: number) => ({
+      rate_limits: { five_hour: { used_percentage: usedPercent, resets_at: 1_800_000_000 } },
+    });
 
-    const first = observeClaudeStatusLineAccountUsage(
-      {
-        rate_limits: {
-          five_hour: { used_percentage: 10, resets_at: 1_800_000_000 },
-        },
+    own.observeStatusLine({ profileId: 'claude:p1' }, statusLine(10), '2026-07-23T18:00:00.000Z');
+    expect(heard).toHaveBeenCalledOnce();
+    expect(heard.mock.calls[0]![0]).toMatchObject({
+      status: 'available',
+      snapshot: {
+        profileId: 'claude:p1',
+        fetchedAt: '2026-07-23T18:00:00.000Z',
+        source: { kind: 'native-statusline' },
+        metrics: [{ id: 'subscription:five_hour:window', usedPercent: 10 }],
       },
-      '2026-07-23T18:00:00.000Z',
+    });
+    expect(elsewhere).not.toHaveBeenCalled();
+
+    // A status line with no rate_limits is no reading.
+    own.observeStatusLine(
+      { profileId: 'claude:p1' },
+      { context_window: { used_percentage: 10 } },
+      '2026-07-23T18:00:30.000Z',
     );
-    expect(first?.status).toBe('available');
-    expect(listener).toHaveBeenCalledOnce();
-    expect(getClaudeStatusLineAccountUsage()).toBe(first);
+    expect(heard).toHaveBeenCalledOnce();
+
+    // The other instance's session is heard by its own listeners alone, under its own account.
+    other.observeStatusLine({ profileId: 'claude:native-default' }, statusLine(15), '2026-07-23T18:00:45.000Z');
+    expect(elsewhere).toHaveBeenCalledOnce();
+    expect(elsewhere.mock.calls[0]![0].snapshot.profileId).toBe('claude:native-default');
+    expect(heard).toHaveBeenCalledOnce();
 
     unsubscribe();
-    observeClaudeStatusLineAccountUsage(
-      {
-        rate_limits: {
-          five_hour: { used_percentage: 20, resets_at: 1_800_000_000 },
-        },
-      },
-      '2026-07-23T18:01:00.000Z',
-    );
-    expect(listener).toHaveBeenCalledOnce();
-    expect(getClaudeStatusLineAccountUsage()?.snapshot.metrics[0]?.usedPercent).toBe(20);
+    own.observeStatusLine({ profileId: 'claude:p1' }, statusLine(20), '2026-07-23T18:01:00.000Z');
+    expect(heard).toHaveBeenCalledOnce();
   });
 
   it('does not refresh or rewrite expired OAuth credentials', async () => {

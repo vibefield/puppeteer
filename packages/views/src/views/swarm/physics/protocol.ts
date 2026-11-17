@@ -53,9 +53,10 @@ export type SwarmPhysicsCommand =
   | { type: 'updateFloor'; floor: number }
   | { type: 'updateObstacles'; obstacles: readonly SwarmObstacleRect[] }
   /**
-   * The view is told to hold still (MV-W4: the host's animations switch off, or
-   * motion reduced): nothing solves and no frame is published until `resume`,
-   * which seeds the clock afresh so the pause is never caught up on. Membership
+   * The view is told to hold still (MV-W4: the host's animations switch off,
+   * motion reduced, or the stage out of sight, `theme.hidden`): nothing solves,
+   * no frame is published and the worker keeps no timer until `resume`, which
+   * seeds the clock afresh so the pause is never caught up on. Membership
    * changes still publish at once, so a body that arrives while still is drawn
    * where it stands.
    */

@@ -197,8 +197,9 @@ describe('the crowd fits its field (SWF)', () => {
     const { resize } = await mounted(shrinking, false);
     await frames(3);
     const drawnAtMount = paint.mock.calls.length;
-    // The host re-measures the same stage: a still field draws once per change.
+    // The host re-measures the same stage: a still field asks for one still frame per change.
     await resize(1164, 288);
+    await frames(1);
     expect(paint.mock.calls.length).toBeGreaterThan(drawnAtMount);
     const before = expectedScale(shrinking, 1164, 288);
     const base = bases(shrinking);
@@ -208,6 +209,7 @@ describe('the crowd fits its field (SWF)', () => {
     const after = expectedScale(shrinking, 760, 288, before);
     expect(after).toBeLessThan(before);
     await resize(760, 288);
+    await frames(1);
     for (const body of lastFrame().bodies) expect(body.radius).toBeCloseTo(base.get(body.model.id)! * after, 9);
   });
 });

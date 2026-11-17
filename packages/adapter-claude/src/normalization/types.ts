@@ -9,6 +9,16 @@ export interface ClaudeHookPayload {
   [key: string]: unknown;
 }
 
+/** What the observer knows of a hook that its body does not say. */
+export interface ClaudeHookContext {
+  /**
+   * The observer rotated its native identity to this hook's session (an in-process `/clear` or `/resume`,
+   * session-selection.ts): a SessionStart that starts the observed session over. Its `source` alone never says so:
+   * a `fork` start may be a background copy, a `resume` one another conversation's.
+   */
+  rebind?: boolean | undefined;
+}
+
 export interface NormalizedHook {
   events: AgentEvent[];
   diagnostics: ClaudeHookDiagnostic[];
@@ -19,6 +29,12 @@ export interface NormalizedHook {
   agentId?: string | undefined;
   agentType?: string | undefined;
   providerVersion?: string | undefined;
+  /**
+   * What this hook closed for actors other than its own, one entry per actor, each carrying the actor and the prompt
+   * it asked in (a main-thread boundary or eviction settling a subagent's request, say). A consumer publishes each
+   * entry under its own actor, before `events`.
+   */
+  settled?: NormalizedHook[] | undefined;
 }
 
 export interface ClaudeHookDiagnostic {
@@ -41,6 +57,9 @@ export interface PendingPermission {
 export interface RecentToolRequest {
   toolCallId: string;
   promptId?: string | undefined;
+  /** The subagent that asked; absent for the main thread and for a call an attach adopted from the transcript. */
+  agentId?: string | undefined;
+  agentType?: string | undefined;
   toolName: string;
   inputKey: string;
   input?: unknown;
@@ -51,5 +70,8 @@ export interface RecentToolRequest {
 export interface PendingQuestion {
   requestId: string;
   promptId?: string | undefined;
+  /** The subagent that asked; absent for the main thread. */
+  agentId?: string | undefined;
+  agentType?: string | undefined;
   toolCallId: string;
 }

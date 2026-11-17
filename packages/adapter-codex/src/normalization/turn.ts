@@ -53,6 +53,8 @@ export class CodexTurnNormalizer {
       if (status === 'failed' || (nativeError !== null && nativeError !== undefined)) {
         const error = typeof nativeError === 'string' ? nativeError : str(rec(nativeError)?.message);
         events.push({ type: 'turn:failed', turnId, error });
+      } else if (status === 'interrupted') {
+        events.push({ type: 'turn:completed', turnId, outcome: 'interrupted' });
       } else {
         events.push({ type: 'turn:completed', turnId });
       }

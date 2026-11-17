@@ -133,7 +133,7 @@ export const agentEventCatalog = {
     'turn',
     'turn:completed',
     TurnCompletedEventSchema,
-    'A user turn completed successfully.',
+    'A user turn ended: it finished, or the person interrupted it (outcome).',
   ),
   'turn:failed': defineAgentEvent('turn', 'turn:failed', TurnFailedEventSchema, 'A user turn failed.'),
   'reasoning:started': defineAgentEvent(

@@ -8,13 +8,18 @@ function contentText(update: Extract<SessionUpdate, { sessionUpdate: 'agent_mess
   return update.content.type === 'text' ? (update.content.text ?? '') : '';
 }
 
-/** Session-scoped ACP message-delta → conversation event adapter. */
+/**
+ * Session-scoped ACP message-delta → conversation event adapter. An assistant message never spans a
+ * prompt: the buffers start empty at every prompt of the session (`beginTurn`).
+ */
 export class AcpConversationNormalizer {
   private readonly messageBuffers = new Map<string, string>();
 
   normalize(update: SessionUpdate): AcpConversationEvent[] {
     if (update.sessionUpdate === 'user_message_chunk') {
-      // The driver already represented this prompt echo as turn:started.
+      // A prompt echo opens a turn: this client's (the driver already represented it as turn:started),
+      // another client's, or one that session/load replays.
+      this.beginTurn();
       return [];
     }
     if (update.sessionUpdate !== 'agent_message_chunk') return [];
@@ -23,6 +28,11 @@ export class AcpConversationNormalizer {
     const text = (this.messageBuffers.get(messageId) ?? '') + contentText(update);
     this.messageBuffers.set(messageId, text);
     return [{ type: 'conversation:assistant-message', messageId, text, final: false, displayOnly: false }];
+  }
+
+  /** A new prompt: no assistant message, id'd or id-less, carries over from the turn before. */
+  beginTurn(): void {
+    this.messageBuffers.clear();
   }
 
   /** Full accumulated text; without an id, returns the latest message buffer. */

@@ -172,13 +172,36 @@ describe('HermesGatewayNormalizer', () => {
     ]);
   });
 
-  it('marks interrupted completion as turn:failed', () => {
-    const normalizer = new HermesGatewayNormalizer();
-    normalizer.normalize(event('message.start'));
-    const events = normalizer.normalize(event('message.complete', { text: 'partial', status: 'interrupted' })).events;
-    expect(events).toEqual([
+  it('ends an interrupted completion as an interrupted turn and keeps an error a failure', () => {
+    const interrupted = new HermesGatewayNormalizer();
+    interrupted.normalize(event('message.start'));
+    const ended = interrupted.normalize(event('message.complete', { text: 'partial', status: 'interrupted' })).events;
+    expect(ended).toEqual([
       expect.objectContaining({ type: 'conversation:assistant-message', final: true, text: 'partial' }),
-      expect.objectContaining({ type: 'turn:failed', error: 'interrupted' }),
+      {
+        type: 'turn:completed',
+        turnId: 'hermes-turn-1',
+        stopReason: 'interrupted',
+        outcome: 'interrupted',
+        lastAssistantMessage: 'partial',
+      },
+    ]);
+
+    const failed = new HermesGatewayNormalizer();
+    failed.normalize(event('message.start'));
+    const errored = failed.normalize(event('message.complete', { text: 'partial', status: 'error' })).events;
+    expect(errored).toEqual([
+      expect.objectContaining({ type: 'conversation:assistant-message', final: true, text: 'partial' }),
+      { type: 'turn:failed', turnId: 'hermes-turn-1', error: 'error' },
+    ]);
+  });
+
+  it('ends the captured 0.21.5 interrupt turn without a failure', () => {
+    const normalizer = new HermesGatewayNormalizer();
+    const events = census('interrupt').flatMap((frame) => normalizer.normalize(frame).events);
+    expect(events.filter((item) => item.type.startsWith('turn:'))).toEqual([
+      { type: 'turn:started', turnId: 'hermes-turn-1' },
+      expect.objectContaining({ type: 'turn:completed', turnId: 'hermes-turn-1', outcome: 'interrupted' }),
     ]);
   });
 

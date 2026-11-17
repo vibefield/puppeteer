@@ -153,4 +153,14 @@ describe('the profile line', () => {
     expect(profileLineFor(BLOOM_SCENARIOS['one-three'], undefined)).toBeUndefined();
     expect(profileLineFor(undefined, 'demo')).toBeUndefined();
   });
+
+  it('counts and looks on the desktop you sit at, never on a peer', () => {
+    expect(profileLineFor({ devices: [BLOOM_SCENARIOS['one-one'].devices[0]!, mini] }, 'native')).toBeUndefined();
+    expect(profileLineFor(BLOOM_SCENARIOS.two, 'personal')).toBeUndefined();
+  });
+
+  it('names nothing while the desktop you sit at is still being read', () => {
+    const reading = { devices: [{ id: 'desk', label: 'Desk', self: true, state: 'reading' as const }] };
+    expect(profileLineFor(reading, 'work')).toBeUndefined();
+  });
 });

@@ -11,7 +11,7 @@ import {
   WATERMARK_SIZE,
   WATERMARK_SMALL,
 } from './body-layout.js';
-import { baseRadius, bubbleModel, type SwarmBubbleModel } from './bubble-model.js';
+import { baseRadius, bubbleModel, type BubbleModelInput, type SwarmBubbleModel } from './bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from './swarm-parameters.js';
 import { layoutCopy, type TextMeasure } from './text-layout.js';
 
@@ -77,7 +77,7 @@ const BODIES = {
 } as const;
 
 /** The model a body has when the fit gives it radius `radius`. */
-function at(kind: keyof typeof BODIES, radius: number): SwarmBubbleModel {
+function at(kind: keyof typeof BODIES, radius: number, profile?: BubbleModelInput['profile']): SwarmBubbleModel {
   const row = BODIES[kind];
   const scale = radius / baseRadius(row, parameters);
   return bubbleModel({
@@ -87,6 +87,7 @@ function at(kind: keyof typeof BODIES, radius: number): SwarmBubbleModel {
     unread: kind === 'unread',
     scale,
     ...(kind === 'terminal' ? { runningSinceMs: AT - 65_000 } : {}),
+    ...(profile ? { profile } : {}),
   });
 }
 
@@ -246,5 +247,49 @@ describe('the rungs', () => {
     const arriving = bodyLayout(at('idle', 50), { radius: 50, scale: 0.3, measure });
     expect(arriving.rung).toBe('full');
     expect(arriving.watermark).toBe(WATERMARK_SMALL);
+  });
+});
+
+describe('a profile’s glyph on an agent’s model line, rung by rung (UM-D6)', () => {
+  const WORK = { label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true } as const;
+  const lines = (kind: keyof typeof BODIES, radius: number) =>
+    bodyLayout(at(kind, radius, WORK), { radius, measure }).copy.lines;
+  /** The 10.5 px glyph and its 3 px gap. */
+  const LEAD = 13.5;
+
+  it.each<[keyof typeof BODIES, number]>([
+    ['working', 60],
+    ['idle', 50],
+  ])('the full rung: %s at r %d keeps the glyph on the model line', (kind, radius) => {
+    const model = lines(kind, radius).find((line) => line.key === 'model')!;
+    expect(model.lead?.icon).toBe('profile:briefcase:filled');
+    expect(model.width - model.textWidth).toBeCloseTo(LEAD, 9);
+  });
+
+  it.each([40, 36])('the middle rung: idle at r %d keeps the model line and its glyph', (radius) => {
+    const kept = lines('idle', radius);
+    expect(kept.map((line) => line.key)).toEqual(['name', 'model']);
+    const model = kept[1]!;
+    expect(model.lead?.icon).toBe('profile:briefcase:filled');
+    expect(model.width - model.textWidth).toBeCloseTo(LEAD, 9);
+  });
+
+  // What the words pay for the glyph (`width - textWidth` above is the lead whether or not they shrank). These cuts
+  // are this file's fixed-pitch measurer's, 0.6 em: the atlas measures the system face, which is a little wider.
+  it.each([
+    [50, 'fable 5.1 · hi…'],
+    [40, 'fable 5.1 …'],
+    [36, 'fable 5.1…'],
+  ])('pays for it from the words: idle at r %d reads %s', (radius, text) => {
+    expect(lines('idle', radius).find((line) => line.key === 'model')!.text).toBe(text);
+  });
+
+  it('never pushes the line past the budget the words are fitted to', () => {
+    expect(lines('idle', 50).find((line) => line.key === 'model')!.width).toBeLessThanOrEqual(84);
+  });
+
+  it('goes with its line: a blocked body’s one line is its state, and below the rung only the name stands', () => {
+    expect(lines('blocked', 40).map((line) => line.key)).toEqual(['name', 'state']);
+    expect(lines('idle', 30).map((line) => line.key)).toEqual(['name']);
   });
 });

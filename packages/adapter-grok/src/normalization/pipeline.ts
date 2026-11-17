@@ -1,4 +1,5 @@
 import { AcpNotificationNormalizer } from '@vibefield/puppeteer-adapter-acp';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { normalizeGrokExtension } from './adapter.js';
 import { GrokConversationNormalizer } from './conversation.js';
 import { normalizeGrokDelegation } from './delegation.js';
@@ -16,14 +17,78 @@ import {
 export const GROK_NORMALIZED_UPDATE_METHODS = ['session/update', '_x.ai/session/update'] as const;
 const GROK_NORMALIZED_UPDATE_METHOD_SET = new Set<string>(GROK_NORMALIZED_UPDATE_METHODS);
 
+/**
+ * The tool events that end a thought stream: adapter-acp's driver closes reasoning at these (its
+ * `CLOSES_REASONING` set), and at an assistant message, which this pipeline's own branch owns.
+ */
+const TOOL_EVENT_TYPES: ReadonlySet<string> = new Set([
+  'tool:requested',
+  'tool:started',
+  'tool:completed',
+  'tool:failed',
+]);
+
 /** Session-scoped composition of category-focused Grok log normalizers. */
 export class GrokUpdateNormalizer {
   private readonly acp = new AcpNotificationNormalizer();
   private readonly turn = new GrokTurnNormalizer();
   private readonly conversation = new GrokConversationNormalizer();
   private readonly reasoning = new GrokReasoningNormalizer();
+  /** The open-work ledger's root tools and subagents, each with the prompt it opened under. */
+  private readonly openTools = new Map<string, string | undefined>();
+  private readonly openSubagents = new Map<string, string | undefined>();
 
-  normalize(input: unknown): GrokObservedEvent[] {
+  /** `replay`: the record is the log's history, written by a process that has gone. */
+  normalize(input: unknown, { replay = false }: { replay?: boolean } = {}): GrokObservedEvent[] {
+    const events = this.normalizeRecord(input, replay);
+    for (const { event, promptId } of events) this.trackOpenWork(event, promptId);
+    return events;
+  }
+
+  /**
+   * The replay is over, and a launch or resume process is not in the middle of what the log last shows: this ends
+   * everything the log left open. It never fails a turn: a resumed session is not a failed one, and a failure would
+   * hold its queue. The closers are derived, and the observer publishes them before any live record.
+   */
+  settleReplay(): GrokObservedEvent[] {
+    const settled: GrokObservedFactory = (event, promptId) => ({
+      event,
+      promptId,
+      source: 'runtime',
+      confidence: 'derived',
+      nativeEvent: { code: 'grok-replay-settled' },
+    });
+    const events = [
+      ...[...this.openTools].map(([toolCallId, promptId]) =>
+        settled({ type: 'tool:failed', toolCallId, error: 'the session ended before this tool finished' }, promptId),
+      ),
+      ...[...this.openSubagents].map(([subagentId, promptId]) =>
+        settled({ type: 'delegation:subagent-stopped', subagentId }, promptId),
+      ),
+      ...this.reasoning.openPrompts().flatMap((promptId) => this.reasoning.complete(promptId, settled)),
+      ...this.turn
+        .settleReplay()
+        .map((promptId) => settled(this.turn.completionEvent(promptId, undefined, undefined), promptId)),
+    ];
+    this.openTools.clear();
+    this.openSubagents.clear();
+    this.conversation.clear();
+    return events;
+  }
+
+  private trackOpenWork(event: AgentEvent, promptId: string | undefined): void {
+    if (event.type === 'tool:requested' || event.type === 'tool:started') {
+      this.openTools.set(event.toolCallId, promptId);
+    } else if (event.type === 'tool:completed' || event.type === 'tool:failed') {
+      this.openTools.delete(event.toolCallId);
+    } else if (event.type === 'delegation:subagent-started') {
+      this.openSubagents.set(event.subagentId, promptId);
+    } else if (event.type === 'delegation:subagent-stopped') {
+      this.openSubagents.delete(event.subagentId);
+    }
+  }
+
+  private normalizeRecord(input: unknown, replay: boolean): GrokObservedEvent[] {
     const record = input as GrokUpdateRecord;
     const params = record?.params;
     const update = params?.update;
@@ -43,7 +108,15 @@ export class GrokUpdateNormalizer {
       promptId = this.turn.promptId(update, params._meta),
       source = 'native-transcript',
       confidence = 'authoritative',
-    ) => ({ event, promptId, timestamp, source, confidence, nativeEvent: input });
+    ) => ({
+      event,
+      promptId,
+      timestamp,
+      source,
+      confidence,
+      nativeEvent: input,
+      ...(this.turn.isReopened(promptId) ? { reopened: true } : {}),
+    });
 
     if (update.sessionUpdate === 'hook_execution') {
       return [...normalizeGrokSessionHook(update, params.sessionId, observed), ...this.turn.normalizeHook(update)];
@@ -55,32 +128,47 @@ export class GrokUpdateNormalizer {
     const promptId = this.turn.correlatedPromptId(update, params._meta);
     if (update.sessionUpdate === 'agent_thought_chunk') {
       if (!promptId) return [];
+      this.turn.reopenSettled(promptId);
+      // The prompt's next message record starts a new message.
+      this.conversation.interrupt(promptId);
       return [...this.turn.materializePendingUser(promptId), this.reasoning.progress(promptId, observed)];
     }
     if (update.sessionUpdate === 'agent_message_chunk') {
       if (!promptId) return [];
+      this.turn.reopenSettled(promptId);
       const events = this.turn.materializePendingUser(promptId);
       this.turn.setActive(promptId);
-      events.push(this.conversation.append(update, promptId, observed));
+      // A thought stream ends where the answer starts; a later thought starts it again.
+      events.push(...this.reasoning.complete(promptId, observed));
+      events.push(this.conversation.append(update, promptId, observed, params._meta));
       return events;
     }
     if (update.sessionUpdate === 'turn_completed') {
+      // A live, named error_kind fails the turn whatever its stop_reason says; null, empty or absent completes it. So
+      // does a replayed one: what it refused has gone, and the failure would hold a resumed row's queue.
+      const errorKind = !replay && typeof update.error_kind === 'string' ? update.error_kind : '';
+      const end = (endedPromptId: string, lastAssistantMessage?: string) =>
+        observed(
+          errorKind
+            ? this.turn.failureEvent(endedPromptId, errorKind)
+            : this.turn.completionEvent(
+                endedPromptId,
+                typeof update.stop_reason === 'string' ? update.stop_reason : undefined,
+                lastAssistantMessage,
+              ),
+          endedPromptId,
+        );
+      // A bare settled prompt's own end comes alone: no live thought, message or tool record reopened it, so it has no
+      // thought or message to close.
+      const settledPromptId = this.turn.endSettled(update, params._meta);
+      if (settledPromptId) return [{ ...end(settledPromptId), settledEnd: true }];
       const completedPromptId = this.turn.beginCompletion(update, params._meta);
       if (!completedPromptId) return [];
       const events = this.turn.materializePendingUser(completedPromptId);
       events.push(...this.reasoning.complete(completedPromptId, observed));
       const assistant = this.conversation.complete(completedPromptId, observed);
       events.push(...assistant.events);
-      events.push(
-        observed(
-          this.turn.completionEvent(
-            completedPromptId,
-            typeof update.stop_reason === 'string' ? update.stop_reason : undefined,
-            assistant.text,
-          ),
-          completedPromptId,
-        ),
-      );
+      events.push(end(completedPromptId, assistant.text));
       this.turn.finishCompletion(completedPromptId);
       return events;
     }
@@ -93,10 +181,16 @@ export class GrokUpdateNormalizer {
     // Standard ACP tools/context/config reuse ACP category normalization while
     // the surrounding Grok observation retains durable prompt correlation.
     const notification = params as unknown as Parameters<AcpNotificationNormalizer['normalize']>[0];
-    return this.acp
-      .normalize(notification)
-      .events.map((event) =>
-        observed(event, promptId, event.type.startsWith('context-window:') ? 'native-log' : 'native-transcript'),
-      );
+    const { events } = this.acp.normalize(notification);
+    const toolRecord = events.some(({ type }) => TOOL_EVENT_TYPES.has(type));
+    if (promptId && toolRecord) this.turn.reopenSettled(promptId);
+    const normalized = events.map((event) =>
+      observed(event, promptId, event.type.startsWith('context-window:') ? 'native-log' : 'native-transcript'),
+    );
+    if (!promptId || !toolRecord) return normalized;
+    // A tool record ends the prompt's thought stream and its current message: a later thought starts
+    // reasoning again, and the next message record starts a new message.
+    this.conversation.interrupt(promptId);
+    return [...this.reasoning.complete(promptId, observed), ...normalized];
   }
 }
