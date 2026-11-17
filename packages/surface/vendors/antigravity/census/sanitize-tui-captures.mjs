@@ -24,6 +24,8 @@ const vendorRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 export const TUI_CAPTURE_FORMAT = 'puppeteer-antigravity-tui-capture/1';
 export const TUI_SCENARIOS = ['screens', 'basic-chat', 'resume', 'tool-success', 'tool-failure'];
+/** Read-before-answer runs: summarized for review, never sanitized into the committed set. */
+export const TUI_STOP_POINT_SCENARIOS = ['screens-terms', 'screens-trust'];
 export const TUI_CAPTURE_VERSION = '1.4.12';
 const JOURNAL_SCENARIOS = new Set(TUI_SCENARIOS.filter((scenario) => scenario !== 'screens'));
 const PLACEHOLDER_LEAKS = ['$OPERATOR_HOME'];
@@ -63,21 +65,22 @@ function filesUnder(root, current = root) {
     });
 }
 
-function rawScenarios(input) {
-  return TUI_SCENARIOS.filter((scenario) => existsSync(join(input, scenario, 'capture.json')));
+function rawScenarios(input, names = TUI_SCENARIOS) {
+  return names.filter((scenario) => existsSync(join(input, scenario, 'capture.json')));
 }
 
 /** What a runner may report: verdicts and counts, never screen text, paths or journal contents. */
 export function summarizeTuiCapture(input) {
   const root = resolve(input);
   if (!existsSync(root)) throw new Error('raw TUI capture directory is missing');
-  return rawScenarios(root).map((scenario) => {
+  return rawScenarios(root, [...TUI_SCENARIOS, ...TUI_STOP_POINT_SCENARIOS]).map((scenario) => {
     const capture = json(join(root, scenario, 'capture.json'));
     const screensPath = join(root, scenario, 'screens.json');
     const screens = existsSync(screensPath) ? json(screensPath) : { stages: [] };
     return {
       scenario,
       outcome: capture.outcome,
+      stoppedBefore: capture.notes?.stoppedBefore ?? null,
       version: capture.version?.parsed ?? null,
       executableUnchanged: capture.executable?.unchanged === true,
       artifactSha256: capture.executable?.sha256Before ?? null,

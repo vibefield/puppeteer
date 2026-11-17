@@ -31,18 +31,22 @@ What every run does:
 
 ### Scenarios
 
-| Scenario       | Keys sent                       | What it captures                                                                                     |
-| -------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `screens`      | none                            | the first screen's text, unanswered, and which of `live-pty-host.ts`'s first-run patterns it matches |
-| `basic-chat`   | first-run walk, one prompt      | one native turn's journal                                                                            |
-| `resume`       | first-run walk, two prompts     | a turn, then `--conversation <id>` and a second turn in the same journal                             |
-| `tool-success` | first-run walk, one prompt      | a 1.4.12-schema `run_command` call of `sh -c 'echo puppeteer-capture-ok'` and its result             |
-| `tool-failure` | first-run walk, one prompt      | the same call of `sh -c 'echo puppeteer-capture-failed; exit 3'`: the non-zero `GENERIC` shape       |
+| Scenario        | Keys sent                       | What it captures                                                                                     |
+| --------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `screens`       | none                            | the first screen's text, unanswered, and which of `live-pty-host.ts`'s first-run patterns it matches |
+| `screens-terms` | the color scheme only           | the terms screen, recorded and left unanswered (stop point)                                          |
+| `screens-trust` | color scheme, terms             | the workspace-trust screen, recorded and left unanswered (stop point)                                |
+| `basic-chat`    | first-run walk, one prompt      | one native turn's journal                                                                            |
+| `resume`        | first-run walk, two prompts     | a turn, then `--conversation <id>` and a second turn in the same journal                             |
+| `tool-success`  | first-run walk, one prompt      | a 1.4.12-schema `run_command` call of `sh -c 'echo puppeteer-capture-ok'` and its result             |
+| `tool-failure`  | first-run walk, one prompt      | the same call of `sh -c 'echo puppeteer-capture-failed; exit 3'`: the non-zero `GENERIC` shape       |
 
-Every scenario but `screens` answers the first-run screens exactly as the attested host does: color scheme, terms
-with the data-collection checkbox **unchecked**, workspace trust. That is a terms consent in a disposable home, so
-it needs the standing approval (staging step C0) and the literal `ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED=1`. The
-two literals differ: the terms gate takes `1`, the updater switch takes `true`.
+Every scenario but `screens` and `screens-terms` answers the terms screen exactly as the attested host does: color
+scheme, terms with the data-collection checkbox **unchecked**, workspace trust. That is a terms consent in a
+disposable home, so it needs the standing approval (staging step C0) and the literal
+`ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED=1`. The two literals differ: the terms gate takes `1`, the updater switch takes
+`true`. The two stop-point scenarios exist so a person reads each first-run screen before any run answers it; their
+`capture.json` records `notes.stoppedBefore`, the summary reports them, and the sanitizer never commits them.
 
 ### Preconditions
 
@@ -81,10 +85,11 @@ ANTIGRAVITY_TUI_CAPTURE_SHA256=34423fc9b0af3841e7646aa72a2d40ffeab8218b22d1cb99e
 pnpm --filter @vibefield/puppeteer-adapter-antigravity exec vitest run src/tui-capture.live.test.ts
 ```
 
-Run `screens` first and report it. Only after the approval, run the rest in a second invocation, adding
-`ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED=1` and
-`ANTIGRAVITY_TUI_CAPTURE_SCENARIOS=basic-chat,resume,tool-success,tool-failure`. A scenario directory that already
-exists is refused, so a re-run first sets the old one aside (`mv -n`).
+Run the screens one invocation at a time, each reported and approved before the next: `screens`, then
+`screens-terms`, then `screens-trust` (this one answers the terms, so it adds
+`ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED=1`). Only after all three are approved, run the rest in one invocation with
+`ANTIGRAVITY_TUI_CAPTURE_SCENARIOS=basic-chat,resume,tool-success,tool-failure` and the terms approval. A scenario
+directory that already exists is refused, so a re-run first sets the old one aside (`mv -n`).
 
 ### Outputs (raw, gitignored, never committed as is)
 

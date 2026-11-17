@@ -43,8 +43,10 @@ import {
   ANTIGRAVITY_CAPTURE_SHELL,
   ANTIGRAVITY_FIRST_RUN_PATTERNS,
   AntigravityCapturePtyHost,
+  AntigravityCaptureStopPointReached,
   AntigravityVendorLoginError,
   firstRunMatches,
+  type AntigravityCaptureStopPoint,
   looksLikeLoginScreen,
 } from './test-support/capture-pty-host.js';
 import {
@@ -58,8 +60,31 @@ import { delay } from './test-support/live-harness.js';
 import { isolatedAntigravityLiveEnvironment } from './test-support/live-model.js';
 
 const ENABLED = process.env.ANTIGRAVITY_TUI_CAPTURE === '1';
-const SCENARIOS = ['screens', 'basic-chat', 'resume', 'tool-success', 'tool-failure'] as const;
+const SCENARIOS = [
+  'screens',
+  'screens-terms',
+  'screens-trust',
+  'basic-chat',
+  'resume',
+  'tool-success',
+  'tool-failure',
+] as const;
 type Scenario = (typeof SCENARIOS)[number];
+
+/**
+ * The stop-point scenarios walk the first-run screens as far as the named one, record it and send none of its keys,
+ * so a person reads each screen before a later run answers it: `screens-terms` answers only the color scheme,
+ * `screens-trust` the color scheme and the terms (collection unchecked).
+ */
+const STOP_POINTS: Partial<Record<Scenario, AntigravityCaptureStopPoint>> = {
+  'screens-terms': 'terms',
+  'screens-trust': 'trust',
+};
+
+/** Whether a scenario answers the terms screen, and so needs the disposable-terms approval. */
+function answersTerms(scenario: Scenario): boolean {
+  return scenario !== 'screens' && scenario !== 'screens-terms';
+}
 const SELECTED = (process.env.ANTIGRAVITY_TUI_CAPTURE_SCENARIOS ?? 'screens')
   .split(',')
   .map((name) => name.trim())
@@ -100,7 +125,7 @@ function captureConfig(scenario: Scenario): CaptureConfig {
   if (!/^[0-9a-f]{64}$/.test(expectedSha256)) {
     throw new Error('ANTIGRAVITY_TUI_CAPTURE_SHA256 must be the pinned executable SHA-256 (64 lowercase hex)');
   }
-  if (scenario !== 'screens' && process.env.ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED !== '1') {
+  if (answersTerms(scenario) && process.env.ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED !== '1') {
     throw new Error(
       `${scenario} answers the first-run terms: set ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED to the literal '1' ` +
         "(AGY_CLI_DISABLE_AUTO_UPDATE is the one that takes 'true')",
@@ -109,7 +134,7 @@ function captureConfig(scenario: Scenario): CaptureConfig {
   if (!existsSync(ANTIGRAVITY_CAPTURE_SANDBOX_EXEC)) throw new Error('the capture needs macOS sandbox-exec');
   const output = join(outputRoot, scenario);
   if (existsSync(output)) throw new Error(`refusing to overwrite the existing ${scenario} capture`);
-  return { output, executable, expectedSha256, termsApproved: scenario !== 'screens' };
+  return { output, executable, expectedSha256, termsApproved: answersTerms(scenario) };
 }
 
 function sha256File(path: string): string {
@@ -230,7 +255,8 @@ async function runCapture(scenario: Scenario): Promise<void> {
   const home = join(root, 'home');
   const dataRoot = join(home, '.gemini', 'antigravity-cli');
   const variant = toolVariant(scenario);
-  const host = new AntigravityCapturePtyHost({ termsApproved: config.termsApproved });
+  const stopPoint = STOP_POINTS[scenario];
+  const host = new AntigravityCapturePtyHost({ termsApproved: config.termsApproved, stopBefore: stopPoint });
   const notes: Record<string, unknown> = {};
   const prompts: string[] = [];
   const adapterEvents: Array<ReturnType<typeof adapterEventSummary>> = [];
@@ -297,6 +323,16 @@ async function runCapture(scenario: Scenario): Promise<void> {
       const captured = await captureScreens(host, { command: config.executable, args: [], cwd, env });
       screens = captured.result;
       await host.disposeTerminal(captured.runtimeSessionId);
+    } else if (stopPoint) {
+      // The walk throws at its stop point; reaching the composer instead means the screen never came.
+      try {
+        const { runtimeSessionId } = await host.spawnTerminal({ command: config.executable, args: [], cwd, env });
+        await host.disposeTerminal(runtimeSessionId);
+        throw new Error(`the first-run walk reached the composer without meeting the ${stopPoint} screen`);
+      } catch (error) {
+        if (!(error instanceof AntigravityCaptureStopPointReached) || error.stage !== stopPoint) throw error;
+        notes.stoppedBefore = error.stage;
+      }
     } else if (scenario === 'basic-chat') {
       const session = await start('first');
       notes.sessionIdBeforeTurn = session.sessionId;
@@ -414,7 +450,7 @@ async function runCapture(scenario: Scenario): Promise<void> {
       SHELL: env.SHELL ?? null,
       AGY_CLI_DISABLE_AUTO_UPDATE: env.AGY_CLI_DISABLE_AUTO_UPDATE ?? null,
       AGY_CLI_HIDE_ACCOUNT_INFO: env.AGY_CLI_HIDE_ACCOUNT_INFO ?? null,
-      ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED: config.termsApproved ? '1' : 'not used (no keys sent)',
+      ANTIGRAVITY_DISPOSABLE_TERMS_APPROVED: config.termsApproved ? '1' : 'not used (the terms are not answered)',
     },
     settings: CAPTURE_SETTINGS,
     firstRun: {

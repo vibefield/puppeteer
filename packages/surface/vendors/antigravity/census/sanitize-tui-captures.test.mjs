@@ -119,6 +119,37 @@ describe('Antigravity native-TUI capture sanitizer', () => {
     }
   });
 
+  it('summarizes a stop-point run for review and leaves it out of the committed set', () => {
+    const temporary = mkdtempSync(join(tmpdir(), 'antigravity-tui-stop-point-'));
+    const raw = join(temporary, 'raw');
+    const output = join(temporary, 'out');
+    try {
+      rawToolFailure(raw);
+      const stop = join(raw, 'screens-terms');
+      mkdirSync(stop, { recursive: true });
+      writeJson(join(stop, 'capture.json'), {
+        format: TUI_CAPTURE_FORMAT,
+        vendor: 'antigravity',
+        scenario: 'screens-terms',
+        outcome: 'passed',
+        notes: { stoppedBefore: 'terms' },
+        privacy: { operatorHomeHits: 0, operatorNameHits: 0 },
+      });
+      writeJson(join(stop, 'screens.json'), {
+        stages: [{ stage: 'terms', atMs: 9, screen: 'Terms of Service & Data Use', matches: ['welcome', 'terms'] }],
+      });
+      const summary = summarizeTuiCapture(raw);
+      expect(summary.map(({ scenario }) => scenario)).toEqual(['tool-failure', 'screens-terms']);
+      expect(summary[1]).toMatchObject({ outcome: 'passed', stoppedBefore: 'terms' });
+      expect(JSON.stringify(summary)).not.toContain('Terms of Service');
+      const result = sanitizeAntigravityTuiCaptureSet({ input: raw, output, artifact: PIN });
+      expect(result.scenarios).toEqual(['tool-failure']);
+      expect(existsSync(join(output, 'screens-terms'))).toBe(false);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  });
+
   it('refuses a failed run, another version, a digest or platform off the pin, and an unreviewed account name', () => {
     const temporary = mkdtempSync(join(tmpdir(), 'antigravity-tui-refuse-'));
     try {

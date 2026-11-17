@@ -67,6 +67,16 @@ export class AntigravityVendorLoginError extends Error {
   }
 }
 
+/** A first-run screen the walk records and then stops at, sending none of its keys. */
+export type AntigravityCaptureStopPoint = 'terms' | 'trust';
+
+/** The walk met its stop point: the screen is recorded and nothing was sent to it. */
+export class AntigravityCaptureStopPointReached extends Error {
+  constructor(readonly stage: AntigravityCaptureStopPoint) {
+    super(`stopped at the ${stage} screen before answering it (stop point)`);
+  }
+}
+
 export interface CaptureScreenStage {
   stage: string;
   atMs: number;
@@ -105,7 +115,9 @@ export class AntigravityCapturePtyHost implements AgentHost {
   private readonly loginSince = new Map<string, number>();
   private readonly startedAt = Date.now();
 
-  constructor(private readonly options: { termsApproved: boolean }) {}
+  constructor(
+    private readonly options: { termsApproved: boolean; stopBefore?: AntigravityCaptureStopPoint | undefined },
+  ) {}
 
   /** Spawn under the sandbox and walk the first-run screens to the composer. */
   async spawnTerminal(spec: TerminalSpec): Promise<{ runtimeSessionId: string }> {
@@ -217,6 +229,7 @@ export class AntigravityCapturePtyHost implements AgentHost {
       write('\r');
       await this.until(id, () => shows('terms'), 'terms screen');
       this.record(id, 'terms');
+      if (this.options.stopBefore === 'terms') throw new AntigravityCaptureStopPointReached('terms');
       // The literal is '1' (the workflow maps its input to '1'); AGY_CLI_DISABLE_AUTO_UPDATE alone takes 'true'.
       if (!this.options.termsApproved) throw new Error('Disposable native first-run terms require explicit approval');
       await this.until(id, () => shows('collection-checked'), 'native collection checkbox');
@@ -235,6 +248,7 @@ export class AntigravityCapturePtyHost implements AgentHost {
     }
     if (shows('trust')) {
       this.record(id, 'trust');
+      if (this.options.stopBefore === 'trust') throw new AntigravityCaptureStopPointReached('trust');
       if (!shows('trust-selected')) throw new Error('Unexpected native workspace trust selection');
       write('\r');
     }
