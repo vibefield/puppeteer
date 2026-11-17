@@ -122,6 +122,41 @@ describe('fake provider', () => {
     ]);
   });
 
+  it('answers an intercepted request without consuming a scripted turn, and records headers on request', async () => {
+    const provider = await startProvider(
+      {
+        recordHeaders: true,
+        intercept: ({ request }) =>
+          Array.isArray(request?.tools) ? undefined : { label: 'title', result: textResponse(0, 'a title') },
+        responses: [() => textResponse(1, 'scripted first')],
+      },
+      {},
+    );
+    cleanups.push(provider.close);
+    const chat = (body) =>
+      fetch(`${provider.baseURL}/chat/completions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-opencode-session': 'ses_header' },
+        body: JSON.stringify(body),
+      });
+    const content = async (response) =>
+      sseRecords(await response.text())
+        .map((chunk) => chunk.choices[0].delta.content)
+        .filter(Boolean);
+    expect(await content(await chat({ messages: [] }))).toEqual(['a title']);
+    expect(await content(await chat({ messages: [], tools: [] }))).toEqual(['scripted first']);
+    expect(provider.requests.map((request) => request.intercepted)).toEqual(['title', undefined]);
+    expect(provider.requests[0].headers['x-opencode-session']).toBe('ses_header');
+    expect(provider.connections()).toBeGreaterThanOrEqual(1);
+  });
+
+  it('keeps the 1.x request record shape when no hook is set', async () => {
+    const provider = await startProvider({ responses: [] }, {});
+    cleanups.push(provider.close);
+    await (await fetch(`${provider.baseURL}/chat/completions`, { method: 'POST', body: '{}' })).text();
+    expect(Object.keys(provider.requests[0])).toEqual(['method', 'url', 'body']);
+  });
+
   it('holds a gated stream until the harness releases the gate', async () => {
     const provider = await startProvider(
       { responses: [() => ({ chunks: textResponse(1, 'gated'), pauseAfterChunk: { 1: { gate: 'go' } } })] },
@@ -316,6 +351,18 @@ describe('server process and version probe', () => {
         name: 'Probe',
       }),
     ).rejects.toThrow('Probe exited before readiness (code=3, signal=null)');
+  });
+
+  it('bounds readiness by the caller timeout', async () => {
+    await expect(
+      startServerProcess(process.execPath, ['-e', 'setInterval(() => {}, 1000);'], {
+        cwd: process.cwd(),
+        environment: { PATH: process.env.PATH },
+        ready: /never (\S+)/,
+        name: 'Probe',
+        readyTimeoutMs: 100,
+      }),
+    ).rejects.toThrow('timed out waiting for Probe server readiness');
   });
 
   it('captures the version with a line-specific pattern and refuses an unrecognized output', () => {

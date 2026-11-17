@@ -265,11 +265,27 @@ export async function sendProviderResponse(response, result, waitForGate) {
   if (responseStillOpen(response)) response.end('data: [DONE]\n\n');
 }
 
+/**
+ * The fake provider answers `scenario.responses` in turn order. Two optional,
+ * opt-in hooks serve harnesses that need more than the 1.x census did, and
+ * leave a scenario without them answered exactly as before:
+ *
+ * - `scenario.intercept({...context, request})` runs before a chat request
+ *   takes a turn. A non-undefined result answers that request without
+ *   consuming a scripted turn, and the request record carries
+ *   `intercepted: <result.label ?? true>` (an out-of-band request such as a
+ *   title-generation call, which must not shift the scripted conversation).
+ * - `scenario.recordHeaders` adds each request's headers to its record.
+ *
+ * `connections()` counts every TCP connection the provider accepted, so a run
+ * can report inbound loopback traffic without any per-process read.
+ */
 export async function startProvider(scenario, context) {
   const requests = [];
   const releasedGates = new Set();
   const gateWaiters = new Map();
   let turn = 0;
+  let connections = 0;
 
   const waitForGate = (name, response) => {
     if (releasedGates.has(name)) return Promise.resolve(responseStillOpen(response));
@@ -311,7 +327,13 @@ export async function startProvider(scenario, context) {
       } catch {
         body = { unparsed: raw };
       }
-      requests.push({ method: request.method, url: request.url, body });
+      const record = {
+        method: request.method,
+        url: request.url,
+        ...(scenario.recordHeaders ? { headers: { ...request.headers } } : {}),
+        body,
+      };
+      requests.push(record);
 
       if (request.method === 'GET' && request.url?.startsWith('/v1/models')) {
         response.writeHead(200, { 'content-type': 'application/json' });
@@ -326,14 +348,25 @@ export async function startProvider(scenario, context) {
         return;
       }
 
-      turn += 1;
-      const build = scenario.responses[turn - 1] ?? (() => textResponse(turn));
-      void sendProviderResponse(response, build({ ...context, request: body, turn }), waitForGate).catch((error) => {
+      const fail = (error) => {
         if (!responseStillOpen(response)) return;
         if (!response.headersSent) response.writeHead(500, { 'content-type': 'application/json' });
         response.end(JSON.stringify({ error: { message: String(error) } }));
-      });
+      };
+      const intercepted = scenario.intercept?.({ ...context, request: body, turn });
+      if (intercepted !== undefined) {
+        record.intercepted = intercepted?.label ?? true;
+        void sendProviderResponse(response, intercepted?.result ?? intercepted, waitForGate).catch(fail);
+        return;
+      }
+
+      turn += 1;
+      const build = scenario.responses[turn - 1] ?? (() => textResponse(turn));
+      void sendProviderResponse(response, build({ ...context, request: body, turn }), waitForGate).catch(fail);
     });
+  });
+  server.on('connection', () => {
+    connections += 1;
   });
   await new Promise((done, reject) => {
     server.once('error', reject);
@@ -344,6 +377,7 @@ export async function startProvider(scenario, context) {
   return {
     baseURL: `http://127.0.0.1:${address.port}/v1`,
     requests,
+    connections: () => connections,
     release,
     close: async () => {
       server.closeAllConnections?.();
@@ -399,8 +433,14 @@ export function initializeControlledRepository(workspace) {
 /**
  * Start a server process and resolve with the origin its stdout announces.
  * `ready` must capture the origin in its first group; stderr is kept for logs.
+ * `readyTimeoutMs` (default 30 s, the 1.x census's) bounds the wait: a first
+ * launch on a fresh home can be slower than a warm one.
  */
-export async function startServerProcess(artifact, args, { cwd, environment, ready: readyPattern, name = 'OpenCode' }) {
+export async function startServerProcess(
+  artifact,
+  args,
+  { cwd, environment, ready: readyPattern, name = 'OpenCode', readyTimeoutMs = 30_000 },
+) {
   const child = spawn(artifact, args, {
     cwd,
     env: environment,
@@ -441,7 +481,7 @@ export async function startServerProcess(artifact, args, { cwd, environment, rea
   };
   let baseURL;
   try {
-    baseURL = await withTimeout(ready, 30_000, `${name} server readiness`);
+    baseURL = await withTimeout(ready, readyTimeoutMs, `${name} server readiness`);
   } catch (error) {
     await stop();
     throw error;
