@@ -19,7 +19,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { arch, homedir, release, tmpdir } from 'node:os';
+import { arch, release, tmpdir } from 'node:os';
 import { isAbsolute, join, sep } from 'node:path';
 import type { TerminalSpec } from '@vibefield/puppeteer-core';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
@@ -54,6 +54,7 @@ import {
   copyConversationLogs,
   inventory,
   journalHolds,
+  operatorHomes,
   type CopiedJournals,
 } from './test-support/capture-store.js';
 import { delay } from './test-support/live-harness.js';
@@ -115,9 +116,8 @@ function captureConfig(scenario: Scenario): CaptureConfig {
   if (!isAbsolute(executable) || !existsSync(executable) || !statSync(executable).isFile()) {
     throw new Error('PUPPETEER_ANTIGRAVITY_BIN must name the exact executable by absolute path (no PATH lookup)');
   }
-  const operatorHome = homedir();
   const underHome = (path: string): boolean =>
-    operatorHome.length > 1 && (path === operatorHome || path.startsWith(`${operatorHome}${sep}`));
+    operatorHomes().some((home) => path === home || path.startsWith(`${home}${sep}`));
   if (underHome(executable) || underHome(realpathSync(executable))) {
     throw new Error("PUPPETEER_ANTIGRAVITY_BIN must live outside the runner's home; a binary under it names the home");
   }

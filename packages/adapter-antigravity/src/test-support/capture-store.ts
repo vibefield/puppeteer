@@ -4,10 +4,30 @@ import { homedir, userInfo } from 'node:os';
 import { dirname, join, relative, sep } from 'node:path';
 
 /**
+ * The runner's homes: `HOME` as this process sees it, and the account's own home from the OS account record. A
+ * runner may give the process a stand-in `HOME` (so nothing it caches lands in the account's home); the account's
+ * home is still the one a captured path must never name, so both are held.
+ */
+export function operatorHomes(): string[] {
+  const homes = new Set<string>();
+  const add = (path: string | undefined) => {
+    if (path && path.length > 1) homes.add(path);
+  };
+  add(homedir());
+  try {
+    add(userInfo().homedir);
+  } catch {
+    // No account record: HOME alone.
+  }
+  return [...homes];
+}
+
+/**
  * Raw-capture privacy for the native-TUI evidence capture. Everything the capture writes passes one scrubber:
- * the disposable root becomes `$CAPTURE_ROOT`, the runner's own home `$OPERATOR_HOME`, and each whole-word
- * occurrence of the runner's account name `$OPERATOR_NAME`. Home and name hits are counted; the sanitizer refuses a
- * capture with any home hit, and one with a name hit until a person has looked where it landed (census/README.md).
+ * the disposable root becomes `$CAPTURE_ROOT`, each of the runner's homes (`operatorHomes`) `$OPERATOR_HOME`, and
+ * each whole-word occurrence of the runner's account name `$OPERATOR_NAME`. Home and name hits are counted; the
+ * sanitizer refuses a capture with any home hit, and one with a name hit until a person has looked where it landed
+ * (census/README.md).
  */
 export class CaptureScrubber {
   operatorHomeHits = 0;
@@ -19,8 +39,7 @@ export class CaptureScrubber {
     const spellings: Array<[string, string]> = [[root, '$CAPTURE_ROOT']];
     // macOS reports a temp root under /private while a process may name it through the /var or /tmp link.
     if (root.startsWith('/private/')) spellings.push([root.slice('/private'.length), '$CAPTURE_ROOT']);
-    const home = homedir();
-    if (home.length > 1) spellings.push([home, '$OPERATOR_HOME']);
+    for (const home of operatorHomes()) spellings.push([home, '$OPERATOR_HOME']);
     this.replacements = spellings.sort((a, b) => b[0].length - a[0].length);
     let account = '';
     try {

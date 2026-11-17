@@ -111,7 +111,9 @@ Per scenario, under `ANTIGRAVITY_TUI_CAPTURE_DIR/<scenario>/`:
 Every file is scrubbed as it is written: the disposable root becomes `$CAPTURE_ROOT`, the runner's home
 `$OPERATOR_HOME`, and each whole word that is the runner's account name `$OPERATOR_NAME`. Home and name hits are
 counted (`privacy.operatorHomeHits`, `privacy.operatorNameHits`); an error the run prints is scrubbed the same way.
-The raw files are still the runner's own: never share them.
+"The runner's home" is both `HOME` and the account's own home from the OS account record, so a runner may give the
+run a stand-in `HOME` (keeping caches out of the account's home) and the account's home is still scrubbed, and still
+refused as the executable's location. The raw files are still the runner's own: never share them.
 
 ### Reporting and sanitizing
 
