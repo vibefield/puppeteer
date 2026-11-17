@@ -23,7 +23,7 @@ import type {
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
 import { OPENCODE_UNSUPPORTED_LINE_MARK, OPENCODE_VERSION_FLAG, readOpenCodeVersion } from '../detection.js';
-import { withoutOpenCodeServerPasswords } from '../launch/credentials.js';
+import { OPENCODE_SERVER_PASSWORD_VARIABLES, withoutOpenCodeServerPasswords } from '../launch/credentials.js';
 import { parseOpenCodeJsonc } from './config-jsonc.js';
 
 const OPENCODE_NPM_PACKAGE = 'opencode-ai';
@@ -103,16 +103,19 @@ function defaultExec(
   args: readonly string[],
   options?: { env?: NodeJS.ProcessEnv | undefined },
 ): Promise<{ stdout: string; stderr: string }> {
+  // A probe owns no server, so no server password goes with it. Handed an environment, it gets that environment
+  // without the passwords; handed none, it inherits as before, unless this process holds a password to drop.
+  const holdsPassword = OPENCODE_SERVER_PASSWORD_VARIABLES.some((name) => process.env[name] !== undefined);
+  const env = options?.env ?? (holdsPassword ? process.env : undefined);
   return new Promise((resolvePromise, reject) => {
     execFile(
       file,
       [...args],
-      // A probe owns no server, so no server password goes with it, whichever environment it is handed.
       {
         timeout: 10_000,
         maxBuffer: 1024 * 1024,
         encoding: 'utf8',
-        env: withoutOpenCodeServerPasswords(options?.env ?? process.env),
+        ...(env ? { env: withoutOpenCodeServerPasswords(env) } : {}),
       },
       (error, stdout, stderr) => {
         if (error) reject(error);
