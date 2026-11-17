@@ -29,6 +29,11 @@ import { SWARM_WEIGHT } from './weight.js';
 // burn ladder and the context ring on a working body, the outer light on a
 // blocked one, and a hollow for a terminal no agent has claimed.
 //
+// Errata (2026-11-09, UM-D6): "model and effort always shown" keeps the line's
+// place, not its whole length. The line fits its chord by the one ellipsis rule
+// (`text-layout.ts`), and a profile's glyph on it takes 13.5 px of that, so a
+// default-size idle body's 16-character line loses the tail of its effort.
+//
 // On the SDK (MV-5) a body reads `AgentView` and nothing else: the backend's
 // facts as the row carries them, and the toolkit's words for them — the line
 // under the name by its one rule (M4, reply-first), a wait in the swarm body's
@@ -133,11 +138,13 @@ export interface BubbleModelInput {
   runningSinceMs?: number;
   /** This session's place among working sessions by estimated USD, 0 (least) to 1 (most). */
   workingShare?: number;
-  /** The Agent Profile a terminal's shell was born under, when naming it tells
-   * the person something (the desktop has more than one): one line in the
-   * terminal's label style, the profile's glyph and name (SB §2.10), after the
-   * empty or running line and before a peer's host line. The glyph is the
-   * laptop for the native set, and drawn filled for the desktop's default. */
+  /** The Agent Profile this body runs under, when naming it tells the person
+   * something (the desktop has more than one). A terminal's shell, born under
+   * it, draws one line in the terminal's label style, the profile's glyph and
+   * name (SB §2.10), after the empty or running line and before a peer's host
+   * line. An agent wears the glyph alone, leading its model line (UM-D6); its
+   * name is in the accessible name and the tooltip. The glyph is the laptop for
+   * the native set, and drawn filled for the desktop's default. */
   profile?:
     | {
         label: string;
@@ -219,10 +226,15 @@ export function profileIcon(profile: NonNullable<BubbleModelInput['profile']>): 
 }
 
 /**
- * The profile a terminal was born under, in the terminal's own label style: its
- * glyph leads, as the folder leads the name, drawn at one and a half times the
- * line's size with a 3 px gap (the prototype's `lead = size × 1.5 + 3`).
+ * A profile's glyph leading a line, as the folder leads the name: one and a half
+ * times the small label's size with a 3 px gap (the prototype's
+ * `lead = size × 1.5 + 3`), in the line's ink.
  */
+function profileLead(profile: NonNullable<BubbleModelInput['profile']>): CopyLead {
+  return { kind: 'icon', icon: profileIcon(profile), size: LABEL_STACKED.size * 1.5, gap: 3 };
+}
+
+/** The profile a terminal was born under, in the terminal's own label style: its glyph, then its name. */
 function profileLine(profile: NonNullable<BubbleModelInput['profile']>): CopyLine {
   return {
     key: 'profile',
@@ -231,7 +243,7 @@ function profileLine(profile: NonNullable<BubbleModelInput['profile']>): CopyLin
     opacity: SWARM_WEIGHT.supporting,
     tone: 'ink',
     gapBefore: 3,
-    lead: { kind: 'icon', icon: profileIcon(profile), size: LABEL_STACKED.size * 1.5, gap: 3 },
+    lead: profileLead(profile),
   };
 }
 
@@ -450,8 +462,10 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   const ring = percent === undefined ? undefined : { percent: Math.max(0, Math.min(100, percent)), hot: percent >= 80 };
   // The line under the name, by the toolkit's one rule (M4).
   const detail = detailLine(agent);
-  const ariaLabel = `${project}, ${model}, ${agent.status}: ${detail}, ${contextLabel}`;
-  const title = `${project} · ${model} · ${detail}`;
+  // The glyph is all a sighted person sees of the profile on the body; the words are here (UM-D6).
+  const under = input.profile ? `, under ${input.profile.label}` : '';
+  const ariaLabel = `${project}, ${model}${under}, ${agent.status}: ${detail}, ${contextLabel}`;
+  const title = `${project} · ${model}${input.profile ? ` · ${input.profile.label}` : ''} · ${detail}`;
   const modelLine: CopyLine = {
     key: 'model',
     text: effort ? `${model} · ${effort.text}` : model,
@@ -459,6 +473,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     opacity: SWARM_WEIGHT.supporting,
     tone: 'ink',
     gapBefore: 3,
+    ...(input.profile ? { lead: profileLead(input.profile) } : {}),
   };
   const message = latestMessage(agent);
   const branch = agent.project.branch;

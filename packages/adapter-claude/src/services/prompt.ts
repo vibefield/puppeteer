@@ -84,7 +84,7 @@ export function createPromptInjector(options: PromptInjectorOptions): PromptInje
       }
       const text = normalizeText(submission.text);
       if (text.length === 0) {
-        return { status: 'rejected', reason: 'empty prompt' };
+        return { status: 'rejected', reason: 'empty prompt', retryable: false };
       }
 
       const submitted = submission.mode !== 'paste-only';

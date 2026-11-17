@@ -9,6 +9,9 @@ import {
   modelWord,
   projectName,
   recedeTarget,
+  sizeCanvas,
+  themeMotion,
+  watchDevicePixelRatio,
   type MotionLoop,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { normalizeRainParameters, type RainParameters } from './rain-parameters.js';
@@ -28,7 +31,9 @@ import { rainDataString, rainTailLength, reconcileRainColumns, type RainDrop } f
 //
 // On the SDK (MV-4) it reads only its input. Its loop is the toolkit's, which
 // asks for no frame while the host's animations are off or motion is reduced
-// (MV-W4); the field then stands still, drawn once per change.
+// (MV-W4); the field then stands still, drawn once per change, on one still
+// frame. With the stage out of sight (`theme.hidden`) nothing is drawn at all
+// until it is shown.
 
 interface Geometry {
   columns: number;
@@ -36,29 +41,11 @@ interface Geometry {
   cell: number;
   width: number;
   height: number;
+  /** The display's ratio at that size: the context's transform. */
+  ratio: number;
 }
 
 const matrixGlyph = (): string => String.fromCharCode(0x30a0 + Math.random() * 96);
-
-function measureCanvas(canvas: HTMLCanvasElement, container: HTMLElement, fontSize: number): Geometry {
-  const ratio = window.devicePixelRatio || 1;
-  const width = container.clientWidth;
-  const height = container.clientHeight;
-  canvas.width = Math.max(1, Math.floor(width * ratio));
-  canvas.height = Math.max(1, Math.floor(height * ratio));
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-  const context = canvas.getContext('2d');
-  // Reset before scaling: measure runs again on every resize and font change.
-  context?.setTransform(ratio, 0, 0, ratio, 0, 0);
-  return {
-    columns: Math.max(1, Math.floor(width / fontSize)),
-    rows: Math.max(1, Math.floor(height / fontSize)),
-    cell: fontSize,
-    width,
-    height,
-  };
-}
 
 /** The three status readings, resolved from the live tokens. Speeds are the
  * reference's: blocked crawls (stuck, and impossible to miss in a field where
@@ -89,44 +76,79 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
   const parametersRef = useRef(rain);
   const paletteRef = useRef(palette);
   const dropsRef = useRef(new Map<number, RainDrop>());
-  const geometryRef = useRef<Geometry>({ columns: 0, rows: 0, cell: 14, width: 0, height: 0 });
+  const geometryRef = useRef<Geometry>({ columns: 0, rows: 0, cell: 14, width: 0, height: 0, ratio: 1 });
   const hoveredRef = useRef<string | undefined>(undefined);
   const tooltipRef = useRef<HTMLElement>(null);
   const pointerRef = useRef({ x: 0, y: 0 });
-  const motionRef = useRef({ animations: theme.animations, reducedMotion: theme.reducedMotion });
+  const motionRef = useRef(themeMotion(theme));
   const loopRef = useRef<MotionLoop | null>(null);
-  /** Draws the field once where it stands: what a stopped loop shows. Set by the loop's effect. */
+  /** Draws a resized field at once where it stands, or, out of sight, owes it to the loop. Set by the loop's effect. */
   const stillRef = useRef<(() => void) | null>(null);
-  const [hovered, setHovered] = useState<AgentView>();
+  /** The row under the pointer, by id: the tooltip reads the row as the input has it now. */
+  const [hoveredId, setHoveredId] = useState<string>();
 
-  const sync = useCallback((): void => {
+  /** Deals the columns to the agents in the field as last measured. It never measures and never draws. */
+  const reconcile = useCallback((): void => {
+    const { columns, rows } = geometryRef.current;
+    dropsRef.current = reconcileRainColumns({
+      agents: orderRef.current,
+      columns,
+      previous: dropsRef.current,
+      createDrop: (agentId) => ({ agentId, y: Math.random() * rows, speed: 0.3 + Math.random() * 0.4 }),
+    });
+  }, []);
+
+  /**
+   * Fits the canvas to the stage: at mount, on a resize, a font change and a change of the display's ratio, never on
+   * a publish. The backing store is written only when its size changes, and a write clears it, so the field is then
+   * drawn at once where it stands, whether or not the loop runs: a cleared canvas is never shown. A zoom can move the
+   * stage's size and the ratio together and leave the backing store as it was (1000 CSS px at 2× and 800 at 2.5× are
+   * both 2000 device pixels): nothing is cleared, but the columns and the transform are new, so that field is drawn
+   * at once too, as a held-still one has no next frame. Out of sight nothing is shown: the draw is owed to the loop,
+   * and made once the stage is shown.
+   */
+  const measure = useCallback((): void => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
-    const geometry = measureCanvas(canvas, container, parametersRef.current.fontSize);
-    geometryRef.current = geometry;
-    dropsRef.current = reconcileRainColumns({
-      agents: orderRef.current,
-      columns: geometry.columns,
-      previous: dropsRef.current,
-      createDrop: (agentId) => ({ agentId, y: Math.random() * geometry.rows, speed: 0.3 + Math.random() * 0.4 }),
-    });
-    // Measuring cleared the canvas: a running loop repaints it next frame; a stopped one repaints it now.
-    if (loopRef.current && !loopRef.current.running) stillRef.current?.();
-  }, []);
+    const sizing = sizeCanvas(canvas, container.clientWidth, container.clientHeight, { pixels: 'floor' });
+    const cell = parametersRef.current.fontSize;
+    const previous = geometryRef.current;
+    geometryRef.current = {
+      columns: Math.max(1, Math.floor(sizing.width / cell)),
+      rows: Math.max(1, Math.floor(sizing.height / cell)),
+      cell,
+      width: sizing.width,
+      height: sizing.height,
+      ratio: sizing.ratio,
+    };
+    reconcile();
+    // The field is drawn in CSS pixels at the display's ratio. A resize resets the context's transform and a new ratio
+    // (a zoom can leave the backing size as it was) needs a new one; setting the same one again changes nothing drawn.
+    canvas.getContext('2d')?.setTransform(sizing.ratio, 0, 0, sizing.ratio, 0, 0);
+    // Last: the still draw reads the geometry and the columns just set. A font change alone draws nothing here: the
+    // loop's next frame does, or, stopped, the still effect.
+    const moved =
+      sizing.width !== previous.width || sizing.height !== previous.height || sizing.ratio !== previous.ratio;
+    if (sizing.resized || moved) stillRef.current?.();
+  }, [reconcile]);
 
+  // A publish deals the columns and nothing else: it never measures, so nothing is cleared. A running loop draws it
+  // on its next frame; a stopped one is drawn by the still effect below.
   useEffect(() => {
     agentsRef.current = new Map(agents.map((agent) => [agent.id, agent] as const));
     orderRef.current = agents.map((agent) => agent.id);
-    sync();
-  }, [agents, sync]);
+    reconcile();
+  }, [agents, reconcile]);
 
+  // A new font re-measures the cells; with the stage's size unchanged nothing is cleared, and the change is drawn by
+  // the loop's next frame or, stopped, by the still effect (its deps include the parameters).
   useEffect(() => {
     const previousFont = parametersRef.current.fontSize;
     parametersRef.current = rain;
     loopRef.current?.update({ fps: rain.refreshRate });
-    if (previousFont !== rain.fontSize) sync();
-  }, [rain, sync]);
+    if (previousFont !== rain.fontSize) measure();
+  }, [rain, measure]);
 
   // The draw loop reads the palette through a ref, so a theme change repaints
   // the next frame without tearing the loop down and re-randomizing the field.
@@ -140,9 +162,6 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
     if (!canvas || !container) return;
     const context = canvas.getContext('2d');
     if (!context) return;
-    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(() => sync());
-    observer?.observe(container);
-    sync();
 
     /** Each column's recede weight as last drawn, stepped toward its target per draw (the toolkit's steps). */
     const recedes = new Map<string, number>();
@@ -252,33 +271,48 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
       context2d.globalAlpha = 1;
     };
 
+    // A still frame draws the field where it stands, never the moving draw with no time passed: that would let the
+    // drops fall and the glyphs scramble.
+    const drawStill = (): void => draw(context, parametersRef.current);
     // Driven from rAF rather than setInterval so the loop stops with the window
     // instead of repainting behind other applications; the refresh rate is the
     // loop's cap, which keeps the deliberately chunky sub-60 cadence.
     const loop = createMotionLoop((_time, elapsed) => draw(context, parametersRef.current, elapsed), {
       ...motionRef.current,
       fps: parametersRef.current.refreshRate,
+      still: drawStill,
     });
     loopRef.current = loop;
-    stillRef.current = () => draw(context, parametersRef.current);
-    if (!loop.running) stillRef.current();
+    stillRef.current = () => {
+      if (motionRef.current.hidden) loop.requestStill();
+      else drawStill();
+    };
+
+    // Measured once the still draw exists, so a canvas the measure clears is drawn at once. What a stopped loop shows
+    // of each change, the mount's among them, is the still effect's, on the loop's one still frame.
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(() => measure());
+    observer?.observe(container);
+    const stopWatchingRatio = watchDevicePixelRatio(() => measure());
+    measure();
     return () => {
+      stopWatchingRatio();
+      observer?.disconnect();
       loop.dispose();
       loopRef.current = null;
       stillRef.current = null;
-      observer?.disconnect();
     };
-  }, [sync]);
+  }, [measure]);
 
-  // The host's animations switch and the reduced-motion preference start or stop the loop; stopped, every change
-  // the field shows (its agents, their words, the palette, the parameters) is drawn once where it stands.
+  // The host's animations switch, the reduced-motion preference and the stage out of sight start or stop the loop;
+  // stopped, every change the field shows (its agents, their words, the palette, the parameters) is drawn once where
+  // it stands, on one still frame however many arrive before it, and out of sight once the stage is shown.
   useEffect(() => {
-    motionRef.current = { animations: theme.animations, reducedMotion: theme.reducedMotion };
+    motionRef.current = themeMotion(theme);
     loopRef.current?.update(motionRef.current);
-  }, [theme.animations, theme.reducedMotion]);
+  }, [theme.animations, theme.reducedMotion, theme.hidden]);
   useEffect(() => {
-    if (loopRef.current && !loopRef.current.running) stillRef.current?.();
-  }, [agents, palette, rain, theme.animations, theme.reducedMotion]);
+    loopRef.current?.requestStill();
+  }, [agents, palette, rain, theme.animations, theme.reducedMotion, theme.hidden]);
 
   /** Columns run the full height, so the pointer's row never matters. */
   const agentAt = useCallback((clientX: number): AgentView | undefined => {
@@ -299,6 +333,8 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
     '--mv-rain-ink-idle': palette.rain.ink.idle,
     '--mv-rain-focus': palette.rain.focus,
   } as CSSProperties;
+  // A changed row is a new object (MV-D21), so the tooltip says the row as it is now, and nothing once it has left.
+  const hovered = hoveredId === undefined ? undefined : input.model.byId.get(hoveredId);
   const hoveredContext = hovered?.kind === 'agent' ? hovered.context?.usedPercent : undefined;
   const hoveredBranch = hovered?.kind === 'agent' ? hovered.project.branch : undefined;
 
@@ -333,11 +369,11 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
             tooltipRef.current.style.left = `${pointerRef.current.x + 15}px`;
             tooltipRef.current.style.top = `${pointerRef.current.y + 15}px`;
           }
-          setHovered((current) => (current?.id === agent?.id ? current : agent));
+          setHoveredId(agent?.id);
         }}
         onPointerLeave={() => {
           hoveredRef.current = undefined;
-          setHovered(undefined);
+          setHoveredId(undefined);
         }}
         onClick={(event) => {
           const agent = agentAt(event.clientX);

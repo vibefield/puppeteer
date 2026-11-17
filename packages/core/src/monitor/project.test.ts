@@ -88,6 +88,19 @@ function runtimeLifecycle(lifecycle: MonitorRunLifecycle, sequence: number): Run
   };
 }
 
+/** A live run waiting at an open permission and an open question: the prompt a crash or a terminate finds. */
+function promptedRun() {
+  let state = reduceMonitorAccumulator(initial(), runtimeEnvelope({ type: 'session:ready' }, 1)).state;
+  state = reduceMonitorAccumulator(
+    state,
+    runtimeEnvelope({ type: 'interaction:permission-requested', requestId: 'p', presentation: 'native-tui' }, 2),
+  ).state;
+  return reduceMonitorAccumulator(
+    state,
+    runtimeEnvelope({ type: 'interaction:question-requested', requestId: 'q', questions: [{ prompt: 'Retry?' }] }, 3),
+  ).state;
+}
+
 describe('projectAgentMonitorState', () => {
   it('increments revisions only when the public full state changes', () => {
     const accumulator = initial();
@@ -148,6 +161,37 @@ describe('projectAgentMonitorState', () => {
       runtimeEnvelope({ type: 'process:exited', reason: 'completed', exitCode: 0 }, 3),
     ).state;
     expect(projectAgentMonitorState(state)).toMatchObject({ status: 'idle', alive: false });
+  });
+
+  it('ends a clean run idle when it exits at a prompt nobody can answer, and keeps the prompt as evidence', () => {
+    const prompted = promptedRun();
+    expect(projectAgentMonitorState(prompted)).toMatchObject({ status: 'blocked', alive: true });
+    expect(projectAgentMonitorState(prompted).blockers.map((blocker) => blocker.id)).toEqual(['q', 'p']);
+
+    const state = reduceMonitorAccumulator(
+      prompted,
+      runtimeEnvelope({ type: 'process:exited', reason: 'completed', exitCode: 0 }, 4),
+    ).state;
+    const ended = projectAgentMonitorState(state);
+    expect(ended).toMatchObject({ status: 'idle', alive: false });
+    expect(ended.blockers).toEqual([]);
+    // Liveness ends the prompts' projection, not their evidence.
+    const pending = [...state.runtime.entries.values()].filter(
+      ({ value }) => value.kind === 'interaction' && value.state === 'pending',
+    );
+    expect(pending).toHaveLength(2);
+  });
+
+  it('ends a crashed run blocked by its failure alone, not by the prompt it died at', () => {
+    const state = reduceMonitorAccumulator(
+      promptedRun(),
+      runtimeEnvelope({ type: 'process:exited', reason: 'crash', exitCode: 1 }, 4),
+    ).state;
+    const ended = projectAgentMonitorState(state);
+    expect(ended).toMatchObject({ status: 'blocked', alive: false });
+    expect(ended.blockers).toEqual([
+      expect.objectContaining({ id: 'run:runtime', kind: 'failure', failure: { code: 'crash', recoverable: false } }),
+    ]);
   });
 
   it('says a root tool is open while a compaction outranks it as the activity, and not once it closes', () => {

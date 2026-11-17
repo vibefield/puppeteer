@@ -23,7 +23,7 @@ export class HermesTurnNormalizer {
     const status = hermesString(payload.status) ?? 'complete';
     const turnId = this.turnId;
     this.turnId = undefined;
-    if (status === 'interrupted' || status === 'error') {
+    if (status === 'error') {
       return { turnId, events: [{ type: 'turn:failed', turnId, error: status }] };
     }
     return {
@@ -33,6 +33,8 @@ export class HermesTurnNormalizer {
           type: 'turn:completed',
           turnId,
           stopReason: status,
+          // The person's interrupt ends the turn; it is not a provider failure.
+          ...(status === 'interrupted' ? { outcome: 'interrupted' as const } : {}),
           ...(lastAssistantMessage ? { lastAssistantMessage } : {}),
         },
       ],

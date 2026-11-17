@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -28,10 +28,15 @@ import {
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { createActionRecorder, isOwnActionV2 } from '@vibefield/puppeteer-record';
 import { createWorkspace } from '@vibefield/puppeteer-workspaces';
-import { createFileCreationRequestRegistry, type CreationRequestRegistry } from './identity/creation-registry.js';
+import {
+  createFileCreationRequestRegistry,
+  type CreationRequestClaim,
+  type CreationRequestRegistry,
+} from './identity/creation-registry.js';
 import { MAX_REFUSAL_MESSAGE_LENGTH } from './host/spawn-through/protocol.js';
 import { parseProfileRegistrySnapshot } from './profiles/registry.js';
 import { createAgentRuntime } from './runtime.js';
+import { AgentStateService } from './services/state-service.js';
 import { installArgv } from './distribution/install.js';
 import type { UpdateCommandRunner } from './distribution/update.js';
 import type {
@@ -138,6 +143,7 @@ function preparableProvider(
     disposeCount: number;
     preparedCwd?: string | undefined;
     preparedRuntimeRunId?: string | undefined;
+    preparedProfile?: string | undefined;
     adoptionGate?: Promise<void> | undefined;
   },
 ): AgentProvider {
@@ -149,6 +155,7 @@ function preparableProvider(
       hooks.prepareCount += 1;
       hooks.preparedCwd = options.cwd;
       hooks.preparedRuntimeRunId = options.runtimeRunId;
+      hooks.preparedProfile = options.profile?.id;
       const sessionId = `${kind}-prepared-${hooks.prepareCount}`;
       let disposed = false;
       let adopted: AgentAdapterBinding | undefined;
@@ -1010,6 +1017,53 @@ describe('createAgentRuntime', () => {
         git: { value: { branch: 'feature/environment' }, source: 'runtime', confidence: 'derived' },
       });
     });
+    await runtime.dispose();
+  });
+
+  it('dispatch never copies the session state for an event', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-dispatch-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [fakeProvider('dispatch-provider', handles)],
+    });
+    const created = await runtime.createSession({ agent: 'dispatch-provider', cwd: root });
+    if ('error' in created) throw new Error('unexpected create failure');
+    const emit = handles.get(created.runtimeSessionId)!.emit;
+    const envelope = (sequence: number, event: AgentEventEnvelope['event']): AgentEventEnvelope =>
+      testEnvelope(event, { sequence, sessionId: created.sessionId });
+    // The application getter `agent.state` deep-copies the whole session (tools, permissions, diagnostics) for
+    // callers outside the runtime. Dispatch is synchronous inside emit and nothing here reads sessionState, so any
+    // copy taken below is dispatch's own.
+    const snapshot = vi.spyOn(AgentStateService.prototype, 'snapshot');
+    try {
+      snapshot.mockClear();
+      for (let sequence = 1; sequence <= 50; sequence += 1) {
+        emit(envelope(sequence, { type: 'model:updated', model: { id: `model-${sequence}` } }));
+      }
+      emit(
+        envelope(51, {
+          type: 'tool:started',
+          toolCallId: 'tool-1',
+          tool: 'command',
+          presentation: { kind: 'command', title: 'Running command' },
+        }),
+      );
+      emit(
+        envelope(52, {
+          type: 'tool:completed',
+          toolCallId: 'tool-1',
+          tool: 'command',
+          presentation: { kind: 'command', title: 'Ran command' },
+        }),
+      );
+      expect(snapshot).not.toHaveBeenCalled();
+    } finally {
+      snapshot.mockRestore();
+    }
+    expect(runtime.sessionState(created.runtimeSessionId)?.environment.model?.value.id).toBe('model-50');
+    expect(runtime.sessionState(created.runtimeSessionId)?.counters).toMatchObject({ toolsCompleted: 1 });
     await runtime.dispose();
   });
 
@@ -3395,10 +3449,153 @@ describe('createAgentRuntime', () => {
     await expect(attribute({})).resolves.toBe('example:native-default');
     // A root Puppeteer did not allocate is left unattributed rather than mislabelled.
     await expect(attribute({ EXAMPLE_HOME: '/somewhere/else' })).resolves.toBeUndefined();
-    // Attribution never rewrites what the adapter was handed.
+    // Attribution never normalizes the invocation again. (Corrected 2026-11-10: this said attribution "never rewrites
+    // what the adapter was handed"; an active account is now handed to the adapter as the run's profile, the next row.)
     expect(normalizeInvocation).toHaveBeenCalledTimes(3);
     await runtime.dispose();
     await rm(root, { recursive: true, force: true });
+  });
+
+  it('prepares a typed invocation under the active account its launch environment names', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-typed-account-'));
+    const hooks: {
+      prepareCount: number;
+      adoptCount: number;
+      disposeCount: number;
+      preparedProfile?: string | undefined;
+    } = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+    const provider: AgentProvider = {
+      ...preparableProvider('example', hooks),
+      descriptor: { id: 'example', label: 'Example' },
+      profiles: exampleProfileService(),
+      launch: {
+        provider: {
+          id: 'example',
+          label: 'Example',
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'example', executable: '/opt/example' }],
+            environmentVariables: ['EXAMPLE_HOME'],
+          },
+        },
+        normalizeInvocation: () => ({ status: 'accepted' as const }),
+      },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+    });
+    const created = await runtime.createProfile({ providerId: 'example', label: 'Work' });
+    if ('status' in created) throw new Error(created.message);
+    // A label puts the account in a managed set of that name, so the set id the run carries is a real one.
+    expect(created.set).toEqual(expect.any(String));
+
+    const launch = async (
+      environment: Record<string, string>,
+    ): Promise<{ handed: string | undefined; labelled: string | undefined; set: string | undefined }> => {
+      const prepared = await runtime.prepareInvocation({
+        providerId: 'example',
+        cwd: root,
+        argv: [],
+        environment,
+        implementation: { kind: 'native' },
+      });
+      if ('error' in prepared) throw new Error(prepared.error.message);
+      const handed = hooks.preparedProfile;
+      const adopted = await runtime.adoptPrepared(prepared.preparationId, {
+        terminalSessionId: `terminal-${prepared.preparationId}`,
+      });
+      if ('error' in adopted) throw new Error(adopted.error.message);
+      await runtime.handleProcessExit(adopted.terminalSessionId, {
+        exitCode: 0,
+        signal: null,
+        reason: 'process-exit',
+      });
+      return { handed, labelled: adopted.profileId, set: adopted.profileSetId };
+    };
+
+    // An active account's own root: the run is prepared under that account, as a spawn that named it would be,
+    // and carries the account's set.
+    await expect(launch({ EXAMPLE_HOME: created.dataRoot })).resolves.toEqual({
+      handed: created.id,
+      labelled: created.id,
+      set: created.set,
+    });
+    // The vendor's own root, and a root Puppeteer did not allocate, are handed no account.
+    await expect(launch({})).resolves.toEqual({
+      handed: undefined,
+      labelled: 'example:native-default',
+      set: 'native',
+    });
+    await expect(launch({ EXAMPLE_HOME: '/somewhere/else' })).resolves.toEqual({
+      handed: undefined,
+      labelled: undefined,
+      set: undefined,
+    });
+    // A signed-out account is never prepared under; its root is still labelled as the account it was, in its set.
+    await runtime.retireProfile(created.id);
+    await expect(launch({ EXAMPLE_HOME: created.dataRoot })).resolves.toEqual({
+      handed: undefined,
+      labelled: created.id,
+      set: created.set,
+    });
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("keeps one creation request one run when a typed invocation's account signs out between tries", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-typed-fingerprint-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-typed-fingerprint-registry-'));
+    const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+    const provider: AgentProvider = {
+      ...preparableProvider('example', hooks),
+      descriptor: { id: 'example', label: 'Example' },
+      profiles: exampleProfileService(),
+      launch: {
+        provider: {
+          id: 'example',
+          label: 'Example',
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'example', executable: '/opt/example' }],
+            environmentVariables: ['EXAMPLE_HOME'],
+          },
+        },
+        normalizeInvocation: () => ({ status: 'accepted' as const }),
+      },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+      creationRegistry: createFileCreationRequestRegistry({ directory: registryDirectory }),
+    });
+    const created = await runtime.createProfile({ providerId: 'example', label: 'Work' });
+    if ('status' in created) throw new Error(created.message);
+    const invocation = {
+      providerId: 'example',
+      cwd: root,
+      argv: [],
+      environment: { EXAMPLE_HOME: created.dataRoot },
+      implementation: { kind: 'native' as const },
+      creationRequestId: 'typed-under-account',
+    };
+
+    const first = await runtime.prepareInvocation(invocation);
+    if ('error' in first) throw new Error(first.error.message);
+    // The account the run is prepared under is not part of what the caller asked for, so a retry after it signed
+    // out is the same request: the same run, never CREATION_REQUEST_CONFLICT.
+    await runtime.retireProfile(created.id);
+    const second = await runtime.prepareInvocation(invocation);
+    if ('error' in second) throw new Error(`${second.error.code}: ${second.error.message}`);
+    expect(second.runtimeRunId).toBe(first.runtimeRunId);
+    expect(hooks.prepareCount).toBe(1);
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+    await rm(registryDirectory, { recursive: true, force: true });
   });
 
   it('reads account usage per profile, stamps the snapshot, and coalesces per account', async () => {
@@ -4644,7 +4841,7 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-record-registry-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const handed: Array<AgentAttachRecord | undefined> = [];
-    let answer: 'throw' | 'refuse' | 'attach' = 'throw';
+    let answer: 'throw' | 'refuse' | 'held' | 'attach' = 'throw';
     const provider: AgentProvider = {
       ...fakeProvider('one', handles),
       async createSession(options) {
@@ -4656,6 +4853,7 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
         handed.push(options.attachRecord);
         if (answer === 'throw') throw new Error('the adapter does not say');
         if (answer === 'refuse') throw new AgentAttachRefusedError('retry', 'the helper is still starting');
+        if (answer === 'held') throw new AgentAttachRefusedError('retry', 'the endpoint is held', 'endpoint-held');
         // the attached run's facts moved: the next restart must read these
         options.onAttachRecord?.({ version: 1, state: 'endpoint-b', secret: 'nonce-b' });
         return standaloneSession(options.sessionId, options.runtimeSessionId);
@@ -4696,12 +4894,21 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     const refused = await attach();
     expect('error' in refused && refused.error).toMatchObject({ code: 'ATTACH_FAILED', next: 'retry' });
     expect('error' in refused && refused.error.message).toContain('the helper is still starting');
-    // neither failure advanced the claim: the retry attaches at the next epoch
+    expect('error' in refused && refused.error.refusal).toBeUndefined();
+    // a refusal that says why in a neutral word carries it beside the next step, for the host to word the state
+    answer = 'held';
+    const held = await attach();
+    expect('error' in held && held.error).toMatchObject({
+      code: 'ATTACH_FAILED',
+      next: 'retry',
+      refusal: { code: 'endpoint-held' },
+    });
+    // no failure advanced the claim: the retry attaches at the next epoch
     answer = 'attach';
     const attached = await attach();
     if ('error' in attached) throw new Error(attached.error.message);
     expect(attached.runtimeEpoch).toBe(2);
-    expect(handed).toEqual([launched[0], launched[0], launched[0]]);
+    expect(handed).toEqual([launched[0], launched[0], launched[0], launched[0]]);
     expect(reported).toEqual([{ version: 1, state: 'endpoint-b', secret: 'nonce-b' }]);
     await second.dispose();
     await rm(root, { recursive: true, force: true });
@@ -4815,5 +5022,268 @@ describe('dispose({ detach }) — the host leaves, the sessions stay', () => {
     expect('error' in current ? current.error.code : current.runtimeEpoch).toBe(3);
     expect(attaches).toEqual([kept.runtimeRunId, kept.runtimeRunId]);
     await third.dispose();
+  });
+});
+
+describe("a run's staging directory — made for its launch under the host's root, gone with the run (PU-C)", () => {
+  it('hands a launch its own directory, made 0700 and empty before the provider is asked, and removes it when the run ends', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-cwd-'));
+    const base = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-'));
+    // a root the host names and has not made: the runtime makes it, owner-only
+    const stagingRoot = join(base, 'agents', 'staging');
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const handed: Array<{ stagingDir: string | undefined; entries?: string[] }> = [];
+    const provider: AgentProvider = {
+      ...fakeProvider('one', handles),
+      async createSession(options) {
+        const { stagingDir } = options;
+        handed.push(stagingDir === undefined ? { stagingDir } : { stagingDir, entries: await readdir(stagingDir) });
+        // the adapter's launch files, written inside it and never removed by the adapter
+        if (stagingDir !== undefined) await writeFile(join(stagingDir, 'settings.json'), '{}');
+        return standaloneSession('native-staged', `terminal-staged-${handed.length}`);
+      },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      staging: { root: stagingRoot },
+    });
+    const created = await runtime.createSession({ agent: 'one', cwd: root });
+    if ('error' in created) throw new Error(created.error.message);
+    const stagingDir = join(stagingRoot, created.runtimeRunId);
+    expect(handed).toEqual([{ stagingDir, entries: [] }]);
+    if (process.platform !== 'win32') {
+      for (const dir of [stagingRoot, stagingDir]) expect((await stat(dir)).mode & 0o777).toBe(0o700);
+    }
+    expect(existsSync(join(stagingDir, 'settings.json'))).toBe(true);
+    await runtime.handleProcessExit(created.terminalSessionId, { exitCode: 0, signal: null, reason: 'completed' });
+    expect(existsSync(stagingDir)).toBe(false);
+    // the root is the host's: it stays
+    expect(existsSync(stagingRoot)).toBe(true);
+    await runtime.dispose();
+
+    // a runtime with no root hands its launches none: the adapter stages where it always has
+    const plain = createAgentRuntime({ host, defaultCwd: root, providers: [provider] });
+    const unstaged = await plain.createSession({ agent: 'one', cwd: root });
+    if ('error' in unstaged) throw new Error(unstaged.error.message);
+    expect(handed.at(-1)).toEqual({ stagingDir: undefined });
+    await plain.dispose();
+    for (const dir of [root, base]) await rm(dir, { recursive: true, force: true });
+  });
+
+  it('keeps the directory when the host leaves with the run alive, and removes it when the run attached again ends', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-detach-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-registry-'));
+    const stagingRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-root-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const attachOptions: string[][] = [];
+    const provider = (): AgentProvider => ({
+      ...fakeProvider('one', handles),
+      async createSession(options) {
+        if (options.stagingDir !== undefined) await writeFile(join(options.stagingDir, 'forwarder.mjs'), '');
+        return standaloneSession('native-staged', 'terminal-staged');
+      },
+      async attachSession(options) {
+        attachOptions.push(Object.keys(options));
+        return standaloneSession(options.sessionId, options.runtimeSessionId);
+      },
+    });
+    const runtimeFor = () =>
+      createAgentRuntime({
+        host,
+        defaultCwd: root,
+        providers: [provider()],
+        creationRegistry: createFileCreationRequestRegistry({ directory: registryDirectory }),
+        staging: { root: stagingRoot },
+      });
+    const first = runtimeFor();
+    const created = await first.createSession({ agent: 'one', creationRequestId: 'staged-run', cwd: root });
+    if ('error' in created) throw new Error(created.error.message);
+    const forwarder = join(stagingRoot, created.runtimeRunId, 'forwarder.mjs');
+    expect(existsSync(forwarder)).toBe(true);
+    // the host leaves and the process stays: it runs what it was launched with on every hook
+    await first.dispose({ detach: true });
+    expect(existsSync(forwarder)).toBe(true);
+
+    const second = runtimeFor();
+    const attached = await second.attach({
+      agent: 'one',
+      creationRequestId: 'staged-run',
+      runtimeRunId: created.runtimeRunId,
+      expectedRuntimeEpoch: created.runtimeEpoch,
+      sessionId: created.nativeSession.id,
+      terminalSessionId: created.terminalSessionId,
+      cwd: root,
+    });
+    if ('error' in attached) throw new Error(attached.error.message);
+    // the attach writes nothing, so it is handed no directory: the run's own is found by its id
+    expect(attachOptions).toHaveLength(1);
+    expect(attachOptions[0]).not.toContain('stagingDir');
+    expect(existsSync(forwarder)).toBe(true);
+    await second.handleProcessExit(attached.terminalSessionId, { exitCode: 0, signal: null, reason: 'completed' });
+    expect(existsSync(join(stagingRoot, created.runtimeRunId))).toBe(false);
+    await second.dispose();
+    for (const dir of [root, registryDirectory, stagingRoot]) await rm(dir, { recursive: true, force: true });
+  });
+
+  it('removes the directory of a launch that fails after writing its files, created or prepared', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-failed-'));
+    const stagingRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-failed-root-'));
+    const handed: string[] = [];
+    const writeThenFail = async (stagingDir: string | undefined): Promise<never> => {
+      if (stagingDir !== undefined) {
+        handed.push(stagingDir);
+        await writeFile(join(stagingDir, 'settings.json'), '{}');
+      }
+      throw new Error('the launch failed after its files were written');
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [
+        {
+          descriptor: { id: 'one', label: 'one' },
+          createSession: (options) => writeThenFail(options.stagingDir),
+          prepareSession: (options) => writeThenFail(options.stagingDir),
+        },
+      ],
+      staging: { root: stagingRoot },
+    });
+    const created = await runtime.createSession({ agent: 'one', cwd: root });
+    const prepared = await runtime.prepareSession({ agent: 'one', cwd: root });
+    if (!('error' in created) || !('error' in prepared) || prepared.runtimeRunId === undefined) {
+      throw new Error('both launches were meant to fail');
+    }
+    expect(created.error.code).toBe('AGENT_SESSION_CREATE_FAILED');
+    expect(prepared.error.code).toBe('AGENT_SESSION_CREATE_FAILED');
+    // each was handed its own directory, and each went with its failed run
+    expect(handed).toEqual([join(stagingRoot, created.runtimeRunId), join(stagingRoot, prepared.runtimeRunId)]);
+    expect(await readdir(stagingRoot)).toEqual([]);
+    await runtime.dispose();
+    for (const dir of [root, stagingRoot]) await rm(dir, { recursive: true, force: true });
+  });
+
+  it('removes the directory of a preparation that is cancelled or expires', async () => {
+    vi.useFakeTimers();
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-prepared-'));
+    const stagingRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-prepared-root-'));
+    const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+    const base = preparableProvider('one', hooks);
+    const handed: string[] = [];
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      preparationTtlMs: 25,
+      providers: [
+        {
+          ...base,
+          async prepareSession(options) {
+            if (options.stagingDir !== undefined) {
+              handed.push(options.stagingDir);
+              await writeFile(join(options.stagingDir, 'settings.json'), '{}');
+            }
+            return base.prepareSession!(options);
+          },
+        },
+      ],
+      staging: { root: stagingRoot },
+    });
+    const cancelled = await runtime.prepareSession({ agent: 'one', cwd: root });
+    const expiring = await runtime.prepareSession({ agent: 'one', cwd: root });
+    if ('error' in cancelled || 'error' in expiring) throw new Error('unexpected prepare failure');
+    expect(handed).toEqual([join(stagingRoot, cancelled.runtimeRunId), join(stagingRoot, expiring.runtimeRunId)]);
+    expect(await runtime.cancelPrepared(cancelled.preparationId)).toEqual({ cancelled: true });
+    expect(existsSync(join(stagingRoot, cancelled.runtimeRunId))).toBe(false);
+    expect(existsSync(join(stagingRoot, expiring.runtimeRunId))).toBe(true);
+    await vi.advanceTimersByTimeAsync(25);
+    expect(await runtime.adoptPrepared(expiring.preparationId, { runtimeSessionId: 'late-pane' })).toMatchObject({
+      error: { code: 'PREPARATION_EXPIRED' },
+    });
+    expect(await readdir(stagingRoot)).toEqual([]);
+    await runtime.dispose();
+    for (const dir of [root, stagingRoot]) await rm(dir, { recursive: true, force: true });
+  });
+
+  it('sweeps every entry under the root the host does not keep, and never a run or preparation this runtime holds', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-sweep-'));
+    const stagingRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-sweep-root-'));
+    // what earlier hosts left: a run the host's records still hold live, one that ended while no host listened, a stray
+    for (const name of ['kept-run', 'ended-run']) {
+      await mkdir(join(stagingRoot, name));
+      await writeFile(join(stagingRoot, name, 'settings.json'), '{}');
+    }
+    await writeFile(join(stagingRoot, 'stray'), '');
+    const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [preparableProvider('one', hooks)],
+      staging: { root: stagingRoot },
+    });
+    const live = await runtime.createSession({ agent: 'one', cwd: root });
+    const open = await runtime.prepareSession({ agent: 'one', cwd: root });
+    if ('error' in live || 'error' in open) throw new Error('unexpected launch failure');
+    // the host keeps what its records hold; the runtime keeps its own live run and open preparation besides
+    await runtime.sweepStaging({ keep: ['kept-run'] });
+    expect((await readdir(stagingRoot)).sort()).toEqual(['kept-run', live.runtimeRunId, open.runtimeRunId].sort());
+    expect(existsSync(join(stagingRoot, 'kept-run', 'settings.json'))).toBe(true);
+    await runtime.cancelPrepared(open.preparationId);
+    await runtime.dispose();
+    // with no root there is nothing to sweep
+    const plain = createAgentRuntime({ host, defaultCwd: root, providers: [preparableProvider('one', hooks)] });
+    await expect(plain.sweepStaging({ keep: [] })).resolves.toBeUndefined();
+    await plain.dispose();
+    for (const dir of [root, stagingRoot]) await rm(dir, { recursive: true, force: true });
+  });
+
+  it("never lets a restored run's id name a directory outside the root, and removes nothing for it", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-staging-segment-'));
+    const stagingRoot = join(root, 'staging');
+    await mkdir(stagingRoot);
+    await writeFile(join(root, 'beside-the-root'), '');
+    const claimOf = (runtimeRunId: string, runtimeEpoch: number, state: CreationRequestClaim['state']) => ({
+      ref: { claimId: 'claim', requestFingerprint: 'fingerprint' },
+      runtimeRunId,
+      runtimeEpoch,
+      operation: 'create' as const,
+      state,
+    });
+    // a host's own registry, holding whatever run id it was handed: `..` among them
+    const registry: CreationRequestRegistry = {
+      async claim() {
+        throw new Error('a restore claims nothing');
+      },
+      async markTerminal({ runtimeRunId, runtimeEpoch }) {
+        return { applied: true, claim: claimOf(runtimeRunId, runtimeEpoch, 'terminal') };
+      },
+      async incrementRuntimeEpoch({ runtimeRunId, expectedRuntimeEpoch }) {
+        return { advanced: true, claim: claimOf(runtimeRunId, expectedRuntimeEpoch + 1, 'allocated') };
+      },
+      async lookup() {
+        return undefined;
+      },
+    };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [fakeProvider('one', new Map())],
+      creationRegistry: registry,
+      staging: { root: stagingRoot },
+    });
+    const restored = await runtime.restoreSession({
+      creationRequestId: 'restore-segment',
+      runtimeRunId: '..',
+      expectedRuntimeEpoch: 1,
+      agent: 'one',
+      session: standaloneSession('native-segment', 'terminal-segment'),
+      workspace: await createWorkspace({ mode: 'direct', path: root }),
+    });
+    if ('error' in restored) throw new Error(restored.error.message);
+    await runtime.handleProcessExit('terminal-segment', { exitCode: 0, signal: null, reason: 'completed' });
+    expect(existsSync(join(root, 'beside-the-root'))).toBe(true);
+    expect(existsSync(stagingRoot)).toBe(true);
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
   });
 });

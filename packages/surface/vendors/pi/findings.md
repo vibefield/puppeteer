@@ -1,10 +1,9 @@
 # Pi 1.5.0 surface findings
 
 Status: canonical ground truth, adapter, Imposter persona, built-in provider,
-and local conformance are implemented. The baseline remains
-`baseline-pending` until a guarded, matching-platform native-TUI/resume lane is
-implemented and records artifact-bound durable-observation receipts on all
-four platforms.
+and local conformance are implemented. Protected promotion
+[run 41806331805](https://github.com/vibefield/puppeteer/actions/runs/41806331805) passed the native-TUI/resume lane on all
+four platforms, so 1.5.0 is verified.
 
 ## Ground truth and identity
 

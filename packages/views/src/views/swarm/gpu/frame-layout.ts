@@ -8,7 +8,7 @@ import type { SwarmClearing, SwarmFrame } from './swarm-renderer.js';
 // boundary and the offsets below are the struct's own, in floats.
 
 export const FRAME_LAYOUT = {
-  /** width, height (CSS px), device pixel ratio, time (s) */
+  /** width, height (CSS px), device pixel ratio, time (s, wrapped at `SHADER_CLOCK_PERIOD_S`) */
   viewport: 0,
   /** body fill opacity, motion (0/1), grid pitch (px), veil (0..1) */
   params: 4,
@@ -25,13 +25,24 @@ export const FRAME_LAYOUT = {
   holdShape: 40,
   /** the state glow's shape: inner, full, strength, unused */
   glowBand: 44,
-  /** and its motion: count, speed, depth, unused */
+  /** and its motion: count, phase (turns, 0..1), depth, unused */
   glowWave: 48,
   /** how many clearings are set, unused ×3 */
   clearing: 52,
   /** `MAX_CLEARINGS` × `Clearing`: shape (centre x, y, radius | half w, half h), edge (feather, kind, opacity, 0) */
   clearings: 56,
 } as const;
+
+/**
+ * The shaders' clock wraps at this period (s): seconds since mount, narrowed to
+ * float32, would step by 1/32 s after three days and stutter every wave and
+ * breath. 42 s is the least common multiple of every period a shader reads
+ * (glow 1.2, comet 1.4, body breath 1.5, shadow 3.0), so each runs on across the
+ * wrap without a seam; `test/shaders.test.ts` holds every shader's period to it.
+ * The state glow's wave turns at a tunable speed no wrap divides, so `packFrame`
+ * takes its phase from the f64 clock instead.
+ */
+export const SHADER_CLOCK_PERIOD_S = 42;
 
 /** The hold ring while a press is in flight: a 1 px rim and a 2 px dot. */
 export const HOLD_RING = { rim: 1, dot: 2 } as const;
@@ -43,7 +54,7 @@ export const MAX_CLEARINGS = 4;
 export const CLEARING_FLOATS = 8;
 export const FRAME_FLOATS = FRAME_LAYOUT.clearings + MAX_CLEARINGS * CLEARING_FLOATS;
 
-/** Where a frame is drawn: the canvas in CSS px, its pixel ratio, and the renderer's held clock (s). */
+/** Where a frame is drawn: the canvas in CSS px, its pixel ratio, and the renderer's held clock (s, unwrapped). */
 export interface FrameView {
   width: number;
   height: number;
@@ -69,7 +80,7 @@ export function packFrame(target: Float32Array, frame: SwarmFrame, view: FrameVi
   target[L.viewport] = view.width;
   target[L.viewport + 1] = view.height;
   target[L.viewport + 2] = view.dpr;
-  target[L.viewport + 3] = view.time;
+  target[L.viewport + 3] = view.time % SHADER_CLOCK_PERIOD_S;
   target[L.params] = frame.fillOpacity;
   target[L.params + 1] = frame.motion ? 1 : 0;
   target[L.params + 2] = frame.gridPitch;
@@ -97,8 +108,11 @@ export function packFrame(target: Float32Array, frame: SwarmFrame, view: FrameVi
   target[L.glowBand + 1] = frame.stateGlow.full;
   target[L.glowBand + 2] = frame.stateGlow.strength;
   target[L.glowBand + 3] = 0;
+  // The wave's phase in turns, taken in f64: sin is periodic in whole turns, so
+  // the shader's (u × count − phase) is the wave at (u × count − time × speed).
+  const turns = view.time * frame.stateGlow.speed;
   target[L.glowWave] = frame.stateGlow.count;
-  target[L.glowWave + 1] = frame.stateGlow.speed;
+  target[L.glowWave + 1] = turns - Math.floor(turns);
   target[L.glowWave + 2] = frame.stateGlow.depth;
   target[L.glowWave + 3] = 0;
   const clearings = frame.clearings ?? [];

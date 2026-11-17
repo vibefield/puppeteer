@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { AGENT_NATIVE_INVOCATION_LIMITS, AgentNativeInvocationIntentSchema } from '@vibefield/puppeteer-core';
 import {
   MAX_REFUSAL_MESSAGE_LENGTH,
   MAX_REQUEST_BYTES,
+  MAX_TOKEN_LENGTH,
   SPAWN_THROUGH_DECLINE_CODES,
+  boundSpawnThroughLaunch,
   boundSpawnThroughText,
   declineSpawnThrough,
   parseSpawnThroughRequest,
@@ -66,6 +69,15 @@ describe('spawn-through protocol', () => {
     for (const command of ['', ' example', 'ex ample', '-x', 'a\u001b[2J', 'x'.repeat(129), 7]) {
       expect(parseSpawnThroughRequest(launch({ command })), JSON.stringify(command)).toBeUndefined();
     }
+  });
+
+  it('reads the mark of a launch the shim had to bound: true is kept, false dropped, anything else refused', () => {
+    expect(parseSpawnThroughRequest(launch({ bounded: true }))).toEqual(launch({ bounded: true }));
+    expect(parseSpawnThroughRequest(launch({ bounded: false }))).toEqual(launch());
+    for (const bounded of ['true', 1, null]) {
+      expect(parseSpawnThroughRequest(launch({ bounded })), String(bounded)).toBeUndefined();
+    }
+    expect(parseSpawnThroughRequest(execFailed({ bounded: true }))).toBeUndefined();
   });
 
   it('refuses anything that is not a request object with a bounded token', () => {
@@ -238,5 +250,110 @@ describe('spawn-through protocol', () => {
     expect(bounded.endsWith('é…')).toBe(true);
     // A cut never splits a character in two.
     expect(Array.from(boundSpawnThroughText('🙂'.repeat(MAX_REFUSAL_MESSAGE_LENGTH + 1))).at(-2)).toBe('🙂');
+  });
+});
+
+describe('boundSpawnThroughLaunch: what the shim sends is what the gateway can read', () => {
+  type Unsent = Omit<SpawnThroughLaunchRequest, 'token'>;
+
+  /** A launch as the shim builds it, before its token. */
+  function unsent(overrides: Record<string, unknown> = {}): Unsent {
+    const { token: _token, ...request } = launch(overrides);
+    return request;
+  }
+
+  /** The line the gateway reads, with the longest token a request may carry. */
+  const lineOf = (request: Unsent): string =>
+    `${JSON.stringify({ ...request, token: 'x'.repeat(MAX_TOKEN_LENGTH) })}\n`;
+
+  /** Inside the gateway's bytes, held to Core's schema, and parsed back as it was sent. */
+  function expectReadable(request: Unsent): void {
+    expect(Buffer.byteLength(lineOf(request))).toBeLessThanOrEqual(MAX_REQUEST_BYTES);
+    const { providerId, cwd, argv, environment } = request;
+    expect(AgentNativeInvocationIntentSchema.safeParse({ providerId, cwd, argv, environment }).success).toBe(true);
+    expect(parseSpawnThroughRequest(JSON.parse(lineOf(request)))).toEqual({
+      ...request,
+      token: 'x'.repeat(MAX_TOKEN_LENGTH),
+    });
+  }
+
+  it('leaves a launch inside every bound as it is, unmarked', () => {
+    const limits = AGENT_NATIVE_INVOCATION_LIMITS;
+    const whole = unsent({
+      argv: ['-p', 'x'.repeat(limits.argumentLength)],
+      environment: { EXAMPLE_HOME: 'h'.repeat(limits.environmentValueLength) },
+    });
+    const sent = boundSpawnThroughLaunch(whole);
+    expect(sent).toEqual(whole);
+    expect(sent).not.toHaveProperty('bounded');
+    expectReadable(sent);
+  });
+
+  it('cuts an argument past its length, never between the halves of a surrogate pair', () => {
+    const limits = AGENT_NATIVE_INVOCATION_LIMITS;
+    const cut = boundSpawnThroughLaunch(unsent({ argv: ['-p', 'x'.repeat(20_000)] }));
+    expect(cut.bounded).toBe(true);
+    expect(cut.argv).toEqual(['-p', 'x'.repeat(limits.argumentLength)]);
+    expectReadable(cut);
+
+    // A pair astride the bound is left out whole; one just inside it is kept whole.
+    const before = 'x'.repeat(limits.argumentLength - 1);
+    const astride = boundSpawnThroughLaunch(unsent({ argv: [`${before}🙂 and more`] }));
+    expect(astride.argv).toEqual([before]);
+    expectReadable(astride);
+    const inside = boundSpawnThroughLaunch(unsent({ argv: [`${before.slice(1)}🙂 and more`] }));
+    expect(inside.argv).toEqual([`${before.slice(1)}🙂`]);
+    expectReadable(inside);
+  });
+
+  it('keeps the first arguments and the first variables, up to their counts', () => {
+    const limits = AGENT_NATIVE_INVOCATION_LIMITS;
+    const many = unsent({
+      argv: Array.from({ length: 300 }, (_, index) => `a${index}`),
+      environment: Object.fromEntries(
+        Array.from({ length: limits.environmentEntries + 1 }, (_, index) => [`NAME_${index}`, 'x']),
+      ),
+    });
+    const kept = boundSpawnThroughLaunch(many);
+    expect(kept.bounded).toBe(true);
+    expect(kept.argv).toEqual(many.argv.slice(0, limits.arguments));
+    expect(Object.keys(kept.environment)).toEqual(Object.keys(many.environment).slice(0, limits.environmentEntries));
+    expectReadable(kept);
+  });
+
+  it('caps every argument at one common length when the whole would not fit, and keeps short flags whole', () => {
+    const limits = AGENT_NATIVE_INVOCATION_LIMITS;
+    const flags = ['-p', '--model', 'opus'];
+    const long = Array.from({ length: 20 }, (_, index) => `${index}:`.padEnd(limits.argumentLength, 'x'));
+    const capped = boundSpawnThroughLaunch(unsent({ argv: [...flags, ...long] }));
+    expect(capped.bounded).toBe(true);
+    expect(capped.argv.slice(0, flags.length)).toEqual(flags);
+    const cap = capped.argv[flags.length]!.length;
+    expect(cap).toBeLessThan(limits.argumentLength);
+    expect(capped.argv.slice(flags.length)).toEqual(long.map((argument) => argument.slice(0, cap)));
+    expectReadable(capped);
+    // The largest length that fits: one unit more each would not.
+    const wider = { ...capped, argv: [...flags, ...long.map((argument) => argument.slice(0, cap + 1))] };
+    expect(Buffer.byteLength(lineOf(wider))).toBeGreaterThan(MAX_REQUEST_BYTES);
+  });
+
+  it('holds an allow-listed value to its length too', () => {
+    const limits = AGENT_NATIVE_INVOCATION_LIMITS;
+    const valued = boundSpawnThroughLaunch(unsent({ environment: { EXAMPLE_HOME: 'h'.repeat(10_240) } }));
+    expect(valued.bounded).toBe(true);
+    expect(valued.environment).toEqual({ EXAMPLE_HOME: 'h'.repeat(limits.environmentValueLength) });
+    expect(valued.argv).toEqual(['--resume', 'native-1']);
+    expectReadable(valued);
+  });
+
+  it('never cuts a flag, even when every other argument escapes to six bytes a unit', () => {
+    const limits = AGENT_NATIVE_INVOCATION_LIMITS;
+    const flag = '--dangerously-skip-permissions';
+    const escaped = Array.from({ length: limits.arguments - 1 }, () => '\u0001'.repeat(limits.argumentLength));
+    const capped = boundSpawnThroughLaunch(unsent({ argv: [flag, ...escaped] }));
+    expect(capped.argv[0]).toBe(flag);
+    // The worst escaping at the most arguments still leaves every argument this long.
+    expect(capped.argv[1]!.length).toBeGreaterThanOrEqual(40);
+    expectReadable(capped);
   });
 });

@@ -8,12 +8,12 @@
   "locale": "en-US",
   "animations": "per image",
   "environment": {
-    "electron": "43.7.9",
+    "electron": "43.8.3",
     "chrome": "150.0.7871.250",
-    "node": "24.21.0",
+    "node": "24.22.0",
     "platform": "darwin",
     "arch": "arm64",
-    "os": "25.5.0"
+    "os": "25.6.0"
   },
   "images": [
     {
@@ -252,7 +252,7 @@
       "n": 1,
       "animations": "off",
       "stage": "680×170",
-      "sha256": "5dd3b6605c0caf60ebc639f65f7687647787a5a2a6ef26740e242bdfbb40ce90"
+      "sha256": "a71c9538ee8b0e4c4e47a41ba315db16d26610fd7a6f464cd823a00c2d48fd07"
     },
     {
       "file": "spend/dark-compact-n20.png",
@@ -262,7 +262,7 @@
       "n": 20,
       "animations": "off",
       "stage": "680×170",
-      "sha256": "b0d72773ca1bbb422fe9d0a4ae54f668a7655bc51726a0377d9ef0e43eb362af"
+      "sha256": "ff6191ab0dda47e01d2642fd3f3ff895f5eaaab8b32bf2b90ad6379f5e47274d"
     },
     {
       "file": "spend/dark-default-n1.png",
@@ -272,7 +272,7 @@
       "n": 1,
       "animations": "off",
       "stage": "1180×252",
-      "sha256": "ae875e58e0a19a12327130a71ad2549de375371656a9a467c69d6b170cf8806e"
+      "sha256": "431b00b8c090f49d2cb85efc05c58937b58e6c98eea9ed7e3933316e2d98fb04"
     },
     {
       "file": "spend/dark-default-n20.png",
@@ -282,7 +282,7 @@
       "n": 20,
       "animations": "off",
       "stage": "1180×252",
-      "sha256": "272c530ca18868b94531a5abeaddff15f4f67225f9bc64c987d8e2add752083b"
+      "sha256": "5d4709c2fc8d3930fd29e09126c0274bc21aaf57902471c684b48bc948b37220"
     },
     {
       "file": "spend/dark-wide-n1.png",
@@ -292,7 +292,7 @@
       "n": 1,
       "animations": "off",
       "stage": "1728×378",
-      "sha256": "375161dce3cea7f6854da0527e76dc074ae0593d37588c09db1895698d9f8d9f"
+      "sha256": "b20cfda8c466a64969b31d4ff2419eb9247b7ed07927ca55314543dd8c7abf70"
     },
     {
       "file": "spend/dark-wide-n20.png",
@@ -302,7 +302,7 @@
       "n": 20,
       "animations": "off",
       "stage": "1728×378",
-      "sha256": "24222636379fcf6067a8bcc0986efaef4af21976a5adb98be2f441f9b2d92c50"
+      "sha256": "8ed8917b77f9606b9a5de1650de6bc419a03322f7fc29e825fff92b603888528"
     },
     {
       "file": "spend/light-compact-n1.png",
@@ -312,7 +312,7 @@
       "n": 1,
       "animations": "off",
       "stage": "680×170",
-      "sha256": "5359a77255a22a491d8885349117cc8ed9b46d8050f43ee3371a207452e5af10"
+      "sha256": "54faf92235189bac000cf1f14eb93aa5262f0158c4b937742872f6a64ed0a962"
     },
     {
       "file": "spend/light-compact-n20.png",
@@ -322,7 +322,7 @@
       "n": 20,
       "animations": "off",
       "stage": "680×170",
-      "sha256": "d7e336c9196d9120b571cdcf926d7d18ec6f0c92901fd35fcb7a7da868d60b36"
+      "sha256": "e6482aecda4482ef9c879d8a8186b33c929123fdcd3016097134a5aa37f16185"
     },
     {
       "file": "spend/light-default-n1.png",
@@ -332,7 +332,7 @@
       "n": 1,
       "animations": "off",
       "stage": "1180×252",
-      "sha256": "3b032f6933da7675c1a3ae9e498571565ed3f03c4b87f1eaaa5feb79d99b5292"
+      "sha256": "a7dbe77c4a0e5ae7533673c8f6bd2aac74e96b6ba3e0d02c03d5c84088f5e24d"
     },
     {
       "file": "spend/light-default-n20.png",
@@ -342,7 +342,7 @@
       "n": 20,
       "animations": "off",
       "stage": "1180×252",
-      "sha256": "a4c9383896a42eaa2d850e8dfb471a4b66da8f48ef3e9c652022864e85c3ea97"
+      "sha256": "53849afa880105f56baab6cfb1b86715d2987a263a9d10cf4001bb57c6b5e154"
     },
     {
       "file": "spend/light-wide-n1.png",
@@ -352,7 +352,7 @@
       "n": 1,
       "animations": "off",
       "stage": "1728×378",
-      "sha256": "160d75ae03d4abfc6c5c47aa9c2c5732a64c70c9033ea450802e3d5d397b2d05"
+      "sha256": "90df7fedc9e9f391fb260ad3348c01e711fbfb3a2fdb5087e2cb0fc1c5d466b8"
     },
     {
       "file": "spend/light-wide-n20.png",
@@ -362,7 +362,7 @@
       "n": 20,
       "animations": "off",
       "stage": "1728×378",
-      "sha256": "f9e7053c43c4b0c28bb082d3ab0c38c7a5da9b2121d1838bde953b09bee618d1"
+      "sha256": "539f7d3a85f20bef5ffe2e5ed2755132785fc3ca42b8d542fa753646436b8c46"
     },
     {
       "file": "swarm/dark-compact-n1.png",

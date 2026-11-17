@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, readdir, rm } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
-import { resolve as resolvePath } from 'node:path';
+import { isAbsolute, join, resolve as resolvePath } from 'node:path';
 import {
   AccountUsageFetchResultSchema,
   AccountUsageProviderSchema,
@@ -16,13 +17,17 @@ import {
   AgentNativeInvocationPassthroughKindSchema,
   AgentNativeInvocationSchema,
   AgentProviderDescriptorSchema,
+  AGENT_BRIEFING_FIELDS,
+  agentBriefingReceipt,
   pickAgentBriefing,
-  validateAgentBriefing,
+  settleAgentBriefing,
+  withAgentBriefing,
   DistributionProviderSchema,
   NATIVE_PROFILE_SET_ID,
   ProfileProviderSchema,
   agentEventCategory,
   agentEventType,
+  AGENT_ATTACH_REFUSAL_CODES,
   isAgentAttachRefusedError,
   isAgentEventType,
   isAgentLaunchRefusedError,
@@ -39,6 +44,8 @@ import {
   type AgentInstallation,
   type AgentLaunchProvider,
   type AgentMonitorState,
+  type AgentBriefingField,
+  type AgentBriefingWithheld,
   type AgentNativeInvocation,
   type AgentNativeInvocationResolution,
   type AgentProfile,
@@ -104,6 +111,7 @@ import type {
   InstallPlan,
   InstallPlanOptions,
   PreparationFailure,
+  PrepareAgentSessionOptions,
   PreparedAgentSessionInfo,
   PreparedProviderSession,
   PrepareAgentSessionResult,
@@ -159,7 +167,7 @@ import { launchValues } from './host/environment.js';
 import { boundSpawnThroughText } from './host/spawn-through/protocol.js';
 import { createProfileRootAllocator } from './profiles/roots.js';
 import { cloneAgentSessionInfo, createAgentController, type Agent, type AgentController } from './agent.js';
-import { createGitStateObserver, type GitStateObserver } from './observation/git.js';
+import { createGitObserverPool, type GitStateObserver } from './observation/git.js';
 import {
   allocateRuntimeRunIdentity,
   canonicalizeCreationFingerprint,
@@ -257,6 +265,12 @@ interface ManagedRun {
   terminalOutcome?: CreationRequestTerminalOutcome | undefined;
   result?: CreateAgentSessionResult | PrepareAgentSessionResult | undefined;
   monitor?: AgentMonitorService | undefined;
+  /** The run's staging directory while the run stands: made for its launch, or an attached run's, found by its id. */
+  stagingDir?: string | undefined;
+  /** The briefing fields this launch was asked to carry, by name. */
+  briefingAsked?: readonly AgentBriefingField[] | undefined;
+  /** What the runtime and the adapter withheld of them. */
+  briefingWithheld?: readonly AgentBriefingWithheld[] | undefined;
 }
 
 interface TerminalFailureEntry {
@@ -535,6 +549,14 @@ function providerError(
   };
 }
 
+/**
+ * A run id names its staging directory only as one plain path segment. The runtime mints its own ids, but an attached
+ * or restored run's is the host's, and a removal is recursive: `..` would name the root's parent.
+ */
+function isStagingSegment(runtimeRunId: string): boolean {
+  return runtimeRunId !== '' && runtimeRunId !== '.' && runtimeRunId !== '..' && !/[/\\\0]/u.test(runtimeRunId);
+}
+
 function runInfo(run: ManagedRun): RuntimeRunInfo {
   return {
     ...identityFields(run.identity),
@@ -682,6 +704,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const preparationTombstones = new Map<string, PreparationTombstone>();
   const preparationCleanups = new Map<string, Promise<void>>();
   const workspaceFinalizations = new WeakMap<Workspace, Promise<RuntimeWorkspaceFinalization>>();
+  // One git observer per repository cwd, whatever the number of sessions there.
+  const gitObservers = createGitObserverPool(
+    options.serviceEnvironment === undefined ? {} : { env: options.serviceEnvironment },
+  );
   const inflightCreations = new Map<string, InflightCreation>();
   const pendingCreations = new Set<Promise<CreateAgentSessionResult | PrepareAgentSessionResult>>();
   const prewarmAbort = new AbortController();
@@ -706,6 +732,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   if (!Number.isSafeInteger(terminalFailureCapacity) || terminalFailureCapacity <= 0) {
     throw new Error('terminalFailureCapacity must be a positive safe integer');
   }
+  // A relative root would move with the host's working directory.
+  if (options.staging !== undefined && !isAbsolute(options.staging.root)) {
+    throw new Error('staging.root must be an absolute path');
+  }
+  const stagingRoot = options.staging === undefined ? undefined : resolvePath(options.staging.root);
   let disposed = false;
 
   const report = (err: unknown): void => options.onError?.(err instanceof Error ? err : new Error(String(err)));
@@ -761,6 +792,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     }),
     ...(options.distribution?.searchPath === undefined ? {} : { searchPath: options.distribution.searchPath }),
     ...(options.distribution?.home === undefined ? {} : { home: options.distribution.home }),
+    ...(options.distribution?.brewPrefixes === undefined ? {} : { brewPrefixes: options.distribution.brewPrefixes }),
     onError: report,
   });
   const releaseCache = createReleaseEtagCache();
@@ -848,13 +880,25 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const restoredResumes = new WeakSet<CreateAgentSessionOptions>();
 
   /**
-   * The account a creation runs under: a named profile, a named set's, the
-   * default set's, or none. `setId` names the set when a named set resolved to
-   * no account — the native set, the provider's own root.
+   * Prepare requests from a native invocation whose launch environment names
+   * an active account, marked by `prepareInvocation` with the account its one
+   * registry read matched: the run is prepared under it, as a spawn naming it
+   * would be, without a second read that could fail the run, and the request
+   * itself still names no profile, so its creation fingerprint is unchanged.
+   */
+  const attributedAccounts = new WeakMap<CreateAgentSessionOptions, AgentProfile>();
+
+  /**
+   * The account a creation runs under: an attributed account, a named
+   * profile, a named set's, the default set's, or none. `setId` names the set
+   * when a named set resolved to no account — the native set, the provider's
+   * own root.
    */
   async function resolveProfileChoice(
     request: CreateAgentSessionOptions,
   ): Promise<{ profile?: AgentProfile; setId?: string } | { error: string }> {
+    const attributed = attributedAccounts.get(request);
+    if (attributed !== undefined) return { profile: attributed };
     const defaulted = defaultedSpawns.has(request);
     if (request.profile === undefined && request.profileSet === undefined && !defaulted) return {};
     if (!profileRegistryProviders.has(request.agent)) {
@@ -1034,23 +1078,30 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
    * provider's binding names is the vendor's default root. An environment that
    * carries a binding name with an unknown value is a root Puppeteer did not
    * allocate, so it is left unattributed rather than mislabelled.
+   *
+   * `account` is the matched profile when it is active (not signed out): the
+   * one a run can be prepared under. One registry read answers both.
    */
   async function attributeInvocationProfile(
     providerId: string,
     environment: Record<string, string>,
-  ): Promise<string | undefined> {
+  ): Promise<{ profileId?: string; account?: AgentProfile }> {
     const entry = profileRegistryProviders.get(providerId);
-    if (!entry || !entry.provider.support.supported) return undefined;
+    if (!entry || !entry.provider.support.supported) return {};
     const managed = await (await profileRuntime()).registry.managed(providerId);
     const bindingNames = new Set<string>();
     for (const profile of managed) {
       const binding = entry.service.bindingEnvironment(profile);
       const names = Object.keys(binding);
       for (const name of names) bindingNames.add(name);
-      if (names.length > 0 && names.every((name) => environment[name] === binding[name])) return profile.id;
+      if (names.length > 0 && names.every((name) => environment[name] === binding[name])) {
+        return profile.retiredAt === undefined
+          ? { profileId: profile.id, account: profile }
+          : { profileId: profile.id };
+      }
     }
-    if ([...bindingNames].some((name) => environment[name] !== undefined)) return undefined;
-    return entry.provider.support.nativeDefaultRoot ? nativeDefaultProfileId(providerId) : undefined;
+    if ([...bindingNames].some((name) => environment[name] !== undefined)) return {};
+    return entry.provider.support.nativeDefaultRoot ? { profileId: nativeDefaultProfileId(providerId) } : {};
   }
 
   function continuationFor(provider: AgentProvider, nativeSessionId: string, run: ManagedRun): AgentContinuation {
@@ -1488,6 +1539,38 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       : preparationFailure(code as PreparationFailure['error']['code'], message, run, terminalOutcome);
   }
 
+  /** Where a run's launch files live: `<root>/<runtimeRunId>`, when the host named a root and the id is one segment. */
+  function stagingDirFor(runtimeRunId: string): string | undefined {
+    return stagingRoot === undefined || !isStagingSegment(runtimeRunId) ? undefined : join(stagingRoot, runtimeRunId);
+  }
+
+  /**
+   * Make a launching run's staging directory, 0700 and empty (the root made 0700 when absent), once the run and its
+   * workspace exist and just before its provider is asked; undefined when the host named no root.
+   */
+  async function openStaging(run: ManagedRun): Promise<string | undefined> {
+    if (stagingRoot === undefined) return undefined;
+    const dir = stagingDirFor(run.identity.runtimeRunId);
+    // the runtime mints a launching run's id itself
+    if (dir === undefined) throw new Error(`run id cannot name a staging directory: ${run.identity.runtimeRunId}`);
+    await mkdir(stagingRoot, { recursive: true, mode: 0o700 });
+    // never one that already exists: a directory handed over is the run's alone, and empty
+    await mkdir(dir, { mode: 0o700 });
+    run.stagingDir = dir;
+    return dir;
+  }
+
+  /**
+   * A run marked terminal is over, and its launch files go with it. A detach marks nothing, so a released run keeps
+   * them. The binding's own dispose may still be removing the files it wrote inside; both removals are forced.
+   */
+  async function closeStaging(run: ManagedRun): Promise<void> {
+    const dir = run.stagingDir;
+    if (dir === undefined) return;
+    run.stagingDir = undefined;
+    await rm(dir, { recursive: true, force: true }).catch(report);
+  }
+
   async function markRunTerminal(
     run: ManagedRun,
     outcome: CreationRequestTerminalOutcome,
@@ -1529,12 +1612,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         report(error);
       }
     }
+    // after the durable mark: a host's sweep keeps what its records still hold live
+    await closeStaging(run);
     if (outcome.kind === 'failed' && !retention.deferFailureRetention) retainTerminalFailure(run);
   }
 
   function creationFingerprint(
     operation: RuntimeCreationOperation,
-    request: CreateAgentSessionOptions,
+    request: PrepareAgentSessionOptions,
     externalRefs: readonly ExternalRef[],
   ): string {
     const cwd = request.cwd ?? options.defaultCwd;
@@ -1558,6 +1643,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       ...(request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }),
       ...(request.modelSelection === undefined ? {} : { modelSelection: request.modelSelection }),
       ...pickAgentBriefing(request),
+      // What a launch does with a refusal is part of what was asked.
+      ...(request.briefingRefusal === undefined ? {} : { briefingRefusal: request.briefingRefusal }),
       // Two requests that differ only by account are different runs.
       ...(request.profile === undefined ? {} : { profile: request.profile }),
       ...(request.profileSet === undefined ? {} : { profileSet: request.profileSet }),
@@ -1644,28 +1731,47 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
   function beginCreation<T extends CreateAgentSessionResult | PrepareAgentSessionResult>(
     operation: RuntimeCreationOperation,
-    request: CreateAgentSessionOptions,
-    execute: (run: ManagedRun, request: CreateAgentSessionOptions) => Promise<T>,
+    request: PrepareAgentSessionOptions,
+    execute: (run: ManagedRun, request: PrepareAgentSessionOptions) => Promise<T>,
   ): Promise<T> {
     let launchFailure: ReturnType<typeof providerError> | undefined;
     const original = request;
+    const briefingAsked = AGENT_BRIEFING_FIELDS.filter((field) => request[field] !== undefined);
+    let briefingWithheld: readonly AgentBriefingWithheld[] = [];
     try {
       const provider = providers.get(request.agent);
       // Snapshot the briefing synchronously: a caller cannot change it while allocation, model discovery or
       // workspace acquisition is pending, nor can an adapter mutate the caller's server/environment records.
-      const briefing = provider
-        ? validateAgentBriefing(request, provider.descriptor.briefing, provider.descriptor.label)
-        : {};
-      request = { ...request, ...briefing };
+      if (provider) {
+        const settled = settleAgentBriefing(
+          request,
+          provider.descriptor.briefing,
+          provider.descriptor.label,
+          request.briefingRefusal,
+        );
+        request = withAgentBriefing(request, settled.briefing);
+        briefingWithheld = settled.withheld;
+      }
       if (defaultedSpawns.has(original)) defaultedSpawns.add(request);
       if (restoredResumes.has(original)) restoredResumes.add(request);
+      const attributed = attributedAccounts.get(original);
+      if (attributed !== undefined) attributedAccounts.set(request, attributed);
     } catch (error) {
       launchFailure = providerError(error, request.agent, 'Invalid per-run briefing.');
     }
     // Idempotency tracks only requests with creationRequestId. Shutdown must
     // also wait for anonymous requests, including workspace/provider awaits.
     const promise = Promise.resolve().then(() =>
-      executeCreation(operation, request, (run) => execute(run, request), launchFailure),
+      executeCreation(
+        operation,
+        request,
+        (run) => {
+          run.briefingAsked = briefingAsked;
+          run.briefingWithheld = briefingWithheld;
+          return execute(run, request);
+        },
+        launchFailure,
+      ),
     );
     pendingCreations.add(promise);
     const clear = () => pendingCreations.delete(promise);
@@ -2245,6 +2351,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (extras.processId !== undefined) info.processId = extras.processId;
     if (run.profileId !== undefined) info.profileId = run.profileId;
     if (run.profileSetId !== undefined) info.profileSetId = run.profileSetId;
+    const briefingReceipt = agentBriefingReceipt(run.briefingAsked ?? [], run.briefingWithheld ?? []);
+    if (briefingReceipt) info.briefing = briefingReceipt;
     if (!run.monitor) throw new Error(`runtime monitor was not installed for run ${run.identity.runtimeRunId}`);
     let managed: ManagedSession | undefined;
     const agentController = createAgentController({
@@ -2265,7 +2373,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       observationLevel: session.observationLevel(),
       terminalSessionId: session.runtimeSessionId,
     });
-    run.monitor?.updateRun(activeMonitorLifecycle(agent.state.lifecycle), {
+    run.monitor?.updateRun(activeMonitorLifecycle(agent.lifecycle), {
       alive: true,
       nativeSession: initialNativeClaim.value,
     });
@@ -2291,7 +2399,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       info.nativeSessionRevision = next.revision;
       info.continuation = continuationFor(provider, next.value.id, run);
       info.sessionId = next.value.id;
-      run.monitor?.updateRun(activeMonitorLifecycle(agent.state.lifecycle), { alive: true, nativeSession: next.value });
+      run.monitor?.updateRun(activeMonitorLifecycle(agent.lifecycle), { alive: true, nativeSession: next.value });
       void recordNativeSessionCorrelation(run, effectiveAt, evidence);
     };
 
@@ -2364,20 +2472,24 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       if (info.continuation.resumable === false && run.durableRecordSeen?.() !== false) {
         info.continuation = continuationFor(provider, run.nativeSessionClaim!.value.id, run);
       }
-      const previousCwd = agent.state.environment.currentCwd?.value;
+      // accept() hands back the uncopied states on either side of the event (the reducer never mutates in place);
+      // the application getter `agent.state` would deep-copy the whole session per event to read one cwd.
       if (!isCanonicalApplicationEvent(session, envelope)) {
-        const projected = agentController.accept(envelope, {
+        const { previousState, state } = agentController.accept(envelope, {
           projectMonitor: false,
           projectState: reduceIntoState,
           publish: false,
         });
-        const currentCwd = projected.state.environment.currentCwd?.value;
-        if (currentCwd && currentCwd !== previousCwd) gitObserver?.setCwd(currentCwd);
+        const currentCwd = state.environment.currentCwd?.value;
+        if (currentCwd && currentCwd !== previousState.environment.currentCwd?.value) gitObserver?.setCwd(currentCwd);
         return;
       }
-      const projected = agentController.accept(envelope, { projectState: reduceIntoState, hostProcessEvidence });
-      const currentCwd = projected.state.environment.currentCwd?.value;
-      if (currentCwd && currentCwd !== previousCwd) gitObserver?.setCwd(currentCwd);
+      const { previousState, state } = agentController.accept(envelope, {
+        projectState: reduceIntoState,
+        hostProcessEvidence,
+      });
+      const currentCwd = state.environment.currentCwd?.value;
+      if (currentCwd && currentCwd !== previousState.environment.currentCwd?.value) gitObserver?.setCwd(currentCwd);
       for (const listener of listeners) {
         try {
           listener(info.terminalSessionId, envelope);
@@ -2447,7 +2559,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (!agent.state.environment.currentCwd) {
       dispatch({ type: 'environment:updated', currentCwd: lease.workspace.root }, 'runtime', 'derived');
     }
-    gitObserver = createGitStateObserver({
+    gitObserver = gitObservers.observe({
       cwd: agent.state.environment.currentCwd?.value ?? lease.workspace.root,
       onChange: (git) => dispatch({ type: 'environment:updated', git }, 'runtime', 'derived'),
       onError: report,
@@ -3267,7 +3379,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         try {
           providerOptions.agentOptions = await selectedModelOptions(provider, request, lease.workspace.root, profile);
           captureContinuationState(provider, providerOptions, run);
-          session = await provider.createSession(providerOptions);
+          const stagingDir = await openStaging(run);
+          session = await provider.createSession({
+            ...providerOptions,
+            ...(stagingDir === undefined ? {} : { stagingDir }),
+          });
         } catch (error) {
           report(error);
           const failure = providerError(error, request.agent, `agent session creation failed: ${request.agent}`);
@@ -3321,7 +3437,17 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           };
       }
       const { invocation, provider, resolution: normalized } = classified;
-      const result = await runtime.prepareSession({
+      // A typed launch runs under the active account its launch environment
+      // names, as a spawn that named the account would: the provider is handed
+      // that profile. One registry read attributes it; a registry that cannot
+      // be read leaves the launch unattributed, as before, and is reported.
+      let attribution: { profileId?: string; account?: AgentProfile } = {};
+      try {
+        attribution = await attributeInvocationProfile(invocation.providerId, invocation.environment);
+      } catch (error) {
+        report(error);
+      }
+      const prepareRequest: PrepareAgentSessionOptions = {
         agent: invocation.providerId,
         cwd: invocation.cwd,
         title: request.title,
@@ -3331,27 +3457,31 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         resume: normalized.resume,
         ...(normalized.options === undefined ? {} : { agentOptions: normalized.options }),
         ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
-      });
+        ...pickAgentBriefing(request),
+        ...(request.briefingRefusal === undefined ? {} : { briefingRefusal: request.briefingRefusal }),
+      };
+      if (attribution.account !== undefined) attributedAccounts.set(prepareRequest, attribution.account);
+      const result = await runtime.prepareSession(prepareRequest);
       if ('error' in result) return result;
       const run = runs.get(result.runtimeRunId);
       if (run) {
         run.launchImplementation = invocation.implementation.kind;
         result.continuation = continuationFor(provider, result.nativeSession.id, run);
-        // Attribution only labels the run. The adapter already read its own
-        // root variable out of the invocation, so its options are untouched.
-        try {
-          run.profileId = await attributeInvocationProfile(invocation.providerId, invocation.environment);
-          if (run.profileId !== undefined) {
+        // prepareSession bound an active account. Otherwise attribution only
+        // labels the run: the vendor's own root, or a signed-out account's.
+        if (run.profileId === undefined && attribution.profileId !== undefined) {
+          run.profileId = attribution.profileId;
+          try {
             run.profileSetId = (await (await profileRuntime()).registry.get(run.profileId))?.set;
+          } catch (error) {
+            report(error);
           }
-        } catch (error) {
-          report(error);
         }
       }
       return result;
     },
 
-    prepareSession(request: CreateAgentSessionOptions): Promise<PrepareAgentSessionResult> {
+    prepareSession(request: PrepareAgentSessionOptions): Promise<PrepareAgentSessionResult> {
       if (disposed) throw new Error('agent runtime is disposed');
       return beginCreation('prepare', request, async (run, request) => {
         run.status = 'preparing';
@@ -3405,6 +3535,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           host: options.host,
           agentOptions: request.agentOptions,
           ...pickAgentBriefing(request),
+          ...(request.briefingRefusal === undefined ? {} : { briefingRefusal: request.briefingRefusal }),
           ...(profile === undefined ? {} : { profile }),
           ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
         };
@@ -3412,7 +3543,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         try {
           providerOptions.agentOptions = await selectedModelOptions(provider, request, lease.workspace.root, profile);
           captureContinuationState(provider, providerOptions, run);
-          prepared = await provider.prepareSession(providerOptions);
+          const stagingDir = await openStaging(run);
+          prepared = await provider.prepareSession({
+            ...providerOptions,
+            ...(stagingDir === undefined ? {} : { stagingDir }),
+          });
         } catch (error) {
           report(error);
           const failure = providerError(error, request.agent, `agent session preparation failed: ${request.agent}`);
@@ -3432,6 +3567,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         run.status = 'prepared';
         // Prepared is not started: no process runs until the host spawns and adopts it.
         run.monitor?.updateRun('preparing', { alive: true, nativeSession: nativeSessionClaim.value });
+        run.briefingWithheld = [...(run.briefingWithheld ?? []), ...(prepared.briefingWithheld ?? [])];
+        const briefingReceipt = agentBriefingReceipt(run.briefingAsked ?? [], run.briefingWithheld);
         const publicInfo: PreparedAgentSessionInfo = {
           preparationId,
           agent: provider.descriptor.id,
@@ -3443,6 +3580,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           launch: cloneLaunch(prepared.launch),
           workspace: workspaceInfo(lease.workspace),
           expiresAt: new Date(expiresAtMs).toISOString(),
+          ...(briefingReceipt ? { briefing: briefingReceipt } : {}),
         };
         const timer = setTimeout(() => {
           const current = preparations.get(preparationId);
@@ -3721,6 +3859,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
       const provider = providers.get(restore.agent);
       const kept = continuation !== undefined && continuation.success ? continuation.data : undefined;
+      // the launch files are where the run's launch staged them, found by its id, and go at this run's end
+      const stagingDir = stagingDirFor(restore.runtimeRunId);
       const run: ManagedRun = {
         identity: { ...identity, runtimeEpoch: restoredClaim.claim.runtimeEpoch },
         operation: restoredClaim.claim.operation,
@@ -3730,6 +3870,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         // lost them, so the next continuation (and a resume of it) is the launch's, not `native` with no state
         ...(kept?.state === undefined ? {} : { continuationState: kept.state }),
         ...(kept === undefined ? {} : { launchImplementation: kept.implementation }),
+        ...(stagingDir === undefined ? {} : { stagingDir }),
       };
       if (current?.monitor) removeRunMonitor(current);
       runs.set(run.identity.runtimeRunId, run);
@@ -3948,10 +4089,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
               error instanceof Error ? error.message : String(error)
             }`,
           );
-          // the adapter's word on what the host does instead, carried as it said it
-          return isAgentAttachRefusedError(error)
-            ? { ...failure, error: { ...failure.error, next: error.next } }
-            : failure;
+          // the adapter's word on what the host does instead, carried as it said it, and why, when that is a word
+          // this copy knows (a host states it without the vendor's text)
+          if (!isAgentAttachRefusedError(error)) return failure;
+          // rv-el7-limits (3), ruled at its lean, C (James, 2026-11-06): the `refusal` carry.
+          const why =
+            error.code !== undefined && AGENT_ATTACH_REFUSAL_CODES.includes(error.code) ? error.code : undefined;
+          return {
+            ...failure,
+            error: { ...failure.error, next: error.next, ...(why === undefined ? {} : { refusal: { code: why } }) },
+          };
         }
         if (session.sessionId !== request.sessionId || session.runtimeSessionId !== request.terminalSessionId) {
           await session.dispose({ release: true }).catch(report);
@@ -4017,6 +4164,30 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     },
 
     cancelPrepared,
+
+    async sweepStaging(sweep) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      if (stagingRoot === undefined) return;
+      const keep = new Set<string>(sweep.keep);
+      let entries: string[];
+      try {
+        entries = await readdir(stagingRoot);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') report(error);
+        return;
+      }
+      // This runtime's own runs are read after the listing: a run whose directory was listed was allocated before
+      // it was made, so it is here unless it has ended, and a run that ended removed its own.
+      const ownLive = (entry: string): boolean => {
+        const run = runs.get(entry);
+        return run !== undefined && run.status !== 'terminal';
+      };
+      await Promise.all(
+        entries
+          .filter((entry) => !keep.has(entry) && !ownLive(entry))
+          .map((entry) => rm(join(stagingRoot, entry), { recursive: true, force: true }).catch(report)),
+      );
+    },
 
     runtimeRunInfo: (id) => {
       const run = runs.get(id);

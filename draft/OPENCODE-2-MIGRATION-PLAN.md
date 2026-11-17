@@ -1,7 +1,8 @@
 # OpenCode 2 Migration Plan
 
-Status: **Unstarted.** Recorded 2026-11-03 while advancing the 1.x candidate to 1.19.5.
-Current candidate: OpenCode **1.19.5** (`support/agents.json`, `baseline-pending`).
+Status: **Ruled 2026-11-04; in progress on `adapt/opencode-2`**, which holds the current plan. 2.x becomes a second
+release line of `opencode`, and 1.x support ends when it is promoted. Recorded 2026-11-03.
+Current 1.x line: OpenCode **1.19.5**, `verified` in `support/agents.json` (promotion run `41794896986`).
 Target line: OpenCode **2.x** (`@opencode/cli`, latest 2.2.5).
 
 This note says why the candidate stayed on 1.x, what OpenCode 2 changes, and the work a 2.x adaptation needs. None of the
@@ -28,8 +29,8 @@ that moves fast: 46 numbered releases between 2026-09-11 and 2026-10-30.
 **Detector consequence.** `upstream.json`'s `github-stable` detector takes the first non-draft, non-prerelease tag
 that matches `^v(\d+\.\d+\.\d+)$` in API order. v2 releases are non-prerelease and are created after the matching v1
 releases, so the detector can report a 2.x version. The 1.x acquisition URLs (`opencode-<platform>@2.x`) then 404.
-Detection stays as it is on purpose, so the 2.x line keeps showing as upstream activity. The ledger blocker and this plan
-are how reviewers see it. Narrowing the tag pattern to `v1.` would hide a real upstream change.
+Detection stays as it is on purpose, so the 2.x line keeps showing as upstream activity. The ledger row carries no blocker,
+so this plan is how reviewers see it. Narrowing the tag pattern to `v1.` would hide a real upstream change.
 
 ## 2. Why 2.x is a new integration family
 

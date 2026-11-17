@@ -1,6 +1,7 @@
 # Spawn-Through for Terminal Hosts
 
-**Status:** Current host guide, 2026-09-27 (PU-17; PU-9a: what an invocation is, and strict)
+**Status:** Current host guide, 2026-09-27 (PU-17; PU-9a: what an invocation is, and strict; 2026-11-06: the forwarder
+runtime a single executable lends, §9)
 
 **Audience:** Developers of an application that owns terminals — a desktop app, a daemon — and wants a command a
 person types in one of them to start as a managed Puppeteer session
@@ -61,12 +62,16 @@ environment variables the adapter accepts from a shell. The host decides which o
 3. The shim reads `<home>/launch-providers.json` and `<home>/gateway.json`, finds the provider that owns `<name>` and
    the real executable, and sends one JSON line to the gateway: the provider, the cwd, the argv after the name, only the
    allow-listed variables, its own pid and its parent's, the name it was run as, and whether its input and output are a
-   terminal (`interactive`).
-4. The gateway checks the bearer and parses strictly; the host's handler calls `prepareSpawnThroughLaunch`. It asks the
-   runtime what the invocation is (`classifyInvocation`: the adapter's grammar, nothing prepared), asks the host which
-   terminal contains the pid, prepares the invocation (the adapter normalizes the argv and chooses its hooks, sockets
-   and logs), adopts the preparation in that terminal with that pid (cancelling it if adoption fails), lets the host
-   record the run, and answers `exec` with the adapter's recipe.
+   terminal (`interactive`). A shell execs far more than the gateway reads, so the shim holds the line to the
+   gateway's bounds (`boundSpawnThroughLaunch`: Core's `AGENT_NATIVE_INVOCATION_LIMITS`, 8,192 units an argument,
+   256 arguments, 32 variables of 8,192 units, and 64 KiB a line): it cuts what is over them, and a request it cut
+   says so (`bounded`). Only the request is cut: a fallback runs what was typed, whole.
+4. The gateway checks the bearer first, then parses strictly; the host's handler calls `prepareSpawnThroughLaunch`. It
+   asks the runtime what the invocation is (`classifyInvocation`: the adapter's grammar, nothing prepared), asks the
+   host which terminal contains the pid, prepares the invocation (the adapter normalizes the argv and chooses its hooks,
+   sockets and logs), adopts the preparation in that terminal with that pid (cancelling it if adoption fails), lets the
+   host record the run, and answers `exec` with the adapter's recipe. A session the shim had to cut is never prepared:
+   a managed launch would carry the cut (`request-too-large`, §7).
 5. The shim `execve`s the recipe in place. The agent starts managed, in the terminal the person typed into.
 
 Any other answer is a decline, with a code (§7): `fallback` execs the real executable with the original argv — a version
@@ -198,9 +203,19 @@ framework) cannot put the real executable ahead of the launcher; another `precmd
 hook then stands aside. A non-interactive `zsh -c` is not integrated, and neither is an interactive shell a person
 starts inside an integrated one: it reads only the person's own files.
 
+The hook also forgets zsh's command hash when the set of launchers changes. zsh remembers where it found each name
+(`HASH_CMDS`) and, with `HASH_DIRS`, how far down PATH it has read, and only a PATH assignment or `rehash` clears
+either: without it, a launcher written after a shell's birth — the host's first start, an agent offered later — would
+never be found by a name the shell had already run, nor past a directory its search had already read. Each prompt
+globs the shim directory, and `rehash` runs only when the launchers differ from the last set the hook saw, so a
+launcher written after a shell's birth is found at its next prompt. A shell reads the integration once, at its birth:
+one born before the host upgraded the kit keeps the hook it was born with for its life.
+
 The tests prove this in a real zsh with a throwaway `HOME` and `ZDOTDIR`: `ZDOTDIR` restored or unset, the person's
-files read, the history file theirs, the hook present only when interactive, and a piped `zsh -i` resolving `<name>` to
-the launcher at its first prompt and again after `export PATH=<real dir>:$PATH`.
+files read, the history file theirs, the hook present only when interactive, a piped `zsh -i` resolving `<name>` to
+the launcher at its first prompt and again after `export PATH=<real dir>:$PATH`, and a launcher moved in during the
+shell's life found at the next prompt — by a name the shell had already run, and past a directory its last search had
+already read.
 
 ### bash, fish and the rest — not yet integrated
 
@@ -255,6 +270,7 @@ field reads as interactive.
 | in no terminal of the host's | runs as typed | runs as typed |
 | accepted, interactive, in the host's terminal | managed | managed |
 | rejected, interactive, in the host's terminal | runs as typed | refused, naming the argument |
+| a session whose request the shim had to cut to the gateway's bounds (`bounded`), interactive, in the host's terminal | runs as typed | refused (`request-too-large`) |
 | a launch the agent's own adapter refused, for a reason the person can act on (settings that turn every hook off, say), interactive, in the host's terminal | runs as typed | refused, in the adapter's words |
 | an agent the host cannot manage (unsupported, no imposter, a failed preparation or adoption), interactive, in the host's terminal | runs as typed | refused |
 
@@ -330,12 +346,14 @@ back.
 | `materializeShims({strict})`: the launcher's word while no rendezvous is readable | the shim's own, by its ancestry |
 
 A `refuse` answer carries `placed`. The shim obeys a placed refusal wherever it runs, and an unplaced one only under a
-listed shell: an argv over 64 KiB typed in one of the host's terminals is still refused; typed in an editor's terminal,
-it runs. When the gateway cannot be reached and an interactive launch is in one of the host's terminals, the shim
-retries with backoff (100 ms doubling to 1 s) for `retryMs`, says once that it waits, re-reads the rendezvous every
-try — a host that comes back is used — and then refuses with exit 75. A shim reads the host's latest readable
-rendezvous first; the launcher speaks only while none has been readable. A name with no row in the provider table, or
-a home with no table, is never refused: the table is the host's word on what it manages.
+listed shell: a request the gateway would not trust, typed in one of the host's terminals, is refused; typed in an
+editor's terminal, it runs. The shim cuts what the gateway cannot carry and says so: a cut one-shot runs whole, as
+typed, and a cut session in one of the host's terminals is refused, placed. When the gateway cannot be reached and an
+interactive launch is in one of the host's terminals, the shim retries with backoff (100 ms doubling to 1 s) for
+`retryMs`, says once that it waits, re-reads the rendezvous every try — a host that comes back is used — and then
+refuses with exit 75. A shim reads the host's latest readable rendezvous first; the launcher speaks only while none has
+been readable. A name with no row in the provider table, or a home with no table, is never refused: the table is the
+host's word on what it manages.
 
 ### A refusal's code, and the host's words
 
@@ -344,8 +362,9 @@ on the code, never on the reason's words:
 
 | Code | Where |
 | --- | --- |
-| `unauthenticated`, `request-too-large`, `handler-failed` | the gateway's own: a wrong bearer or a request of the wrong shape (one answer for both), over 64 KiB, a throwing handler |
-| `invalid-request` | the request's process identity or intent does not parse |
+| `unauthenticated`, `handler-failed` | the gateway's own: a wrong bearer, or a line that is not a request (one answer, whatever else the line says); a throwing handler |
+| `request-too-large` | a line over 64 KiB at the gateway (unplaced: only a shim from before `bounded`, or another program, sends one), or a session the shim had to cut to the gateway's bounds (placed) |
+| `invalid-request` | an authenticated request of the wrong shape (a shim of another version, at the gateway), or a process identity or intent that does not parse |
 | `passthrough`, `not-interactive` | not a session: the adapter's word, or its input or output is not a terminal |
 | `outside-host-terminals` | no terminal of the host's holds the process |
 | `unsupported-agent`, `invalid-invocation` | the runtime offers no managed invocation for it, or would not put it to the adapter |
@@ -407,9 +426,15 @@ recipe of the run it asked for, and nothing of any other run.
 - **The bearer is a file, never a variable.** It lives in `gateway.json` (0600, in a 0700 home), so no process
   inherits it. A same-user process can read the file, as it could read an environment: the file is not a stronger
   secret, it is a fresher one, and it never reaches an agent by inheritance.
-- **The gateway listens on 127.0.0.1 only**, parses every request strictly (unknown keys and unbounded strings are
-  refused; the intent is held to Core's schema), and gives a wrong bearer and a request of the wrong shape the same
-  answer.
+- **The gateway listens on 127.0.0.1 only**, reads a line's bearer before anything else of it, and parses every
+  request strictly (unknown keys and unbounded strings are refused; the intent is held to Core's schema). It tells a
+  caller without the bearer nothing about the shape: a wrong bearer, a line that is not JSON and a wrong shape under a
+  wrong bearer get one answer (`unauthenticated`). Only the bearer's holder hears that its request could not be read
+  (`invalid-request`): a shim of another version.
+  <!-- rv-el7-limits (1), ruled at its lean, A (James, 2026-11-06): the shim cuts its request to the bounds and marks it `bounded`; this sentence narrowed from "one answer for a wrong bearer and a wrong shape" -->
+- **The shim keeps its request inside the gateway's bounds** rather than the gateway reading more: the bounds stay
+  those of untrusted input from any process of the user, and a shell can exec far more than they carry. A request the
+  shim had to cut is marked `bounded`; its one-shot runs whole, as typed, and its session is never managed.
 - **A request's pid is self-asserted.** Anything that holds the bearer can name any pid. The host's `resolveTerminal`
   binds it: answer only for a terminal whose own evidence — the shell's pid, an ancestor walk — shows it contains that
   process. A caller can then ask only for runs in terminals where the named pid really lives; one active run per
@@ -425,6 +450,28 @@ recipe of the run it asked for, and nothing of any other run.
   rewrites it can make a strict shim wait and refuse, or let an agent run unmanaged — which it could do anyway, by
   running the real executable. The shim runs `ps` with its own directory taken off PATH, so no launcher stands in
   for it.
+- **A run's hook bearer speaks for its agent, and so does every process the agent starts.** Claude reads the bearer
+  from its own environment, which its tools inherit. Any of them can post an authenticated hook, a `SessionStart`
+  with source `clear` under a new id among them: the observer follows that rotation and refuses the real session's
+  hooks (403) for the run's life. A holder already has the agent's authority (it can post hooks under the real id,
+  rewrite the agent's settings or stop it), so this is a recorded limit, not a defended one. What a hook can make the
+  observer read is bounded: Claude's transcript rail follows only
+  `<config root>/projects/<one folder>/<selected id>.jsonl` (adapter-claude `observation/session-selection.ts`), and
+  by the root's own name for it when the hook reaches it through a link, so a forged hook cannot point it at a file of
+  its choosing elsewhere, then or later. A same-user writer can still write under the root.
+  A refused path is said once, as `adapter:native-event` `transcript-path.refused`, and is never published.
+  <!-- rv-el7-limits (4), ruled at its lean, A (James, 2026-11-06): recorded, with the pin landed in code -->
+- **A hook endpoint the host holds is free while the host is down.** Claude's decision-capable hooks (`PreToolUse`,
+  `PermissionRequest`, `Stop`, `UserPromptSubmit`) post to a loopback port its settings fix for the process's life,
+  and Claude honours a decision any 2xx answer carries. The listener is the host's: through a restart, a replace or a
+  supersession the port is free, and a program of another local account that binds it in that window answers the
+  agent's decisions. A host that comes back to a held port is refused with `next: 'retry'` and the neutral code
+  `endpoint-held` (core `AgentAttachRefusedError`, carried as the failure's `error.refusal`): in its own replace
+  window the holder is its predecessor, which a retry outlasts; still held after its retries, the host says another
+  program holds the agent's hook connection, in its own words. Not measured: whether XNU lets another uid take the
+  port while the old listener's TIME_WAIT pcbs remain. The structural cure, a listener held by a plane that outlives
+  the agent, is not built here.
+  <!-- rv-el7-limits (3), ruled at its lean, C (James, 2026-11-06): this limit and the endpoint-held code -->
 
 ## 9. What a host does itself
 
@@ -443,6 +490,39 @@ await build({
   target: 'node22',
 });
 ```
+
+**Lend the forwarder runtime when you are a single executable.** An agent runs some of its hooks and its status
+lines as commands (Claude: `SessionStart`, `Setup` and both status lines), and each one relays to the adapter's
+loopback ingress through a forwarder. An adapter stages that forwarder as a script and runs it with its own process's
+script runner (`resolveScriptRunner`, `@vibefield/puppeteer-native-observation`): the host's Node, or under Electron a
+Node on `PATH` and only then the Electron binary with `ELECTRON_RUN_AS_NODE=1`. A Node single executable has no
+runner: its `process.execPath` runs only its own sealed entry, so it never runs a forwarder itself. Such a host
+bundles the builtin forwarder entry into itself, the way it bundles the shim, and lends the program that runs it as
+`AgentHost.forwarderRuntime`:
+
+```ts
+await build({
+  stdin: { contents: "import '@vibefield/puppeteer-builtin-providers/forwarder';", resolveDir: hostRoot },
+  outfile: join(dist, 'agent-forwarder.cjs'),
+  bundle: true,
+  platform: 'node',
+  format: 'cjs',
+  target: 'node22',
+});
+
+const agentHost: AgentHost = {
+  spawnTerminal,
+  automateTerminal,
+  // Your executable in a role that runs the sealed entry above, and nothing it is handed.
+  forwarderRuntime: { command: process.execPath, args: ['<your forwarder role>'] },
+};
+```
+
+Every command hook and status line then runs `<command> <args...> <word> <word args...>` and nothing is staged. The
+words (`claude.hook.v1`, `claude.statusline.v1`) are a protocol across releases: an agent launched by one build of
+your host runs the entry the next build ships once you update in place, so they are append-only, and a role argument
+you ship must be kept. A host that lends nothing and has no runner gets the adapter's refusal at launch
+(`FORWARDER_RUNTIME_UNAVAILABLE`), never a session it cannot observe.
 
 **Compose it.** A sketch of the whole host side:
 
@@ -522,6 +602,8 @@ The duties, one by one:
   end to end a median of 13.1 s against 0.77 s (n=8) at load 229–282. The cause was not found, and no number was
   taken on an idle host. A host pins the Node it found at startup: if that Node is uninstalled while the host runs,
   the launchers fail until the host chooses again.
+- **Lend a forwarder runtime** when your process is a Node single executable (above). A host on Node or Electron lends
+  none: the adapter's script runner runs its staged forwarder.
 - **Resolve the real executables** before writing the table, and decide the names; a name the table lacks is never
   intercepted by the gateway.
 - **Resolve terminals from your own evidence** (Godview matches the shell's pid to the request's `parentPid`, then its
@@ -539,6 +621,18 @@ The duties, one by one:
   shim falls back to the real executable in that pid, unmanaged, or exits when strict — then answer `ack`.
 - **Survive your own restart**: persist what `onAdopted` gave you with `processStartedAt(processId)`, and re-attach only
   a pid whose start time still matches — a reused pid is not your agent.
+- **Name a staging root** (`createAgentRuntime({ staging: { root } })`, an absolute directory you keep across your
+  restarts, outside the system temp directory). An adapter writes the files a launch needs into a directory — Claude's
+  settings, its staged forwarder and its briefing files — and the agent reads some of them again for as long as it
+  runs: Claude execs its forwarder on every command hook. Under the system temp directory §3's cleaner fact holds for
+  them too, so an agent that runs for days loses them under it. With a root, the runtime makes each run's directory,
+  `<root>/<runtimeRunId>` (0700), just before the adapter launches or prepares the run, and removes it when the run is
+  marked terminal: an exit, a plain `dispose`, a failed launch, a cancelled or expired preparation. It keeps it on
+  `dispose({ detach: true })`, and an attached run's directory goes when that run ends. After a restart, once you have
+  attached what you kept, call `runtime.sweepStaging({ keep })` with every run your own records still hold live, read
+  from those records: it removes everything else under the root, an agent that died while you were down included, and
+  always keeps the runs and preparations the runtime itself holds. Without a root, adapters stage in the system temp
+  directory, which serves only runs that end within the cleaner's three days.
 
 ### Background cache prewarming
 
@@ -622,6 +716,10 @@ control, so it was not retained.
   is not a terminal runs at once.
 - **Multiplexers** (§7): an agent inside tmux or screen in one of the host's terminals runs unmanaged.
 - **The pid is self-asserted** (§8): the host's `resolveTerminal` is the whole binding.
+- **A cut request is classified as it was cut** (§2). Past 256 arguments the adapter reads the first 256, so a
+  one-shot whose mode flag comes after them reads as a session, and a strict host refuses it in its own terminals. A
+  cut session is refused whatever was cut, an allow-listed variable's value among them, in the words for arguments
+  too long to carry.
 - **A slow preparation outlives the shim's patience.** The shim waits 28 s for an answer. If a preparation takes longer,
   the shim gives up — falling back, or refusing when strict — while the host may still adopt; a fallen-back pid then
   runs the real executable under a record that receives no events until it exits. Keep preparation well inside the

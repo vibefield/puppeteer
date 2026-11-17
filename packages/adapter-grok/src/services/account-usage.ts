@@ -6,7 +6,9 @@
  * that is `_x.ai/billing` (ACP custom methods require the `_` prefix); sending
  * `x.ai/billing` returns -32601. The agent already holds the grok.com login
  * token, so this service never reads `~/.grok/auth.json` and never scrapes the
- * terminal. A managed profile binds `GROK_HOME` the same way launch does.
+ * terminal. A managed profile binds `GROK_HOME` the same way launch does, and
+ * the probe runs in the environment `verify()` does: an ambient credential or
+ * root never speaks for the meter.
  */
 
 import type {
@@ -28,7 +30,7 @@ import {
   type GrokAgentTransport,
   type JsonRpcErrorBody,
 } from '../transport/agent-client.js';
-import { GROK_PROFILE_ROOT_VARIABLE } from './profiles.js';
+import { GROK_PROFILE_ROOT_VARIABLE, grokProbeEnvironment } from './profiles.js';
 
 const GROK_CACHED_TOKEN_AUTH = 'cached_token';
 const CLIENT_INFO = { name: 'puppeteer-account-usage', version: PUPPETEER_VERSION } as const;
@@ -50,7 +52,9 @@ export interface FetchGrokAccountUsageOptions {
   executable?: string | undefined;
   requestTimeoutMs?: number | undefined;
   now?: (() => Date) | undefined;
-  /** Extra process environment; carries the profile binding (`GROK_HOME`). */
+  /** The environment the probe's own is drawn from; defaults to this process's. */
+  ambient?: NodeJS.ProcessEnv | undefined;
+  /** Goes over what `ambient` gives the probe; carries the profile binding (`GROK_HOME`). */
   env?: Record<string, string> | undefined;
   spawnTransport?: ((options: { executable?: string; env?: Record<string, string> }) => GrokAgentTransport) | undefined;
 }
@@ -118,14 +122,6 @@ function firstDefined<T>(...values: readonly T[]): T | undefined {
 function positiveTimeout(value: number, label: string): number {
   if (!Number.isFinite(value) || value <= 0) throw new RangeError(`${label} must be positive`);
   return value;
-}
-
-/** The default transport: `env` carries only the binding, merged over this process's environment. */
-function spawnBillingTransport(options: { executable?: string; env?: Record<string, string> }): GrokAgentTransport {
-  return spawnGrokAgentTransport({
-    ...(options.executable !== undefined ? { executable: options.executable } : {}),
-    env: options.env ? { ...process.env, ...options.env } : process.env,
-  });
 }
 
 function authMethodIds(value: unknown): string[] {
@@ -282,9 +278,9 @@ export async function fetchGrokAccountUsage(
       options.transport ??
       // The transport factory's parameter stays narrow: test doubles annotate it
       // explicitly, and widening it would reject those implementations.
-      (options.spawnTransport ?? spawnBillingTransport)({
+      (options.spawnTransport ?? spawnGrokAgentTransport)({
         ...(options.executable !== undefined ? { executable: options.executable } : {}),
-        ...(options.env ? { env: options.env } : {}),
+        env: grokProbeEnvironment(options.ambient ?? process.env, options.env ?? {}),
       });
     client = new GrokAcpClient(transport, timeoutMs);
     const initialized = await client.request('initialize', {

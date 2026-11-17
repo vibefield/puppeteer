@@ -2,7 +2,7 @@
 
 | Field             | Value                                                                                            |
 | ----------------- | ------------------------------------------------------------------------------------------------ |
-| Status            | Stage 0–5 in progress: census, ASM, Imposter, adapter, runtime provider. Not a support claim.    |
+| Status            | Complete. Hermes Agent 0.21.5 is verified in `support/agents.json` (protected run 41885545374). |
 | Target            | Official Hermes Agent native TUI (`hermes --tui`)                                                |
 | Initial candidate | `0.20.0`, GitHub tag `v2026.8.3`, commit `3c27eb6234bf91b8ceee9e9071591b31e9b148cb` (2026-08-03) |
 | Canonical process | [adapting-an-agent.md](../docs/guides/adapting-an-agent.md)                                                   |

@@ -1,0 +1,200 @@
+{
+  "projection": "native hook and status-line arrival order per capture mode; event names and enum discriminators only",
+  "entries": [
+    {
+      "mode": "turn-failure",
+      "seq": 1,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 2,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "startup"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 3,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 4,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 5,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "Stop",
+      "stop_hook_active": false
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 6,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "other"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 7,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "resume"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 8,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 9,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 10,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 11,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PreToolUse"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 12,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolUse"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 13,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolBatch"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 14,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 15,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "StopFailure",
+      "error": "server_error"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 16,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "other"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 17,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "resume"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 18,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 19,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 20,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 21,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "StopFailure",
+      "error": "server_error"
+    },
+    {
+      "mode": "turn-failure",
+      "seq": 22,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "other"
+    }
+  ]
+}

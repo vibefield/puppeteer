@@ -42,10 +42,11 @@ const OPENCODE_NPM_PATTERN = /^(.*[/\\]node_modules[/\\]opencode-ai)(?:[/\\]|$)/
 const OPENCODE_CELLAR_PATTERN = /^(.*[/\\]Cellar[/\\]opencode[/\\][^/\\]+)(?:[/\\]|$)/u;
 const OPENCODE_COMMANDS = ['opencode'];
 
-/** Injected process execution so unit tests never run a real binary. */
+/** Injected process execution so unit tests never run a real binary. `env` is the environment the run is handed. */
 export type OpenCodeDistributionExec = (
   file: string,
   args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
 ) => Promise<{ stdout: string; stderr: string }>;
 
 /** Injected file read so unit tests never touch a real config directory. */
@@ -55,8 +56,13 @@ export interface OpenCodeDistributionServiceOptions {
   executable?: string | undefined;
   exec?: OpenCodeDistributionExec | undefined;
   readConfigFile?: OpenCodeDistributionReadFile | undefined;
-  /** Injected so tests never read the developer's own environment. */
+  /**
+   * The environment the service reads; defaults to this process's. Injected so tests never read the developer's own
+   * environment. With `inheritEnvironment: false` it is also the version run's whole environment.
+   */
   env?: NodeJS.ProcessEnv | undefined;
+  /** Default true: the version run inherits this process's environment, as before. */
+  inheritEnvironment?: boolean | undefined;
   /** Injected so tests never read the real home directory. */
   home?: string | undefined;
 }
@@ -85,12 +91,16 @@ export const OPENCODE_DISTRIBUTION_PROVIDER: DistributionProvider = {
   nativeUpdateCheck: false,
 };
 
-function defaultExec(file: string, args: readonly string[]): Promise<{ stdout: string; stderr: string }> {
+function defaultExec(
+  file: string,
+  args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolvePromise, reject) => {
     execFile(
       file,
       [...args],
-      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8' },
+      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', ...(options?.env ? { env: options.env } : {}) },
       (error, stdout, stderr) => {
         if (error) reject(error);
         else resolvePromise({ stdout, stderr });
@@ -248,6 +258,9 @@ export function createOpenCodeDistributionService(
   const exec = options.exec ?? defaultExec;
   const readConfigFile = options.readConfigFile ?? ((path: string) => readFile(path, 'utf8'));
   const env = options.env ?? process.env;
+  // The version run is handed `env` only under `inheritEnvironment: false`; otherwise it starts as before.
+  const versionRun = (file: string, args: string[]) =>
+    options.inheritEnvironment === false ? exec(file, args, { env }) : exec(file, args);
   const home = options.home ?? homedir();
   // Config lives beside the XDG config root, not the data root a profile binds.
   const configRoot = join(env.XDG_CONFIG_HOME ?? join(home, '.config'), 'opencode');
@@ -261,7 +274,7 @@ export function createOpenCodeDistributionService(
       const warnings: string[] = [];
       let version: string | undefined;
       try {
-        const { stdout } = await exec(candidate.executable, [OPENCODE_VERSION_FLAG]);
+        const { stdout } = await versionRun(candidate.executable, [OPENCODE_VERSION_FLAG]);
         version = parseOpenCodeVersion(stdout);
         if (!version) {
           warnings.push(`${candidate.executable} ${OPENCODE_VERSION_FLAG} returned an unrecognized version string`);

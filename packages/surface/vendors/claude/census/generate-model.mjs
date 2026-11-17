@@ -62,9 +62,12 @@ const SUBAGENT_STATUS_INTERVAL_MS = 5_000;
 
 /** Which runtime claim each census capture mode supports. */
 const MODE_CLAIMS = new Map([
-  ...[...CLAUDE_CAPTURE_MODES.init, ...CLAUDE_CAPTURE_MODES.headless, ...CLAUDE_CAPTURE_MODES['api-error']].map(
-    (mode) => [mode, RUNTIME_CLAIM],
-  ),
+  ...[
+    ...CLAUDE_CAPTURE_MODES.init,
+    ...CLAUDE_CAPTURE_MODES.headless,
+    ...CLAUDE_CAPTURE_MODES['api-error'],
+    ...CLAUDE_CAPTURE_MODES['turn-failure'],
+  ].map((mode) => [mode, RUNTIME_CLAIM]),
   ...CLAUDE_CAPTURE_MODES.interactive.map((mode) => [mode, INTERACTIVE_CLAIM]),
 ]);
 const CLAIM_CONFIDENCE = { [RUNTIME_CLAIM]: 'verified-headless', [INTERACTIVE_CLAIM]: 'verified-interactive' };
@@ -897,11 +900,12 @@ export function headlessLanes(modes) {
     ['init', '--init-only'],
     ['headless', 'credential-less print'],
     ['api-error-<status>', 'loopback API-error print'],
+    ['turn-failure', 'scripted turn-failure print'],
   ].filter(([mode]) =>
     mode === 'api-error-<status>' ? modes.some((m) => m.startsWith('api-error-')) : modes.includes(mode),
   );
   if (lanes.length === 0) {
-    throw new Error(`capture set holds no init, headless or api-error lane for ${RUNTIME_CLAIM}`);
+    throw new Error(`capture set holds no init, headless, api-error or turn-failure lane for ${RUNTIME_CLAIM}`);
   }
   const names = lanes.map(([, name]) => name);
   const list =

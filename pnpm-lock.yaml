@@ -333,6 +333,9 @@ importers:
       '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
       node-pty:
         specifier: 1.2.0-beta.15
         version: 1.2.0-beta.15
@@ -383,6 +386,9 @@ importers:
       '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
       node-pty:
         specifier: 1.2.0-beta.15
         version: 1.2.0-beta.15

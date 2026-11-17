@@ -338,6 +338,58 @@ describe('the timeline’s draw', () => {
     const head = view.root.querySelectorAll<HTMLElement>('.vf-monitor-timeline-head')[1]!;
     expect(head.dataset.tone).toBe('blocked');
   });
+
+  it('draws nothing for a publish that changes nothing it shows, a lane older than the day included', async () => {
+    // The still clock's draw once a second is held: only a publish could draw here.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const theme = fixtureTheme('dark', { animations: false });
+    const HOUR = 60 * 60_000;
+    // Idle these 42 hours, longer than the day the timeline shows; each publish is a fresh row saying the same.
+    const idle = (): AgentView =>
+      agentViewFixture({ id: 'a', createdAt: NOW - 50 * HOUR, status: 'idle', statusSince: NOW - 42 * HOUR });
+    const view = await mount({ agents: [idle()], theme });
+    await act(async () => frames.step(3));
+    const clears = () => calls.filter((call) => call.op === 'clearRect').length;
+    const before = clears();
+    // Three frames past the mount, then 16 ms later: each publish builds the lanes again at the clock's now.
+    for (const later of [0, 16]) {
+      clock.advance(later);
+      await view.update(fixtureInput({ parameters: PARAMETERS, agents: [idle()], theme }));
+      await act(async () => frames.step(2));
+    }
+    expect(clears()).toBe(before);
+    expect(frames.pending).toBe(0);
+  });
+
+  it('out of sight it keeps no time and draws nothing, and draws both canvases once when it is shown', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const hidden = fixtureTheme('dark', { animations: false, hidden: true });
+    const agents = afternoon();
+    const view = await mount({ agents, theme: hidden });
+    await act(async () => frames.step(3));
+    const clears = () => calls.filter((call) => call.op === 'clearRect').length;
+    const before = clears();
+    expect(vi.getTimerCount()).toBe(0);
+    const moved = agents.map((row) => (row.id === 'vibe-field' ? { ...row, status: 'blocked' as const } : row));
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: moved, theme: hidden }));
+    clock.advance(2000);
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    await act(async () => frames.step(3));
+    expect(clears()).toBe(before);
+    expect(frames.pending).toBe(0);
+    // Shown, still: one draw of both canvases, with what changed out of sight, and the clock keeps time again.
+    const still = fixtureTheme('dark', { animations: false });
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents: moved, theme: still }));
+    expect(frames.pending).toBe(1);
+    await act(async () => frames.step(1));
+    expect(frames.pending).toBe(0);
+    expect(clears() - before).toBe(2);
+    const head = view.root.querySelectorAll<HTMLElement>('.vf-monitor-timeline-head')[1]!;
+    expect(head.dataset.tone).toBe('blocked');
+    expect(vi.getTimerCount()).toBe(1);
+  });
 });
 
 describe('the timeline’s keys and pointer', () => {

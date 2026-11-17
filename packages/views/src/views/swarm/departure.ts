@@ -7,7 +7,7 @@
 // fade). Under reduced motion (M6) it fades where it stands, at its size, in half the time on plain ease-out, and one
 // whose row comes back fades up again from where its fade got to. With
 // the host's animations switch off the stage is held still and the body is gone at once: nothing moves on a still
-// stage.
+// stage, nor on one out of sight.
 
 /** The departure's length with motion: the pop's own 280ms (DESIGN §6's table), run backwards. */
 export const DEPARTURE_MS = 280;
@@ -17,12 +17,16 @@ export const DEPARTURE_REDUCED_MS = DEPARTURE_MS / 2;
 /** How the field moves now: with motion, under reduced motion (M6), or held still by the host's switch. */
 export type DepartureMotion = 'motion' | 'reduced' | 'still';
 
-/** The field's motion from the theme's two switches (MV-W4): the host's switch first, then the person's preference. */
+/**
+ * The field's motion from the theme's switches (`themeMotion`, MV-W4): the host's switch or the stage out of sight
+ * first, then the person's preference.
+ */
 export function departureMotion(switches: {
   readonly animations: boolean;
   readonly reducedMotion: boolean;
+  readonly hidden?: boolean | undefined;
 }): DepartureMotion {
-  if (!switches.animations) return 'still';
+  if (!switches.animations || switches.hidden === true) return 'still';
   return switches.reducedMotion ? 'reduced' : 'motion';
 }
 

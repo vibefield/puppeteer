@@ -28,6 +28,7 @@ import type {
 import { PUPPETEER_VERSION } from '@vibefield/puppeteer-core';
 import { resolveCodexExecutable } from '../detection.js';
 import { AppServerClient, spawnAppServerTransport, type Transport } from '../transport/app-server-client.js';
+import { definedEnvironment } from './host-environment.js';
 
 /** Root variable Codex reads for its data directory. */
 export const CODEX_PROFILE_ROOT_VARIABLE = 'CODEX_HOME';
@@ -90,11 +91,21 @@ export interface CodexProfileOptions {
   executable?: string;
   /** Home directory the native default root hangs off; defaults to the process home. */
   home?: string;
+  /**
+   * The environment the service reads. With `inheritEnvironment: false` it is also the app-server's whole
+   * environment, the profile's binding over it; otherwise the binding goes over this process's own, as before.
+   */
   env?: NodeJS.ProcessEnv;
+  /** Default true: the app-server inherits this process's environment under the binding. */
+  inheritEnvironment?: boolean | undefined;
   now?: () => Date;
   requestTimeoutMs?: number;
   /** Injected transport factory; the default spawns `codex app-server` with the profile binding. */
-  spawnTransport?: (options: { executable?: string; env?: Record<string, string> }) => Transport;
+  spawnTransport?: (options: {
+    executable?: string;
+    env?: Record<string, string>;
+    inheritEnvironment?: boolean;
+  }) => Transport;
   /** Injected writer so unit tests never touch a real root. Receives mode 0600 content. */
   writeConfig?: (path: string, contents: string) => Promise<void>;
   /** Injected existence probe; resolves true when the managed root already has a config. */
@@ -179,7 +190,11 @@ export function createCodexProfileService(options: CodexProfileOptions = {}): Pr
       try {
         transport = spawnTransport({
           executable,
-          ...(Object.keys(binding).length > 0 ? { env: binding } : {}),
+          ...(options.inheritEnvironment === false
+            ? { env: { ...definedEnvironment(options.env ?? {}), ...binding }, inheritEnvironment: false }
+            : Object.keys(binding).length > 0
+              ? { env: binding }
+              : {}),
         });
         client = new AppServerClient(transport, {
           ...(options.requestTimeoutMs !== undefined ? { requestTimeoutMs: options.requestTimeoutMs } : {}),

@@ -115,6 +115,12 @@ export interface MonitorTheme {
    * is simulated (the swarm's physics solve nothing), and a row that arrives is drawn where it spawns, at its size.
    */
   readonly animations: boolean;
+  /**
+   * The host's stage is out of sight: its own chrome covers it, or its window is hidden. Absent reads false (a minor
+   * field, MV-D10). Everything `animations: false` asks, and more: no loop, no clock, no still draw. The view keeps its
+   * state current and draws once, where it stands, when shown again. A host delivers it at once (`update`).
+   */
+  readonly hidden?: boolean | undefined;
 }
 
 /**
@@ -134,8 +140,8 @@ export interface EndedLaneView extends MonitorEndedRow {
 
 /**
  * The record's past (capability `history`). The host builds it once per snapshot and keeps the SAME object while a
- * re-read brings nothing new (a changed `readAt` alone is nothing new), so a view that keys on it redraws only for a
- * past that moved.
+ * re-read brings nothing new (a moved window or `readAt` alone is nothing new), so a view that keys on it redraws
+ * only for a past that moved.
  */
 export interface MonitorHistory extends Omit<MonitorPastSnapshot, 'ended'> {
   readonly ended: readonly EndedLaneView[];
@@ -251,7 +257,10 @@ export interface MonitorViewManifest {
 }
 
 export interface MonitorViewInstance {
-  /** At most once per frame, and only when the input changed. */
+  /**
+   * At most once per frame, and only when the input changed; and at once when `theme.hidden` changes: a hidden stage
+   * has no next frame.
+   */
   update(input: MonitorViewInput): void;
   unmount(): void;
 }

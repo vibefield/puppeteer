@@ -44,7 +44,7 @@ export interface SwarmPhysicsDriverOptions {
   onFrame(frame: Float32Array): void;
   /** The simulation runs in this thread instead: why (for a log, never a toast). */
   onDemote?(reason: string): void;
-  /** A worker that had proved itself died. */
+  /** A worker that had proved itself raised an error it did not catch; it keeps running. */
   onError?(detail: string, error: unknown): void;
 }
 

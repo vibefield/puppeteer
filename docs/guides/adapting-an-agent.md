@@ -791,7 +791,7 @@ The driver owns the complete live composition:
 - category normalization delegated to `normalization/<category>.ts`, not embedded in the driver;
 - named `services/<capability>.ts` for prompt, approval, and other commands;
 - native control and approval decisions;
-- programmatic prompt submission with a truthful `confirmed`, `rejected`, or `uncertain` receipt;
+- programmatic prompt submission with a truthful `confirmed`, `rejected`, or `uncertain` receipt, and `retryable: false` on a rejection no later attempt can clear;
 - idempotent disposal of observation/control resources;
 - an honest `ObservationLevel`.
 
@@ -1260,7 +1260,7 @@ Run targeted checks while iterating, then the full matrix before review.
 | Full repository     | `pnpm test`                                                                     | all typechecks, script tests, package tests, and app tests pass                                 |
 | Published shape     | `pnpm pack:check`                                                               | all public packages build and tarballs contain only allowed files                               |
 
-Run live tests only against an explicitly selected artifact in an isolated environment. Existing native-TUI examples use `CLAUDE_NATIVE_TUI_LIVE=1`, `CODEX_NATIVE_TUI_LIVE=1`, `GROK_LIVE=1`, `HERMES_LIVE=1`, `KIMI_LIVE=1`, and `OPENCODE_LIVE=1`; define and document the equivalent for a new vendor.
+Run live tests only against an explicitly selected artifact in an isolated environment. Existing native-TUI examples use `CLAUDE_NATIVE_TUI_LIVE=1`, `CODEX_NATIVE_TUI_LIVE=1`, `GROK_LIVE=1`, `HERMES_LIVE=1`, `KIMI_LIVE=1`, `OPENCODE_LIVE=1`, `COPILOT_LIVE=1`, `PI_LIVE=1`, and `ANTIGRAVITY_LIVE=1`; define and document the equivalent for a new vendor.
 
 For a local Godview smoke run without a Tailscale login, set `GHOSTTEA_TRUFFLE_ENABLED=false`.
 

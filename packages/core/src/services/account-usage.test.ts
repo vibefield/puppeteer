@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  accountUsageFailurePasses,
+  accountUsageMetricInPlay,
   AccountUsageFetchResultSchema,
   AccountUsageProviderSchema,
   AccountUsageSnapshotSchema,
+  type AccountUsageFailure,
+  type AccountUsageMetric,
+  type AccountUsageMetricGroup,
 } from './account-usage.js';
 
 describe('account usage contracts', () => {
@@ -56,6 +61,23 @@ describe('account usage contracts', () => {
     expect(AccountUsageSnapshotSchema.safeParse(falseStandby).success).toBe(false);
   });
 
+  it('dates a meter a later, partial reading did not carry by when it was read', () => {
+    const snapshot = AccountUsageSnapshotSchema.parse({
+      provider: 'example',
+      fetchedAt: '2026-08-26T12:01:00.000Z',
+      scope: 'subscription',
+      source: { kind: 'native-statusline', stability: 'documented' },
+      metrics: [
+        { id: 'session', label: '5H', kind: 'window', usedPercent: 15 },
+        { id: 'scoped', label: 'SONNET 7D', kind: 'window', usedPercent: 50, fetchedAt: '2026-08-26T12:00:00.000Z' },
+      ],
+    });
+    expect(snapshot.metrics[0]!.fetchedAt).toBeUndefined();
+    expect(snapshot.metrics[1]!.fetchedAt).toBe('2026-08-26T12:00:00.000Z');
+    const misdated = { ...snapshot, metrics: [{ ...snapshot.metrics[1]!, fetchedAt: 'earlier' }] };
+    expect(AccountUsageSnapshotSchema.safeParse(misdated).success).toBe(false);
+  });
+
   it('rejects malformed timestamps and duplicate metric ids at the boundary', () => {
     const base = {
       provider: 'example',
@@ -98,5 +120,67 @@ describe('account usage contracts', () => {
         refresh: { pollIntervalMs: 0 },
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('accountUsageMetricInPlay', () => {
+  const RESERVE: AccountUsageMetricGroup = { id: 'gpt-reserve', label: 'Luna Reserve', standby: true };
+  const SPARK: AccountUsageMetricGroup = { id: 'spark', label: 'Spark' };
+  const meter = (label: string, usedPercent: number, group?: AccountUsageMetricGroup): AccountUsageMetric => ({
+    id: label,
+    label,
+    kind: 'window',
+    usedPercent,
+    ...(group ? { group } : {}),
+  });
+
+  it('keeps an untouched standby allowance out of play while the plan has room', () => {
+    const untouched = meter('GPT RESERVE 7D', 0, RESERVE);
+    expect(accountUsageMetricInPlay(untouched, [meter('7D', 25), untouched])).toBe(false);
+  });
+
+  it('brings a standby allowance into play once any meter of its group is used', () => {
+    const used = meter('GPT RESERVE 7D', 3, RESERVE);
+    expect(accountUsageMetricInPlay(used, [meter('7D', 25), used])).toBe(true);
+    const untouched = meter('GPT RESERVE 7D', 0, RESERVE);
+    const reading = [meter('7D', 25), meter('GPT RESERVE 5H', 4, RESERVE), untouched];
+    expect(accountUsageMetricInPlay(untouched, reading)).toBe(true);
+  });
+
+  it('brings a standby allowance into play once a plan window is spent, never a budget or a family', () => {
+    const untouched = meter('GPT RESERVE 7D', 0, RESERVE);
+    expect(accountUsageMetricInPlay(untouched, [meter('7D', 100), untouched])).toBe(true);
+    const credit: AccountUsageMetric = { ...meter('CREDIT', 100), kind: 'budget' };
+    expect(accountUsageMetricInPlay(untouched, [credit, untouched])).toBe(false);
+    const family = [meter('7D', 25), meter('SPARK 7D', 100, SPARK), untouched];
+    expect(accountUsageMetricInPlay(untouched, family)).toBe(false);
+  });
+
+  it('keeps every other meter in play, used or not', () => {
+    const plan = meter('7D', 0);
+    const model = meter('SPARK 7D', 0, SPARK);
+    expect(accountUsageMetricInPlay(plan, [plan, model])).toBe(true);
+    expect(accountUsageMetricInPlay(model, [plan, model])).toBe(true);
+  });
+});
+
+describe('accountUsageFailurePasses', () => {
+  const failure = (status: AccountUsageFailure['status'], code?: 'rate-limited'): AccountUsageFailure => ({
+    status,
+    provider: 'example',
+    message: 'private detail',
+    retryable: status === 'unavailable',
+    ...(code ? { code } : {}),
+  });
+
+  it('passes a read that failed or was rate limited, which says nothing of the account', () => {
+    expect(accountUsageFailurePasses(failure('unavailable'))).toBe(true);
+    expect(accountUsageFailurePasses(failure('unavailable', 'rate-limited'))).toBe(true);
+    expect(accountUsageFailurePasses(failure('unauthenticated', 'rate-limited'))).toBe(true);
+  });
+
+  it('never passes a failure that names the account: a refused sign-in, or limits it does not expose', () => {
+    expect(accountUsageFailurePasses(failure('unauthenticated'))).toBe(false);
+    expect(accountUsageFailurePasses(failure('unsupported'))).toBe(false);
   });
 });

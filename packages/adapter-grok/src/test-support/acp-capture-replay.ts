@@ -6,6 +6,14 @@
  * agent frame recorded before that result has reached the client handler, in
  * capture order; `drain()` delivers the frames that follow the last result.
  * Unpublished test support.
+ *
+ * A limit of the fake: a captured JSON-RPC error is thrown as a plain Error,
+ * not the SDK's RequestError, which this package does not depend on. The
+ * control composition reads a plain Error as no answer from Grok, so a refused
+ * session/prompt in a future capture would answer `uncertain` and close the
+ * rail, where the SDK answers `rejected`. A request the capture has no result
+ * for fails the same way. Every session/prompt in the 1.0.70 captures has its
+ * result, none an error.
  */
 
 import { readFileSync } from 'node:fs';

@@ -30,10 +30,11 @@ const MAX_WRAPPER_BYTES = 8 * 1024;
 /** `exec "<checkout>/venv/bin/python" …` in the installer's wrapper script: the interpreter, then the checkout. */
 const HERMES_VENV_PATTERN = /(?:^|["'\s])(([^"'\s]+)[/\\]venv[/\\]bin[/\\]python[0-9.]*)(?=["'\s]|$)/mu;
 
-/** Injected process execution so unit tests never run a real binary. */
+/** Injected process execution so unit tests never run a real binary. `env` is the environment the run is handed. */
 export type HermesDistributionExec = (
   file: string,
   args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
 ) => Promise<{ stdout: string; stderr: string }>;
 
 /** Injected bounded file read so unit tests never touch a real install. */
@@ -46,6 +47,11 @@ export interface HermesDistributionServiceOptions {
   executable?: string | undefined;
   exec?: HermesDistributionExec | undefined;
   readHead?: HermesDistributionReadHead | undefined;
+  /**
+   * The environment the version run is handed; absent, this process's own. A host names it so its own variables
+   * never reach the vendor's program.
+   */
+  env?: NodeJS.ProcessEnv | undefined;
 }
 
 export const HERMES_DISTRIBUTION_PROVIDER: DistributionProvider = {
@@ -73,12 +79,16 @@ export const HERMES_DISTRIBUTION_PROVIDER: DistributionProvider = {
   nativeUpdateCheck: false,
 };
 
-function defaultExec(file: string, args: readonly string[]): Promise<{ stdout: string; stderr: string }> {
+function defaultExec(
+  file: string,
+  args: readonly string[],
+  options?: { env?: NodeJS.ProcessEnv | undefined },
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolvePromise, reject) => {
     execFile(
       file,
       [...args],
-      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8' },
+      { timeout: 10_000, maxBuffer: 1024 * 1024, encoding: 'utf8', env: options?.env },
       (error, stdout, stderr) => {
         if (error) reject(error);
         else resolvePromise({ stdout, stderr });
@@ -183,7 +193,7 @@ export function createHermesDistributionService(options: HermesDistributionServi
 
       let version: string | undefined;
       try {
-        const { stdout, stderr } = await exec(candidate.executable, [HERMES_VERSION_FLAG]);
+        const { stdout, stderr } = await exec(candidate.executable, [HERMES_VERSION_FLAG], { env: options.env });
         version = parseHermesVersion(`${stdout}\n${stderr}`)?.version;
         if (!version) {
           warnings.push(`${candidate.executable} ${HERMES_VERSION_FLAG} returned an unrecognized version string`);

@@ -135,6 +135,24 @@ describe('createHookBridge', () => {
     expect(errors.map((e) => e.kind)).toEqual(['unknown-session']);
   });
 
+  it('stamps the hook its owner rotated to, so the observed session starts over there', async () => {
+    const rotatedTo = '00000000-0000-4000-8000-0000000000d0';
+    const events: NativeHookEnvelope[] = [];
+    bridge = createHookBridge({
+      allowSession: (id) => (id === OWNED_SESSION ? true : id === rotatedTo ? 'rotate' : false),
+    });
+    bridge.onEvent((e) => events.push(e));
+    await bridge.start();
+    const owned = fakeClaudeHookPayload('SessionEnd', { session_id: OWNED_SESSION, reason: 'clear' });
+    expect((await post(bridge.endpoint(), bridge.token, JSON.stringify(owned))).status).toBe(200);
+    const start = fakeClaudeHookPayload('SessionStart', { session_id: rotatedTo, source: 'clear' });
+    expect((await post(bridge.endpoint(), bridge.token, JSON.stringify(start))).status).toBe(200);
+    expect(events.map((e) => [e.body.hook_event_name, e.rotated])).toEqual([
+      ['SessionEnd', undefined],
+      ['SessionStart', true],
+    ]);
+  });
+
   it('rejects malformed JSON with 400 without crashing', async () => {
     const { bridge: b, events, errors } = await startBridge();
     expect((await post(b.endpoint(), b.token, '{nope')).status).toBe(400);
@@ -150,15 +168,70 @@ describe('createHookBridge', () => {
     expect(ok.status).toBe(200);
   });
 
-  it('kills oversized bodies at the socket and reports too-large', async () => {
-    const { bridge: b, events, errors } = await startBridge({ maxBodyBytes: 1024 });
-    const huge = JSON.stringify(
-      fakeClaudeHookPayload('Stop', { session_id: OWNED_SESSION, blob: 'x'.repeat(64 * 1024) }),
-    );
-    await post(b.endpoint(), b.token, huge).catch(() => undefined); // socket destroyed mid-request
-    await new Promise((r) => setTimeout(r, 50));
-    expect(events).toHaveLength(0);
-    expect(errors.some((e) => e.kind === 'too-large')).toBe(true);
+  it('keeps the OTLP route its refusal cap: a batch past 2 MiB is reset at the socket and reported', async () => {
+    let reportTooLarge!: (detail: string) => void;
+    const tooLarge = new Promise<string>((resolve) => (reportTooLarge = resolve));
+    const logs: NativeHookEnvelope[] = [];
+    bridge = createHookBridge({
+      allowSession: (id) => id === OWNED_SESSION,
+      onProtocolError: (kind, detail) => {
+        if (kind === 'too-large') reportTooLarge(detail);
+      },
+    });
+    bridge.onOtelLogs((event) => logs.push(event));
+    await bridge.start();
+    const batch = JSON.stringify({
+      resourceLogs: [{ scopeLogs: [{ logRecords: [{ body: { stringValue: 'x'.repeat(2 * 1024 * 1024) } }] }] }],
+    });
+
+    await post(bridge.otelLogsEndpoint(), bridge.token, batch).catch(() => undefined); // reset mid-request
+    expect(await tooLarge).toBe(`body exceeded ${2 * 1024 * 1024} bytes`);
+    expect(logs).toEqual([]);
+  });
+
+  it('answers a hook body past the budget 200 and fans it out reduced, the ids after the bulk intact', async () => {
+    const { bridge: b, events, errors } = await startBridge();
+    // an image Read: Claude posts the whole tool_response, base64 and all, before tool_use_id
+    const payload = fakeClaudeHookPayload('PostToolUse', {
+      session_id: OWNED_SESSION,
+      tool_name: 'Read',
+      tool_input: { file_path: '/tmp/fake-agent/screenshot.png' },
+      tool_response: { type: 'image', file: { base64: 'A'.repeat(300 * 1024), type: 'image/png' } },
+      tool_use_id: 'toolu_image',
+    });
+    const text = JSON.stringify(payload);
+
+    const res = await post(b.endpoint(), b.token, text);
+    expect(res.status).toBe(200);
+    expect(events).toHaveLength(1);
+    expect(events[0]!.body).toEqual({
+      ...payload,
+      tool_response: { type: 'image', file: { base64: null, type: 'image/png' } },
+    });
+    expect(events[0]!.reduced).toEqual({
+      receivedBytes: Buffer.byteLength(text),
+      elided: 1,
+      paths: ['tool_response.file.base64'],
+    });
+    expect(errors).toEqual([]);
+  });
+
+  it('reduces a status-line body past maxBodyBytes the same way', async () => {
+    const { bridge: b, errors } = await startBridge({ maxBodyBytes: 1024 });
+    const statuses: NativeHookEnvelope[] = [];
+    b.onStatusLine((event) => statuses.push(event));
+    const payload = {
+      session_id: OWNED_SESSION,
+      context_window: { context_window_size: 200_000 },
+      blob: 'x'.repeat(64 * 1024),
+    };
+
+    const res = await post(b.statusLineEndpoint(), b.token, JSON.stringify(payload));
+    expect(res.status).toBe(200);
+    expect(statuses).toHaveLength(1);
+    expect(statuses[0]!.body).toEqual({ ...payload, blob: null });
+    expect(statuses[0]!.reduced).toMatchObject({ elided: 1, paths: ['blob'] });
+    expect(errors).toEqual([]);
   });
 
   it('a throwing consumer does not break the agent-facing endpoint', async () => {

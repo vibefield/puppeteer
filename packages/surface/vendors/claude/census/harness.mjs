@@ -14,6 +14,10 @@
  * - `api-error`: print-mode turns against a loopback Messages API that answers
  *   one HTTP error per case (placeholder token, CLAUDE_CODE_MAX_RETRIES=0), so
  *   Claude's API-error path (StopFailure) runs without an account;
+ * - `turn-failure`: one print session of three turns against a scripted
+ *   loopback model (census/turn-failure.mjs), so StopFailure is captured after
+ *   the model wrote words in its turn, with a value-free projection of what
+ *   its `last_assistant_message` then carries;
  * - `interactive`: the native TUI in a harness-owned PTY against a scripted
  *   loopback model (census/interactive-lane.mjs), followed by a resume.
  *
@@ -41,6 +45,14 @@ import { assertNoEgress, startEgressRecorder } from './egress-guard.mjs';
 import { createIsolatedRoot, egressEnvironment, isolatedEnvironment, removeIsolatedRoot } from './isolation.mjs';
 import { LOOPBACK_AUTH_TOKEN, LOOPBACK_MODEL, startLoopbackModel } from './loopback-model.mjs';
 import { CENSUS_SANDBOX_VAR, enterCensusSandbox, proveNetworkSandbox } from './sandbox.mjs';
+import {
+  printResultOf,
+  projectTurnFailure,
+  TURN_FAILURE_MODE,
+  TURN_FAILURE_TURNS,
+  turnFailurePlan,
+  turnFailurePrompt,
+} from './turn-failure.mjs';
 
 const vendorRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -86,7 +98,7 @@ export const CLAUDE_HOOK_EVENTS = [
 ];
 
 /** Lanes in run order. */
-export const CLAUDE_CENSUS_LANES = ['init', 'headless', 'api-error', 'interactive'];
+export const CLAUDE_CENSUS_LANES = ['init', 'headless', 'api-error', 'turn-failure', 'interactive'];
 
 /**
  * HTTP errors the loopback model returns, one print turn each. Mode names keep
@@ -105,6 +117,7 @@ export const CLAUDE_CAPTURE_MODES = {
   init: ['init'],
   headless: ['headless'],
   'api-error': CLAUDE_API_ERROR_CASES.map(({ status }) => `api-error-${status}`),
+  'turn-failure': [TURN_FAILURE_MODE],
   interactive: ['interactive', 'resume'],
 };
 
@@ -339,6 +352,89 @@ async function runApiErrorLane({ artifact, sink, egress, outputRoot }) {
   return summary;
 }
 
+const CLOSING_HOOKS = new Set(['Stop', 'StopFailure']);
+
+/**
+ * The turn-failure lane (census/turn-failure.mjs): one session of three print turns, the later two by --resume, in
+ * one disposable root so the session persists between them. The projection is computed here, in memory, from the
+ * mode's hook payloads and print results, and only its verdicts are written; the payloads themselves reach the raw
+ * tree through the sink like every other lane's.
+ */
+async function runTurnFailureLane({ artifact, sink, egress, outputRoot }) {
+  const mode = TURN_FAILURE_MODE;
+  sink.mode = mode;
+  egress.lane = mode;
+  const layout = createIsolatedRoot();
+  prepareWorkspace(layout);
+  const model = await startLoopbackModel({ plan: turnFailurePlan(layout.workspace) });
+  const sessionId = randomUUID();
+  const turns = [];
+  try {
+    const settingsPath = join(layout.root, `${mode}.settings.json`);
+    writeFileSync(settingsPath, `${JSON.stringify(settingsFor(sink, layout), null, 2)}\n`, { mode: 0o600 });
+    for (const [index, turn] of TURN_FAILURE_TURNS.entries()) {
+      const before = model.requests.length;
+      const { status, stdout } = await runClaudeAsync({
+        artifact,
+        layout,
+        logPath: join(outputRoot, `${mode}-${turn.turn}.log`),
+        extraEnvironment: {
+          ...egressEnvironment(egress.url),
+          ANTHROPIC_BASE_URL: model.baseUrl,
+          ANTHROPIC_AUTH_TOKEN: LOOPBACK_AUTH_TOKEN,
+          ANTHROPIC_API_KEY: '',
+          CLAUDE_CODE_MAX_RETRIES: '0',
+          [HOOK_TOKEN_VAR]: sink.token,
+        },
+        args: [
+          '-p',
+          '--output-format',
+          'json',
+          '--tools',
+          'Read',
+          '--model',
+          LOOPBACK_MODEL,
+          '--settings',
+          settingsPath,
+          '--setting-sources',
+          'project',
+          ...(index === 0 ? ['--session-id', sessionId] : ['--resume', sessionId]),
+          turnFailurePrompt(turn),
+        ],
+      });
+      turns.push({
+        turn: turn.turn,
+        exit: status,
+        requests: model.requests.slice(before).map(({ kind }) => kind),
+        result: printResultOf(stdout),
+      });
+    }
+  } finally {
+    await model.close();
+    removeIsolatedRoot(layout);
+  }
+  assertNoEgress(egress, mode);
+  const payloads = () =>
+    sink.order.filter((entry) => entry.mode === mode && entry.channel === 'hook').map((entry) => entry.payload);
+  // An HTTP hook can land just after its process exits, so wait briefly for every turn's closing hook.
+  const deadline = Date.now() + 5_000;
+  while (
+    Date.now() < deadline &&
+    payloads().filter((payload) => CLOSING_HOOKS.has(payload?.hook_event_name)).length < TURN_FAILURE_TURNS.length
+  ) {
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+  }
+  const projection = projectTurnFailure(payloads(), turns);
+  writeFileSync(join(outputRoot, 'turn-failure.json'), `${JSON.stringify(projection, null, 2)}\n`);
+  const unscripted = projection.entries.filter((entry) => !entry.ranAsScripted).map((entry) => entry.turn);
+  if (unscripted.length > 0) {
+    throw new Error(
+      `Claude census turn-failure lane did not run as scripted (${unscripted.join(', ')}); see ${join(outputRoot, 'turn-failure.json')}`,
+    );
+  }
+  return projection;
+}
+
 /**
  * Value-free sandbox proof (interface names, route counts, probe destinations
  * and error codes), copied into the capture set as a semantic projection.
@@ -387,6 +483,7 @@ export async function runClaudeCensus({ artifact, expectedVersion, outputRoot, a
 
   const egress = await startEgressRecorder();
   let apiErrors = [];
+  let turnFailure;
   let interactive;
   let sink;
   try {
@@ -394,6 +491,9 @@ export async function runClaudeCensus({ artifact, expectedVersion, outputRoot, a
     try {
       await runOfflineLanes({ artifact, sink, egress, outputRoot, lanes });
       if (lanes.includes('api-error')) apiErrors = await runApiErrorLane({ artifact, sink, egress, outputRoot });
+      if (lanes.includes('turn-failure')) {
+        turnFailure = await runTurnFailureLane({ artifact, sink, egress, outputRoot });
+      }
     } finally {
       await sink.close();
     }
@@ -425,7 +525,7 @@ export async function runClaudeCensus({ artifact, expectedVersion, outputRoot, a
   if (!counts.has('SessionStart') || !counts.has('SessionEnd')) {
     throw new Error(`census did not capture the required session lifecycle; see ${outputRoot}`);
   }
-  return { identity, counts, apiErrors, interactive };
+  return { identity, counts, apiErrors, turnFailure, interactive };
 }
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
@@ -448,6 +548,8 @@ if (invokedDirectly) {
     console.log(`  ${event}: ${count}`);
   }
   for (const entry of result.apiErrors) console.log(`  ${JSON.stringify(entry)}`);
+  // Verdicts only: the projection holds no captured value.
+  for (const entry of result.turnFailure?.entries ?? []) console.log(`  ${JSON.stringify(entry)}`);
   if (result.interactive) {
     const { order, ...interactive } = result.interactive;
     console.log(`  interactive: ${JSON.stringify(interactive)}`);

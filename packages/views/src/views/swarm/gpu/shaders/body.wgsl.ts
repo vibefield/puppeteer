@@ -59,7 +59,7 @@ fn fs(in: BodyVertex) -> @location(0) vec4f {
       // ground rather than in the light.
       let u = dist / r;
       let radial = smoothstep(frame.glowBand.x, frame.glowBand.y, u);
-      let carried = sin((u * frame.glowWave.x - time * frame.glowWave.y) * TAU + body.motion.y);
+      let carried = sin((u * frame.glowWave.x - frame.glowWave.y) * TAU + body.motion.y);
       let crest = select(0.5, 0.5 + 0.5 * carried, moving);
       let lit = mix(1.0 - frame.glowWave.z, 1.0, crest * crest);
       out = over(out, premul(vec4f(body.core.rgb, radial * lit * frame.glowBand.z * body.core.a)) * inside);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { themeMotion } from '@vibefield/puppeteer-view-sdk/toolkit';
 import {
   DEPARTURE_MS,
   DEPARTURE_REDUCED_MS,
@@ -84,6 +85,12 @@ describe('a leaving body', () => {
     expect(departureMotion({ animations: true, reducedMotion: true })).toBe('reduced');
     expect(departureMotion({ animations: false, reducedMotion: false })).toBe('still');
     expect(departureMotion({ animations: false, reducedMotion: true })).toBe('still');
+  });
+
+  it('holds a field out of sight still, whatever the switches say: nothing leaves where nobody sees it', () => {
+    for (const reducedMotion of [false, true]) {
+      expect(departureMotion(themeMotion({ animations: true, reducedMotion, hidden: true }))).toBe('still');
+    }
   });
 });
 

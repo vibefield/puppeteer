@@ -100,6 +100,22 @@ describe('agentEventCatalog', () => {
     ).toMatchObject({ usageId: 'response-1', deltaTokens: 10 });
   });
 
+  it('types how a turn ended with one optional outcome: finished, or interrupted by the person', () => {
+    const interrupted = { type: 'turn:completed', turnId: 'turn-1', outcome: 'interrupted' };
+    expect(parseAgentEvent('turn:completed', interrupted)).toEqual(interrupted);
+    // Absent reads as completed, so every producer that names no outcome still parses.
+    for (const accepted of [
+      { type: 'turn:completed', outcome: 'completed' },
+      { type: 'turn:completed', turnId: 'turn-1' },
+    ]) {
+      expect(safeParseAgentEvent('turn:completed', accepted).success).toBe(true);
+    }
+    // One word per ending: a provider's own spelling stays in stopReason, never in outcome.
+    for (const outcome of ['paused', 'cancelled', 'failed', '']) {
+      expect(safeParseAgentEvent('turn:completed', { type: 'turn:completed', outcome }).success).toBe(false);
+    }
+  });
+
   it('rejects malformed, misrouted, and excess canonical data', () => {
     expect(safeParseAgentEvent('context-window:updated', { type: 'context-window:updated' }).success).toBe(false);
     expect(

@@ -30,6 +30,20 @@ describe('AcpNotificationNormalizer', () => {
     expect(r.events).toEqual([]);
   });
 
+  it('starts every assistant message empty after a prompt echo, with or without a message id', () => {
+    const n = new AcpNotificationNormalizer();
+    n.normalize(note({ sessionUpdate: 'agent_message_chunk', messageId: 'm1', content: { type: 'text', text: 'x' } }));
+    n.normalize(note({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'a' } }));
+    n.normalize(note({ sessionUpdate: 'user_message_chunk', content: { type: 'text', text: 'next prompt' } }));
+    const r = n.normalize(note({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'b' } }));
+
+    expect(r.events).toEqual([
+      { type: 'conversation:assistant-message', messageId: 'acp-msg', text: 'b', final: false, displayOnly: false },
+    ]);
+    expect(n.assistantText('m1')).toBe('');
+    expect(n.assistantText()).toBe('b');
+  });
+
   it('maps thought chunks to presence-only reasoning events', () => {
     const n = new AcpNotificationNormalizer();
     const first = n.normalize(

@@ -4,10 +4,10 @@
 > complete; pinned linux-x64 survey complete**, pinned to OpenCode
 > **1.19.5**. The previous candidate, 1.18.16 (darwin-arm64), stays in the
 > tree under `model/`, `captures/`, `probes/` and `references/opencode@1.18.16`.
-> These findings are evidence for an adapter candidate; they do not declare
-> runtime support. The protected real-native-TUI matrix is implemented, but
-> promotion remains gated on successful immutable-artifact runs on all four
-> required platforms.
+> Protected promotion [run 41794896986](https://github.com/vibefield/puppeteer/actions/runs/41794896986) passed the
+> real-native-TUI matrix on all four platforms, so 1.19.5 is verified. 2.x is
+> in progress as a second release line of `opencode`; 1.x support ends when
+> it is promoted.
 >
 > §0 records the 1.19.5 advance: the choice between upstream's 1.x and 2.x
 > lines, and the drift review against 1.18.16. §1–§15 describe the
@@ -51,7 +51,7 @@ cannot be an in-line candidate. This candidate therefore advances
 to **1.19.5**, the newest release of the line the adapter implements and
 upstream's GitHub-Latest/default-install line.
 `draft/OPENCODE-2-MIGRATION-PLAN.md` holds the evidence and the migration
-work, and `support/agents.json` carries a blocker for it.
+work; its current version is on `adapt/opencode-2`.
 
 Detection is left as it was. The `github-stable` detector takes the first
 non-prerelease tag in API order, and because v2 releases are non-prerelease it

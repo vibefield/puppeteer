@@ -60,9 +60,12 @@ describe('headless claim harness text', () => {
       '--init-only, credential-less print, and loopback API-error print lanes (init, headless, api-error-<status>)',
     );
     expect(headlessLanes(['init'])).toBe('--init-only lane (init)');
+    expect(headlessLanes(['api-error-529', 'turn-failure'])).toBe(
+      'loopback API-error print and scripted turn-failure print lanes (api-error-<status>, turn-failure)',
+    );
   });
 
   it('refuses a capture set with no print lane instead of describing nothing', () => {
-    expect(() => headlessLanes(['interactive', 'resume'])).toThrow(/no init, headless or api-error lane/);
+    expect(() => headlessLanes(['interactive', 'resume'])).toThrow(/no init, headless, api-error or turn-failure lane/);
   });
 });

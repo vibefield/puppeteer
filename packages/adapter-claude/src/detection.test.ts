@@ -1,11 +1,21 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   ClaudeCapabilityError,
   createClaudeLaunchPreflight,
   detectClaude,
+  identifyClaudeExecutable,
   requiredClaudeLaunchCapabilities,
   type ClaudeExec,
 } from './detection.js';
@@ -144,14 +154,93 @@ describe('detectClaude', () => {
   it('caches version/help detection per executable while reevaluating launch requirements', async () => {
     let calls = 0;
     const exec = fakeExec();
-    const preflight = createClaudeLaunchPreflight(async (file, args) => {
-      calls += 1;
-      return exec(file, args);
-    });
+    const preflight = createClaudeLaunchPreflight(
+      async (file, args) => {
+        calls += 1;
+        return exec(file, args);
+      },
+      { identify: async () => 'claude@1' },
+    );
 
     await preflight({ executable: '/opt/claude', freshSession: true });
     await preflight({ executable: '/opt/claude', freshSession: false, resume: true, model: true });
     expect(calls).toBe(2); // one --version and one --help probe
+  });
+
+  it('probes again after a failed probe and after the file changes, never twice for the same file', async () => {
+    const calls: string[] = [];
+    let identity = 'claude@1';
+    let version: string = CLAUDE_SURFACE_VERSION;
+    let helpFails = true;
+    const preflight = createClaudeLaunchPreflight(
+      async (file, args) => {
+        calls.push(args.join(' '));
+        if (args.includes('--help') && helpFails) {
+          helpFails = false;
+          throw new Error('Command failed: claude --help (timed out)');
+        }
+        return fakeExec({ version: `${version} (Claude Code)` })(file, args);
+      },
+      { identify: async () => identity },
+    );
+    const launch = { executable: '/opt/claude', freshSession: true };
+
+    // A probe that failed is an observation, not a fact about the file: that launch is refused, the next probes again.
+    await expect(preflight(launch)).rejects.toBeInstanceOf(ClaudeCapabilityError);
+    await expect(preflight(launch)).resolves.toMatchObject({ version: CLAUDE_SURFACE_VERSION });
+    expect(calls.filter((call) => call === '--help')).toHaveLength(2);
+    // A complete probe is the file's: the same identity never execs again.
+    await preflight(launch);
+    expect(calls).toHaveLength(4);
+
+    // An in-place update (the launcher re-pointed, the entry rewritten) is a new identity.
+    identity = 'claude@2';
+    version = '9.9.9';
+    await expect(preflight(launch)).resolves.toMatchObject({ version: '9.9.9' });
+    expect(calls).toHaveLength(6);
+  });
+
+  it('shares one in-flight probe between concurrent launches and forgets it once it settles incomplete', async () => {
+    let calls = 0;
+    const exec = fakeExec({ failVersion: true });
+    const preflight = createClaudeLaunchPreflight(
+      async (file, args) => {
+        calls += 1;
+        return exec(file, args);
+      },
+      { identify: async () => 'claude@1' },
+    );
+    const launch = { executable: '/opt/claude', freshSession: true };
+
+    const [first, second] = await Promise.all([preflight(launch), preflight(launch)]);
+    expect(second).toBe(first);
+    expect(calls).toBe(2);
+    // No version was read, so the detection was incomplete: the next launch probes again.
+    await preflight(launch);
+    expect(calls).toBe(4);
+  });
+
+  it('probes every launch of an executable it cannot identify', async () => {
+    let calls = 0;
+    const identified: string[] = [];
+    const exec = fakeExec();
+    const preflight = createClaudeLaunchPreflight(
+      async (file, args) => {
+        calls += 1;
+        return exec(file, args);
+      },
+      {
+        identify: async (executable) => {
+          identified.push(executable);
+          return undefined;
+        },
+      },
+    );
+
+    await preflight({ executable: '/opt/claude', freshSession: true });
+    await preflight({ executable: '/opt/claude', freshSession: true });
+    expect(identified).toEqual(['/opt/claude', '/opt/claude']);
+    expect(calls).toBe(4);
   });
 
   it('resolution order: explicit executable wins over the env override', async () => {
@@ -167,6 +256,89 @@ describe('detectClaude', () => {
       else process.env.PUPPETEER_CLAUDE_BIN = prev;
     }
   });
+});
+
+describe('identifyClaudeExecutable', () => {
+  // The file execFile finds for a bare `claude`: libuv appends `.exe` on Windows (it reads no PATHEXT).
+  const fileName = process.platform === 'win32' ? 'claude.exe' : 'claude';
+  const tempRoot = () => realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-claude-identify-')));
+
+  it('keys the file a bare name or a path runs, and moves when that file changes', async () => {
+    const root = tempRoot();
+    try {
+      const bin = join(root, 'bin');
+      mkdirSync(bin);
+      const file = join(bin, fileName);
+      writeFileSync(file, '#!/bin/sh\n', { mode: 0o755 });
+
+      const identity = await identifyClaudeExecutable(file);
+      expect(identity).toBeDefined();
+      expect(await identifyClaudeExecutable('claude', { PATH: bin })).toBe(identity);
+      expect(await identifyClaudeExecutable('claude', { PATH: join(root, 'elsewhere') })).toBeUndefined();
+      expect(await identifyClaudeExecutable(join(bin, 'absent'))).toBeUndefined();
+
+      utimesSync(file, new Date(2_000_000_000_000), new Date(2_000_000_000_000));
+      const touched = await identifyClaudeExecutable(file);
+      expect(touched).toBeDefined();
+      expect(touched).not.toBe(identity);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keys a script by the one file its runner reads, with no execute bit and no PATH lookup', async () => {
+    const root = tempRoot();
+    try {
+      // The default exec runs a script as `<runner> <script>`: the runner opens the name as a path, so the file needs
+      // no execute bit, and a bare name is the working directory's file, never one on PATH.
+      const script = join(root, 'ai.mjs');
+      writeFileSync(script, 'export {};\n', { mode: 0o644 });
+
+      const identity = await identifyClaudeExecutable(script);
+      expect(identity).toBeDefined();
+      expect(await identifyClaudeExecutable(script)).toBe(identity);
+      expect(await identifyClaudeExecutable('ai.mjs', { PATH: root })).toBeUndefined();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === 'win32')(
+    'follows PATH as execvp does and moves when the launcher symlink is re-pointed',
+    async () => {
+      const root = tempRoot();
+      try {
+        const versions = join(root, 'versions');
+        mkdirSync(versions);
+        for (const version of ['1.0.0', '1.0.1']) {
+          writeFileSync(join(versions, version), '#!/bin/sh\n', { mode: 0o755 });
+        }
+        // A `claude` without the execute bit earlier on PATH is passed over, as execvp passes over it.
+        const shadow = join(root, 'shadow');
+        mkdirSync(shadow);
+        writeFileSync(join(shadow, 'claude'), '#!/bin/sh\n', { mode: 0o644 });
+        const bin = join(root, 'bin');
+        mkdirSync(bin);
+        const launcher = join(bin, 'claude');
+        symlinkSync(join(versions, '1.0.0'), launcher);
+        const environment = { PATH: [shadow, bin].join(delimiter) };
+
+        const before = await identifyClaudeExecutable('claude', environment);
+        expect(before).toBeDefined();
+        expect(before).toBe(await identifyClaudeExecutable(join(versions, '1.0.0')));
+
+        // The native installer's update: a new version, the launcher swapped onto it in one rename.
+        symlinkSync(join(versions, '1.0.1'), `${launcher}.next`);
+        renameSync(`${launcher}.next`, launcher);
+        const after = await identifyClaudeExecutable('claude', environment);
+        expect(after).toBeDefined();
+        expect(after).not.toBe(before);
+        expect(after).toBe(await identifyClaudeExecutable(join(versions, '1.0.1')));
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 // Opt-in: probes the explicitly named artifact (never `claude` on PATH) with isolated user state.

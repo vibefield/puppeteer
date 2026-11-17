@@ -196,12 +196,15 @@ function upgradeStatus(url: string, headers: Record<string, string> = {}): Promi
 describe.skipIf(!servesWebSockets)('Hermes gateway host (the real script, a stand-in tui_gateway)', () => {
   let scratch: string;
 
+  // The stand-in is the checkout the host is named beside its python: the host runs isolated (-I), so PYTHONPATH no
+  // longer reaches it.
   const start = (shutdownDelay = '0') =>
     startHermesGatewayHost({
       python: hostPython,
+      checkout: join(scratch, 'stand-in'),
       hermesHome: join(scratch, 'home'),
       cwd: scratch,
-      env: { PYTHONPATH: join(scratch, 'stand-in'), SHUTDOWN_DELAY_SECONDS: shutdownDelay },
+      env: { SHUTDOWN_DELAY_SECONDS: shutdownDelay },
     });
 
   beforeAll(async () => {

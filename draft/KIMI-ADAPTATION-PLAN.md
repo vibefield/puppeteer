@@ -1,8 +1,7 @@
 # Kimi Code adaptation plan
 
-Status: local ground-truth candidate hardened; native-interactive evidence and
-protected promotion remain incomplete. Nothing in this document is a promoted
-support claim.
+Status: complete. Kimi Code 2.4.1 is verified in `support/agents.json`
+(protected run 41798646315). The 0.34.0 target below is the original plan.
 
 Target candidate:
 

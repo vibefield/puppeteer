@@ -1,6 +1,6 @@
 import type { MonitorAccumulatorInput, MonitorAccumulatorState, MonitorFamilyUpdate } from './internal-types.js';
-import type { AgentMonitorState, MonitorNotification, MonitorNotificationType } from './types.js';
-import { projectAgentMonitorState } from './project.js';
+import type { MonitorNotification, MonitorNotificationType } from './types.js';
+import { projectMonitorTransitions, type MonitorTransitions } from './transitions.js';
 
 function inputAt(input: MonitorAccumulatorInput): string {
   return input.kind === 'lease-expired' ? input.expiredAt : input.observedAt;
@@ -51,11 +51,11 @@ function notification(
 }
 
 function compareState(
-  previous: AgentMonitorState,
-  next: AgentMonitorState,
+  runtimeRunId: string,
+  previous: MonitorTransitions,
+  next: MonitorTransitions,
   input: MonitorAccumulatorInput,
 ): MonitorNotification[] {
-  const runtimeRunId = next.runtimeRunId;
   const result: MonitorNotification[] = [];
   const provisionalInput = input.kind !== 'lease-expired' && input.provisional;
   if (previous.status !== 'blocked' && next.status === 'blocked') {
@@ -81,35 +81,32 @@ function compareState(
       notification(runtimeRunId, input, 'cwd.changed', next.environment.cwd ?? 'cleared', next.environment.cwd),
     );
   }
+  // A source may list one worktree twice; walking the sets gives each worktree one notice and one id.
   const priorWorktrees = new Set(previous.environment.worktrees);
   const nextWorktrees = new Set(next.environment.worktrees);
-  for (const worktree of next.environment.worktrees) {
+  for (const worktree of nextWorktrees) {
     if (!priorWorktrees.has(worktree)) result.push(notification(runtimeRunId, input, 'worktree.created', worktree));
   }
-  for (const worktree of previous.environment.worktrees) {
+  for (const worktree of priorWorktrees) {
     if (!nextWorktrees.has(worktree)) result.push(notification(runtimeRunId, input, 'worktree.removed', worktree));
   }
 
   if (previous.alive && !next.alive) {
-    result.push(notification(runtimeRunId, input, 'session.ended', next.session.nativeSessionId ?? 'session'));
+    result.push(notification(runtimeRunId, input, 'session.ended', next.nativeSessionId ?? 'session'));
   }
   return result;
 }
 
-/** Stable transition notifications; bootstrap, correction, resync, and replacement stay silent. */
+/**
+ * Stable transition notifications; bootstrap, correction, resync, and replacement stay silent. They compare the two
+ * accumulators' transitions views, memoized per accumulator, never full projections: no notified fact reads the
+ * usage ledger or the clock.
+ */
 export function deriveMonitorNotifications(
   previous: MonitorAccumulatorState,
   next: MonitorAccumulatorState,
   input: MonitorAccumulatorInput,
 ): MonitorNotification[] {
   if (suppressesNotifications(input)) return [];
-  const at = inputAt(input);
-  const previousState = projectAgentMonitorState(previous, { asOf: at, unboundedCollections: true });
-  const nextState = projectAgentMonitorState(next, {
-    previous: previousState,
-    asOf: at,
-    unboundedCollections: true,
-  });
-  if (nextState === previousState) return [];
-  return compareState(previousState, nextState, input);
+  return compareState(next.runtimeRunId, projectMonitorTransitions(previous), projectMonitorTransitions(next), input);
 }

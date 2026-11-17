@@ -647,55 +647,6 @@ export function claudeAccountUsageFromStatusLine(
   return { status: 'available', snapshot };
 }
 
-type ClaudeAccountUsageListener = (result: AccountUsageAvailable) => void;
-
-const statusLineAccountUsageListeners = new Set<ClaudeAccountUsageListener>();
-let lastStatusLineAccountUsage: AccountUsageAvailable | undefined;
-
-/** Latest status-line-derived Claude usage, if any process has observed it. */
-export function getClaudeStatusLineAccountUsage(): AccountUsageAvailable | undefined {
-  return lastStatusLineAccountUsage;
-}
-
-/**
- * Subscribe to Claude status-line rate-limit updates. Account-wide (not session-scoped):
- * every live Claude session that emits rate_limits shares this channel.
- */
-export function onClaudeAccountUsage(listener: ClaudeAccountUsageListener): () => void {
-  statusLineAccountUsageListeners.add(listener);
-  return () => {
-    statusLineAccountUsageListeners.delete(listener);
-  };
-}
-
-/**
- * Ingest a Claude status-line payload. When `rate_limits` is present, updates the
- * process-local cache and notifies listeners so hosts can refresh Godview without
- * polling the rate-limited OAuth usage endpoint.
- */
-export function observeClaudeStatusLineAccountUsage(
-  payload: unknown,
-  fetchedAt = new Date().toISOString(),
-): AccountUsageAvailable | undefined {
-  const next = claudeAccountUsageFromStatusLine(payload, fetchedAt);
-  if (!next) return undefined;
-  lastStatusLineAccountUsage = next;
-  for (const listener of statusLineAccountUsageListeners) {
-    try {
-      listener(next);
-    } catch {
-      // Listeners must not break the status-line bridge path.
-    }
-  }
-  return next;
-}
-
-/** @internal Test isolation for module-scoped status-line usage state. */
-export function resetClaudeAccountUsageObserversForTests(): void {
-  lastStatusLineAccountUsage = undefined;
-  statusLineAccountUsageListeners.clear();
-}
-
 export interface FetchClaudeAccountUsageOptions {
   timeoutMs?: number | undefined;
 }
@@ -836,9 +787,12 @@ export async function fetchClaudeAccountUsage(
  * they belong to whichever account the shell is logged into and would otherwise
  * report the wrong account's usage under a profile's label.
  */
-function credentialOptionsForProfile(profile: AgentProfile | undefined): ClaudeCredentialOptions {
+function credentialOptionsForProfile(
+  profile: AgentProfile | undefined,
+  base: NodeJS.ProcessEnv | undefined,
+): ClaudeCredentialOptions {
   if (!profile || profile.kind !== 'managed') return {};
-  const env = { ...process.env };
+  const env = { ...(base ?? process.env) };
   delete env.CLAUDE_CODE_OAUTH_TOKEN;
   delete env.CLAUDE_ACCESS_TOKEN;
   delete env.CLAUDE_CONFIG_DIR;
@@ -854,7 +808,10 @@ export async function fetchClaudeAccountUsageForProfileWithDependencies(
   profile: AgentProfile | undefined,
   options: FetchClaudeAccountUsageDependencies = {},
 ): Promise<AccountUsageFetchResult> {
-  const result = await fetchClaudeAccountUsageWithDependencies({ ...options, ...credentialOptionsForProfile(profile) });
+  const result = await fetchClaudeAccountUsageWithDependencies({
+    ...options,
+    ...credentialOptionsForProfile(profile, options.env),
+  });
   if (!profile || result.status !== 'available') return result;
   return { ...result, snapshot: { ...result.snapshot, profileId: profile.id } };
 }
@@ -869,11 +826,69 @@ export async function fetchClaudeAccountUsageForProfile(
   });
 }
 
-/** Complete account-usage capability advertised by the Claude adapter. */
-export function createClaudeAccountUsageService(): AccountUsageService {
+/**
+ * Where one session's status-line quota goes (`CreateClaudeSessionOptions.accountUsage`): its host binds it to the
+ * account the session runs under. It runs on the status-line path, so it must not throw.
+ */
+export interface ClaudeAccountUsageSink {
+  observeStatusLine(payload: unknown, receivedAt: string): void;
+}
+
+/**
+ * The Claude usage capability one composition holds: `fetch` reads the OAuth endpoint for an account, and each
+ * session's status line reaches this instance's listeners through `observeStatusLine`. Nothing is process-global,
+ * so two runtimes in one process each hear only their own sessions.
+ */
+export interface ClaudeAccountUsageService extends AccountUsageService {
+  subscribe(listener: (result: AccountUsageFetchResult) => void): () => void;
+  /**
+   * One session's status line, as received at `receivedAt`: its `rate_limits`, when present, reach this instance's
+   * listeners stamped with `account`, the registered account the session's root names. A session no registered
+   * account names (a typed root, an imposter) is bound to no account and so handed no sink: the registry is the
+   * account authority, and a reading no account owns is shown nowhere.
+   */
+  observeStatusLine(account: { profileId: string }, payload: unknown, receivedAt: string): void;
+}
+
+export interface ClaudeAccountUsageServiceOptions {
+  /**
+   * The environment the credential lookup reads (the config root, the Keychain account names, a token a host's
+   * environment carries); absent, this process's own. It reaches no program.
+   */
+  env?: NodeJS.ProcessEnv;
+}
+
+/** Complete account-usage capability advertised by the Claude adapter, with push listeners of its own. */
+export function createClaudeAccountUsageService(
+  serviceOptions: ClaudeAccountUsageServiceOptions = {},
+): ClaudeAccountUsageService {
+  const listeners = new Set<(result: AccountUsageFetchResult) => void>();
   return {
     provider: CLAUDE_ACCOUNT_USAGE_PROVIDER,
-    fetch: (options) => fetchClaudeAccountUsageForProfile(options?.profile),
-    subscribe: (listener) => onClaudeAccountUsage(listener),
+    fetch: (options) =>
+      serviceOptions.env === undefined
+        ? fetchClaudeAccountUsageForProfile(options?.profile)
+        : fetchClaudeAccountUsageForProfileWithDependencies(options?.profile, { env: serviceOptions.env }),
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    observeStatusLine(account, payload, receivedAt) {
+      const reading = claudeAccountUsageFromStatusLine(payload, receivedAt);
+      if (!reading) return;
+      const result: AccountUsageAvailable = {
+        ...reading,
+        snapshot: { ...reading.snapshot, profileId: account.profileId },
+      };
+      for (const listener of listeners) {
+        try {
+          listener(result);
+        } catch {
+          // A listener must not break the status-line bridge path.
+        }
+      }
+    },
   };
 }

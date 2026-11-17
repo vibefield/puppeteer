@@ -7,12 +7,22 @@ import * as detection from './detection.js';
  * POSTs fixture-shaped hook payloads with the env-carried token.
  */
 
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  isAgentAttachRefusedError,
   safeParseAgentEvent,
   type AdapterEventCandidate,
   type TerminalAutomationOperation,
@@ -32,10 +42,44 @@ import { createHookBridge, type HookBridge, type NativeHookEnvelope } from './ob
 import type { SemanticObservationEvent, SemanticObservationProvider } from './observation/semantic-provider.js';
 
 let sessions: ClaudeSession[] = [];
+const roots: string[] = [];
 afterEach(async () => {
   for (const s of sessions) await s.dispose();
   sessions = [];
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
+
+/** A config root of the test's own: the transcript rail follows only a conversation kept under it. */
+function configRoot(prefix: string): { configDir: string; transcriptOf(sessionId: string): string } {
+  const configDir = mkdtempSync(join(tmpdir(), prefix));
+  roots.push(configDir);
+  return {
+    configDir,
+    // where Claude keeps the conversation of a session launched in /tmp, its project folder made
+    transcriptOf(sessionId) {
+      const project = join(configDir, 'projects', '-tmp');
+      mkdirSync(project, { recursive: true });
+      return join(project, `${sessionId}.jsonl`);
+    },
+  };
+}
+
+/** A durable observer that reads nothing and records each transcript the driver attaches it to. */
+function recordingProvider(attached: string[]): SemanticObservationProvider {
+  return {
+    capabilities: () => Promise.resolve([]),
+    attach: (request) => {
+      attached.push(request.transcriptPath);
+      return Promise.resolve({
+        onEvent: () => () => undefined,
+        onBatch: () => () => undefined,
+        onError: () => () => undefined,
+        poll: () => Promise.resolve(),
+        dispose: () => Promise.resolve(),
+      });
+    },
+  };
+}
 
 async function startSession(
   options: {
@@ -50,13 +94,16 @@ async function startSession(
     observeSubagentStatus?: boolean;
     hookRailFaultInjection?: Parameters<typeof createClaudeSession>[0]['hookRailFaultInjection'];
     semanticProviderFactory?: () => SemanticObservationProvider;
+    accountUsage?: Parameters<typeof createClaudeSession>[0]['accountUsage'];
   } = {},
 ) {
   let prepared: PreparedClaudeSession | undefined;
   const automations: TerminalAutomationOperation[] = [];
+  const { configDir, transcriptOf } = configRoot('driver-config-');
   const session = await createClaudeSession({
     cwd: '/tmp',
     title: 'driver-test',
+    configDir,
     fileChangeMatcher: options.fileChangeMatcher,
     onDiagnostic: options.onDiagnostic,
     permissionMode: options.permissionMode,
@@ -68,6 +115,7 @@ async function startSession(
     observeSubagentStatus: options.observeSubagentStatus,
     hookRailFaultInjection: options.hookRailFaultInjection,
     semanticProviderFactory: options.semanticProviderFactory,
+    accountUsage: options.accountUsage,
     ports: {
       spawn: async (p) => {
         prepared = p;
@@ -135,6 +183,9 @@ async function startSession(
     subagentStatusLine,
     endpoint,
     token,
+    configDir,
+    /** This session's own transcript under its config root (another id's, when named). */
+    transcriptOf: (sessionId: string = session.sessionId) => transcriptOf(sessionId),
   };
 }
 
@@ -258,6 +309,52 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     await hook('Stop', { prompt_id: 'p-1', last_assistant_message: 'done!' });
     expect(projection.state.lifecycle).toBe('ready');
     expect(projection.state.lastAssistantMessage).toBe('done!');
+  });
+
+  it('closes a tool whose PostToolUse outgrows the bridge, and says the body was reduced', async () => {
+    const { projection, events, hook } = await startSession();
+    await hook('SessionStart', { source: 'startup' });
+    await hook('UserPromptSubmit', { prompt: 'edit the big file', prompt_id: 'p-big' });
+    const edit = { file_path: '/tmp/big.ts', old_string: 'a', new_string: 'b' };
+    await hook('PreToolUse', { prompt_id: 'p-big', tool_name: 'Edit', tool_input: edit, tool_use_id: 'toolu_big' });
+    expect(projection.state.tools.size).toBe(1);
+
+    // Claude posts the whole tool_response: an Edit's originalFile alone outgrows the bridge's 256 KiB
+    await hook('PostToolUse', {
+      prompt_id: 'p-big',
+      tool_name: 'Edit',
+      tool_input: edit,
+      tool_response: {
+        filePath: '/tmp/big.ts',
+        oldString: 'a',
+        newString: 'b',
+        originalFile: 'x'.repeat(300_000),
+        structuredPatch: [],
+        userModified: false,
+        replaceAll: false,
+      },
+      tool_use_id: 'toolu_big',
+      duration_ms: 4,
+    });
+
+    expect(projection.state.tools.size).toBe(0);
+    expect(projection.state.counters.toolsCompleted).toBe(1);
+    expect(events.find(({ event }) => event.type === 'tool:completed')?.event).toMatchObject({
+      toolCallId: 'toolu_big',
+      output: { filePath: '/tmp/big.ts', originalFile: null },
+    });
+    expect(
+      events.find(({ event }) => event.type === 'workspace:file-operation' && event.phase === 'applied')?.event,
+    ).toMatchObject({ toolCallId: 'toolu_big', changes: [expect.objectContaining({ path: '/tmp/big.ts' })] });
+    const reduced = events.filter(
+      ({ event }) => event.type === 'adapter:native-event' && event.nativeType === 'hook-bridge.body-reduced',
+    );
+    expect(reduced).toHaveLength(1);
+    expect(reduced[0]).toMatchObject({
+      source: 'runtime',
+      nativeEvent: { hookEventName: 'PostToolUse', receivedBytes: expect.any(Number), elided: 1 },
+    });
+    expect((reduced[0]!.nativeEvent as { receivedBytes: number }).receivedBytes).toBeGreaterThan(300_000);
   });
 
   it('retains malformed known hooks and reports diagnostics without interrupting the bridge', async () => {
@@ -468,7 +565,9 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('uses only OTLP request usage, models and actor corrections despite conflicting transcript records', async () => {
-    const { session, prepared, events, token, hook } = await startSession({ providerVersion: '2.1.245' });
+    const { session, prepared, events, token, hook, configDir, transcriptOf } = await startSession({
+      providerVersion: '2.1.245',
+    });
     expect(prepared.env).toMatchObject({
       OTEL_LOGS_EXPORTER: 'otlp',
       OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
@@ -537,9 +636,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(emptyResponse.status).toBe(200);
     expect(session.observationLevel()).toBe('terminal-only');
 
-    const dir = mkdtempSync(join(tmpdir(), 'driver-otel-only-'));
-    const transcript = join(dir, `${session.sessionId}.jsonl`);
-    const children = join(dir, session.sessionId, 'subagents');
+    const transcript = transcriptOf();
+    const children = join(configDir, 'projects', '-tmp', session.sessionId, 'subagents');
     mkdirSync(children, { recursive: true });
     const childTranscript = join(children, 'agent-worker.jsonl');
     const transcriptRow = (sequence: number, agentId?: string) =>
@@ -694,7 +792,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       expect((await receipt).status).toBe('confirmed');
     });
 
-    it('closes the request at the person’s reject; a decision that closes nothing stays native', async () => {
+    it('closes the request and its call at the person’s reject; a decision closing nothing stays native', async () => {
       const { projection, events, hook, decide, resolved } = await startDecidingSession();
       await hook('SessionStart', {});
       await hook('UserPromptSubmit', { prompt: 'risky', prompt_id: 'p-risky' });
@@ -721,9 +819,74 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'denied' },
         }),
       ]);
+      // The rejected call never runs and no hook will say so: the decision closes it, as the actor that asked.
+      const failed = () => events.filter(({ event }) => event.type === 'tool:failed');
+      expect(failed()).toEqual([
+        expect.objectContaining({
+          source: 'native-telemetry',
+          promptId: 'p-risky',
+          event: expect.objectContaining({
+            type: 'tool:failed',
+            toolCallId: 'toolu_risky',
+            error: 'permission denied',
+          }),
+        }),
+      ]);
+      expect(failed()[0]?.agentId).toBeUndefined();
+      expect(projection.state.tools.size).toBe(0);
 
       await hook('Stop', { prompt_id: 'p-risky', last_assistant_message: 'Not run.' });
       expect(resolved()).toHaveLength(1);
+      expect(failed()).toHaveLength(1);
+
+      // A subagent's request outlives the main thread's Stop. The session's end closes it, published as the
+      // subagent that asked (SessionEnd's own actor is the main thread), before the session exits.
+      const worker = {
+        prompt_id: 'p-risky',
+        agent_id: 'worker-1',
+        agent_type: 'general-purpose',
+        tool_name: 'Bash',
+        tool_input: { command: 'rm y' },
+      };
+      await hook('PreToolUse', { ...worker, tool_use_id: 'toolu_worker' });
+      await hook('PermissionRequest', worker);
+      // The session's own state counts no subagent's request (core's state skips every envelope an agent or actor
+      // owns), so the worker's request is read where the driver publishes it: under the subagent, tied to its call.
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          agentId: 'worker-1',
+          event: expect.objectContaining({ type: 'interaction:permission-requested', toolCallId: 'toolu_worker' }),
+        }),
+      );
+      await hook('SessionEnd', { reason: 'other' });
+
+      const exited = events.findIndex(({ event }) => event.type === 'session:exited');
+      expect(exited).toBeGreaterThan(-1);
+      const closures = events
+        .map((envelope, index) => ({ envelope, index }))
+        .filter(
+          ({ envelope }) =>
+            envelope.agentId === 'worker-1' &&
+            (envelope.event.type === 'interaction:permission-resolved' || envelope.event.type === 'tool:failed'),
+        );
+      expect(closures.map(({ envelope }) => envelope)).toEqual([
+        expect.objectContaining({
+          source: 'native-hook',
+          agentType: 'general-purpose',
+          event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'dismissed' },
+        }),
+        expect.objectContaining({
+          source: 'native-hook',
+          agentType: 'general-purpose',
+          event: expect.objectContaining({
+            type: 'tool:failed',
+            toolCallId: 'toolu_worker',
+            error: 'permission dismissed',
+          }),
+        }),
+      ]);
+      expect(closures.every(({ index }) => index < exited)).toBe(true);
+      expect(events[exited]?.agentId).toBeUndefined();
     });
 
     it('settles at PostToolUse when no decision arrived, and a late decision closes nothing twice', async () => {
@@ -750,17 +913,16 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('ignores root and child transcript metadata and models while observing live root text', async () => {
-    const { session, projection, events, hook } = await startSession();
-    const dir = mkdtempSync(join(tmpdir(), 'driver-no-transcript-metadata-'));
+    const { session, projection, events, hook, configDir, transcriptOf } = await startSession();
     try {
       const row = (fields: Record<string, unknown>) =>
         JSON.stringify({ sessionId: session.sessionId, ...fields }) + '\n';
-      const transcript = join(dir, `${session.sessionId}.jsonl`);
+      const transcript = transcriptOf();
       writeFileSync(
         transcript,
         Array.from({ length: 2_000 }, (_, index) => row({ type: 'attachment', uuid: `metadata-${index}` })).join(''),
       );
-      const children = join(dir, session.sessionId, 'subagents');
+      const children = join(configDir, 'projects', '-tmp', session.sessionId, 'subagents');
       mkdirSync(children, { recursive: true });
       const childTranscript = join(children, 'agent-worker.jsonl');
       writeFileSync(childTranscript, row({ type: 'future-type', uuid: 'child-metadata', agentId: 'worker' }));
@@ -804,21 +966,17 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     } finally {
       projection.dispose();
       await session.dispose();
-      rmSync(dir, { recursive: true, force: true });
     }
   });
 
   it.each([true, false])(
     'keeps hook/status models independent of transcript text when OTLP is enabled=%s',
     async (enabled) => {
-      const { session, projection, events, hook, statusLine, subagentStatusLine } = await startSession({
+      const { session, projection, events, hook, statusLine, subagentStatusLine, transcriptOf } = await startSession({
         providerVersion: '2.1.245',
         observeOtlpUsage: enabled,
       });
-      const dir = mkdtempSync(join(tmpdir(), 'driver-transcript-'));
-      const project = join(dir, '.claude', 'projects', '-driver-test');
-      mkdirSync(project, { recursive: true });
-      const transcript = join(project, `${session.sessionId}.jsonl`);
+      const transcript = transcriptOf();
       writeFileSync(transcript, '');
 
       await hook('SessionStart', { transcript_path: transcript, model: 'hook-model' });
@@ -919,8 +1077,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           dispose: () => Promise.resolve(),
         }),
     };
-    const { session, events, hook } = await startSession({ semanticProviderFactory: () => provider });
-    await hook('SessionStart', { transcript_path: '/tmp/claude-no-durable-usage.jsonl' });
+    const { session, events, hook, transcriptOf } = await startSession({ semanticProviderFactory: () => provider });
+    await hook('SessionStart', { transcript_path: transcriptOf() });
     await session.pollTranscript();
     expect(deliver).toBeTypeOf('function');
     for (const replay of [true, false]) {
@@ -961,8 +1119,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         });
       },
     };
-    const { session, events, hook } = await startSession({ semanticProviderFactory: () => provider });
-    const transcriptPath = '/tmp/claude-semantic-retry.jsonl';
+    const { session, events, hook, transcriptOf } = await startSession({ semanticProviderFactory: () => provider });
+    const transcriptPath = transcriptOf();
 
     await hook('SessionStart', { transcript_path: transcriptPath });
     await Promise.resolve();
@@ -1001,9 +1159,9 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           dispose: () => Promise.resolve(),
         }),
     };
-    const { events, hook } = await startSession({ semanticProviderFactory: () => provider });
+    const { events, hook, transcriptOf } = await startSession({ semanticProviderFactory: () => provider });
 
-    await hook('SessionStart', { transcript_path: '/tmp/claude-semantic-error.jsonl' });
+    await hook('SessionStart', { transcript_path: transcriptOf() });
     await vi.waitFor(() => expect(reportError).toBeTypeOf('function'));
     reportError!(Object.assign(new Error('/tmp/private/error'), { code: 'EIO' }));
 
@@ -1013,6 +1171,19 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       nativeEvent: { name: 'Error', code: 'EIO' },
     });
     expect(JSON.stringify(events.at(-1))).not.toContain('/tmp/private/error');
+  });
+
+  it('hands the account quota a status line carries to its own session’s sink, as received', async () => {
+    const observeStatusLine = vi.fn();
+    const { session, statusLine } = await startSession({ accountUsage: { observeStatusLine } });
+    const rateLimits = { five_hour: { used_percentage: 23.5, resets_at: 1_800_000_000 } };
+
+    await statusLine({ rate_limits: rateLimits });
+
+    expect(observeStatusLine).toHaveBeenCalledOnce();
+    const [body, receivedAt] = observeStatusLine.mock.calls[0]!;
+    expect(body).toEqual({ session_id: session.sessionId, rate_limits: rateLimits });
+    expect(new Date(receivedAt).toISOString()).toBe(receivedAt);
   });
 
   it('tracks Claude context from status-line JSON and retracts both projections after compaction', async () => {
@@ -1276,6 +1447,159 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(stale.status).toBe(403);
   });
 
+  it('/resume in the pane rebinds to the chosen conversation, as /clear does', async () => {
+    const { session, projection, events, hook, endpoint, token } = await startSession();
+    const before = session.sessionId;
+    const chosen = '64a61b19-f4d8-4f96-ba56-07024b4708ab';
+    await hook('SessionStart', { source: 'startup' });
+    await hook('UserPromptSubmit', { prompt: 'before', prompt_id: 'p-before' });
+    await hook('Stop', { prompt_id: 'p-before' });
+    // interactive /resume: the pane's session ends for it, then the chosen one starts
+    await hook('SessionEnd', { reason: 'resume' });
+    await hook('SessionStart', { session_id: chosen, source: 'resume' });
+    expect(session.runtimeSessionId).toBe('rt-1');
+    expect(session.sessionId).toBe(chosen);
+    expect(projection.state.lifecycle).toBe('ready');
+    expect(
+      events.find(({ event }) => event.type === 'session:started' && event.nativeSessionId === chosen)?.event,
+    ).toMatchObject({ type: 'session:started', nativeSessionId: chosen, startSource: 'resume', rebind: true });
+
+    await hook('UserPromptSubmit', { session_id: chosen, prompt: 'after', prompt_id: 'p-after' });
+    expect(projection.state.lifecycle).toBe('running');
+    const stale = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ session_id: before, cwd: '/tmp', hook_event_name: 'Stop' }),
+    });
+    expect(stale.status).toBe(403);
+  });
+
+  it('keeps the pane on its conversation when a fork announces itself, and says so once', async () => {
+    const { session, events, hook, endpoint, token } = await startSession();
+    const before = session.sessionId;
+    const copy = '64a61b19-f4d8-4f96-ba56-07024b4708ac';
+    const post = (fields: Record<string, unknown>) =>
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ session_id: copy, cwd: '/tmp', ...fields }),
+      });
+    await hook('SessionStart', { source: 'startup' });
+    // the /fork background copy: a fork start under a new id while the pane stays where it was
+    expect((await post({ hook_event_name: 'SessionStart', source: 'fork' })).status).toBe(403);
+    expect((await post({ hook_event_name: 'UserPromptSubmit', prompt: 'in the copy' })).status).toBe(403);
+    expect(session.sessionId).toBe(before);
+    expect(
+      events.filter(
+        ({ event }) => event.type === 'adapter:native-event' && event.nativeType === 'hook-bridge.session-refused',
+      ),
+    ).toEqual([
+      expect.objectContaining({ source: 'runtime', nativeEvent: { hookEventName: 'SessionStart', source: 'fork' } }),
+    ]);
+    await hook('UserPromptSubmit', { prompt: 'still here', prompt_id: 'p-here' });
+  });
+
+  it('follows a resume start only straight after the pane’s own session ended for it', async () => {
+    const { session, hook, endpoint, token } = await startSession();
+    const before = session.sessionId;
+    const other = '64a61b19-f4d8-4f96-ba56-07024b4708ad';
+    const start = () =>
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ session_id: other, cwd: '/tmp', hook_event_name: 'SessionStart', source: 'resume' }),
+      });
+    await hook('SessionStart', { source: 'startup' });
+    // a resume start no end announced is another process's conversation
+    expect((await start()).status).toBe(403);
+    // an end for /resume that the session went on from is spent
+    await hook('SessionEnd', { reason: 'resume' });
+    await hook('Notification', { message: 'still running', notification_type: 'idle_prompt' });
+    expect((await start()).status).toBe(403);
+    expect(session.sessionId).toBe(before);
+  });
+
+  it('follows only its own session’s transcript under the config root, and says once what it refused', async () => {
+    const attached: string[] = [];
+    const { session, events, hook, transcriptOf } = await startSession({
+      semanticProviderFactory: () => recordingProvider(attached),
+    });
+    // a file of the hook's choosing outside the root, and another session's under it
+    const forged = join(tmpdir(), `${session.sessionId}.jsonl`);
+    const another = transcriptOf('64a61b19-f4d8-4f96-ba56-07024b4708ae');
+    await hook('SessionStart', { source: 'startup', transcript_path: forged });
+    await hook('UserPromptSubmit', { prompt: 'again', prompt_id: 'p-again', transcript_path: forged });
+    await hook('Stop', { prompt_id: 'p-again', transcript_path: another });
+    await session.pollTranscript();
+    expect(attached).toEqual([]);
+    expect(session.transcriptPath()).toBeUndefined();
+    const refused = events.filter(
+      ({ event }) => event.type === 'adapter:native-event' && event.nativeType === 'transcript-path.refused',
+    );
+    expect(refused.map(({ nativeEvent }) => nativeEvent)).toEqual([
+      { hookEventName: 'SessionStart' },
+      { hookEventName: 'Stop' },
+    ]);
+    expect(JSON.stringify(refused)).not.toContain('.jsonl');
+
+    const own = transcriptOf();
+    await hook('UserPromptSubmit', { prompt: 'own', prompt_id: 'p-own', transcript_path: own });
+    await vi.waitFor(() => expect(attached).toEqual([own]));
+    expect(session.transcriptPath()).toBe(own);
+  });
+
+  it('follows a /clear to the new session’s transcript before Claude has written it', async () => {
+    const attached: string[] = [];
+    const { hook, transcriptOf } = await startSession({ semanticProviderFactory: () => recordingProvider(attached) });
+    const cleared = '64a61b19-f4d8-4f96-ba56-07024b4708af';
+    await hook('SessionStart', { source: 'startup', transcript_path: transcriptOf() });
+    await hook('SessionEnd', { reason: 'clear', transcript_path: transcriptOf() });
+    const next = transcriptOf(cleared);
+    expect(existsSync(next)).toBe(false);
+    await hook('SessionStart', { session_id: cleared, source: 'clear', transcript_path: next });
+    await vi.waitFor(() => expect(attached.at(-1)).toBe(next));
+  });
+
+  it('follows the transcript of a config root reached through a link', async () => {
+    const base = mkdtempSync(join(tmpdir(), 'driver-linked-root-'));
+    roots.push(base);
+    const real = join(base, 'real');
+    const link = join(base, 'link');
+    mkdirSync(join(real, 'projects', '-tmp'), { recursive: true });
+    symlinkSync(real, link, 'junction');
+    const attached: string[] = [];
+    const prepared = await prepareClaudeTuiSession({
+      cwd: '/tmp',
+      configDir: link,
+      semanticProviderFactory: () => recordingProvider(attached),
+      automate: async () => ({ accepted: true }),
+    });
+    const session = await prepared.adopt('linked-root-pane');
+    sessions.push(session);
+    const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
+    };
+    const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
+    // the hook names the conversation by the folders the link leads to; the rail follows it by the root's own name
+    const transcript = join(real, 'projects', '-tmp', `${session.sessionId}.jsonl`);
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
+      },
+      body: JSON.stringify({
+        session_id: session.sessionId,
+        transcript_path: transcript,
+        cwd: '/tmp',
+        hook_event_name: 'SessionStart',
+        source: 'startup',
+      }),
+    });
+    expect(response.status).toBe(200);
+    await vi.waitFor(() => expect(attached).toEqual([join(link, 'projects', '-tmp', `${session.sessionId}.jsonl`)]));
+  });
+
   it('degrades hook observation on rail loss without ending the live session', async () => {
     let hookListener: ((envelope: NativeHookEnvelope) => void) | undefined;
     let unavailableListener: ((reason: string) => void) | undefined;
@@ -1530,8 +1854,10 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           dispose: () => Promise.resolve(),
         }),
     };
+    const { configDir, transcriptOf } = configRoot('driver-slow-transcript-');
     const prepared = await prepareClaudeTuiSession({
       cwd: '/tmp',
+      configDir,
       resumeInvocation: ['--resume'],
       semanticProviderFactory: () => provider,
       automate: async () => ({ accepted: true }),
@@ -1550,7 +1876,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         },
         body: JSON.stringify({
           session_id: '64a61b19-f4d8-4f96-ba56-07024b470891',
-          transcript_path: '/tmp/slow-transcript.jsonl',
+          transcript_path: transcriptOf('64a61b19-f4d8-4f96-ba56-07024b470891'),
           cwd: '/tmp',
           hook_event_name: name,
           ...fields,
@@ -1590,8 +1916,10 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   it('keeps the native resume picker and adopts the session selected after launch', async () => {
     const previewId = '64a61b19-f4d8-4f96-ba56-07024b470898';
     const selectedId = '64a61b19-f4d8-4f96-ba56-07024b470899';
+    const { configDir, transcriptOf } = configRoot('driver-picker-baselines-');
     const prepared = await prepareClaudeTuiSession({
       cwd: '/tmp',
+      configDir,
       resumeInvocation: ['--resume'],
       automate: async () => ({ accepted: true }),
     });
@@ -1606,9 +1934,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
     };
     const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
-    const transcriptDirectory = mkdtempSync(join(tmpdir(), 'driver-picker-baselines-'));
-    const previewTranscript = join(transcriptDirectory, `${previewId}.jsonl`);
-    const selectedTranscript = join(transcriptDirectory, `${selectedId}.jsonl`);
+    const previewTranscript = transcriptOf(previewId);
+    const selectedTranscript = transcriptOf(selectedId);
     for (const [path, id] of [
       [previewTranscript, previewId],
       [selectedTranscript, selectedId],
@@ -1779,8 +2106,10 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     const bootId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f70';
     const selectedId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f71';
     const foreignId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f72';
+    const { configDir, transcriptOf } = configRoot('driver-picker-boot-');
     const prepared = await prepareClaudeTuiSession({
       cwd: '/tmp',
+      configDir,
       resumeInvocation: ['--resume'],
       automate: async () => ({ accepted: true }),
     });
@@ -1797,9 +2126,8 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     };
     const post = (url: string, body: Record<string, unknown>) =>
       fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-    const transcripts = mkdtempSync(join(tmpdir(), 'driver-picker-boot-'));
-    const bootTranscript = join(transcripts, `${bootId}.jsonl`);
-    const selectedTranscript = join(transcripts, `${selectedId}.jsonl`);
+    const bootTranscript = transcriptOf(bootId);
+    const selectedTranscript = transcriptOf(selectedId);
     writeFileSync(bootTranscript, '');
     writeFileSync(selectedTranscript, '');
     const eventTypes = () => projection.envelopes.map(({ event }) => event.type);
@@ -1945,12 +2273,12 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     const sessionId = launched.sessionId;
 
     // The host RELEASES (stable ingress): its bridge goes, the process and
-    // everything it reads stay — the staged settings and the hook forwarder in
+    // everything it reads stay — the staged settings and the forwarder in
     // particular, which the running process execs on every hook. A plain
     // dispose is the close that removes them.
     await launched.dispose({ release: true });
     expect(existsSync(prepared!.settingsPath)).toBe(true);
-    expect(existsSync(prepared!.hookForwarderPath)).toBe(true);
+    expect(existsSync(prepared!.forwarderPath!)).toBe(true);
     const configDir = mkdtempSync(join(tmpdir(), 'driver-attach-root-'));
     const project = join(configDir, 'projects', '-tmp');
     mkdirSync(project, { recursive: true });
@@ -2275,24 +2603,62 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     await cleanupClaudeSession(prepared!);
   });
 
-  it('fails an attach before adopting anything when the pinned port is taken', async () => {
+  it('refuses an attach whose pinned port another listener holds, as one to retry', async () => {
     const holder = createServer();
     await new Promise<void>((resolve) => holder.listen(0, '127.0.0.1', resolve));
     const address = holder.address();
     const port = typeof address === 'object' && address ? address.port : 0;
+    const token = 'pinned-bearer-value';
     try {
-      await expect(
-        attachClaudeTuiSession({
-          sessionId: '00000000-0000-4000-8000-00000000abcd',
-          runtimeSessionId: 'rt-taken',
-          cwd: '/tmp',
-          ingress: { port, token: 'pinned' },
-          automate: async () => ({ accepted: true }),
-        }),
-      ).rejects.toThrow();
+      const held = await attachClaudeTuiSession({
+        sessionId: '00000000-0000-4000-8000-00000000abcd',
+        runtimeSessionId: 'rt-taken',
+        cwd: '/tmp',
+        ingress: { port, token },
+        automate: async () => ({ accepted: true }),
+      }).catch((error: unknown) => error);
+      // a predecessor's bridge still closing, or another program: the host's ladder retries (RA-D4 B, rung 1)
+      expect(isAgentAttachRefusedError(held)).toBe(true);
+      // and why, in the neutral word a host states without the vendor's text
+      expect(held).toMatchObject({ next: 'retry', code: 'endpoint-held' });
+      // the words name the class, never the port or the bearer
+      expect((held as Error).message).not.toContain(String(port));
+      expect((held as Error).message).not.toContain(token);
     } finally {
       await new Promise<void>((resolve) => holder.close(() => resolve()));
     }
+  });
+
+  it('fails an attach whose bind fails otherwise plainly, with no next step and nothing adopted', async () => {
+    let observed = false;
+    const bridge: HookBridge = {
+      token: 'pinned-bearer-value',
+      endpoint: () => 'http://127.0.0.1:1/hooks',
+      statusLineEndpoint: () => 'http://127.0.0.1:1/statusline',
+      subagentStatusLineEndpoint: () => 'http://127.0.0.1:1/subagent-statusline',
+      otelLogsEndpoint: () => 'http://127.0.0.1:1/v1/logs',
+      start: () => Promise.reject(Object.assign(new Error('listen EACCES: permission denied'), { code: 'EACCES' })),
+      onEvent() {
+        observed = true;
+        return () => undefined;
+      },
+      onStatusLine: () => () => undefined,
+      onSubagentStatusLine: () => () => undefined,
+      onOtelLogs: () => () => undefined,
+      onUnavailable: () => () => undefined,
+      async dispose() {},
+    };
+    const denied = await attachClaudeTuiSession({
+      sessionId: '00000000-0000-4000-8000-00000000abce',
+      runtimeSessionId: 'rt-denied',
+      cwd: '/tmp',
+      ingress: { port: 1, token: 'pinned-bearer-value' },
+      hookBridgeFactory: () => bridge,
+      automate: async () => ({ accepted: true }),
+    }).catch((error: unknown) => error);
+    expect(denied).toMatchObject({ code: 'EACCES' });
+    expect(isAgentAttachRefusedError(denied)).toBe(false);
+    expect(observed).toBe(false);
   });
 });
 

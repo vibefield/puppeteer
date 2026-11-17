@@ -1,0 +1,30 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "claude",
+  "vendorVersion": "2.1.322",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": [
+    "*/*.jsonl",
+    "ordering.json",
+    "turn-failure.json"
+  ],
+  "limitations": [
+    "Hook stdin JSON carriers are type-preserving: sensitive scalar values are replaced in place while JSON keys, containers, primitive types, and record ordering within each event file are retained.",
+    "Raw transcripts, status-line payloads, and process diagnostics stay in the gitignored captures-raw tree; only value-free projections of them are committed.",
+    "turn-failure is one session of three print turns against a scripted loopback Messages API with a placeholder token: a turn that completes with scripted words, a turn whose model streams scripted words and a Read call and whose follow-up request is answered HTTP 529, and a turn whose first request is answered HTTP 529; hook payloads, ordering and the native error mapping are real, while the words and failures are synthetic."
+  ],
+  "overrides": [
+    {
+      "paths": [
+        "ordering.json",
+        "turn-failure.json"
+      ],
+      "representation": "semantic-projection",
+      "limitations": [
+        "Projections keep only event names, enum discriminators, record types, key names, and counts; they prove occurrence, ordering, and record shape, never a value.",
+        "Arrival order is the order the census sink received each rail: a command-forwarded hook (SessionStart, Setup) can arrive after an HTTP hook Claude emitted later.",
+        "turn-failure.json compares each closing hook's last_assistant_message with the lane's own scripted sentinels and with Claude's displayed and printed text for that turn, by equality and containment only; it keeps the verdicts, the loopback request kinds and the print result's enums, never a value."
+      ]
+    }
+  ]
+}
