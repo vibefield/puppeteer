@@ -12,6 +12,12 @@
  *     email, orgId, orgName, subscriptionType }
  * The document carries no token, and this service never reads a credential store.
  *
+ * Seen 2026-11-17 on a signed-in Max account at the 20x tier (the Claude Code
+ * version was not recorded): the document also holds `planTier`, the family
+ * and its tier in one token (`subscriptionType: "max"`, `planTier: "max_20x"`).
+ * No other tier's token has been read, nor whether an older Claude Code
+ * reports the field at all.
+ *
  * Seen 2026-11-17: a managed root signed in through `claude auth login` alone
  * opens the interactive app's first run (the theme picker) at its first
  * session, because the login subcommand does not complete it. `initializeRoot`
@@ -30,13 +36,15 @@ import { access, mkdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
-import type {
-  AgentProfile,
-  ProfileFailure,
-  ProfileIdentity,
-  ProfileProvider,
-  ProfileService,
-  TerminalSpec,
+import {
+  PlanTierSchema,
+  type AgentProfile,
+  type PlanTier,
+  type ProfileFailure,
+  type ProfileIdentity,
+  type ProfileProvider,
+  type ProfileService,
+  type TerminalSpec,
 } from '@vibefield/puppeteer-core';
 import { ownScriptRunnerFacts, resolveScriptRunner } from '@vibefield/puppeteer-native-observation';
 import { resolveClaudeExecutable } from '../detection.js';
@@ -139,6 +147,36 @@ function unavailable(message: string): ProfileFailure {
 }
 
 /**
+ * Plans shown under another name than the family Claude Code reports. The
+ * tool's document never says this name: each row is a naming choice, matched
+ * on the family and the tier token exactly (after trimming), and kept by hand
+ * when the vendor renames a plan. A plan named here is shown by its name
+ * alone, with no tier beside it (`planTier: {}`), though the tool did tell a
+ * tier. It is the one place a plan or tier word is compared with a literal;
+ * every other tier follows `claudePlanTierFrom`.
+ */
+const CLAUDE_PLAN_NAMES: readonly { family: string; tier: string; plan: string }[] = [
+  { family: 'max', tier: 'max_20x', plan: 'ultra' },
+];
+
+/**
+ * The tier rule, for a family and tier no row of `CLAUDE_PLAN_NAMES` names:
+ * the label a view draws beside the family is the tier token with the family
+ * and `_` taken off (`max` + `max_5x` is "5x"), or a one-word token given
+ * whole; `{}` when the token is the family itself, which says the plan has no
+ * tier beyond its name. Undefined, meaning not read, when the document tells
+ * no family or no tier, or a tier in a shape not seen or that core's label
+ * rule refuses: a raw token is never shown as a label, and a label never sits
+ * beside no name. Both tokens come trimmed and are compared exactly.
+ */
+function claudePlanTierFrom(family: string | undefined, tier: string | undefined): PlanTier | undefined {
+  if (family === undefined || tier === undefined) return undefined;
+  if (tier === family) return {};
+  const label = tier.startsWith(`${family}_`) ? tier.slice(family.length + 1) : tier;
+  return PlanTierSchema.safeParse({ label }).success ? { label } : undefined;
+}
+
+/**
  * Decode `claude auth status --json`. Unknown shapes are a failure, not a
  * fabricated "logged out": only the documented boolean answers that question.
  */
@@ -150,13 +188,18 @@ export function claudeProfileIdentityFrom(document: unknown, verifiedAt: string)
   const method = text(status.authMethod);
   const email = text(status.email);
   const organization = text(status.orgName);
-  const plan = text(status.subscriptionType);
+  const family = text(status.subscriptionType);
+  const tier = text(status.planTier);
+  const named = CLAUDE_PLAN_NAMES.find((row) => row.family === family && row.tier === tier);
+  const plan = named?.plan ?? family;
+  const planTier: PlanTier | undefined = named !== undefined ? {} : claudePlanTierFrom(family, tier);
   return {
     loggedIn: status.loggedIn,
     ...(method ? { method } : {}),
     ...(email ? { email } : {}),
     ...(organization ? { organization } : {}),
     ...(plan ? { plan } : {}),
+    ...(planTier ? { planTier } : {}),
     verifiedAt,
     source: { kind: 'native-status', stability: 'documented' },
   };

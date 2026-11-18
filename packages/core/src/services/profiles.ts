@@ -60,6 +60,28 @@ export type SignInService = z.infer<typeof SignInServiceSchema>;
  */
 const BorrowedFromSchema = z.string().trim().min(1).max(64);
 
+/** The widest tier label a view draws beside a plan's name. */
+export const PLAN_TIER_LABEL_MAX = 8;
+
+/**
+ * A plan's tier beside its name. `label` is the short form a person reads
+ * ("20x", "200"), made by the adapter from the agent's own token; no other
+ * layer parses, cases or compares it, and the plan's name never repeats it.
+ * Three cases: absent, the tier was not read; present with no label, no tier
+ * is shown beside the name (the agent says the plan has none, or the adapter
+ * names the plan whole); present with a label, the tier. A label is one word
+ * that starts with a letter or a digit and goes on in letters, digits, `.`,
+ * `+` and `-`, so a raw token with its insides showing never passes as one.
+ */
+export const PlanTierSchema = z.strictObject({
+  label: z
+    .string()
+    .regex(/^[A-Za-z0-9][A-Za-z0-9.+-]*$/u)
+    .max(PLAN_TIER_LABEL_MAX)
+    .optional(),
+});
+export type PlanTier = z.infer<typeof PlanTierSchema>;
+
 /**
  * One sign-in a root holds, for an agent whose root can hold several (a
  * harness: Pi, OpenCode, Hermes). Never carries a token or any field that
@@ -80,6 +102,8 @@ export const ProfileSignInSchema = z.strictObject({
   account: NonEmptyStringSchema.optional(),
   organization: NonEmptyStringSchema.optional(),
   plan: NonEmptyStringSchema.optional(),
+  /** The tier beside the plan's name, when the agent told one. */
+  planTier: PlanTierSchema.optional(),
   borrowedFrom: BorrowedFromSchema.optional(),
 });
 export type ProfileSignIn = z.infer<typeof ProfileSignInSchema>;
@@ -96,16 +120,18 @@ export const ProfileIdentitySchema = z
     organization: NonEmptyStringSchema.optional(),
     /** Native plan or subscription label. */
     plan: NonEmptyStringSchema.optional(),
+    /** The tier beside the plan's name, when the agent told one. */
+    planTier: PlanTierSchema.optional(),
     /** The program whose sign-in the agent runs as, when the root holds none of its own. */
     borrowedFrom: BorrowedFromSchema.optional(),
     /**
      * Every sign-in the root holds, for an agent whose root can hold several.
      * When present it is the whole answer: `loggedIn` is true exactly when it
-     * is non-empty, and the top-level method, email, account, organization
-     * and plan repeat the in-use sign-in's (absent when none is in use), so a
-     * view that predates the list still reads the one that matters. The
-     * runtime derives those from the list when it verifies, whatever the
-     * adapter put there.
+     * is non-empty, and the top-level method, email, account, organization,
+     * plan and plan tier repeat the in-use sign-in's (absent when none is in
+     * use), so a view that predates the list still reads the one that
+     * matters. The runtime derives those from the list when it verifies,
+     * whatever the adapter put there.
      */
     signIns: z.array(ProfileSignInSchema).max(64).optional(),
     verifiedAt: TimestampSchema,

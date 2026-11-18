@@ -54,6 +54,10 @@ describe('plan names', () => {
     expect(planTitle(service('google', 'Google'), 'Google AI Pro')).toBe('Google AI Pro');
   });
 
+  it('titles the plan the Claude adapter names Ultra by the same rule, with no list of plan words', () => {
+    expect(planTitle(service('anthropic', 'Anthropic'), 'ultra')).toBe('Claude Ultra');
+  });
+
   it('is the product alone when no plan was reported', () => {
     expect(planTitle(service('kimi', 'Moonshot AI'))).toBe('Kimi');
     expect(planTitle(service('opencode', 'OpenCode'), '  ')).toBe('OpenCode');
