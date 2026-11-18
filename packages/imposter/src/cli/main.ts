@@ -31,7 +31,7 @@ import { createImposterSession, type BehaviorDocument } from '../session/session
 import { substitute } from '../session/template.ts';
 import { createPresentation, type Presentation } from '../tui/mount.ts';
 import { flagValue, hasFlag, PersonaSelectionError, selectPersona } from './argv.ts';
-import { runHttpPersonaAttached, runHttpPersonaServer } from './http-persona.ts';
+import { matchesHttpAttach, runHttpPersonaAttached, runHttpPersonaServer } from './http-persona.ts';
 
 const SAFE_NAME = /^[a-z0-9][a-z0-9-]{0,127}$/i;
 
@@ -464,7 +464,7 @@ export async function main(argv: readonly string[], argv0?: string): Promise<num
       log,
     });
   }
-  if (httpServer && rest[0] === httpServer.attach.command) {
+  if (httpServer && matchesHttpAttach(httpServer.attach, rest)) {
     return runHttpPersonaAttached({
       persona,
       argv: rest,

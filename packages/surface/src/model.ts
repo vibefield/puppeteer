@@ -138,6 +138,10 @@ export interface PayloadSchemaNode {
   deprecated?: boolean;
   readOnly?: boolean;
   writeOnly?: boolean;
+  /** A string's encoded content: its media type, transfer encoding, and the schema of its decoded document. */
+  contentMediaType?: string;
+  contentEncoding?: string;
+  contentSchema?: PayloadSchemaNode;
   /** Preserve newer JSON-Schema vocabulary instead of silently discarding it. */
   [keyword: string]: unknown;
 }
@@ -221,7 +225,18 @@ export function projectJsonSchema(value: unknown, root: unknown = value): Payloa
 
   const schemaMapKeywords = new Set(['properties', 'patternProperties']);
   const schemaArrayKeywords = new Set(['anyOf', 'oneOf', 'allOf', 'prefixItems']);
-  const schemaKeywords = new Set(['not', 'if', 'then', 'else', 'additionalProperties', 'propertyNames', 'contains']);
+  // `contentSchema` describes a string's decoded content (an encoded JSON
+  // payload), so its references are closed over like any other subschema's.
+  const schemaKeywords = new Set([
+    'not',
+    'if',
+    'then',
+    'else',
+    'additionalProperties',
+    'propertyNames',
+    'contains',
+    'contentSchema',
+  ]);
 
   const visit = (raw: unknown): PayloadSchemaNode => {
     if (raw === true) return {};
@@ -556,6 +571,11 @@ function enumContains(values: readonly unknown[], candidate: unknown): boolean {
   });
 }
 
+/** `application/json` or a structured `+json` suffix type, parameters allowed. */
+function jsonMediaType(mediaType: string | undefined): boolean {
+  return mediaType !== undefined && /^application\/(?:[\w.-]+\+)?json\s*(?:;.*)?$/i.test(mediaType);
+}
+
 function validateSchemaNode(
   schema: PayloadSchemaNode,
   value: unknown,
@@ -675,6 +695,26 @@ function validateSchemaNode(
     }
     if (schema.pattern !== undefined && !new RegExp(schema.pattern, 'u').test(value)) {
       violations.push(`${label} does not match pattern ${schema.pattern}`);
+    }
+    // An encoded JSON document (OpenAPI 3.1 `contentMediaType` + `contentSchema`)
+    // is asserted, not only annotated: an exact-source contract's json-string
+    // arm would otherwise accept any string at all. A transfer encoding
+    // (`contentEncoding`) is outside the subset and stays an annotation.
+    if (
+      schema.contentSchema !== undefined &&
+      schema.contentEncoding === undefined &&
+      jsonMediaType(schema.contentMediaType)
+    ) {
+      let decoded: unknown;
+      let parsed = true;
+      try {
+        decoded = JSON.parse(value);
+      } catch {
+        parsed = false;
+      }
+      if (!parsed) violations.push(`${label} is not the JSON document its contentMediaType declares`);
+      else
+        validateSchemaNode(schema.contentSchema, decoded, path, violations, root, depth + 1, allowRedactedPlaceholders);
     }
   }
   if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
@@ -926,7 +966,7 @@ function validatePayloadSchemaNode(path: string, value: unknown, label: string, 
       }
     }
   }
-  for (const keyword of ['not', 'if', 'then', 'else', 'propertyNames', 'contains'] as const) {
+  for (const keyword of ['not', 'if', 'then', 'else', 'propertyNames', 'contains', 'contentSchema'] as const) {
     if (schema[keyword] !== undefined) {
       validatePayloadSchemaNode(path, schema[keyword], `${label}.${keyword}`, depth + 1);
     }
@@ -1093,7 +1133,15 @@ function validatePayloadSchema(path: string, value: unknown): PayloadSchema {
     if (Array.isArray(node.items)) {
       for (const child of node.items) inspectReferences(child);
     } else if (node.items) inspectReferences(node.items as PayloadSchemaNode);
-    for (const child of [node.not, node.if, node.then, node.else, node.propertyNames, node.contains]) {
+    for (const child of [
+      node.not,
+      node.if,
+      node.then,
+      node.else,
+      node.propertyNames,
+      node.contains,
+      node.contentSchema,
+    ]) {
       if (child) inspectReferences(child);
     }
     if (node.additionalProperties && typeof node.additionalProperties === 'object') {
@@ -2387,4 +2435,537 @@ export function diffModelVsReport(model: SurfaceModel, report: SurfaceReport): D
   }
 
   return drift;
+}
+
+// ---------------------------------------------------------------------------
+// OpenAPI 3.1 HTTP contracts
+// ---------------------------------------------------------------------------
+
+/** The Path Item fields that are operations, in output order. */
+const OPENAPI_METHODS = ['delete', 'get', 'head', 'options', 'patch', 'post', 'put', 'trace'] as const;
+
+/** Where each parameter location travels in a request record. */
+const OPENAPI_PARAMETER_PROPERTIES = { path: 'params', query: 'query', header: 'headers', cookie: 'cookies' } as const;
+
+/** Parameter properties a result repeats so it names the resource it answers for. */
+const OPENAPI_RESULT_IDENTITY = ['params', 'query'] as const;
+
+/** OpenAPI 3.1 §4.8.12.1: these header parameters SHALL be ignored; the operation's own fields describe them. */
+const OPENAPI_IGNORED_HEADERS = new Set(['accept', 'authorization', 'content-type']);
+
+/** JSON media types only, the projection the first HTTP generators used. */
+export const OPENAPI_JSON_MEDIA_TYPES = ['application/json', 'application/*+json'] as const;
+
+/** The default: JSON first, then whatever single media type the operation declares. */
+export const OPENAPI_ANY_MEDIA_TYPES = [...OPENAPI_JSON_MEDIA_TYPES, '*'] as const;
+
+export interface OpenApiHttpOptions {
+  /**
+   * Media types whose schemas become a request or result `body`, in preference
+   * order. `*` matches any declared type, and a `*` inside a pattern matches
+   * within one type (`application/*+json`). Parameters after `;` are ignored.
+   * Default {@link OPENAPI_ANY_MEDIA_TYPES}.
+   */
+  bodyMediaTypes?: readonly string[];
+}
+
+/** One declared response, its schema closed over the document's local references. */
+export interface OpenApiHttpResponse {
+  /** Exactly as declared: `200`, `4XX` or `default`. */
+  status: string;
+  mediaType?: string;
+  schema?: PayloadSchemaNode;
+}
+
+/** One OpenAPI operation projected into the ASM's HTTP request/result/record schemas. */
+export interface OpenApiHttpOperation {
+  operationId: string;
+  /** Upper-case HTTP method. */
+  method: string;
+  /** Templated OpenAPI path, `/session/{sessionID}`. */
+  path: string;
+  /** The same path with `:name` parameters, the form request traces carry. */
+  route: string;
+  /** Summary and description, deduplicated and joined. */
+  trigger?: string;
+  /** Media type of the request `body`, when one is modeled. */
+  requestMediaType?: string;
+  /** The first explicit 2xx status, absent when only a `2XX` range is declared. */
+  successStatus?: number;
+  /** Media type of the result `body`, when one is modeled. */
+  successMediaType?: string;
+  /** `{method, route, params?, query?, headers?, cookies?, body?}`. */
+  payloadSchema: PayloadSchemaNode;
+  /** `{method, route, status, params?, query?, body?}` for a 2xx answer. */
+  resultSchema: PayloadSchemaNode;
+  /** `{direction: client-to-agent, request}` with method and route pinned. */
+  recordSchema: PayloadSchemaNode;
+  /** Every declared response, errors included, sorted by status. */
+  responses: OpenApiHttpResponse[];
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Follow local Reference Objects to the Parameter, Request Body, Response or
+ * Path Item they name, whatever component holds it. OpenAPI 3.1 lets a
+ * reference carry `summary` and `description`, which override the target's;
+ * the outermost wins. Schema references are not followed here: schema
+ * projection closes over them instead. Unresolved or cyclic: `undefined`.
+ */
+export function resolveOpenApiReference(node: unknown, document: unknown): unknown {
+  let current = node;
+  const seen = new Set<string>();
+  const overrides: Record<string, unknown> = {};
+  while (isJsonObject(current) && typeof current.$ref === 'string') {
+    for (const field of ['summary', 'description']) {
+      if (current[field] !== undefined && overrides[field] === undefined) overrides[field] = current[field];
+    }
+    if (!current.$ref.startsWith('#') || seen.has(current.$ref)) return undefined;
+    seen.add(current.$ref);
+    current = resolveLocalSchemaReference(document, current.$ref);
+  }
+  return isJsonObject(current) && Object.keys(overrides).length > 0 ? { ...current, ...overrides } : current;
+}
+
+/** `/session/{sessionID}` → `/session/:sessionID`. */
+export function openApiRoute(path: string): string {
+  return path.replaceAll(/\{([^}]+)\}/g, ':$1');
+}
+
+function mediaTypeMatches(pattern: string, declared: string): boolean {
+  if (pattern === '*') return true;
+  const base = (value: string): string => value.split(';')[0]!.trim().toLowerCase();
+  const wanted = base(pattern);
+  const actual = base(declared);
+  if (wanted === actual) return true;
+  if (!wanted.includes('*')) return false;
+  const expression = wanted
+    .split('*')
+    .map((part) => part.replaceAll(/[.+?^${}()|[\]\\/]/g, '\\$&'))
+    .join('[^/;]*');
+  return new RegExp(`^${expression}$`).test(actual);
+}
+
+/** The preferred declared media type and its (raw) schema; `schema` is absent when the media type declares none. */
+function selectOpenApiMedia(
+  content: unknown,
+  preferences: readonly string[],
+): { mediaType: string; schema?: unknown } | undefined {
+  if (!isJsonObject(content)) return undefined;
+  const declared = Object.keys(content);
+  for (const preference of preferences) {
+    const mediaType = declared.find((candidate) => mediaTypeMatches(preference, candidate));
+    if (mediaType === undefined) continue;
+    const media = content[mediaType];
+    const schema = isJsonObject(media) ? media.schema : undefined;
+    return schema === undefined || schema === null ? { mediaType } : { mediaType, schema };
+  }
+  return undefined;
+}
+
+/** Path-level parameters, overridden by operation parameters with the same name and location (OpenAPI 3.1 §4.8.10). */
+function openApiParameters(pathItem: Record<string, unknown>, operation: Record<string, unknown>, document: unknown) {
+  const merged = new Map<string, Record<string, unknown>>();
+  for (const list of [pathItem.parameters, operation.parameters]) {
+    for (const raw of Array.isArray(list) ? list : []) {
+      const parameter = resolveOpenApiReference(raw, document);
+      if (!isJsonObject(parameter) || typeof parameter.name !== 'string' || typeof parameter.in !== 'string') continue;
+      if (parameter.in === 'header' && OPENAPI_IGNORED_HEADERS.has(parameter.name.toLowerCase())) continue;
+      merged.set(`${parameter.in}\0${parameter.name}`, parameter);
+    }
+  }
+  return [...merged.values()];
+}
+
+/** A parameter's schema, from `schema` or from the single media type of `content`. */
+function openApiParameterSchema(parameter: Record<string, unknown>): unknown {
+  if (parameter.schema !== undefined) return parameter.schema;
+  return selectOpenApiMedia(parameter.content, ['*'])?.schema ?? {};
+}
+
+function openApiTrigger(operation: Record<string, unknown>): string | undefined {
+  const text = [operation.summary, operation.description]
+    .filter((value, index, values) => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index)
+    .join(' — ');
+  return text.length > 0 ? text : undefined;
+}
+
+/**
+ * Project every operation of an OpenAPI 3.1 document into the ASM's HTTP
+ * schemas, sorted by path and then method. Operations without an
+ * `operationId` have no stable event name and are skipped. Schemas keep the
+ * document's full JSON Schema 2020-12 vocabulary (`prefixItems`,
+ * `contentMediaType`, `const`, type arrays, `$ref` siblings) and close over
+ * the local references they use.
+ */
+export function openApiHttpOperations(document: unknown, options: OpenApiHttpOptions = {}): OpenApiHttpOperation[] {
+  if (!isJsonObject(document)) return [];
+  const preferences = options.bodyMediaTypes ?? OPENAPI_ANY_MEDIA_TYPES;
+  const paths = isJsonObject(document.paths) ? document.paths : {};
+  const operations: OpenApiHttpOperation[] = [];
+  for (const path of Object.keys(paths).sort()) {
+    const pathItem = resolveOpenApiReference(paths[path], document);
+    if (!isJsonObject(pathItem)) continue;
+    for (const method of OPENAPI_METHODS) {
+      const operation = pathItem[method];
+      if (!isJsonObject(operation) || typeof operation.operationId !== 'string') continue;
+      const upper = method.toUpperCase();
+      const route = openApiRoute(path);
+
+      const requestProperties: Record<string, unknown> = { method: { type: 'string' }, route: { type: 'string' } };
+      const requestRequired = ['method', 'route'];
+      const parameters = openApiParameters(pathItem, operation, document);
+      for (const [location, property] of Object.entries(OPENAPI_PARAMETER_PROPERTIES)) {
+        const selected = parameters
+          .filter((parameter) => parameter.in === location)
+          .sort((left, right) => (left.name as string).localeCompare(right.name as string));
+        if (selected.length === 0) continue;
+        const parameterProperties: Record<string, unknown> = {};
+        const parameterRequired: string[] = [];
+        for (const parameter of selected) {
+          const name = parameter.name as string;
+          parameterProperties[name] = openApiParameterSchema(parameter);
+          // A path parameter is required by definition in OpenAPI 3.1.
+          if (parameter.required === true || location === 'path') parameterRequired.push(name);
+        }
+        requestProperties[property] = {
+          type: 'object',
+          properties: parameterProperties,
+          ...(parameterRequired.length > 0 ? { required: parameterRequired } : {}),
+        };
+        if (parameterRequired.length > 0) requestRequired.push(property);
+      }
+      const requestBody = resolveOpenApiReference(operation.requestBody, document);
+      const requestMedia = isJsonObject(requestBody) ? selectOpenApiMedia(requestBody.content, preferences) : undefined;
+      if (requestMedia?.schema !== undefined) {
+        requestProperties.body = requestMedia.schema;
+        if (isJsonObject(requestBody) && requestBody.required === true) requestRequired.push('body');
+      }
+      const requestContract = { type: 'object', properties: requestProperties, required: requestRequired };
+
+      const responseEntries = isJsonObject(operation.responses) ? Object.entries(operation.responses) : [];
+      const explicitSuccess = responseEntries
+        .filter(([status]) => /^2\d\d$/.test(status))
+        .sort(([left], [right]) => left.localeCompare(right))[0];
+      const success = explicitSuccess ?? responseEntries.find(([status]) => /^2XX$/i.test(status));
+      const successResponse = success ? resolveOpenApiReference(success[1], document) : undefined;
+      const successMedia = isJsonObject(successResponse)
+        ? selectOpenApiMedia(successResponse.content, preferences)
+        : undefined;
+      const resultProperties: Record<string, unknown> = {
+        method: { type: 'string', enum: [upper] },
+        route: { type: 'string', enum: [route] },
+        status: { type: 'integer', minimum: 200, maximum: 299 },
+      };
+      const resultRequired = ['method', 'route', 'status'];
+      for (const property of OPENAPI_RESULT_IDENTITY) {
+        if (!requestProperties[property]) continue;
+        resultProperties[property] = cloneJsonValue(requestProperties[property]);
+        if (requestRequired.includes(property)) resultRequired.push(property);
+      }
+      if (successMedia?.schema !== undefined) {
+        resultProperties.body = successMedia.schema;
+        resultRequired.push('body');
+      }
+
+      const exactRequest = cloneJsonValue(requestContract) as { properties: Record<string, Record<string, unknown>> };
+      exactRequest.properties.method!.enum = [upper];
+      exactRequest.properties.route!.enum = [route];
+
+      const responses: OpenApiHttpResponse[] = responseEntries
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([status, raw]) => {
+          const response = resolveOpenApiReference(raw, document);
+          const media = isJsonObject(response) ? selectOpenApiMedia(response.content, preferences) : undefined;
+          return {
+            status,
+            ...(media ? { mediaType: media.mediaType } : {}),
+            ...(media?.schema !== undefined ? { schema: projectJsonSchema(media.schema, document) } : {}),
+          };
+        });
+
+      const trigger = openApiTrigger(operation);
+      operations.push({
+        operationId: operation.operationId,
+        method: upper,
+        path,
+        route,
+        ...(trigger ? { trigger } : {}),
+        ...(requestMedia?.schema !== undefined ? { requestMediaType: requestMedia.mediaType } : {}),
+        ...(explicitSuccess ? { successStatus: Number(explicitSuccess[0]) } : {}),
+        ...(successMedia?.schema !== undefined ? { successMediaType: successMedia.mediaType } : {}),
+        payloadSchema: projectJsonSchema(requestContract, document),
+        resultSchema: projectJsonSchema(
+          { type: 'object', properties: resultProperties, required: resultRequired },
+          document,
+        ),
+        recordSchema: projectJsonSchema(
+          {
+            type: 'object',
+            properties: { direction: { type: 'string', enum: ['client-to-agent'] }, request: exactRequest },
+            required: ['direction', 'request'],
+          },
+          document,
+        ),
+        responses,
+      });
+    }
+  }
+  return operations;
+}
+
+// ---------------------------------------------------------------------------
+// Exact-source event contracts
+// ---------------------------------------------------------------------------
+
+/**
+ * How an envelope carries its payload. `json-string` is the payload serialized
+ * into a string (OpenAPI 3.1 `contentMediaType: application/json`); a contract
+ * that lists both says the wire may use either.
+ */
+export type ExactSourcePayloadEncoding = 'object' | 'json-string';
+
+/** One native event type read from the vendor's exact-release source. */
+export interface ExactSourceEventDefinition {
+  payloadSchema: PayloadSchemaNode;
+  /** Where the event is declared, a path listed in `sourceFiles`. */
+  source?: { path: string; symbol?: string };
+  /** Envelope fields this event always carries, e.g. a durability record. */
+  envelopeRequired?: readonly string[];
+  /** Envelope fields this event never carries. */
+  envelopeOmitted?: readonly string[];
+  notes?: string;
+}
+
+/**
+ * A digest-pinned event contract for a native stream whose generated schema
+ * does not enumerate its events (OpenCode 2.x declares only an encoded
+ * `V2EventEncoded` string). Every event shares one envelope; the envelope's
+ * `discriminator` field names the event and its `payload` field carries the
+ * event's own schema. Local `$ref`s resolve against this document, so shared
+ * schemas live in its `$defs`.
+ */
+export interface ExactSourceEventContract {
+  kind: 'exact-source-event-contract';
+  contractVersion: 1;
+  vendor: string;
+  vendorVersion: string;
+  sourceRepository: string;
+  sourceTag: string;
+  sourceRevision: string;
+  sourceFiles: ReadonlyArray<{ path: string; sha256: string; bytes: number; symbols?: readonly string[] }>;
+  envelope: {
+    discriminator: string;
+    payload: string;
+    payloadEncodings: readonly ExactSourcePayloadEncoding[];
+    /** The carrier's own fields; the discriminator and payload are filled in per event. */
+    schema: PayloadSchemaNode;
+  };
+  events: Record<string, ExactSourceEventDefinition>;
+  $defs?: Record<string, PayloadSchemaNode>;
+  limitations?: readonly string[];
+}
+
+/** One event of a contract, with its schemas closed over the contract's `$defs`. */
+export interface ExactSourceEventSchemas {
+  event: string;
+  payloadSchema: PayloadSchemaNode;
+  /** The whole envelope with this event's discriminator and payload pinned. */
+  recordSchema: PayloadSchemaNode;
+  source?: { path: string; symbol?: string };
+  notes?: string;
+}
+
+function collectLocalReferences(node: unknown, found: string[]): void {
+  if (Array.isArray(node)) {
+    for (const entry of node) collectLocalReferences(entry, found);
+    return;
+  }
+  if (!isJsonObject(node)) return;
+  for (const [key, child] of Object.entries(node)) {
+    if (key === '$ref' && typeof child === 'string' && child.startsWith('#')) found.push(child);
+    else collectLocalReferences(child, found);
+  }
+}
+
+/** Every reason `value` is not a usable exact-source event contract; empty when it is. */
+export function exactSourceEventContractProblems(value: unknown): string[] {
+  const problems: string[] = [];
+  if (!isJsonObject(value)) return ['contract must be a JSON object'];
+  if (value.kind !== 'exact-source-event-contract') problems.push('kind must be "exact-source-event-contract"');
+  if (value.contractVersion !== 1) problems.push('contractVersion must be 1');
+  for (const field of ['vendor', 'vendorVersion', 'sourceRepository', 'sourceTag']) {
+    if (typeof value[field] !== 'string' || (value[field] as string).length === 0) {
+      problems.push(`${field} must be a non-empty string`);
+    }
+  }
+  if (typeof value.sourceRevision !== 'string' || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(value.sourceRevision)) {
+    problems.push('sourceRevision must be a full commit hash');
+  }
+  const sourcePaths = new Set<string>();
+  if (!Array.isArray(value.sourceFiles) || value.sourceFiles.length === 0) {
+    problems.push('sourceFiles must list the digest-pinned files the contract was read from');
+  } else {
+    for (const [index, file] of value.sourceFiles.entries()) {
+      if (
+        !isJsonObject(file) ||
+        typeof file.path !== 'string' ||
+        file.path.length === 0 ||
+        typeof file.sha256 !== 'string' ||
+        !/^[0-9a-f]{64}$/.test(file.sha256) ||
+        typeof file.bytes !== 'number' ||
+        !Number.isInteger(file.bytes) ||
+        file.bytes < 0
+      ) {
+        problems.push(`sourceFiles[${index}] needs a path, a sha256 hex digest and a byte count`);
+      } else if (sourcePaths.has(file.path)) {
+        problems.push(`sourceFiles lists ${file.path} twice`);
+      } else {
+        sourcePaths.add(file.path);
+      }
+    }
+  }
+
+  const envelope = value.envelope;
+  let envelopeFields = new Set<string>();
+  if (!isJsonObject(envelope)) {
+    problems.push('envelope must be an object');
+  } else {
+    if (typeof envelope.discriminator !== 'string' || envelope.discriminator.length === 0) {
+      problems.push('envelope.discriminator must name the event-type field');
+    }
+    if (typeof envelope.payload !== 'string' || envelope.payload.length === 0) {
+      problems.push('envelope.payload must name the payload field');
+    }
+    if (envelope.discriminator === envelope.payload) problems.push('envelope.discriminator and payload must differ');
+    const encodings = envelope.payloadEncodings;
+    if (
+      !Array.isArray(encodings) ||
+      encodings.length === 0 ||
+      new Set(encodings).size !== encodings.length ||
+      encodings.some((encoding) => encoding !== 'object' && encoding !== 'json-string')
+    ) {
+      problems.push('envelope.payloadEncodings must list "object" and/or "json-string" once each');
+    }
+    try {
+      validatePayloadSchemaNode('contract', envelope.schema, 'envelope.schema', 0);
+      envelopeFields = new Set(Object.keys((envelope.schema as PayloadSchemaNode).properties ?? {}));
+    } catch (error) {
+      problems.push((error as Error).message);
+    }
+  }
+
+  if (value.$defs !== undefined) {
+    if (!isJsonObject(value.$defs)) problems.push('$defs must be an object');
+    else {
+      for (const [name, schema] of Object.entries(value.$defs)) {
+        try {
+          validatePayloadSchemaNode('contract', schema, `$defs[${JSON.stringify(name)}]`, 0);
+        } catch (error) {
+          problems.push((error as Error).message);
+        }
+      }
+    }
+  }
+
+  if (!isJsonObject(value.events) || Object.keys(value.events).length === 0) {
+    problems.push('events must map at least one event type to its definition');
+  } else {
+    for (const [event, definition] of Object.entries(value.events)) {
+      const label = `events[${JSON.stringify(event)}]`;
+      if (event.length === 0) problems.push('events has an empty event type');
+      if (!isJsonObject(definition)) {
+        problems.push(`${label} must be an object`);
+        continue;
+      }
+      try {
+        validatePayloadSchemaNode('contract', definition.payloadSchema, `${label}.payloadSchema`, 0);
+      } catch (error) {
+        problems.push((error as Error).message);
+      }
+      if (definition.source !== undefined) {
+        const source = definition.source;
+        if (!isJsonObject(source) || typeof source.path !== 'string' || !sourcePaths.has(source.path)) {
+          problems.push(`${label}.source.path must be one of sourceFiles`);
+        } else if (source.symbol !== undefined && (typeof source.symbol !== 'string' || source.symbol.length === 0)) {
+          problems.push(`${label}.source.symbol must be a non-empty string`);
+        }
+      }
+      const required = definition.envelopeRequired ?? [];
+      const omitted = definition.envelopeOmitted ?? [];
+      for (const [field, list] of [
+        ['envelopeRequired', required],
+        ['envelopeOmitted', omitted],
+      ] as const) {
+        if (!Array.isArray(list) || list.some((name) => typeof name !== 'string' || !envelopeFields.has(name))) {
+          problems.push(`${label}.${field} must name fields of envelope.schema`);
+        }
+      }
+      if (Array.isArray(required) && Array.isArray(omitted) && required.some((name) => omitted.includes(name))) {
+        problems.push(`${label} both requires and omits the same envelope field`);
+      }
+      if (
+        isJsonObject(envelope) &&
+        [...(Array.isArray(omitted) ? omitted : [])].some(
+          (name) => name === envelope.discriminator || name === envelope.payload,
+        )
+      ) {
+        problems.push(`${label} cannot omit the discriminator or the payload`);
+      }
+    }
+  }
+
+  const references: string[] = [];
+  collectLocalReferences([value.envelope, value.events, value.$defs], references);
+  for (const reference of new Set(references)) {
+    if (resolveLocalSchemaReference(value, reference) === undefined) {
+      problems.push(`unresolved local reference ${reference}`);
+    }
+  }
+  return problems;
+}
+
+function encodedPayloadSchema(payload: PayloadSchemaNode): PayloadSchemaNode {
+  return { type: 'string', contentMediaType: 'application/json', contentSchema: payload };
+}
+
+/**
+ * Every event of a valid contract with its payload and record schemas, sorted
+ * by event type. Throws when the contract has problems: generating evidence
+ * from a malformed contract is a programmer error, not a runtime outcome.
+ */
+export function exactSourceEventSchemas(contract: ExactSourceEventContract): ExactSourceEventSchemas[] {
+  const problems = exactSourceEventContractProblems(contract);
+  if (problems.length > 0) throw new Error(`exact-source event contract: ${problems.join('; ')}`);
+  const { discriminator, payload, payloadEncodings, schema } = contract.envelope;
+  return Object.keys(contract.events)
+    .sort()
+    .map((event) => {
+      const definition = contract.events[event]!;
+      const record = cloneJsonValue(schema) as PayloadSchemaNode;
+      const properties: Record<string, PayloadSchemaNode> = { ...(record.properties ?? {}) };
+      properties[discriminator] = { type: 'string', enum: [event] };
+      properties[payload] =
+        payloadEncodings.length > 1
+          ? { anyOf: [definition.payloadSchema, encodedPayloadSchema(definition.payloadSchema)] }
+          : payloadEncodings[0] === 'object'
+            ? definition.payloadSchema
+            : encodedPayloadSchema(definition.payloadSchema);
+      const omitted = new Set(definition.envelopeOmitted ?? []);
+      // A false schema: the field may not appear at all on this event.
+      for (const field of omitted) properties[field] = { not: {} };
+      const required = [
+        ...new Set([...(record.required ?? []), discriminator, payload, ...(definition.envelopeRequired ?? [])]),
+      ].filter((field) => !omitted.has(field));
+      return {
+        event,
+        payloadSchema: projectJsonSchema(definition.payloadSchema, contract),
+        recordSchema: projectJsonSchema({ ...record, type: 'object', properties, required }, contract),
+        ...(definition.source ? { source: { ...definition.source } } : {}),
+        ...(definition.notes ? { notes: definition.notes } : {}),
+      };
+    });
 }

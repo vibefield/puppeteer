@@ -24,6 +24,7 @@ import { createStatusLineInvoker } from './channels/statusline.ts';
 import { createScenarioDriver, type ScenarioDriverSnapshot } from './scenario-driver.ts';
 import { createTranscriptWriter, type TranscriptWriter } from './channels/transcript.ts';
 import { createNativeSessionStore } from './channels/native-store.ts';
+import { createSseEnvelope, type SseRecord, type SseScope } from './channels/http-sse.ts';
 import {
   createScenarioGate,
   createScenarioRunner,
@@ -90,8 +91,14 @@ export interface ImposterSessionOptions {
   };
   /** Native SSE sink. Blockers are published here and resolved by later HTTP requests. */
   sse?: {
-    publish(record: { id: string; type: string; properties: Record<string, unknown> }): void;
-    request?(record: { id: string; type: string; properties: Record<string, unknown> }): Promise<unknown>;
+    publish(record: SseRecord): void;
+    request?(record: SseRecord): Promise<unknown>;
+    /**
+     * The frame's scope at the moment it is framed. Called once per framed
+     * event, before validation, so a durable `seq` is spent even when the
+     * channel then drops the frame — the gap a disconnected reader would see.
+     */
+    scope?(type: string): SseScope;
   };
   log?: (message: string) => void;
 }
@@ -322,11 +329,13 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
     return options.jsonrpc.request(method, wire);
   };
 
-  const sseRecord = (event: string, properties: Record<string, unknown>) => ({
-    id: `evt_${crypto.randomUUID().replaceAll('-', '')}`,
-    type: event,
-    properties,
-  });
+  // The carrier shape is persona data (`http-serve.json` envelope); only
+  // REST-native personas declare an SSE channel, and they all serve HTTP.
+  const sseEnvelope = persona.httpServe ? createSseEnvelope(persona.httpServe.$server.envelope) : undefined;
+  const sseRecord = (event: string, payload: Record<string, unknown>): SseRecord => {
+    if (!sseEnvelope) throw new Error(`${event} needs an SSE envelope, but ${persona.vendor} has no http-serve.json`);
+    return sseEnvelope.wrap(event, payload, options.sse?.scope?.(event));
+  };
 
   const checkedSseRecord = (event: string, properties: Record<string, unknown>) => {
     const wire = wireFor(event, properties);
