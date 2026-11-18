@@ -14,7 +14,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AgentProfile } from '@vibefield/puppeteer-core';
@@ -32,6 +32,8 @@ export const CLAUDE_RENEWAL_ARGS: readonly string[] = [
 ];
 
 const RENEWAL_TIMEOUT_MS = 30_000;
+/** At the limit a start is asked to end; it is killed only if it has not ended this long after. */
+const RENEWAL_KILL_GRACE_MS = 5_000;
 /** A renewal that did not work is not tried again for its root before this has passed. */
 const RENEWAL_RETRY_WAIT_MS = 30 * 60_000;
 const SCRIPT_EXECUTABLE = /\.(mjs|cjs|js|ts)$/;
@@ -72,10 +74,17 @@ export interface ClaudeRenewalInvocation {
 export type ClaudeRenewalRun = (invocation: ClaudeRenewalInvocation) => Promise<void>;
 
 export interface ClaudeTokenRenewerOptions {
+  /** The Claude Code a host launches; absent, `PUPPETEER_CLAUDE_BIN` in `env`, then `claude` on its PATH. */
   executable?: string;
+  /** The host's environment, which the renewal's allow-list is taken from; absent, this process's own. */
   env?: NodeJS.ProcessEnv;
-  /** Defaults to a folder of this module's own under the system's temporary directory. */
+  /**
+   * A folder to start in. Absent, each start is given a private empty folder of its own under the system's temporary
+   * directory (made by `mkdtemp`, so owned by this user alone), removed when the start has ended.
+   */
   workingDirectory?: string;
+  /** How long one start may run before it is asked to end; thirty seconds when absent. */
+  timeoutMs?: number;
   /** Injected runner so unit tests start no process. */
   run?: ClaudeRenewalRun;
   now?: () => Date;
@@ -83,16 +92,16 @@ export interface ClaudeTokenRenewerOptions {
 
 export interface ClaudeTokenRenewer {
   /**
-   * Ask Claude Code to renew the access token of the native default account, or of one profile's root. Resolves
-   * true once the start has ended and `confirm` reads the token fresh; false otherwise. Never rejects. Calls for
-   * one root share one start, and a renewal that did not work is not tried again for that root for thirty minutes.
+   * Ask Claude Code to renew the access token of one managed profile's root. Resolves true once the start has ended
+   * and `confirm` reads the token fresh; false otherwise. Never rejects. Calls for one root share one start, and a
+   * renewal that did not work is not tried again for that root for thirty minutes. The native default's root, and a
+   * call with no profile, answer false and start nothing.
    */
   renew(profile: AgentProfile | undefined, confirm: () => Promise<boolean>): Promise<boolean>;
 }
 
 /** Input closed and output discarded: what Claude Code prints could name the account, and nothing here reads it. */
 const defaultRun: ClaudeRenewalRun = async (invocation) => {
-  await mkdir(invocation.cwd, { recursive: true, mode: 0o700 });
   await new Promise<void>((resolve, reject) => {
     const child = spawn(invocation.command, invocation.args, {
       cwd: invocation.cwd,
@@ -100,29 +109,38 @@ const defaultRun: ClaudeRenewalRun = async (invocation) => {
       stdio: 'ignore',
       windowsHide: true,
     });
-    const timer = setTimeout(() => child.kill('SIGKILL'), invocation.timeoutMs);
-    timer.unref?.();
+    // Asked to end first, so a start that already has the token endpoint's answer can still store what it was given.
+    let kill: ReturnType<typeof setTimeout> | undefined;
+    const limit = setTimeout(() => {
+      child.kill('SIGTERM');
+      kill = setTimeout(() => child.kill('SIGKILL'), RENEWAL_KILL_GRACE_MS);
+      kill.unref?.();
+    }, invocation.timeoutMs);
+    limit.unref?.();
+    const ended = (): void => {
+      clearTimeout(limit);
+      if (kill !== undefined) clearTimeout(kill);
+    };
     child.once('error', (error) => {
-      clearTimeout(timer);
+      ended();
       reject(error);
     });
     child.once('exit', (code) => {
-      clearTimeout(timer);
+      ended();
       if (code === 0) resolve();
       else reject(new Error('Claude Code did not end its renewal start cleanly'));
     });
   });
 };
 
-function renewalEnvironment(ambient: NodeJS.ProcessEnv, profile: AgentProfile | undefined): Record<string, string> {
+function renewalEnvironment(ambient: NodeJS.ProcessEnv, profile: AgentProfile): Record<string, string> {
   const env: Record<string, string> = {};
   for (const name of PASSED_VARIABLES) {
     const value = ambient[name];
     if (value !== undefined && value !== '') env[name] = value;
   }
   env.TERM = 'dumb';
-  // The native default is the vendor's own root: a root variable the host inherited never re-points it.
-  if (profile?.kind === 'managed') env[CLAUDE_PROFILE_ROOT_VARIABLE] = profile.dataRoot;
+  env[CLAUDE_PROFILE_ROOT_VARIABLE] = profile.dataRoot;
   return env;
 }
 
@@ -131,15 +149,14 @@ export function createClaudeTokenRenewer(options: ClaudeTokenRenewerOptions = {}
   const ambient = options.env ?? process.env;
   const run = options.run ?? defaultRun;
   const now = options.now ?? (() => new Date());
-  const cwd = options.workingDirectory ?? join(tmpdir(), 'puppeteer-claude-renewal');
+  const timeoutMs = options.timeoutMs ?? RENEWAL_TIMEOUT_MS;
   const inFlight = new Map<string, Promise<boolean>>();
   const failedAtMs = new Map<string, number>();
 
-  const invocationFor = (profile: AgentProfile | undefined): ClaudeRenewalInvocation => {
+  const invocationFor = (profile: AgentProfile, cwd: string): ClaudeRenewalInvocation => {
     const executable = resolveClaudeExecutable(options.executable, ambient);
     const env = renewalEnvironment(ambient, profile);
     const args = [...CLAUDE_RENEWAL_ARGS];
-    const timeoutMs = RENEWAL_TIMEOUT_MS;
     if (!SCRIPT_EXECUTABLE.test(executable)) return { command: executable, args, cwd, env, timeoutMs };
     // A script runs under this process's script runner; where there is none, nothing is started.
     const runner = resolveScriptRunner(ownScriptRunnerFacts());
@@ -155,7 +172,11 @@ export function createClaudeTokenRenewer(options: ClaudeTokenRenewerOptions = {}
 
   return {
     renew(profile, confirm) {
-      const key = profile?.kind === 'managed' ? profile.dataRoot : '';
+      // Managed roots alone: the native default's start is unmeasured, and a host whose environment names a config
+      // folder other than the one Claude Code would renew there would read one root and renew another, every time.
+      if (profile?.kind !== 'managed') return Promise.resolve(false);
+      const managed = profile;
+      const key = managed.dataRoot;
       const running = inFlight.get(key);
       if (running) return running;
       const failed = failedAtMs.get(key);
@@ -163,11 +184,16 @@ export function createClaudeTokenRenewer(options: ClaudeTokenRenewerOptions = {}
 
       const attempt = (async (): Promise<boolean> => {
         let renewed = false;
+        const ownFolder = options.workingDirectory === undefined;
+        let cwd = options.workingDirectory ?? '';
         try {
-          await run(invocationFor(profile));
+          if (ownFolder) cwd = await mkdtemp(join(tmpdir(), 'puppeteer-claude-renewal-'));
+          await run(invocationFor(managed, cwd));
           renewed = await confirm();
         } catch {
           renewed = false;
+        } finally {
+          if (ownFolder && cwd !== '') await rm(cwd, { recursive: true, force: true }).catch(() => undefined);
         }
         if (renewed) failedAtMs.delete(key);
         else failedAtMs.set(key, now().valueOf());

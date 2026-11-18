@@ -1,5 +1,8 @@
-import { resolve } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { existsSync } from 'node:fs';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { basename, join, resolve } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentProfile } from '@vibefield/puppeteer-core';
 import { CLAUDE_RENEWAL_ARGS, createClaudeTokenRenewer, type ClaudeRenewalInvocation } from './account-renewal.js';
 
@@ -47,6 +50,9 @@ const AMBIENT: NodeJS.ProcessEnv = {
 
 const PASSED = { HOME: '/Users/test', USER: 'test', LOGNAME: 'test', PATH: '/usr/bin:/bin', LANG: 'en_US.UTF-8' };
 
+/** What a stand-in for Claude Code records of how it was started. */
+type Seen = { args: string[]; cwd: string; env: Record<string, string | undefined> };
+
 function renewer(run: (invocation: ClaudeRenewalInvocation) => Promise<void>, now: () => Date = () => START) {
   return createClaudeTokenRenewer({ executable: EXECUTABLE, env: AMBIENT, workingDirectory: EMPTY, run, now });
 }
@@ -73,18 +79,15 @@ describe('Claude token renewal', () => {
     expect(JSON.stringify(seen[0])).not.toContain('made-up');
   });
 
-  it("binds no root for the native default, whatever the host's environment names", async () => {
-    const seen: ClaudeRenewalInvocation[] = [];
-    const renewal = renewer(async (invocation) => {
-      seen.push(invocation);
-    });
+  it('starts nothing for the native default, or with no profile, and answers false', async () => {
+    const run = vi.fn(async () => undefined);
+    const confirm = vi.fn(async () => true);
+    const renewal = renewer(run);
 
-    await expect(renewal.renew(nativeDefault, async () => true)).resolves.toBe(true);
-    await expect(renewal.renew(undefined, async () => true)).resolves.toBe(true);
-    expect(seen.map((invocation) => invocation.env)).toEqual([
-      { ...PASSED, TERM: 'dumb' },
-      { ...PASSED, TERM: 'dumb' },
-    ]);
+    await expect(renewal.renew(nativeDefault, confirm)).resolves.toBe(false);
+    await expect(renewal.renew(undefined, confirm)).resolves.toBe(false);
+    expect(run).not.toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
   });
 
   it('answers by what the credential then reads, not by how the start ended', async () => {
@@ -164,5 +167,84 @@ describe('Claude token renewal', () => {
     expect(run).toHaveBeenCalledTimes(3);
     await expect(renewal.renew(managed, confirm)).resolves.toBe(true);
     expect(run).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('Claude token renewal, started for real against a stand-in for Claude Code', () => {
+  let folder = '';
+  beforeEach(async () => {
+    folder = await mkdtemp(join(tmpdir(), 'puppeteer-renewal-test-'));
+  });
+  afterEach(async () => {
+    await rm(folder, { recursive: true, force: true });
+  });
+
+  /** A script in Claude Code's place: it records how it was started, beside itself, then ends as `ending` says. */
+  async function standIn(ending: string): Promise<string> {
+    const script = join(folder, 'claude-stand-in.mjs');
+    const lines = [
+      "import { writeFileSync } from 'node:fs';",
+      'const seen = { args: process.argv.slice(2), cwd: process.cwd(), env: process.env };',
+      "writeFileSync(new URL('./seen.json', import.meta.url), JSON.stringify(seen));",
+      ending,
+    ];
+    await writeFile(script, `${lines.join('\n')}\n`);
+    return script;
+  }
+
+  const seen = async (): Promise<Seen> => JSON.parse(await readFile(join(folder, 'seen.json'), 'utf8')) as Seen;
+
+  /** This host's own environment, so the stand-in starts on any system, with a marker and a key it must not see. */
+  const ambient = (): NodeJS.ProcessEnv => ({
+    ...process.env,
+    USER: 'renewal-stand-in',
+    ANTHROPIC_API_KEY: 'made-up-key',
+  });
+
+  const root = (): AgentProfile => ({ ...managed, dataRoot: join(folder, 'root') });
+
+  it('starts the program once, under the allow-list, in a private folder that is gone after', async () => {
+    const executable = await standIn('process.exit(0);');
+    const profile = root();
+    const renewal = createClaudeTokenRenewer({ executable, env: ambient() });
+
+    await expect(renewal.renew(profile, async () => true)).resolves.toBe(true);
+    const start = await seen();
+    expect(start.args).toEqual([...CLAUDE_RENEWAL_ARGS]);
+    expect(start.env.USER).toBe('renewal-stand-in');
+    expect(start.env.TERM).toBe('dumb');
+    expect(start.env.CLAUDE_CONFIG_DIR).toBe(profile.dataRoot);
+    expect(start.env.ANTHROPIC_API_KEY).toBeUndefined();
+    // A folder made for this start alone, never a fixed name another user could have made first.
+    expect(basename(start.cwd)).toMatch(/^puppeteer-claude-renewal-./);
+    expect(existsSync(start.cwd)).toBe(false);
+  });
+
+  it('answers false when the program ends with an error, and reads no credential', async () => {
+    const executable = await standIn('process.exit(3);');
+    const confirm = vi.fn(async () => true);
+    const renewal = createClaudeTokenRenewer({ executable, env: ambient() });
+
+    await expect(renewal.renew(root(), confirm)).resolves.toBe(false);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it('answers false when the program cannot be started', async () => {
+    const confirm = vi.fn(async () => true);
+    const renewal = createClaudeTokenRenewer({ executable: join(folder, 'no-claude-here'), env: ambient() });
+
+    await expect(renewal.renew(root(), confirm)).resolves.toBe(false);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it('asks a program that outlives its limit to end, and answers false', async () => {
+    const executable = await standIn('setTimeout(() => process.exit(0), 60_000);');
+    const confirm = vi.fn(async () => true);
+    const renewal = createClaudeTokenRenewer({ executable, env: ambient(), timeoutMs: 500 });
+    const started = Date.now();
+
+    await expect(renewal.renew(root(), confirm)).resolves.toBe(false);
+    expect(Date.now() - started).toBeLessThan(10_000);
+    expect(confirm).not.toHaveBeenCalled();
   });
 });

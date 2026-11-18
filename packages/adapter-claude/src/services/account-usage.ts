@@ -918,24 +918,34 @@ export interface ClaudeAccountUsageService extends AccountUsageService {
 export interface ClaudeAccountUsageServiceOptions {
   /**
    * The environment the credential lookup reads (the config root, the Keychain account names, a token a host's
-   * environment carries); absent, this process's own. A renewal takes its allow-list from it, and nothing else of it
-   * reaches a program.
+   * environment carries); absent, this process's own. A renewal takes its allow-list from it, and, when no
+   * `executable` is named, its `PUPPETEER_CLAUDE_BIN` picks the program; nothing else of it reaches a program.
    */
   env?: NodeJS.ProcessEnv;
-  /** Renews an aged access token before a read; defaults to one that starts Claude Code under the account's root. */
+  /** The Claude Code the host launches, so a renewal starts the same program its sessions do. */
+  executable?: string;
+  /**
+   * Renews an aged access token before a read; defaults to one that starts Claude Code under a managed account's
+   * root. A host that wants no renewal passes one of its own.
+   */
   renewer?: ClaudeTokenRenewer;
 }
 
 /**
  * Complete account-usage capability advertised by the Claude adapter, with push listeners of its own. Its reads
- * renew an aged access token first, through Claude Code itself; the standalone fetch functions stay read-only.
+ * renew a managed root's aged access token first, through Claude Code itself; the standalone fetch functions stay
+ * read-only.
  */
 export function createClaudeAccountUsageService(
   serviceOptions: ClaudeAccountUsageServiceOptions = {},
 ): ClaudeAccountUsageService {
   const listeners = new Set<(result: AccountUsageFetchResult) => void>();
-  const env = serviceOptions.env;
-  const renewer = serviceOptions.renewer ?? createClaudeTokenRenewer(env === undefined ? {} : { env });
+  const { env, executable } = serviceOptions;
+  const renewerOptions = {
+    ...(env === undefined ? {} : { env }),
+    ...(executable === undefined ? {} : { executable }),
+  };
+  const renewer = serviceOptions.renewer ?? createClaudeTokenRenewer(renewerOptions);
   return {
     provider: CLAUDE_ACCOUNT_USAGE_PROVIDER,
     fetch: (request) =>
