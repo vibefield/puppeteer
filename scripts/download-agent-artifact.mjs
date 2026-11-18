@@ -48,7 +48,7 @@ export function resolveArtifactDownload(config, platform, version, { tag } = {})
   };
 }
 
-export async function fetchArtifact(spec, fetchImpl) {
+async function fetchArtifact(spec, fetchImpl) {
   const failures = [];
   for (const url of spec.urls) {
     try {
@@ -177,7 +177,7 @@ function readArchiveEntry(archive, entry, format, tool, maxBytes) {
   return execFileSync(tool, args, { maxBuffer: maxBytes + 1 });
 }
 
-export function extractExecutable(archiveBytes, spec, output) {
+function extractExecutable(archiveBytes, spec, output) {
   const archive = `${output}.download.${spec.format === 'zip' ? 'zip' : 'tar.gz'}`;
   writeFileSync(archive, archiveBytes);
   try {
