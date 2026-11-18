@@ -119,7 +119,7 @@ describe('Antigravity 1.4.12 captured journals', () => {
 });
 
 // Shapes copied from Rosetta groundtruth/antigravity/fixtures/1.4.12/tool-use
-// (e5f1111): the raw, unredacted transcript.jsonl and transcript_full.jsonl.
+// (306ec5b on Rosetta's main): the raw, unredacted transcript.jsonl and transcript_full.jsonl.
 // Their text is the loopback mock's. The Puppeteer captures redact these
 // values, so the decoding is pinned here.
 const RAW_PLANNER = {

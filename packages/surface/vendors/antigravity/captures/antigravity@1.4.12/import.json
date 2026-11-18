@@ -5,10 +5,10 @@
   "importer": "packages/surface/scripts/import-rosetta.mjs",
   "source": {
     "project": "rosetta",
-    "commit": "f879d9cd2bf5f5fa0e04b95c36bd12d9690f3513",
+    "commit": "306ec5b992c9a8f39d231b7ee6bb7b54b3da48e0",
     "sourceTreeClean": true,
-    "canonicalSha256": "93082b68880ce2b3c9dff60fa4a0d6abc70392ee04c59fc452924102d31833da",
-    "fixtureSourceSha256": "3828e6e31872ae536610f68e845e97b0d6d67553bc0a75858b167547621344a5",
+    "canonicalSha256": "cc932217dd8a08fccf8eb113b3274baf50d19fa645fa4c82c561c010589d780e",
+    "fixtureSourceSha256": "6efb4739f71554a27022266a7c4c5410697ff3712f9b81e6e7009b4535c8dca1",
     "journals": [
       {
         "capture": "basic-chat/events.jsonl",
