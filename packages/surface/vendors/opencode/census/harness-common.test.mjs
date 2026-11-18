@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   createLoopbackFetch,
@@ -64,7 +65,7 @@ describe('isolated environment', () => {
       'OPENCODE_DISABLE_CLAUDE_CODE',
       'OPENCODE_PURE',
     ]);
-    expect(environment.XDG_DATA_HOME).toBe('/r/xdg/data');
+    expect(environment.XDG_DATA_HOME).toBe(join('/r', 'xdg', 'data'));
     expect(environment.OPENCODE_SERVER_PASSWORD).toBe('pw');
     const options = isolatedEnvironment('/r', {}, 'pw', { allowAutoCompact: true, allowBackgroundSubagents: true });
     expect(options.OPENCODE_DISABLE_AUTOCOMPACT).toBeUndefined();
