@@ -467,16 +467,20 @@ describe('Claude account usage', () => {
     expect(heard).toHaveBeenCalledOnce();
   });
 
-  it('does not refresh or rewrite expired OAuth credentials', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-claude-read-only-'));
-    const credentialsPath = join(directory, '.credentials.json');
-    const original = JSON.stringify({
+  const agedCredentials = (extra: Record<string, unknown> = {}): string =>
+    JSON.stringify({
       claudeAiOauth: {
-        accessToken: 'expired-access',
-        refreshToken: 'refresh-token-owned-by-claude',
+        accessToken: 'aged-access',
         expiresAt: Date.parse('2026-07-01T00:00:00.000Z'),
+        ...extra,
       },
     });
+  const AFTER_EXPIRY = (): Date => new Date('2026-07-23T20:00:00.000Z');
+
+  it('reports an aged access token as a reading that failed, never as a sign-out, and rewrites nothing', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-claude-read-only-'));
+    const credentialsPath = join(directory, '.credentials.json');
+    const original = agedCredentials({ refreshToken: 'refresh-token-owned-by-claude' });
     await writeFile(credentialsPath, original, 'utf8');
     const fetchImpl = vi.fn(async () => new Response('', { status: 500 })) as typeof fetch;
 
@@ -484,12 +488,65 @@ describe('Claude account usage', () => {
       credentialsPath,
       useKeychain: false,
       fetchImpl,
-      now: () => new Date('2026-07-23T20:00:00.000Z'),
+      now: AFTER_EXPIRY,
     });
 
-    expect(result).toMatchObject({ status: 'unauthenticated', provider: 'claude' });
+    // The refresh token is the sign-in and it is still there: the limits cannot be read, and that is all.
+    expect(result).toEqual({
+      status: 'unavailable',
+      provider: 'claude',
+      message: 'Claude Code has not renewed its access token since it last ran under this account',
+      retryable: true,
+    });
     expect(fetchImpl).not.toHaveBeenCalled();
     await expect(readFile(credentialsPath, 'utf8')).resolves.toBe(original);
+  });
+
+  it('reports an aged access token with nothing to renew it from as unauthenticated', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-claude-no-refresh-'));
+    const credentialsPath = join(directory, '.credentials.json');
+    const original = agedCredentials();
+    await writeFile(credentialsPath, original, 'utf8');
+    const fetchImpl = vi.fn(async () => new Response('', { status: 500 })) as typeof fetch;
+
+    const result = await fetchClaudeAccountUsageWithDependencies({
+      credentialsPath,
+      useKeychain: false,
+      fetchImpl,
+      now: AFTER_EXPIRY,
+    });
+
+    expect(result).toEqual({
+      status: 'unauthenticated',
+      provider: 'claude',
+      message: 'Claude Code OAuth credentials were not found',
+      retryable: false,
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    await expect(readFile(credentialsPath, 'utf8')).resolves.toBe(original);
+  });
+
+  it('reads an aged access token under a managed profile as that profile’s failed reading', async () => {
+    const profile = {
+      id: 'claude:9f2b',
+      provider: 'claude' as const,
+      label: 'Work',
+      kind: 'managed' as const,
+      dataRoot: await mkdtemp(join(tmpdir(), 'puppeteer-claude-profile-root-')),
+      createdAt: '2026-09-06T00:00:00.000Z',
+    };
+    await writeFile(
+      join(profile.dataRoot, '.credentials.json'),
+      agedCredentials({ refreshToken: 'refresh-token-owned-by-claude' }),
+      'utf8',
+    );
+
+    const result = await fetchClaudeAccountUsageForProfileWithDependencies(profile, {
+      useKeychain: false,
+      now: AFTER_EXPIRY,
+    });
+
+    expect(result).toMatchObject({ status: 'unavailable', provider: 'claude', retryable: true });
   });
 
   it('does not rotate fresh credentials after the usage endpoint rejects them', async () => {
