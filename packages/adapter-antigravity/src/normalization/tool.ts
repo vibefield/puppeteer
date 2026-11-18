@@ -25,25 +25,59 @@ function presentation(tool: string, input: unknown, complete = false): ToolPrese
   const body = antigravityRecord(input);
   const detail =
     antigravityString(body?.commandLine) ??
+    antigravityString(body?.CommandLine) ??
     antigravityString(body?.AbsolutePath) ??
     antigravityString(body?.DirectoryPath) ??
     antigravityString(body?.path);
   return { kind, title: `${complete ? 'Used' : 'Using'} ${tool}`, ...(detail ? { detail } : {}) };
+}
+// Arguments whose native value is always a string. In the encoded form each
+// is a quoted JSON string.
+const STRING_ARGUMENTS = new Set([
+  'CommandLine',
+  'commandLine',
+  'AbsolutePath',
+  'DirectoryPath',
+  'path',
+  'toolSummary',
+]);
+// 1.4.12 writes every tool argument in transcript.jsonl as a JSON-encoded
+// string ("\"echo x\"", "5000"); transcript_full.jsonl keeps the real types.
+// Decode only when every value is a string that parses, at least one decodes
+// to a string, and no string-typed argument decodes to anything else. Real-typed
+// arguments, plain strings, and a real `CommandLine: 'true'` pass through.
+function decodeEncodedArgs(args: unknown): unknown {
+  const body = antigravityRecord(args);
+  if (!body) return args;
+  const entries = Object.entries(body);
+  if (!entries.length || !entries.every(([, value]) => typeof value === 'string')) return args;
+  const decoded: Record<string, unknown> = {};
+  for (const [key, value] of entries) {
+    try {
+      decoded[key] = JSON.parse(value as string);
+    } catch {
+      return args;
+    }
+    if (STRING_ARGUMENTS.has(key) && typeof decoded[key] !== 'string') return args;
+  }
+  return Object.values(decoded).some((value) => typeof value === 'string') ? decoded : args;
 }
 export function antigravityToolFact(
   step: string,
   index: number,
   turnId: string,
   value: unknown,
+  encodedArgs = false,
 ): AntigravityToolFact | undefined {
   const body = antigravityRecord(value);
   const tool = antigravityString(body?.name);
   if (!tool) return undefined;
   const resultType = expectedType(tool);
+  const input = encodedArgs ? decodeEncodedArgs(body?.args) : body?.args;
   return {
     id: `step:${step}:tool:${index}`,
     tool,
-    ...(body?.args !== undefined ? { input: body.args } : {}),
+    ...(input !== undefined ? { input } : {}),
     turnId,
     ...(resultType ? { expectedType: resultType } : {}),
   };
