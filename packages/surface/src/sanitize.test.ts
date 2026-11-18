@@ -71,7 +71,7 @@ describe('regressions from the real codex capture (2026-08-07)', () => {
     codexHome: '/Users/operator/.codex',
     diskCheck: 'rollout session_meta.session_id=019f5d86-423a-7083-ab79-2deb044599c1 :: matches',
     params: { input: [{ type: 'text', text: 'Reply with exactly the single word: pong.' }] },
-    tmp: '/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/probe',
+    tmp: '/var/folders/zz/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/T/probe',
   };
 
   it('the detector flags every one of them on raw input', () => {

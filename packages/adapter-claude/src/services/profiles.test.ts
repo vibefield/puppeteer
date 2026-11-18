@@ -1,7 +1,12 @@
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AgentProfileSchema, ProfileProviderSchema, type AgentProfile } from '@vibefield/puppeteer-core';
-import { CLAUDE_PROFILE_ROOT_VARIABLE, claudeProfileIdentityFrom, createClaudeProfileService } from './profiles.js';
+import {
+  CLAUDE_PROFILE_ROOT_VARIABLE,
+  claudeProfileIdentityFrom,
+  createClaudeProfileService,
+  type ClaudeProfileOptions,
+} from './profiles.js';
 
 const HOME = resolve('/Users/test');
 const NOW = new Date('2026-09-06T12:00:00.000Z');
@@ -31,8 +36,13 @@ interface Call {
 }
 
 /** `respond` returns the status document, or throws to stand in for a failed spawn. */
-function service(respond: string | (() => string), calls: Call[] = []): ReturnType<typeof createClaudeProfileService> {
+function service(
+  respond: string | (() => string),
+  calls: Call[] = [],
+  root: Pick<ClaudeProfileOptions, 'writeConfig' | 'configExists'> = {},
+): ReturnType<typeof createClaudeProfileService> {
   return createClaudeProfileService({
+    ...root,
     executable: resolve('/Users/test/.local/bin/claude'),
     home: HOME,
     env: { PATH: '/usr/bin', CLAUDE_SECURESTORAGE_CONFIG_DIR: resolve('/Users/test/.claude') },
@@ -88,6 +98,70 @@ describe('Claude profile provider', () => {
       cwd: resolve('/work/repo'),
       env: { [CLAUDE_PROFILE_ROOT_VARIABLE]: resolve('/Users/test/.puppeteer/profiles/claude/9f2b') },
     });
+  });
+
+  it("marks a new root's first run done, with one credential-free key", async () => {
+    const checked: string[] = [];
+    const written: Array<{ path: string; contents: string }> = [];
+    const profiles = service(LOGGED_IN, [], {
+      configExists: async (path) => {
+        checked.push(path);
+        return false;
+      },
+      writeConfig: async (path, contents) => {
+        written.push({ path, contents });
+      },
+    });
+    await profiles.initializeRoot?.(managed);
+    const expected = resolve('/Users/test/.puppeteer/profiles/claude/9f2b/.claude.json');
+    expect(checked).toEqual([expected]);
+    expect(written).toHaveLength(1);
+    expect(written[0]?.path).toBe(expected);
+    expect(JSON.parse(written[0]?.contents ?? '')).toEqual({ hasCompletedOnboarding: true });
+  });
+
+  it("never overwrites a root's app state that is already there", async () => {
+    const written: string[] = [];
+    const profiles = service(LOGGED_IN, [], {
+      configExists: async () => true,
+      writeConfig: async (path) => {
+        written.push(path);
+      },
+    });
+    await profiles.initializeRoot?.(managed);
+    expect(written).toEqual([]);
+  });
+
+  it("leaves the native default's own root alone", async () => {
+    const checked: string[] = [];
+    const written: string[] = [];
+    const profiles = service(LOGGED_IN, [], {
+      configExists: async (path) => {
+        checked.push(path);
+        return false;
+      },
+      writeConfig: async (path) => {
+        written.push(path);
+      },
+    });
+    await profiles.initializeRoot?.(nativeDefault);
+    expect(checked).toEqual([]);
+    expect(written).toEqual([]);
+  });
+
+  it('writes nothing that could hold a sign-in', async () => {
+    let contents = '';
+    const profiles = service(LOGGED_IN, [], {
+      configExists: async () => false,
+      writeConfig: async (_path, written) => {
+        contents = written;
+      },
+    });
+    await profiles.initializeRoot?.(managed);
+    expect(Object.keys(JSON.parse(contents) as Record<string, unknown>)).toHaveLength(1);
+    for (const word of ['token', 'oauth', 'email', 'account', 'key"']) {
+      expect(contents.toLowerCase()).not.toContain(word);
+    }
   });
 });
 

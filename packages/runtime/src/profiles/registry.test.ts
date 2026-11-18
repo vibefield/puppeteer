@@ -72,6 +72,40 @@ const WORK_SET = {
   createdAt: '2026-09-23T09:00:00.000Z',
 };
 
+const SIGN_IN = { service: { id: 'example', label: 'Example' }, method: 'oauth' };
+/** What a verification read back for an account with one sign-in. */
+const SIGNED_IN = {
+  loggedIn: true,
+  signIns: [SIGN_IN],
+  verifiedAt: '2026-09-23T12:00:00.000Z',
+  source: { kind: 'native-status' as const, stability: 'documented' as const },
+};
+
+/** A version 2 registry of one account in the Work set, with the identity saved for it. */
+function registryOf(identity: object = SIGNED_IN) {
+  return {
+    version: 2 as const,
+    sets: [WORK_SET],
+    profiles: [{ ...managedProfile('alpha', 'p1'), set: 'work', identity }],
+  };
+}
+
+/** The same registry as a later build wrote it: its identity holds one field this build does not know. */
+function newerRegistry() {
+  return registryOf({ ...SIGNED_IN, futureField: 'made-up-value' });
+}
+
+/** And with such a field at every level: the entry, its identity, a sign-in, the sign-in's service, and the set. */
+function newerRegistryAtEveryLevel() {
+  const signIn = { ...SIGN_IN, seats: 3, service: { ...SIGN_IN.service, region: 'somewhere' } };
+  const identity = { ...SIGNED_IN, futureField: 'made-up-value', signIns: [signIn] };
+  return {
+    version: 2 as const,
+    sets: [{ ...WORK_SET, colour: 'teal' }],
+    profiles: [{ ...managedProfile('alpha', 'p1'), set: 'work', pinned: true, identity }],
+  };
+}
+
 /** A store holding what a pre-set host wrote (version 1), adopted on the registry's first read. */
 function memoryStore(initial?: AgentProfile[]) {
   const state: { snapshot: ProfileRegistrySnapshot | undefined } = {
@@ -200,6 +234,74 @@ describe('parseProfileRegistrySnapshot', () => {
       }),
     ).toThrow('duplicate agent profile id: a1');
   });
+
+  it('reads a registry a newer build wrote, dropping the fields it does not know', () => {
+    const dropped: string[] = [];
+    const read = parseProfileRegistrySnapshot(newerRegistryAtEveryLevel(), (fields) => dropped.push(...fields));
+    expect(read).toEqual(registryOf());
+    // Each is named where it sat. The order within one entry is the parser's own, so the names are compared sorted.
+    expect([...dropped].sort()).toEqual([
+      'profiles[0].identity.futureField',
+      'profiles[0].identity.signIns[0].seats',
+      'profiles[0].identity.signIns[0].service.region',
+      'profiles[0].pinned',
+      'sets[0].colour',
+    ]);
+    // A registry this build wrote has nothing to drop, and says nothing.
+    const silent = vi.fn();
+    expect(parseProfileRegistrySnapshot(registryOf(), silent)).toEqual(registryOf());
+    expect(silent).not.toHaveBeenCalled();
+  });
+
+  it('throws away a token-shaped field it does not know, and never hands it on', () => {
+    for (const field of ['accessToken', 'refreshToken', 'token', 'key', 'apiKey', 'secret']) {
+      const onIdentity = { ...SIGNED_IN, [field]: 'sk-secret' };
+      const onSignIn = { ...SIGNED_IN, signIns: [{ ...SIGN_IN, [field]: 'sk-secret' }] };
+      for (const identity of [onIdentity, onSignIn]) {
+        const dropped = vi.fn();
+        const read = parseProfileRegistrySnapshot(registryOf(identity), dropped);
+        expect(read, field).toEqual(registryOf());
+        // Not in what is handed on, and not in what is said about it: only the name is reported.
+        const handedOn = JSON.stringify(read);
+        expect(handedOn, field).not.toContain(field);
+        expect(handedOn, field).not.toContain('sk-secret');
+        expect(dropped, field).toHaveBeenCalledTimes(1);
+        expect(JSON.stringify(dropped.mock.calls), field).not.toContain('sk-secret');
+      }
+    }
+  });
+
+  it('still refuses a known field with a value it cannot vouch for, beside an unknown one', () => {
+    const profile = { ...managedProfile('alpha', 'p1'), set: 'work', pinned: true };
+    const document = { version: 2, sets: [WORK_SET], profiles: [profile] };
+    // Signed in with no sign-in: the identity's own rule, which only shows once the unknown field is off it.
+    const brokenIdentity = { ...SIGNED_IN, futureField: 'made-up-value', signIns: [] };
+    const refused = [
+      { ...document, profiles: [{ ...profile, kind: 'other' }] },
+      { ...document, profiles: [{ id: 'p1', pinned: true }] },
+      { ...document, profiles: [{ ...profile, identity: brokenIdentity }] },
+      { ...document, sets: [{ ...WORK_SET, colour: 'teal', id: '../escape' }] },
+    ];
+    const dropped = vi.fn();
+    for (const newer of refused) {
+      expect(() => parseProfileRegistrySnapshot(newer, dropped)).toThrow('schema validation');
+    }
+    // A read that is refused reports nothing.
+    expect(dropped).not.toHaveBeenCalled();
+    // A version this build does not know stays a deliberate break, whatever its fields.
+    expect(() => parseProfileRegistrySnapshot({ ...document, version: 3 }, dropped)).toThrow('unsupported');
+  });
+
+  it('leaves the document it was given untouched', () => {
+    const newer = newerRegistryAtEveryLevel();
+    const before = structuredClone(newer);
+    parseProfileRegistrySnapshot(newer);
+    expect(newer).toEqual(before);
+    expect(newer.profiles[0]).toHaveProperty('pinned', true);
+    expect(newer.profiles[0]?.identity).toHaveProperty('futureField', 'made-up-value');
+    expect(newer.profiles[0]?.identity.signIns[0]).toHaveProperty('seats', 3);
+    expect(newer.sets[0]).toHaveProperty('colour', 'teal');
+  });
 });
 
 describe('createFileProfileStore', () => {
@@ -238,6 +340,38 @@ describe('createFileProfileStore', () => {
     const path = join(directory, 'profiles.json');
     await writeFile(path, '{"version":1,"profiles":[{"id":"p1"}]}');
     await expect(createFileProfileStore({ path }).load()).rejects.toThrow('schema validation');
+  });
+
+  it("reads a newer build's file without rewriting it", async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-profiles-'));
+    const path = join(directory, 'profiles.json');
+    const written = `${JSON.stringify(newerRegistry(), null, 2)}\n`;
+    await writeFile(path, written);
+
+    await expect(createFileProfileStore({ path }).load()).resolves.toEqual(registryOf());
+    // The field stays on disk as the newer build left it, and nothing was written beside the file.
+    expect(await readFile(path, 'utf8')).toBe(written);
+    expect(await readdir(directory)).toEqual(['profiles.json']);
+  });
+
+  it('tells its host which fields it dropped, when asked to', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-profiles-'));
+    const path = join(directory, 'profiles.json');
+    await writeFile(path, JSON.stringify({ ...newerRegistry(), sets: [{ ...WORK_SET, colour: 'teal' }] }));
+    const onDropped = vi.fn();
+    const store = createFileProfileStore({ path, onDropped });
+
+    await expect(store.load()).resolves.toEqual(registryOf());
+    expect(onDropped).toHaveBeenCalledTimes(1);
+    expect(onDropped).toHaveBeenCalledWith(['profiles[0].identity.futureField', 'sets[0].colour']);
+    const told = JSON.stringify(onDropped.mock.calls);
+    expect(told).not.toContain('made-up-value');
+    expect(told).not.toContain('teal');
+
+    // A file this build wrote itself has nothing to tell.
+    await writeFile(path, JSON.stringify(registryOf()));
+    await expect(store.load()).resolves.toEqual(registryOf());
+    expect(onDropped).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -520,6 +654,52 @@ describe('createProfileRegistry', () => {
     await registry.add({ ...managedProfile('alpha', 'p1'), set: 'work' });
     expect(changes).not.toHaveBeenCalled();
     expect(registry.onChange(changes)()).toBeUndefined();
+  });
+
+  it('writes the registry without a field it dropped, at its next change', async () => {
+    const path = join(await mkdtemp(join(tmpdir(), 'puppeteer-profiles-')), 'profiles.json');
+    await writeFile(path, JSON.stringify(newerRegistry()));
+    const registry = createProfileRegistry({
+      providers: [registryProvider(descriptor('alpha'))],
+      store: createFileProfileStore({ path }),
+    });
+
+    // Reading hands on the identity this build knows, and leaves the file as the newer build wrote it.
+    expect((await registry.get('p1'))?.identity).toEqual(SIGNED_IN);
+    expect(await readFile(path, 'utf8')).toContain('futureField');
+
+    await expect(registry.setDefault('work')).resolves.toBe(true);
+    const text = await readFile(path, 'utf8');
+    expect(text).not.toContain('futureField');
+    expect(text).not.toContain('made-up-value');
+    // Every field this build knows is still there, beside the change.
+    expect(JSON.parse(text)).toEqual({ ...registryOf(), defaultSet: 'work' });
+  });
+
+  it('says which fields it dropped, by name and never by value', async () => {
+    const { store } = memoryStore();
+    const onError = vi.fn();
+    const registry = createProfileRegistry({
+      providers: [registryProvider(descriptor('alpha'))],
+      store: {
+        // A host's own store hands back what a newer build left, as it found it.
+        async load() {
+          return JSON.parse(JSON.stringify(newerRegistry())) as ProfileRegistrySnapshot;
+        },
+        save: store.save,
+      },
+      onError,
+    });
+
+    expect((await registry.get('p1'))?.identity).toEqual(SIGNED_IN);
+    // Once, at the read: later calls answer from memory.
+    await expect(registry.managed()).resolves.toHaveLength(1);
+    expect(onError).toHaveBeenCalledTimes(1);
+    const reported: unknown = onError.mock.calls[0]?.[0];
+    const message = reported instanceof Error ? reported.message : '';
+    expect(message).toContain('fields this build does not know');
+    expect(message).toContain('profiles[0].identity.futureField');
+    expect(message).not.toContain('made-up-value');
   });
 });
 
