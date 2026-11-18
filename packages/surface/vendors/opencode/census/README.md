@@ -135,11 +135,16 @@ Scenarios.
   provider), `unknown-context` (context limit 0), `file-write` and `file-edit`. The `write {path, content}` and
   `edit {path, oldString, newString}` inputs are inferred from the 2.x `read {path}` rename and are unverified until
   this run; a wrong key ends in `session.tool.failed`, which names it, and the scenario fails.
-- Extended, model-free: `permission-once`, `permission-always`, `permission-reject` (a session `ask` ruleset,
-  `session.permission.create`, a `{decision}` reply, then a settled reply, the 1.x `{reply}` body and an unknown
-  request), and `session-lifecycle` (rename, metadata, archive, unarchive, fork, delete of the fork). Their routes and
-  bodies are taken from the served `/openapi.json`; when the census's fields do not fit the served schema, the
-  scenario fails and names the schema's own fields.
+- Extended, model-free operations: `permission-once`, `permission-always`, `permission-reject` (a session `ask`
+  ruleset, `session.permission.create`, a `{decision}` reply, then a settled reply, the 1.x `{reply}` body and an
+  unknown request), and `session-lifecycle` (rename, metadata, archive, unarchive, fork, delete of the fork). The
+  permission scenarios make no model request; `session-lifecycle` first makes one scripted turn, so the session has a
+  history to fork. Their routes and bodies are taken from the served `/openapi.json`; when the census's fields do not
+  fit the served schema, the scenario fails and names the schema's own fields. A metadata, archive or unarchive write
+  is found by its own route, else by the session's own write whose body declares the field (2.2.5 serves all three
+  through `session.update`, `PATCH /api/session/{sessionID}`, with `metadata` and `archived`). A write the served
+  document does not declare is recorded as `<step>-supported: false` with a note naming every form looked for, and the
+  lifecycle goes on; a write that is found and then misbehaves fails the scenario.
 
 Each scenario records named checks. A hard check (the unauthenticated 401s, the out-of-band title and subagent
 calls, the kept caller message id, `interrupted`, the CLI `session list` over `--server`, `service status` reporting

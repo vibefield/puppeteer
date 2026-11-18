@@ -9,6 +9,7 @@ import {
   changedHostInputs,
   CHILD_PROMPT,
   configDirectoryFiles,
+  declaresProperty,
   DROPPED_V1_VARIABLES,
   durableSequenceGaps,
   entityID,
@@ -252,6 +253,54 @@ describe('routes and bodies from the served OpenAPI document', () => {
     expect(() => operationBody(document, findOperation(document, OPERATIONS.delete), { x: 1 })).toThrow(
       'takes no JSON body',
     );
+  });
+
+  it('finds a lifecycle write by the field its session route declares, and returns none only when asked', () => {
+    const body = (properties) => ({
+      requestBody: { content: { 'application/json': { schema: { type: 'object', properties } } } },
+    });
+    const flag = { anyOf: [{ type: 'boolean' }, { type: 'null' }] };
+    const object = { type: 'object' };
+    // As 2.2.5 serves them: one session update for metadata and archiving, and a prompt that also takes `metadata`.
+    const served = {
+      openapi: '3.1.0',
+      paths: {
+        '/api/session/{sessionID}': {
+          patch: { operationId: 'session.update', ...body({ title: {}, metadata: object, archived: flag }) },
+        },
+        '/api/session/{sessionID}/prompt': {
+          post: { operationId: 'session.prompt', ...body({ text: {}, metadata: object }) },
+        },
+      },
+    };
+    for (const operation of [OPERATIONS.metadata, OPERATIONS.archive, OPERATIONS.unarchive]) {
+      expect(findOperation(served, operation)).toMatchObject({ method: 'PATCH', path: '/api/session/{sessionID}' });
+    }
+    expect(declaresProperty(served, findOperation(served, OPERATIONS.archive), 'archived', 'boolean')).toBe(true);
+    // A dedicated route is taken first, and takes no `archived` body.
+    const dedicated = {
+      openapi: '3.1.0',
+      paths: { ...served.paths, '/api/session/{sessionID}/archive': { post: { operationId: 'session.archive' } } },
+    };
+    const archive = findOperation(dedicated, OPERATIONS.archive);
+    expect(archive.path).toBe('/api/session/{sessionID}/archive');
+    expect(declaresProperty(dedicated, archive, 'archived', 'boolean')).toBe(false);
+    // None: no route, and a field of another type, is `undefined` when asked, else an error naming every form.
+    const clock = {
+      openapi: '3.1.0',
+      paths: { '/api/session/{sessionID}': { patch: body({ title: {}, archived: { type: 'integer' } }) } },
+    };
+    expect(findOperation(clock, OPERATIONS.archive, { optional: true })).toBeUndefined();
+    expect(findOperation(clock, OPERATIONS.metadata, { optional: true })).toBeUndefined();
+    expect(() => findOperation(clock, OPERATIONS.archive)).toThrow(
+      /has no operation\(s\) for session\.archive or .*\/archive\$ or .* declaring `archived` as boolean$/,
+    );
+    // Several is never "none": two declaring writes are refused even when optional.
+    const both = {
+      openapi: '3.1.0',
+      paths: { '/api/session/{sessionID}': { patch: body({ metadata: object }), put: body({ metadata: object }) } },
+    };
+    expect(() => findOperation(both, OPERATIONS.metadata, { optional: true })).toThrow('has 2 operation(s)');
   });
 
   it('fills path parameters in order, encoded', () => {

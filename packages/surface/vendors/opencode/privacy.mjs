@@ -85,8 +85,11 @@ export const OPENCODE_2_STRUCTURAL_VALUES = [
  *   `sandboxes` list;
  * - clocks: the envelope's `created` (covered by 1.x), the short `at` /
  *   `until` / `deadline` names a retry or schedule record may use,
- *   `session.step.started` `started` and `session.viewed` `idle` (only
- *   epoch-sized integers are pinned, so a duration under either name is kept);
+ *   `session.step.started` `started`, `session.viewed` `idle`, and the four
+ *   the 2.2.5 census found inside `time` objects with no rule naming them: a
+ *   message's `streamed`, a tool part's `ran`, a session's `busy` and an
+ *   event's `active` (only epoch-sized integers are pinned, so a duration
+ *   under any of these names is kept);
  * - prose and secrets: permission `resources`, shell `stdout`/`stderr`,
  *   credential `key`/`apiKey`, the provider `baseURL`, and whole containers
  *   for request headers, credentials, forms, provider settings/options and
@@ -104,7 +107,7 @@ export const opencodeV2Rules = extendRules(
     idKey:
       /^(?:aggregateID|inboxID|formID|credentialID|ruleID|x-opencode-session|x-opencode-session-id|x-session-id|x-session-affinity|x-opencode-project)$|^(?!(?:provider|model|integration)ID$)[A-Za-z0-9]*[a-z0-9]ID$/,
     pathKey: /^(?:x-opencode-directory|canonical|sandboxes)$/,
-    timestampKey: /^(?:at|until|deadline|started|idle)$/,
+    timestampKey: /^(?:at|until|deadline|started|idle|active|ran|streamed|busy)$/,
     sensitiveTextKey: /^(?:resources|resource|stdout|stderr|key|apiKey|baseURL)$/,
     sensitiveContainer: /^(?:headers|credential|credentials|form|settings|options|value|env)$/,
     structuralEnumValue: new RegExp(`^(?:${OPENCODE_2_STRUCTURAL_VALUES.join('|')})$`),

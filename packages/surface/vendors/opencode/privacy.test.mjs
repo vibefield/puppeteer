@@ -268,6 +268,26 @@ describe('OpenCode 2.x capture privacy', () => {
     expect(sanitizeRecord({ integrationID: 'test' }, opencodeV2Rules).integrationID).toBe('test');
   });
 
+  it('pins the four time-object clocks the 2.2.5 census found unnamed, and keeps a duration under each', () => {
+    const epoch = 1_786_346_178_990;
+    for (const key of ['active', 'ran', 'streamed', 'busy']) {
+      expect(sanitizeRecord({ time: { [key]: epoch } }, opencodeV2Rules).time[key]).toBe(REDACTED_EPOCH_MS);
+      expect(sanitizeRecord({ time: { [key]: 1200 } }, opencodeV2Rules).time[key]).toBe(1200);
+    }
+    // One record per observed shape: messages.data[].time.streamed, response.body.data[].time.busy,
+    // messages.data[].content[].time.ran and data.time.active.
+    const records = [
+      { messages: { data: [{ time: { created: epoch, streamed: epoch, completed: epoch } }] } },
+      { response: { body: { data: [{ time: { created: epoch, updated: epoch, busy: epoch, idle: epoch } }] } } },
+      { messages: { data: [{ content: [{ time: { created: epoch, ran: epoch, completed: epoch } }] }] } },
+      { type: 'session.status', data: { sessionID, time: { active: epoch } } },
+    ];
+    for (const record of records) {
+      expect(unpinnedEpochIssues(record).length).toBeGreaterThan(0);
+      expect(unpinnedEpochIssues(sanitizeRecord(record, opencodeV2Rules))).toEqual([]);
+    }
+  });
+
   it('redacts the project canonical path and its sandboxes, which no 1.x key names', () => {
     const project = {
       type: 'project.updated',

@@ -522,24 +522,52 @@ export function openapiOperations(document) {
   return operations;
 }
 
+/** Every form an `OPERATIONS` entry is looked for by, joined with "or", for an error or a note. */
+export function operationForms({ ids = [], methods = [], path, declares }) {
+  return [
+    ...ids,
+    ...(path ? [`${methods.join('|') || 'any method'} ${path.source}`] : []),
+    ...(declares
+      ? [
+          `${declares.methods.join('|')} ${declares.path.source} declaring \`${declares.property}\`` +
+            (declares.type ? ` as ${declares.type}` : ''),
+        ]
+      : []),
+  ].join(' or ');
+}
+
 /**
  * The served operation a scenario drives: the one named by the first of `ids`
  * the document carries, else the single operation whose method is one of
- * `methods` and whose path matches `path`. None or several is an error that
- * names what was looked for, so a scenario never guesses a route.
+ * `methods` and whose path matches `path`, else (for an entry with `declares`)
+ * the single operation whose method and path fit `declares` and whose JSON
+ * body schema names `declares.property` (admitting `declares.type`, when
+ * given). Several is always an error, and none
+ * is one unless `optional`, which returns `undefined` for the caller to record;
+ * either error names what was looked for, so a scenario never guesses a route.
  */
-export function findOperation(document, { ids = [], methods = [], path }) {
+export function findOperation(document, spec, { optional = false } = {}) {
+  const { ids = [], methods = [], path, declares } = spec;
   const operations = openapiOperations(document);
   for (const id of ids) {
     const named = operations.filter((entry) => entry.operationId === id);
     if (named.length === 1) return named[0];
   }
-  const matches = operations.filter(
+  let matches = operations.filter(
     (entry) => (methods.length === 0 || methods.includes(entry.method)) && Boolean(path?.test(entry.path)),
   );
+  if (matches.length === 0 && declares) {
+    matches = operations.filter(
+      (entry) =>
+        declares.methods.includes(entry.method) &&
+        declares.path.test(entry.path) &&
+        declaresProperty(document, entry, declares.property, declares.type),
+    );
+  }
   if (matches.length === 1) return matches[0];
-  const wanted = [...ids, ...(path ? [`${methods.join('|') || 'any method'} ${path.source}`] : [])].join(' or ');
-  throw new Error(`the served /openapi.json has ${matches.length === 0 ? 'no' : matches.length} operation(s) for ${wanted}`);
+  if (matches.length === 0 && optional) return undefined;
+  const count = matches.length === 0 ? 'no' : matches.length;
+  throw new Error(`the served /openapi.json has ${count} operation(s) for ${operationForms(spec)}`);
 }
 
 /**
@@ -547,7 +575,7 @@ export function findOperation(document, { ids = [], methods = [], path }) {
  * none; else whether it is required and, when its schema is a plain object
  * (through `$ref` and `allOf`), its property names and required names.
  * `properties: undefined` means a shape the census cannot check names against
- * (a union, a record).
+ * (a union, a record). `propertySchemas` maps each name to its schema.
  */
 export function requestBodyShape(document, operation) {
   const body = resolveRef(document, operation?.requestBody);
@@ -567,8 +595,28 @@ export function requestBodyShape(document, operation) {
   return {
     required: Boolean(body.required),
     properties: plain ? new Set(parts.flatMap((part) => Object.keys(part.properties))) : undefined,
+    propertySchemas: plain ? new Map(parts.flatMap((part) => Object.entries(part.properties))) : undefined,
     requiredFields: plain ? [...new Set(parts.flatMap((part) => part.required ?? []))] : [],
   };
+}
+
+/**
+ * Whether a schema admits values of a JSON Schema `type`: its own type (one or
+ * a list), or any `anyOf`/`oneOf` member's.
+ */
+export function schemaAdmits(document, node, type, depth = 0) {
+  const schema = resolveRef(document, node);
+  if (!schema || typeof schema !== 'object' || depth > 3) return false;
+  if (schema.type === type || (Array.isArray(schema.type) && schema.type.includes(type))) return true;
+  const members = [...(schema.anyOf ?? []), ...(schema.oneOf ?? [])];
+  return members.some((member) => schemaAdmits(document, member, type, depth + 1));
+}
+
+/** Whether an operation's JSON body names `property` (of `type`, when given). */
+export function declaresProperty(document, entry, property, type) {
+  const shape = requestBodyShape(document, entry.operation);
+  if (!shape?.properties?.has(property)) return false;
+  return type === undefined || schemaAdmits(document, shape.propertySchemas.get(property), type);
 }
 
 /**
@@ -616,6 +664,11 @@ export function operationPath(entry, params = []) {
  * typed here: the plan records their behavior and status codes (§2.1), not all
  * of their exact routes and bodies.
  */
+/** The session's own write whose body names `property` as `type`. */
+function sessionWriteDeclaring(property, type) {
+  return { property, type, methods: ['PATCH', 'PUT', 'POST'], path: /^\/api\/session\/\{[^}]+\}$/ };
+}
+
 export const OPERATIONS = {
   sessionCreate: { ids: ['session.create'], methods: ['POST'], path: /^\/api\/session$/ },
   permissionCreate: {
@@ -633,16 +686,26 @@ export const OPERATIONS = {
     methods: ['PATCH', 'PUT', 'POST'],
     path: /^\/api\/session\/\{[^}]+\}(?:\/rename|\/title)?$/,
   },
+  // metadata, archive and unarchive: else a write on the session's own path
+  // whose body names the field (2.2.5's `session.update`). Never a sub-route:
+  // the prompt, form, permission and synthetic routes also take `metadata`.
   metadata: {
     ids: ['session.metadata', 'session.metadata.update'],
     methods: ['PATCH', 'PUT', 'POST'],
     path: /^\/api\/session\/\{[^}]+\}\/metadata$/,
+    declares: sessionWriteDeclaring('metadata', 'object'),
   },
-  archive: { ids: ['session.archive'], methods: ['POST', 'PUT', 'PATCH'], path: /^\/api\/session\/\{[^}]+\}\/archive$/ },
+  archive: {
+    ids: ['session.archive'],
+    methods: ['POST', 'PUT', 'PATCH'],
+    path: /^\/api\/session\/\{[^}]+\}\/archive$/,
+    declares: sessionWriteDeclaring('archived', 'boolean'),
+  },
   unarchive: {
     ids: ['session.unarchive'],
     methods: ['POST', 'PUT', 'PATCH'],
     path: /^\/api\/session\/\{[^}]+\}\/unarchive$/,
+    declares: sessionWriteDeclaring('archived', 'boolean'),
   },
   fork: { ids: ['session.fork'], methods: ['POST'], path: /^\/api\/session\/\{[^}]+\}\/fork$/ },
   delete: { ids: ['session.delete'], methods: ['DELETE'], path: /^\/api\/session\/\{[^}]+\}$/ },
@@ -754,10 +817,11 @@ export const NOT_COVERED_V2 = {
  * - model-driven: interrupt during a stream and during a tool, reconnect with
  *   a seq gap, provider retry and error, manual, automatic and overflow
  *   compaction, an unknown context window, and file write and edit;
- * - model-free: permission once/always/reject and the session lifecycle
- *   (rename, metadata, archive, unarchive, fork, delete), whose routes and
- *   bodies are taken from the served `/openapi.json` and refused, with the
- *   schema's own field names, when the census's fields do not fit.
+ * - model-free operations: permission once/always/reject and the session
+ *   lifecycle (rename, metadata, archive, unarchive, fork, delete; it first
+ *   makes one scripted turn, so the session has a history to fork), whose
+ *   routes and bodies are taken from the served `/openapi.json` and refused,
+ *   with the schema's own field names, when the census's fields do not fit.
  * NOT_COVERED_V2 names every other B9 item and why.
  *
  * 2.x tool inputs follow the 2.x schemas the probe named (`read {path}`,
@@ -1193,9 +1257,29 @@ export const SCENARIOS_V2 = {
         return answer;
       };
       await step(OPERATIONS.rename, { title: 'Surface census: renamed' }, 'session.renamed');
-      await step(OPERATIONS.metadata, { metadata: { census: 'surface' } }, 'session.metadata.updated');
-      await step(OPERATIONS.archive, undefined, 'session.archived');
-      await step(OPERATIONS.unarchive, undefined, 'session.unarchived');
+      // A lifecycle write the served document does not declare is a recorded result, never a skip
+      // and never a guessed route: `<label>-supported` says it, a note names every form looked for,
+      // and the lifecycle goes on. A write that is found and then misbehaves still fails the scenario.
+      const recorded = async (label, operation, values, type) => {
+        const entry = findOperation(ctx.openapi(), operation, { optional: true });
+        ctx.check(`${label}-supported`, entry !== undefined);
+        if (entry === undefined) {
+          ctx.note(label, `unsupported: the served /openapi.json has no operation for ${operationForms(operation)}`);
+          return false;
+        }
+        await step(operation, values(entry), type);
+        return true;
+      };
+      // A dedicated archive route takes no body; the session update takes `archived`.
+      const archiving = (entry, archived) =>
+        declaresProperty(ctx.openapi(), entry, 'archived', 'boolean') ? { archived } : undefined;
+      const metadata = () => ({ metadata: { census: 'surface' } });
+      await recorded('metadata-write', OPERATIONS.metadata, metadata, 'session.metadata.updated');
+      if (await recorded('archive', OPERATIONS.archive, (entry) => archiving(entry, true), 'session.archived')) {
+        await recorded('unarchive', OPERATIONS.unarchive, (entry) => archiving(entry, false), 'session.unarchived');
+      } else {
+        ctx.note('unarchive', 'not tried: the session could not be archived');
+      }
       const start = ctx.events().length;
       const forked = await ctx.call(OPERATIONS.fork, { params: [parent] });
       const child = entityID(forked.body);
