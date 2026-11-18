@@ -50,14 +50,16 @@ export function openCodeBackendArguments(spec: OpenCodeBackendLaunchSpec, hostna
  * change: every 1.x start spawns `opencode --version` (bounded at 5 s, failing open) before `serve`.
  *
  * It is a launch refusal ({@link AgentLaunchRefusedError}): the runtime carries its code and its sentence to the
- * failure a host reads (`AGENT_LAUNCH_REFUSED`), so a host can say why the start did not happen.
+ * failure a host reads (`AGENT_LAUNCH_REFUSED`), so a host can say why the start did not happen. Its code names no
+ * vendor, like the Hermes gateway's `INTERPRETER_UNAVAILABLE`: a host says it by the agent's own name, and the
+ * versions are said in its sentence alone ({@link unsupportedOpenCodeLineMessage}).
  */
-export class OpenCodeUnsupportedReleaseLineError extends AgentLaunchRefusedError<'OPENCODE_UNSUPPORTED_RELEASE_LINE'> {
+export class OpenCodeUnsupportedReleaseLineError extends AgentLaunchRefusedError<'UNSUPPORTED_RELEASE_LINE'> {
   readonly line = '2.x';
   readonly version: string;
 
   constructor(version: string, options?: ErrorOptions) {
-    super('OPENCODE_UNSUPPORTED_RELEASE_LINE', unsupportedOpenCodeLineMessage(version));
+    super('UNSUPPORTED_RELEASE_LINE', unsupportedOpenCodeLineMessage(version));
     if (options !== undefined && 'cause' in options) this.cause = options.cause;
     this.name = 'OpenCodeUnsupportedReleaseLineError';
     this.version = version;

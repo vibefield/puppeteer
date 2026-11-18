@@ -228,7 +228,7 @@ describe('OpenCode private backend', () => {
       (error: unknown) => error,
     );
     expect(failure).toBeInstanceOf(OpenCodeUnsupportedReleaseLineError);
-    expect(failure).toMatchObject({ code: 'OPENCODE_UNSUPPORTED_RELEASE_LINE', line: '2.x', version: '2.2.5' });
+    expect(failure).toMatchObject({ code: 'UNSUPPORTED_RELEASE_LINE', line: '2.x', version: '2.2.5' });
     expect(Date.now() - started).toBeLessThan(5_000);
     expect(versionReads(server.versions)).toHaveLength(1);
     expect(() => readFileSync(server.record, 'utf8')).toThrow();
@@ -244,7 +244,7 @@ describe('OpenCode private backend', () => {
     expect(failure).toBeInstanceOf(AgentLaunchRefusedError);
     expect(failure).toMatchObject({
       name: 'OpenCodeUnsupportedReleaseLineError',
-      code: 'OPENCODE_UNSUPPORTED_RELEASE_LINE',
+      code: 'UNSUPPORTED_RELEASE_LINE',
       message: unsupportedOpenCodeLineMessage('2.2.5'),
       field: undefined,
     });

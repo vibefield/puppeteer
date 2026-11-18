@@ -52,10 +52,16 @@ export function parseOpenCodeVersion(output: string): string | undefined {
 }
 
 /** The words every 2.x refusal carries, so a record that holds only the message (an install's warnings) names it. */
-export const OPENCODE_UNSUPPORTED_LINE_MARK = 'is the 2.x release line, which this adapter does not support';
+export const OPENCODE_UNSUPPORTED_LINE_MARK = 'is a 2.x version, and only OpenCode 1.x is supported';
 
+/**
+ * The one sentence a 2.x refusal says. A person reads it: a host says it after its own words ("OpenCode was not
+ * started: "), and it is the only place the versions are said, since the refusal's code names no vendor and no
+ * version. So it opens with the agent's name, says nothing of adapters or release lines, and ends with no period,
+ * as a host may go on after it.
+ */
 export function unsupportedOpenCodeLineMessage(version: string): string {
-  return `OpenCode ${version} ${OPENCODE_UNSUPPORTED_LINE_MARK}; it supports OpenCode 1.x`;
+  return `OpenCode ${version} ${OPENCODE_UNSUPPORTED_LINE_MARK}`;
 }
 
 export function readOpenCodeVersion(output: string): OpenCodeVersionReading {
