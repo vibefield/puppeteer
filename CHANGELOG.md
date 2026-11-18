@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.3](https://github.com/vibefield/puppeteer/compare/v0.4.2...v0.4.3) (2026-11-18)
+
+
+### Bug Fixes
+
+* **adapter-claude:** a new managed root does not open Claude Code's first run at its first session ([#89](https://github.com/vibefield/puppeteer/issues/89)) ([7c8a08c](https://github.com/vibefield/puppeteer/commit/7c8a08c579b8c834fbd1d1ad694b068679ad9a58))
+* **adapter-claude:** an aged access token is a reading that failed, never a sign-out ([#87](https://github.com/vibefield/puppeteer/issues/87)) ([529fc40](https://github.com/vibefield/puppeteer/commit/529fc40176fc3879aea4d4264547142adcfba723))
+* **adapter-claude:** renew an aged access token through Claude Code before a usage read ([#93](https://github.com/vibefield/puppeteer/issues/93)) ([16121db](https://github.com/vibefield/puppeteer/commit/16121dbb7463bacc0cef9fff4924b7e06c112068))
+* **runtime:** a forced usage refresh reads past a failure that names no server refusal ([#91](https://github.com/vibefield/puppeteer/issues/91)) ([87f3ed8](https://github.com/vibefield/puppeteer/commit/87f3ed8bbf5d1d7ef11328c7c2bb5b80470e1850))
+* **runtime:** read a profile registry a newer build wrote, dropping the fields it does not know ([#90](https://github.com/vibefield/puppeteer/issues/90)) ([77790c2](https://github.com/vibefield/puppeteer/commit/77790c2d6a1e3befa00be74812a5a5dde3975422))
+
 ## [0.4.2](https://github.com/vibefield/puppeteer/compare/v0.4.1...v0.4.2) (2026-11-12)
 
 
