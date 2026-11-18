@@ -132,11 +132,29 @@ export async function prepareAntigravityTuiSession(
         publish(
           {
             type: 'monitor:batch',
-            batch: antigravityCapabilitiesBatch(nativeSessionId, new Date().toISOString(), ++monitorSequence),
+            batch: antigravityCapabilitiesBatch(
+              nativeSessionId,
+              new Date().toISOString(),
+              ++monitorSequence,
+              observer.journalShape(),
+            ),
           },
           { source: 'runtime', confidence: 'authoritative' },
         );
       };
+      // The journal, not the launch, proves which contract applies: a 1.4.12
+      // record re-announces the capabilities under that contract.
+      const unsubscribeShape = observer.onJournalShape((shape) => {
+        const nativeSessionId = observer.sessionId();
+        if (!nativeSessionId) return;
+        publish(
+          {
+            type: 'monitor:batch',
+            batch: antigravityCapabilitiesBatch(nativeSessionId, new Date().toISOString(), ++monitorSequence, shape),
+          },
+          { source: 'runtime', confidence: 'authoritative' },
+        );
+      });
       const unsubscribeEvent = observer.onEvent((observed) => publish(observed.event, observed));
       const unsubscribeBind = observer.onBind((bound) => publishBinding(bound.sessionId));
       const unsubscribeError = observer.onError((error) => {
@@ -145,7 +163,12 @@ export async function prepareAntigravityTuiSession(
         publish(
           {
             type: 'monitor:batch',
-            batch: antigravityObservationDegradedBatch(nativeSessionId, observedAt, ++monitorSequence),
+            batch: antigravityObservationDegradedBatch(
+              nativeSessionId,
+              observedAt,
+              ++monitorSequence,
+              observer.journalShape(),
+            ),
           },
           { source: 'runtime', confidence: 'authoritative' },
         );
@@ -210,6 +233,7 @@ export async function prepareAntigravityTuiSession(
           sessionDisposed = true;
           unsubscribeEvent();
           unsubscribeBind();
+          unsubscribeShape();
           unsubscribeError();
           events.close();
         },
