@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Generate the OpenCode 2.x authoring model `model/opencode@<2.x.y>` from one
- * sanitized census run (plan §4 B11; James ruled option (a), so the 2.x model
+ * sanitized census run (plan §4 B11; option (a), as ruled in its §3, so the 2.x model
  * sits beside `opencode@1.19.5` in the same vendor):
  *
  * - HTTP operations from the runtime OpenAPI 3.1 document the census kept

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Controlled OpenCode 2.x HTTP/SSE census (draft/OPENCODE-2-MIGRATION-PLAN.md
- * §4 B9; James ruled option (a): 2.x is a second release line of `opencode`).
+ * §4 B9; option (a), as ruled in the plan's §3: 2.x is a second release line of `opencode`).
  *
  * Each scenario starts the exact caller-supplied 2.x binary as a private
  * `opencode serve --hostname 127.0.0.1 --port 0` in a disposable root (HOME,
@@ -741,7 +741,7 @@ export const NOT_COVERED_V2 = {
   'background subagents':
     'no background flag of the 2.x `subagent` input is recorded, and OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS is carried from 1.x with its 2.x effect unproven.',
   'TUI on --server in a PTY':
-    'Node has no PTY without a native module, and the mini run is headless (the 1.x attach census needed an interactive TTY). `resume` covers `--server` for the CLI, and the 49374 probe runs after every CLI call.',
+    'Node has no PTY without a native module, and the census runs headless (the 1.x attach census needed an interactive TTY). `resume` covers `--server` for the CLI, and the 49374 probe runs after every CLI call.',
   'MCP tool call through Code Mode execute':
     'it needs a stdio MCP server fixture and the `execute` tool input, neither recorded; how a call inside `execute` appears on the stream is still an open question (plan §5).',
 };

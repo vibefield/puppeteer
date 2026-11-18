@@ -121,8 +121,8 @@ Flags:
 - `--stop-on-failure` stops at the first failure. Otherwise a failed scenario is recorded and the run goes on.
 - `--skip-probes` skips the offline probes.
 - `--output DIR` and `--probes-output DIR` move the outputs.
-- `--allow-host-config` overrides the host-config refusal (see "Refusals and failures"). Use it only with VF-PM's
-  word.
+- `--allow-host-config` overrides the host-config refusal (see "Refusals and failures"). Use it only with a maintainer's
+  approval.
 
 Scenarios.
 
@@ -239,7 +239,7 @@ Plan B9 items with no scenario, each with the reason (`NOT_COVERED_V2` in `harne
   through `shell` would prove the shell tool, not a file operation.
 - background subagents: no background flag of the 2.x `subagent` input is recorded, and
   `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS` is carried from 1.x with its 2.x effect unproven.
-- TUI on --server in a PTY: Node has no PTY without a native module, and the mini run is headless (the 1.x attach
+- TUI on --server in a PTY: Node has no PTY without a native module, and the census runs headless (the 1.x attach
   census needed an interactive TTY). `resume` covers `--server` for the CLI, and the 49374 probe runs after every
   CLI call.
 - MCP tool call through Code Mode execute: it needs a stdio MCP server fixture and the `execute` tool input, neither
