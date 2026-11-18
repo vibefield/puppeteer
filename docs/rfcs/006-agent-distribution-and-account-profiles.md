@@ -366,10 +366,10 @@ OpenCode, Hermes — whose one root holds sign-ins to several services, mostly o
 - **`ProfileIdentity.signIns`** lists every sign-in, for an agent whose root holds several; a vendor agent reports no
   list. When present it is the whole answer, and the schema holds it to two rules: `loggedIn` is true exactly when the
   list is non-empty — an empty list is a signed-out harness — and at most one sign-in is in use. The top-level `method`,
-  `email`, `account`, `organization` and `plan` repeat the in-use sign-in's, and are absent when none is in use, so a
-  view that predates the list still reads the one that matters. The runtime derives them from the list when it
-  verifies, whatever the adapter put there, rather than trusting every adapter to keep the two in step (the same way
-  `support.signOut` is the runtime's fact, not the adapter's).
+  `email`, `account`, `organization`, `plan` and `planTier` repeat the in-use sign-in's, and are absent when none is
+  in use, so a view that predates the list still reads the one that matters. The runtime derives them from the list
+  when it verifies, whatever the adapter put there, rather than trusting every adapter to keep the two in step (the
+  same way `support.signOut` is the runtime's fact, not the adapter's).
 - **`account`**, on `ProfileIdentity` and on `ProfileSignIn`: a non-email handle for the account, such as a GitHub
   login. A view shows it before the email.
 - **`borrowedFrom`** (2026-09-24), on `ProfileIdentity` and on `ProfileSignIn`: the program whose sign-in the agent
@@ -378,6 +378,15 @@ OpenCode, Hermes — whose one root holds sign-ins to several services, mostly o
   profile's: every root that borrows it answers for one account, so a host must not present it as the profile's
   own. The adapter names the program as a person knows it; the runtime's in-use derivation carries it like the
   other top-level fields.
+- **`planTier`** (2026-11-17), on `ProfileIdentity` and on `ProfileSignIn`, and copied to a plan's account and to a
+  holding: the plan's tier beside its name, as `{ label? }`. Absent, the tier was not read; `{}`, no tier is shown
+  beside the name (the agent says the plan has none, or the adapter names the plan whole); `{ label }`, a word of at
+  most eight characters, a letter or digit first ("20x"), that a view can draw as a badge. The adapter makes the
+  label from the agent's own token, and no other layer parses, cases or compares it. A tier neither splits a plan nor
+  joins two: plans are still keyed by account. Claude Code's status document holds the family and the tier apart
+  (`subscriptionType: "max"`, `planTier: "max_20x"`); the Claude adapter takes the family and `_` off the tier
+  (`max_5x` is "5x"), and one named row in it shows `max` at `max_20x` as the plan `ultra` with no tier beside it.
+  The runtime's in-use derivation carries it like the other top-level fields.
 - **`ProfileSupport.service`**: the service the agent's own sign-in is to (Claude Code declares Anthropic; Codex,
   OpenAI). Absent for an agent with no service of its own.
 - **`ProfileSupport.signInRoutes`** `[{ id, label, service? }]`: the ways to add a sign-in to a root, for an agent whose
@@ -687,6 +696,12 @@ segment of All and each set, glyph and name, that a host centres in `InstrumentB
 `MonitorAgent.receded`, host-set presentation the swarm, the list and the rain draw faint (`monitor/recede.ts`: 22 %,
 7 % when every row recedes, 240 ms) while keeping the row in the physics and in the list. Which set a run is under
 is already `AgentSessionInfo.profileSetId`; a set as an identity ground on the bodies themselves stays open.
+
+Added 2026-11-17 for plan badges (see "Sign-ins and the services they bill"): Core's `PlanTierSchema`, `PlanTier` and
+`PLAN_TIER_LABEL_MAX`; `planTier` on `ProfileIdentity` and `ProfileSignIn`, on `ProfilePlanAccount` and
+`ProfileHolding`, and in the runtime's in-use derivation; and the Claude adapter's read of `planTier` from
+`claude auth status --json`, with its one naming row. A registry this build has saved a tier in is readable by a build
+with the tolerant registry read, which drops the field; a build from before that read refuses the file.
 
 Started 2026-09-25, C1's first half, for VibeField's Extensions (its design record, pass 24: skills and MCP servers
 kept once per profile, turned on per agent; plugins per agent). Core `services/extensions.ts` settles the sketch

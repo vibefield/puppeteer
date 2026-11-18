@@ -105,6 +105,9 @@ function withInUseSignIn(identity: ProfileIdentity): ProfileIdentity {
     if (value === undefined) delete derived[field];
     else derived[field] = value;
   }
+  // The tier is a record, not a word, so it is copied on its own: a stale one never outlives its sign-in.
+  if (current?.planTier === undefined) delete derived.planTier;
+  else derived.planTier = current.planTier;
   return derived;
 }
 

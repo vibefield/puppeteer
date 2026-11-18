@@ -1781,7 +1781,7 @@ interface StartProfileLoginOptions {
 }
 
 type ProfileLoginResult = { runtimeSessionId: string; profile: AgentProfile } | ProfileFailure;</code></pre>
-            <pre><code data-source="packages/core/src/services/profiles.ts" data-types="AgentProfileId,AgentProfileKind,AgentProfile,ProfileSetId,ProfileGlyph,ProfileSet,SignInServiceId,SignInService,ProfileSignIn,ProfileIdentity,ProfileSignInRoute,ProfileSupport,ProfileProvider,ProfileFailure">type AgentProfileId = string;
+            <pre><code data-source="packages/core/src/services/profiles.ts" data-types="AgentProfileId,AgentProfileKind,AgentProfile,ProfileSetId,ProfileGlyph,ProfileSet,SignInServiceId,SignInService,PlanTier,ProfileSignIn,ProfileIdentity,ProfileSignInRoute,ProfileSupport,ProfileProvider,ProfileFailure">type AgentProfileId = string;
 type AgentProfileKind = 'native-default' | 'managed';
 
 interface AgentProfile {
@@ -1823,6 +1823,14 @@ interface SignInService {
   label: string;
 }
 
+/**
+ * A plan's tier beside its name. Absent: not read. {}: no tier shown beside the name. Strict.
+ * label: one word of at most PLAN_TIER_LABEL_MAX (8) characters, a letter or digit first ("20x").
+ */
+interface PlanTier {
+  label?: string;
+}
+
 /** One sign-in a root holds, for an agent whose root holds several. Strict: no token field. */
 interface ProfileSignIn {
   service: SignInService;
@@ -1837,6 +1845,8 @@ interface ProfileSignIn {
   account?: string;
   organization?: string;
   plan?: string;
+  /** The tier beside the plan's name, when the agent told one. */
+  planTier?: PlanTier;
   /** The program whose sign-in this is, when the root holds none of its own ("GitHub CLI"). */
   borrowedFrom?: string;
 }
@@ -1849,6 +1859,8 @@ interface ProfileIdentity {
   account?: string;
   organization?: string;
   plan?: string;
+  /** The tier beside the plan's name, when the agent told one. */
+  planTier?: PlanTier;
   /** The program whose sign-in the agent runs as; the machine's account, not the profile's. */
   borrowedFrom?: string;
   /**
@@ -1932,6 +1944,8 @@ interface ProfilePlanAccount {
   account?: string;
   organization?: string;
   plan?: string;
+  /** The tier its namer told; a tier neither splits a plan nor joins two. */
+  planTier?: PlanTier;
 }
 
 /** One sign-in a profile holds; a vendor agent's one is made from its identity. */

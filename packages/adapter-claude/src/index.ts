@@ -33,9 +33,15 @@ export {
   fetchClaudeAccountUsageForProfile,
   normalizeClaudeAccountUsage,
   type ClaudeAccountUsageService,
+  type ClaudeAccountUsageServiceOptions,
   type ClaudeAccountUsageSink,
   type FetchClaudeAccountUsageOptions,
 } from './services/account-usage.js';
+export {
+  createClaudeTokenRenewer,
+  type ClaudeTokenRenewer,
+  type ClaudeTokenRenewerOptions,
+} from './services/account-renewal.js';
 export * from './services/prompt.js';
 export * from './services/distribution.js';
 export * from './services/profiles.js';
