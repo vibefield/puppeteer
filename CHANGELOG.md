@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.4](https://github.com/vibefield/puppeteer/compare/v0.4.3...v0.4.4) (2026-11-18)
+
+
+### Features
+
+* **adapter-antigravity:** read Antigravity 1.4.12 journals beside 1.1.20 ([#60](https://github.com/vibefield/puppeteer/issues/60)) ([7bc82f2](https://github.com/vibefield/puppeteer/commit/7bc82f2e4dae3f1f67de434a774d105fe6e1bb58))
+* **adapter-opencode:** refuse an OpenCode 2.x binary on the 1.x line, and lay the 2.x groundwork ([#61](https://github.com/vibefield/puppeteer/issues/61)) ([6f3bdee](https://github.com/vibefield/puppeteer/commit/6f3bdeefab0563ce73e3977f2edc3a3a91f8e03c))
+* **core,runtime,adapter-claude:** a plan's tier travels beside its name, as a short label ([#94](https://github.com/vibefield/puppeteer/issues/94)) ([7db62b7](https://github.com/vibefield/puppeteer/commit/7db62b7a45be1565799709e0fc9ba7ccdc0e5028))
+
+
+### Bug Fixes
+
+* **adapter-opencode:** a 2.x refusal's code names no vendor, and its sentence is one a person reads ([#98](https://github.com/vibefield/puppeteer/issues/98)) ([f233fe2](https://github.com/vibefield/puppeteer/commit/f233fe28c69d2cbab676265b6eeb7216b4173c5b))
+* **adapter-opencode:** refuse OpenCode 2.x as a launch refusal, so a host reads why ([#97](https://github.com/vibefield/puppeteer/issues/97)) ([cf5a5d1](https://github.com/vibefield/puppeteer/commit/cf5a5d1fabba3f2ca72685b9d96386bfad1ecdc4))
+
 ## [0.4.3](https://github.com/vibefield/puppeteer/compare/v0.4.2...v0.4.3) (2026-11-18)
 
 
