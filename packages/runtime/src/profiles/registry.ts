@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
+import type { ZodType } from 'zod';
 import {
   AgentProfileSchema,
   NATIVE_PROFILE_SET_ID,
@@ -43,6 +44,14 @@ const STORE_FILE_MODE = 0o600;
 const STORE_DIRECTORY_MODE = 0o700;
 const MAX_PERSISTED_PROFILES = 512;
 const MAX_PERSISTED_SETS = 256;
+/**
+ * How many times one saved entry is parsed again after its unknown fields are
+ * taken off. One is enough while a parse names the unknown fields of every
+ * record at once; the rest are for a parse that would name an inner record's
+ * only after the outer record is clean.
+ */
+const MAX_DROP_ROUNDS = 4;
+const DROPPED_FIELDS_NOTICE = 'profile registry holds fields this build does not know, dropped on read';
 
 export function nativeDefaultProfileId(providerId: string): string {
   return `${providerId}:${NATIVE_DEFAULT_SUFFIX}`;
@@ -118,33 +127,101 @@ function normalize(sets: readonly ProfileSet[], profiles: readonly AgentProfile[
   return { sets: keptSets, profiles: keptProfiles, defaultSet: keptDefault };
 }
 
+/** The record a parse issue points at, inside a copy this module owns. */
+function recordAt(root: unknown, path: readonly PropertyKey[]): Record<string, unknown> | undefined {
+  let value = root;
+  for (const step of path) {
+    if (typeof value !== 'object' || value === null) return undefined;
+    value = (value as Record<PropertyKey, unknown>)[step];
+  }
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+  return value as Record<string, unknown>;
+}
+
+/** Where a record sits in the document, for a report that names it: `profiles[0].identity.signIns[1]`. */
+function recordPath(base: string, path: readonly PropertyKey[]): string {
+  let text = base;
+  for (const step of path) text += typeof step === 'number' ? `[${step}]` : `.${String(step)}`;
+  return text;
+}
+
+/**
+ * Parse one saved entry through its strict schema. When the schema refuses it
+ * only for fields it does not know, those fields are taken off a copy and the
+ * copy is parsed again, strictly. The schema's own report names them, so the
+ * known fields are the schema itself and nothing here can drift from it.
+ * Answers undefined for an entry the schema refuses for any other reason;
+ * `dropped` gains the path and name of each field taken off an entry that was
+ * read, never a value.
+ */
+function parseSavedEntry<T>(schema: ZodType<T>, entry: unknown, at: string, dropped: string[]): T | undefined {
+  let result = schema.safeParse(entry);
+  if (result.success) return result.data;
+  // Fields come off a copy: the document handed in is the caller's.
+  let copy: unknown;
+  try {
+    copy = structuredClone(entry);
+  } catch {
+    return undefined;
+  }
+  const fields: string[] = [];
+  for (let round = 0; round < MAX_DROP_ROUNDS && !result.success; round += 1) {
+    for (const issue of result.error.issues) {
+      if (issue.code !== 'unrecognized_keys') return undefined;
+      const record = recordAt(copy, issue.path);
+      if (record === undefined) return undefined;
+      for (const key of issue.keys) {
+        delete record[key];
+        fields.push(`${recordPath(at, issue.path)}.${key}`);
+      }
+    }
+    result = schema.safeParse(copy);
+  }
+  if (!result.success) return undefined;
+  dropped.push(...fields);
+  return result.data;
+}
+
 /**
  * Validate one persisted document. The envelope is checked structurally and
  * every entry through Core's Zod schemas; a corrupt file is an error rather
  * than an empty registry, because silently forgetting profiles would let the
  * next write erase them. Version 1 (per-provider profiles, no sets) is read
  * and adopted into sets; what comes back is always version 2.
+ *
+ * A field the schemas do not know, at any level of a saved profile or set, is
+ * dropped rather than refused, so a registry a later build wrote stays
+ * readable. It is never kept: what comes back is the strict schemas' own
+ * output, and the document handed in is left as it was. `onDropped` is told
+ * the dropped fields once per read that dropped any, each by path and name
+ * and never by value (`profiles[0].identity.futureField`). Still refused: a
+ * known field with a value its schema does not accept, a missing field, an
+ * entry that is not a record, and any version but 1 and 2.
  */
-export function parseProfileRegistrySnapshot(value: unknown): ProfileRegistrySnapshot {
+export function parseProfileRegistrySnapshot(
+  value: unknown,
+  onDropped?: (fields: readonly string[]) => void,
+): ProfileRegistrySnapshot {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('profile registry document must be an object');
   }
   const document = value as { version?: unknown; profiles?: unknown; sets?: unknown; defaultSet?: unknown };
   if (document.version !== 1 && document.version !== 2) throw new Error('unsupported profile registry version');
   if (!Array.isArray(document.profiles)) throw new Error('profile registry document has no profiles array');
+  const dropped: string[] = [];
   const profiles = document.profiles.map((entry, index) => {
-    const parsed = AgentProfileSchema.safeParse(entry);
-    if (!parsed.success) throw new Error(`profile registry entry ${index} failed schema validation`);
-    return parsed.data;
+    const parsed = parseSavedEntry(AgentProfileSchema, entry, `profiles[${index}]`, dropped);
+    if (parsed === undefined) throw new Error(`profile registry entry ${index} failed schema validation`);
+    return parsed;
   });
   let sets: ProfileSet[] = [];
   let defaultSet: string | undefined;
   if (document.version === 2) {
     if (!Array.isArray(document.sets)) throw new Error('profile registry document has no sets array');
     sets = document.sets.map((entry, index) => {
-      const parsed = ProfileSetSchema.safeParse(entry);
-      if (!parsed.success) throw new Error(`profile registry set ${index} failed schema validation`);
-      return parsed.data;
+      const parsed = parseSavedEntry(ProfileSetSchema, entry, `sets[${index}]`, dropped);
+      if (parsed === undefined) throw new Error(`profile registry set ${index} failed schema validation`);
+      return parsed;
     });
     if (document.defaultSet !== undefined) {
       if (typeof document.defaultSet !== 'string') throw new Error('profile registry default set is not a string');
@@ -152,6 +229,7 @@ export function parseProfileRegistrySnapshot(value: unknown): ProfileRegistrySna
     }
   }
   const normalized = normalize(sets, profiles, defaultSet);
+  if (dropped.length > 0) onDropped?.(dropped);
   return {
     version: 2,
     ...(normalized.defaultSet === undefined ? {} : { defaultSet: normalized.defaultSet }),
@@ -163,6 +241,11 @@ export function parseProfileRegistrySnapshot(value: unknown): ProfileRegistrySna
 export interface FileProfileStoreOptions {
   /** Defaults to ~/.puppeteer/profiles.json. */
   path?: string;
+  /**
+   * Told the fields a read dropped because this build does not know them
+   * (a later build wrote the file): each by path and name, never a value.
+   */
+  onDropped?: (fields: readonly string[]) => void;
 }
 
 /** Atomic 0600 file store: write a fresh temp file, then rename over the target. */
@@ -177,7 +260,7 @@ export function createFileProfileStore(options: FileProfileStoreOptions = {}): P
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
         throw error;
       }
-      return parseProfileRegistrySnapshot(JSON.parse(raw));
+      return parseProfileRegistrySnapshot(JSON.parse(raw), options.onDropped);
     },
     async save(snapshot) {
       await mkdir(dirname(path), { recursive: true, mode: STORE_DIRECTORY_MODE });
@@ -274,6 +357,9 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
   let disposed = false;
 
   const report = (error: unknown): void => options.onError?.(error instanceof Error ? error : new Error(String(error)));
+  /** A later build wrote the registry: say which fields this one dropped, by path and name and never by value. */
+  const reportDropped = (fields: readonly string[]): void =>
+    report(new Error(`${DROPPED_FIELDS_NOTICE}: ${fields.join(', ')}`));
 
   function load(): Promise<RegistryState> {
     if (state) return Promise.resolve(state);
@@ -281,7 +367,7 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
       const snapshot = await options.store.load();
       // Re-read through the parser whatever the store handed back: a host
       // store may predate sets, and the invariants are the registry's.
-      const parsed = snapshot === undefined ? undefined : parseProfileRegistrySnapshot(snapshot);
+      const parsed = snapshot === undefined ? undefined : parseProfileRegistrySnapshot(snapshot, reportDropped);
       state = {
         sets: parsed?.sets ?? [],
         profiles: parsed?.profiles ?? [],
