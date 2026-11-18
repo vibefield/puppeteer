@@ -419,7 +419,7 @@ describe('OpenCode 2.x installs', () => {
     expect(InstalledAgentSchema.parse(install)).toBeTruthy();
     expect(install?.version).toBeUndefined();
     expect(install?.warnings).toEqual([
-      expect.stringContaining('OpenCode 2.2.5 is the 2.x release line, which this adapter does not support'),
+      expect.stringContaining('OpenCode 2.2.5 is a 2.x version, and only OpenCode 1.x is supported'),
     ]);
   });
 
