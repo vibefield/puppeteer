@@ -43,7 +43,7 @@ export function claudeKeychainService(dataRoot?: string): string {
 
 /** Older Claude Code installs used `unknown`; current installs use the macOS username. */
 const KEYCHAIN_ACCOUNT_FALLBACKS = ['unknown'] as const;
-/** Refresh slightly before the stored expiry so we never ship a near-dead access token. */
+/** An access token this close to its stored expiry counts as aged, so a near-dead one is never sent. */
 const TOKEN_EXPIRY_SKEW_MS = 60_000;
 
 const execFileAsync = promisify(execFile);
@@ -112,6 +112,22 @@ function findClaudeAccessTokenExpiresAt(value: unknown): number | undefined {
     }
   }
   return undefined;
+}
+
+/** Whether the document still carries the refresh token Claude Code renews its access token with. */
+function hasClaudeRefreshToken(value: unknown): boolean {
+  const known = [
+    ['claudeAiOauth', 'refreshToken'],
+    ['claudeAiOauth', 'refresh_token'],
+    ['oauth', 'refreshToken'],
+    ['oauth', 'refresh_token'],
+    ['refreshToken'],
+    ['refresh_token'],
+  ] as const;
+  return known.some((path) => {
+    const token = valueAt(value, path);
+    return typeof token === 'string' && token.trim().length > 0;
+  });
 }
 
 function defaultCredentialsPath(env: NodeJS.ProcessEnv): string {
@@ -254,23 +270,43 @@ async function loadClaudeCredentialDocument(
 }
 
 /**
+ * What one account's stored credential lets a read-only observer do now.
+ *
+ * A Claude Code sign-in is two tokens. The access token lives eight hours (measured 2026-11-16 on Claude Code
+ * 2.1.325: six roots, each `expiresAt` eight hours after its Keychain item was written); the refresh token beside it
+ * is the sign-in, and Claude Code swaps an aged access token for a new one whenever it runs under the root.
+ * - `fresh`: an access token inside its lifetime.
+ * - `aged`: the access token has passed its expiry and the refresh token is still beside it. The account is signed
+ *   in; its limits cannot be read until Claude Code next runs under the root and renews.
+ * - `missing`: no credential, or an aged token with nothing to renew it from. Nothing here says the account is
+ *   signed in.
+ */
+type ClaudeCredentialState = { state: 'fresh'; accessToken: string } | { state: 'aged' } | { state: 'missing' };
+
+async function readClaudeCredentialState(options: ClaudeCredentialOptions): Promise<ClaudeCredentialState> {
+  const env = options.env ?? process.env;
+  const envToken = env.CLAUDE_CODE_OAUTH_TOKEN || env.CLAUDE_ACCESS_TOKEN;
+  if (envToken?.trim()) return { state: 'fresh', accessToken: envToken.trim() };
+
+  const document = await loadClaudeCredentialDocument(options);
+  if (!document) return { state: 'missing' };
+
+  const nowMs = (options.now ?? (() => new Date()))().valueOf();
+  const accessToken = findClaudeAccessToken(document);
+  if (!accessToken) return { state: 'missing' };
+  if (accessTokenIsFresh(findClaudeAccessTokenExpiresAt(document), nowMs)) return { state: 'fresh', accessToken };
+  return hasClaudeRefreshToken(document) ? { state: 'aged' } : { state: 'missing' };
+}
+
+/**
  * Resolve Claude Code's OAuth access token without returning the credential document.
  * Observation is deliberately read-only: Claude Code exclusively owns token
  * refresh and persistence, avoiding refresh-token rotation races with live or
  * concurrently restored Claude processes.
  */
 export async function resolveClaudeAccessToken(options: ClaudeCredentialOptions = {}): Promise<string | undefined> {
-  const env = options.env ?? process.env;
-  const envToken = env.CLAUDE_CODE_OAUTH_TOKEN || env.CLAUDE_ACCESS_TOKEN;
-  if (envToken?.trim()) return envToken.trim();
-
-  const document = await loadClaudeCredentialDocument(options);
-  if (!document) return undefined;
-
-  const nowMs = (options.now ?? (() => new Date()))().valueOf();
-  const accessToken = findClaudeAccessToken(document);
-  const expiresAt = findClaudeAccessTokenExpiresAt(document);
-  return accessToken && accessTokenIsFresh(expiresAt, nowMs) ? accessToken : undefined;
+  const credential = await readClaudeCredentialState(options);
+  return credential.state === 'fresh' ? credential.accessToken : undefined;
 }
 
 function isoTimestamp(value: unknown): string | undefined {
@@ -674,13 +710,31 @@ export async function fetchClaudeAccountUsageWithDependencies(
   }
 
   let token: string | undefined;
+  let aged = false;
   try {
-    token = options.resolveAccessToken ? await options.resolveAccessToken() : await resolveClaudeAccessToken(options);
+    if (options.resolveAccessToken) {
+      token = await options.resolveAccessToken();
+    } else {
+      const credential = await readClaudeCredentialState(options);
+      if (credential.state === 'fresh') token = credential.accessToken;
+      aged = credential.state === 'aged';
+    }
   } catch {
     return {
       status: 'unavailable',
       provider: 'claude',
       message: 'Claude Code OAuth credentials could not be read',
+      retryable: true,
+    };
+  }
+  if (aged) {
+    // An aged access token is not a sign-out: the refresh token beside it is the sign-in, and it is still there.
+    // The limits cannot be read until Claude Code renews, so this is a reading that failed, never a refusal: the
+    // last reading stands beside it (`accountUsageFailurePasses`) and no host is told the account signed out.
+    return {
+      status: 'unavailable',
+      provider: 'claude',
+      message: 'Claude Code has not renewed its access token since it last ran under this account',
       retryable: true,
     };
   }

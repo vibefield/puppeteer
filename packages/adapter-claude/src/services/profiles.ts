@@ -12,6 +12,12 @@
  *     email, orgId, orgName, subscriptionType }
  * The document carries no token, and this service never reads a credential store.
  *
+ * Seen 2026-11-17: a managed root signed in through `claude auth login` alone
+ * opens the interactive app's first run (the theme picker) at its first
+ * session, because the login subcommand does not complete it. `initializeRoot`
+ * marks it done for a new root; the key's effect on the current Claude Code is
+ * not yet measured.
+ *
  * On macOS the credential is NOT in the root: it is a login-Keychain item
  * whose service name is derived from the root's path. Deleting a managed root
  * would leave it behind, so sign-out runs the vendor's own `claude auth
@@ -20,8 +26,9 @@
  */
 
 import { execFile } from 'node:child_process';
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 import type {
   AgentProfile,
@@ -43,6 +50,15 @@ export const CLAUDE_PROFILE_ROOT_VARIABLE = 'CLAUDE_CONFIG_DIR';
  * credentials, so it is stripped from every probe environment.
  */
 const SECURE_STORAGE_OVERRIDE = 'CLAUDE_SECURESTORAGE_CONFIG_DIR';
+
+/**
+ * Written as `.claude.json` into a freshly allocated managed root. The sign-in
+ * pane runs the vendor's `claude auth login`, which is not the interactive app,
+ * so without this a managed root's first session opens Claude Code's own first
+ * run. `hasCompletedOnboarding` is the vendor's app-state key that marks first
+ * run done. Credential-free.
+ */
+const MANAGED_ROOT_STATE = `${JSON.stringify({ hasCompletedOnboarding: true }, null, 2)}\n`;
 
 const execFileAsync = promisify(execFile);
 const SCRIPT_EXECUTABLE = /\.(mjs|cjs|js|ts)$/;
@@ -90,6 +106,24 @@ export interface ClaudeProfileOptions {
   home?: string;
   env?: NodeJS.ProcessEnv;
   now?: () => Date;
+  /** Injected writer so unit tests never touch a real root. Receives mode 0600 content. */
+  writeConfig?: (path: string, contents: string) => Promise<void>;
+  /** Injected existence probe; resolves true when the managed root already has its app-state file. */
+  configExists?: (path: string) => Promise<boolean>;
+}
+
+async function defaultConfigExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function defaultWriteConfig(path: string, contents: string): Promise<void> {
+  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+  await writeFile(path, contents, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
 }
 
 const rec = (value: unknown): Record<string, unknown> | undefined =>
@@ -135,6 +169,8 @@ export function createClaudeProfileService(options: ClaudeProfileOptions = {}): 
   const ambient = options.env ?? process.env;
   const executable = resolveClaudeExecutable(options.executable, ambient);
   const now = options.now ?? (() => new Date());
+  const writeConfig = options.writeConfig ?? defaultWriteConfig;
+  const configExists = options.configExists ?? defaultConfigExists;
 
   const provider: ProfileProvider = {
     id: 'claude',
@@ -190,6 +226,14 @@ export function createClaudeProfileService(options: ClaudeProfileOptions = {}): 
     // to, so the profile root is itself the layout root an indexer reads.
     observationRoot: (profile: AgentProfile): string =>
       profile.kind === 'managed' ? profile.dataRoot : (provider.support.nativeDefaultRoot ?? profile.dataRoot),
+
+    async initializeRoot(profile: AgentProfile): Promise<void> {
+      if (profile.kind !== 'managed') return;
+      const path = join(profile.dataRoot, '.claude.json');
+      // Never overwrite app state that is already there: the vendor's tool rewrites this file itself.
+      if (await configExists(path)) return;
+      await writeConfig(path, MANAGED_ROOT_STATE);
+    },
 
     loginInvocation(profile: AgentProfile, loginOptions: { cwd: string }): TerminalSpec {
       // The interactive vendor login. It must run in a real terminal; there is
