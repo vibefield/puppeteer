@@ -1,17 +1,24 @@
 import { createServer } from 'node:http';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   createLoopbackFetch,
+  displayPath,
   isolatedEnvironment,
   probeVersion,
   providerErrorResponse,
+  replaceableDestination,
   sseJsonStream,
   startProvider,
   startServerProcess,
   textResponse,
   toolResponse,
 } from './harness-common.mjs';
+
+const censusRoot = dirname(fileURLToPath(import.meta.url));
+const vendorRoot = dirname(censusRoot);
+const repoRoot = join(vendorRoot, '..', '..', '..', '..');
 
 const cleanups = [];
 afterEach(async () => {
@@ -73,6 +80,30 @@ describe('isolated environment', () => {
   });
 });
 
+describe('operator paths', () => {
+  it('shows a path inside the repository relative to it, and only the last segment of one outside', () => {
+    expect(displayPath(join(vendorRoot, 'captures-raw', 'opencode@2.2.5'), repoRoot)).toBe(
+      'packages/surface/vendors/opencode/captures-raw/opencode@2.2.5',
+    );
+    expect(displayPath(repoRoot, repoRoot)).toBe('.');
+    expect(displayPath(join(repoRoot, '..', 'elsewhere', 'scratch'), repoRoot)).toBe(
+      '<outside the repository>/scratch',
+    );
+  });
+
+  it('replaces an existing tree only when it is the vendor-owned 2.x destination of its kind', () => {
+    const captures = join(vendorRoot, 'captures');
+    const fresh = join(captures, 'opencode@2.99.0');
+    expect(replaceableDestination(fresh, captures)).toBe(fresh);
+    // Absent, so nothing would be removed there.
+    expect(replaceableDestination(join(censusRoot, 'not-a-tree'), captures)).toBe(join(censusRoot, 'not-a-tree'));
+    expect(() => replaceableDestination(join(captures, 'opencode@1.19.5'), captures)).toThrow(
+      'refusing to replace opencode@1.19.5',
+    );
+    expect(() => replaceableDestination(censusRoot, captures)).toThrow('refusing to replace census');
+  });
+});
+
 describe('fake provider', () => {
   it('serves models, scripted streams, scripted errors and a 404, and records every request', async () => {
     const provider = await startProvider(
@@ -121,6 +152,41 @@ describe('fake provider', () => {
       'POST /v1/chat/completions',
       'GET /v1/elsewhere',
     ]);
+  });
+
+  it('answers an intercepted request without consuming a scripted turn, and records headers on request', async () => {
+    const provider = await startProvider(
+      {
+        recordHeaders: true,
+        intercept: ({ request }) =>
+          Array.isArray(request?.tools) ? undefined : { label: 'title', result: textResponse(0, 'a title') },
+        responses: [() => textResponse(1, 'scripted first')],
+      },
+      {},
+    );
+    cleanups.push(provider.close);
+    const chat = (body) =>
+      fetch(`${provider.baseURL}/chat/completions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-opencode-session': 'ses_header' },
+        body: JSON.stringify(body),
+      });
+    const content = async (response) =>
+      sseRecords(await response.text())
+        .map((chunk) => chunk.choices[0].delta.content)
+        .filter(Boolean);
+    expect(await content(await chat({ messages: [] }))).toEqual(['a title']);
+    expect(await content(await chat({ messages: [], tools: [] }))).toEqual(['scripted first']);
+    expect(provider.requests.map((request) => request.intercepted)).toEqual(['title', undefined]);
+    expect(provider.requests[0].headers['x-opencode-session']).toBe('ses_header');
+    expect(provider.connections()).toBeGreaterThanOrEqual(1);
+  });
+
+  it('keeps the 1.x request record shape when no hook is set', async () => {
+    const provider = await startProvider({ responses: [] }, {});
+    cleanups.push(provider.close);
+    await (await fetch(`${provider.baseURL}/chat/completions`, { method: 'POST', body: '{}' })).text();
+    expect(Object.keys(provider.requests[0])).toEqual(['method', 'url', 'body']);
   });
 
   it('holds a gated stream until the harness releases the gate', async () => {
@@ -317,6 +383,18 @@ describe('server process and version probe', () => {
         name: 'Probe',
       }),
     ).rejects.toThrow('Probe exited before readiness (code=3, signal=null)');
+  });
+
+  it('bounds readiness by the caller timeout', async () => {
+    await expect(
+      startServerProcess(process.execPath, ['-e', 'setInterval(() => {}, 1000);'], {
+        cwd: process.cwd(),
+        environment: { PATH: process.env.PATH },
+        ready: /never (\S+)/,
+        name: 'Probe',
+        readyTimeoutMs: 100,
+      }),
+    ).rejects.toThrow('timed out waiting for Probe server readiness');
   });
 
   it('captures the version with a line-specific pattern and refuses an unrecognized output', () => {
