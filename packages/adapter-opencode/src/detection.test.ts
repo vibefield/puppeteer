@@ -5,9 +5,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   inspectOpenCodeVersion,
   OPENCODE_LAUNCH_FLAGS,
+  OPENCODE_UNSUPPORTED_LINE_MARK,
   parseOpenCodeVersion,
   readOpenCodeVersion,
   resolveOpenCodeExecutable,
+  unsupportedOpenCodeLineMessage,
 } from './detection.js';
 
 const roots: string[] = [];
@@ -44,10 +46,19 @@ describe('OpenCode release-line reading', () => {
       status: 'unsupported-release-line',
       line: '2.x',
       version: '2.2.5',
-      message: expect.stringContaining('2.x release line'),
+      message: 'OpenCode 2.2.5 is a 2.x version, and only OpenCode 1.x is supported',
     });
     expect(readOpenCodeVersion('opencode v3.0.0')).toMatchObject({ status: 'unrecognized' });
     expect(readOpenCodeVersion('')).toMatchObject({ status: 'unrecognized' });
+  });
+
+  it('says a 2.x refusal in one sentence a person reads, holding the mark an install warning is known by', () => {
+    const sentence = unsupportedOpenCodeLineMessage('2.2.5');
+    expect(sentence).toBe('OpenCode 2.2.5 is a 2.x version, and only OpenCode 1.x is supported');
+    expect(sentence).toContain(OPENCODE_UNSUPPORTED_LINE_MARK);
+    expect(sentence).not.toMatch(/adapter|release line|\n/iu);
+    // a host may go on after it ("… Change that, then run opencode again."), so it ends with no period
+    expect(sentence.endsWith('.')).toBe(false);
   });
 
   it('inspects an executable without throwing, and without handing it a server password', async () => {

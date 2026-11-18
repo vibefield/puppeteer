@@ -2,6 +2,7 @@
 
 import { randomBytes } from 'node:crypto';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { AgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 import {
   inspectOpenCodeVersion,
   OPENCODE_LAUNCH_FLAGS,
@@ -47,14 +48,19 @@ export function openCodeBackendArguments(spec: OpenCodeBackendLaunchSpec, hostna
  * 2.2.5's own `serve` rejects the 1.x `--pure` flag (exit 1, before any `opencode.db` exists; probe 2026-11-04), so
  * today the pre-spawn read is defense in depth against a later 2.x that accepts it. Its price is one deliberate 1.x
  * change: every 1.x start spawns `opencode --version` (bounded at 5 s, failing open) before `serve`.
+ *
+ * It is a launch refusal ({@link AgentLaunchRefusedError}): the runtime carries its code and its sentence to the
+ * failure a host reads (`AGENT_LAUNCH_REFUSED`), so a host can say why the start did not happen. Its code names no
+ * vendor, like the Hermes gateway's `INTERPRETER_UNAVAILABLE`: a host says it by the agent's own name, and the
+ * versions are said in its sentence alone ({@link unsupportedOpenCodeLineMessage}).
  */
-export class OpenCodeUnsupportedReleaseLineError extends Error {
-  readonly code = 'OPENCODE_UNSUPPORTED_RELEASE_LINE';
+export class OpenCodeUnsupportedReleaseLineError extends AgentLaunchRefusedError<'UNSUPPORTED_RELEASE_LINE'> {
   readonly line = '2.x';
   readonly version: string;
 
   constructor(version: string, options?: ErrorOptions) {
-    super(unsupportedOpenCodeLineMessage(version), options);
+    super('UNSUPPORTED_RELEASE_LINE', unsupportedOpenCodeLineMessage(version));
+    if (options !== undefined && 'cause' in options) this.cause = options.cause;
     this.name = 'OpenCodeUnsupportedReleaseLineError';
     this.version = version;
   }

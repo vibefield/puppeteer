@@ -33,7 +33,9 @@ export const ROSETTA_AGENT_CONFIGS = Object.freeze({
       project: '--project',
       addDirectory: '--add-dir',
     },
-    privacy: { sensitiveTextKey: /^(?:created_at)$/i },
+    // Tool-call `args` are model-written (1.4.12 adds `toolSummary` prose beside `CommandLine`): redact every value in
+    // place, as the vendor's own antigravityRules do, so imported captures pass both detectors.
+    privacy: { sensitiveTextKey: /^(?:created_at|toolSummary)$/i, sensitiveContainer: /^(?:args)$/i },
   }),
   copilot: Object.freeze({
     vendor: 'copilot',

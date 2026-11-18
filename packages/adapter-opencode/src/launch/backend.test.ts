@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AgentLaunchRefusedError, isAgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 import {
   OPENCODE_1_BACKEND_LAUNCH,
   openCodeBackendArguments,
@@ -11,6 +12,7 @@ import {
   type OpenCodeBackend,
 } from './backend.js';
 import { OpenCodeClient } from '../transport/client.js';
+import { unsupportedOpenCodeLineMessage } from '../detection.js';
 import { createOpenCodeImposterFixture } from '../test-support/imposter.js';
 
 const backends = new Set<OpenCodeBackend>();
@@ -226,10 +228,26 @@ describe('OpenCode private backend', () => {
       (error: unknown) => error,
     );
     expect(failure).toBeInstanceOf(OpenCodeUnsupportedReleaseLineError);
-    expect(failure).toMatchObject({ code: 'OPENCODE_UNSUPPORTED_RELEASE_LINE', line: '2.x', version: '2.2.5' });
+    expect(failure).toMatchObject({ code: 'UNSUPPORTED_RELEASE_LINE', line: '2.x', version: '2.2.5' });
     expect(Date.now() - started).toBeLessThan(5_000);
     expect(versionReads(server.versions)).toHaveLength(1);
     expect(() => readFileSync(server.record, 'utf8')).toThrow();
+  });
+
+  it('refuses 2.x as a launch refusal, so a host reads its code and its sentence, never a generic failure', async () => {
+    const server = recordingServer('server listening on http://127.0.0.1:45681', 'opencode v2.2.5');
+    const failure = await startOpenCodeBackend({ executable: server.executable, startupTimeoutMs: 5_000 }).catch(
+      (error: unknown) => error,
+    );
+    // What the runtime reads before it carries words to a failure: the brand, then the code and one sentence.
+    expect(isAgentLaunchRefusedError(failure)).toBe(true);
+    expect(failure).toBeInstanceOf(AgentLaunchRefusedError);
+    expect(failure).toMatchObject({
+      name: 'OpenCodeUnsupportedReleaseLineError',
+      code: 'UNSUPPORTED_RELEASE_LINE',
+      message: unsupportedOpenCodeLineMessage('2.2.5'),
+      field: undefined,
+    });
   });
 
   it('refuses 2.x the way 2.2.5 really behaves, rejecting --pure, with the typed error and no serve', async () => {
