@@ -4,14 +4,15 @@ import {
   nativeArray,
   nativeRecord,
   nativeStrings,
-  nativeVersion,
   nativeProbeOptions,
   nativeModelEnvironment,
   readNativeJsonResponse,
+  runNativeCommand,
   type NativeModelProbeOptions,
 } from '@vibefield/puppeteer-native-observation';
-import { resolveOpenCodeExecutable } from '../detection.js';
+import { OPENCODE_VERSION_FLAG, readOpenCodeVersion, resolveOpenCodeExecutable } from '../detection.js';
 import { startOpenCodeBackend, type OpenCodeBackend } from '../launch/backend.js';
+import { withoutOpenCodeServerPasswords } from '../launch/credentials.js';
 import { loopbackFetch } from '../transport/loopback-fetch.js';
 import { createOpenCodeProfileService, OPENCODE_PROFILE_ROOT_VARIABLE } from './profiles.js';
 
@@ -68,6 +69,20 @@ export async function readOpenCodeProviders(
   return readNativeJsonResponse(response);
 }
 
+/** The same expression as `nativeVersion` in puppeteer-native-observation, which runs its own process. */
+const NATIVE_VERSION_STAMP = /(?:^|[^\w.])v?(\d+\.\d+\.\d+(?:-[\w.-]+)?)(?!\w|\.\d)/u;
+
+/**
+ * The catalog's `nativeVersion` stamp from one `--version` output, or the 2.x refusal. 2.x is refused as
+ * `unsupported`; any other output keeps the shared probe's loose stamp (`nativeVersion` in
+ * puppeteer-native-observation), so a 1.x prerelease suffix or a notice line beside the version still stamps the
+ * catalog as it did before the release-line check. The strict pattern only decides what a launch accepts.
+ */
+export function openCodeCatalogVersion(stdout: string): string | undefined {
+  if (readOpenCodeVersion(stdout).status === 'unsupported-release-line') throw new NativeProbeError('unsupported');
+  return NATIVE_VERSION_STAMP.exec(stdout)?.[1];
+}
+
 export function createOpenCodeModelService(options: NativeModelProbeOptions = {}): AgentModelService {
   const profiles = createOpenCodeProfileService(options);
   return defineModelService({
@@ -83,8 +98,17 @@ export function createOpenCodeModelService(options: NativeModelProbeOptions = {}
       );
       if (context.profile) delete env.OPENCODE_AUTH_CONTENT;
       const probe = nativeProbeOptions(resolveOpenCodeExecutable(options.executable), context, env);
-      const version = await nativeVersion(probe);
+      // The version read is this discovery's release-line check: 2.x is refused before `serve` can open the
+      // profile's store, and the backend below does not read it again. It runs without inherited server passwords.
+      const { stdout } = await runNativeCommand({
+        ...probe,
+        env: withoutOpenCodeServerPasswords(probe.env),
+        args: [OPENCODE_VERSION_FLAG],
+        maxOutputBytes: 64 * 1024,
+      });
+      const version = openCodeCatalogVersion(stdout);
       const backend = await startOpenCodeBackend({
+        checkReleaseLine: false,
         executable: probe.executable,
         cwd: context.cwd,
         signal: probe.signal,

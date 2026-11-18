@@ -41,9 +41,12 @@ async function start(name = 'happy-turn', root = mkdtempSync(join(tmpdir(), 'pup
 const authorization = `Basic ${Buffer.from('opencode:test-password').toString('base64')}`;
 const headers = { Authorization: authorization };
 
+/** The 1.x carrier: `http-serve.json` declares `properties` as its envelope payload key. */
+type OpenCodeFrame = SseRecord & { properties: Record<string, unknown> };
+
 interface EventReader {
-  records: SseRecord[];
-  next(type?: string): Promise<SseRecord>;
+  records: OpenCodeFrame[];
+  next(type?: string): Promise<OpenCodeFrame>;
   close(): void;
 }
 
@@ -53,7 +56,7 @@ async function eventReader(url: string): Promise<EventReader> {
   expect(response.status).toBe(200);
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
-  const records: SseRecord[] = [];
+  const records: OpenCodeFrame[] = [];
   const waiters = new Set<() => void>();
   let buffer = '';
   void (async () => {
@@ -71,7 +74,7 @@ async function eventReader(url: string): Promise<EventReader> {
             .filter((line) => line.startsWith('data:'))
             .map((line) => line.slice(5).trimStart())
             .join('\n');
-          if (data) records.push(JSON.parse(data) as SseRecord);
+          if (data) records.push(JSON.parse(data) as OpenCodeFrame);
           for (const wake of waiters) wake();
           boundary = buffer.indexOf('\n\n');
         }

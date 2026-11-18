@@ -1,4 +1,4 @@
-import type { AgentProfile, ProfileSet, ProfileSignIn, ProfileSupport, SignInService } from './profiles.js';
+import type { AgentProfile, PlanTier, ProfileSet, ProfileSignIn, ProfileSupport, SignInService } from './profiles.js';
 
 /**
  * Plans: what a profile set runs on (RFC 006, "Plans").
@@ -37,6 +37,8 @@ export type ProfilePlanAccount = {
   organization?: string;
   /** The agent's own plan label ("max", "Pro"). */
   plan?: string;
+  /** The tier beside the plan label, when the agent told one. */
+  planTier?: PlanTier;
 };
 
 export type ProfilePlan = {
@@ -69,6 +71,7 @@ export type ProfileHolding = {
   account?: string;
   organization?: string;
   plan?: string;
+  planTier?: PlanTier;
   borrowedFrom?: string;
   /** A pay-per-use key: never on a plan. */
   key: boolean;
@@ -140,6 +143,7 @@ function signInsOf(profile: AgentProfile, service: SignInService | undefined): S
       ...(identity.account !== undefined ? { account: identity.account } : {}),
       ...(identity.organization !== undefined ? { organization: identity.organization } : {}),
       ...(identity.plan !== undefined ? { plan: identity.plan } : {}),
+      ...(identity.planTier !== undefined ? { planTier: identity.planTier } : {}),
       ...(identity.borrowedFrom !== undefined ? { borrowedFrom: identity.borrowedFrom } : {}),
     },
   ];
@@ -164,6 +168,7 @@ function holdingOf(signIn: SignInLike, runsOn: boolean): ProfileHolding {
     ...(signIn.account !== undefined ? { account: signIn.account } : {}),
     ...(signIn.organization !== undefined ? { organization: signIn.organization } : {}),
     ...(signIn.plan !== undefined ? { plan: signIn.plan } : {}),
+    ...(signIn.planTier !== undefined ? { planTier: signIn.planTier } : {}),
     ...(signIn.borrowedFrom !== undefined ? { borrowedFrom: signIn.borrowedFrom } : {}),
     key: signIn.method === API_KEY_METHOD,
     runsOn,
@@ -176,6 +181,7 @@ function accountOf(holding: ProfileHolding): ProfilePlanAccount {
     ...(holding.account !== undefined ? { account: holding.account } : {}),
     ...(holding.organization !== undefined ? { organization: holding.organization } : {}),
     ...(holding.plan !== undefined ? { plan: holding.plan } : {}),
+    ...(holding.planTier !== undefined ? { planTier: holding.planTier } : {}),
   };
 }
 

@@ -43,6 +43,56 @@ export interface SanitizerRules {
   alreadyRedacted: RegExp;
   /** Value-level patterns redacted (and detected) regardless of key. */
   unsafeTextPatterns: RegExp[];
+  /**
+   * Strings that carry a whole encoded document (a JSON payload serialized
+   * into a string field). Each one is decoded, sanitized and checked exactly as
+   * its decoded form would be inline, then re-encoded, so the carrier keeps its
+   * native type. Absent or empty: every string is sanitized as text.
+   */
+  encodedValues?: readonly EncodedValueCodec[];
+}
+
+/**
+ * Decode-before-redact hook for a string-encoded document.
+ *
+ * Some protocols declare a payload as a JSON string (OpenAPI 3.1
+ * `contentMediaType: application/json`) while their servers send the object;
+ * a fixture set may hold both. Sanitized as text, the string form loses every
+ * key-based rule (an id under `sessionID` is just characters) and its whole
+ * payload collapses into one redaction; decoded first, the two forms get the
+ * same treatment and the same pseudonyms, and each keeps its own type.
+ */
+export interface EncodedValueCodec {
+  /** Keys whose string values may carry an encoded document. */
+  key: RegExp;
+  /** The decoded document, or `undefined` when this string is not one; it is then sanitized as text. */
+  decode(value: string): unknown;
+  /**
+   * Serialize the sanitized document back into the carrier's string form.
+   * Must be deterministic: the detector accepts an encoded string only when it
+   * equals `encode(decode(string))`, the only form the redactor writes.
+   */
+  encode(value: unknown): string;
+}
+
+/**
+ * A JSON object or array serialized into a string under a key matching `key`.
+ * Scalars stay text: a JSON-encoded scalar carries no keys for the rules to use.
+ */
+export function jsonEncodedValue(key: RegExp): EncodedValueCodec {
+  return {
+    key,
+    decode(value) {
+      if (!/^\s*[[{]/.test(value)) return undefined;
+      try {
+        const decoded: unknown = JSON.parse(value);
+        return decoded !== null && typeof decoded === 'object' ? decoded : undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    encode: (value) => JSON.stringify(value),
+  };
 }
 
 /**
@@ -145,9 +195,11 @@ export function extendRules(
     >
   > & {
     unsafeTextPatterns?: RegExp[];
+    encodedValues?: readonly EncodedValueCodec[];
   },
   base: SanitizerRules = defaultRules,
 ): SanitizerRules {
+  const encodedValues = [...(base.encodedValues ?? []), ...(extra.encodedValues ?? [])];
   const merge = (a: RegExp, b: RegExp | undefined): RegExp =>
     b === undefined ? a : new RegExp(`${a.source}|${b.source}`, a.flags.includes('i') ? 'i' : '');
   return {
@@ -159,6 +211,7 @@ export function extendRules(
     sensitiveContainer: merge(base.sensitiveContainer, extra.sensitiveContainer),
     structuralEnumValue: merge(base.structuralEnumValue, extra.structuralEnumValue),
     unsafeTextPatterns: [...base.unsafeTextPatterns, ...(extra.unsafeTextPatterns ?? [])],
+    ...(encodedValues.length > 0 ? { encodedValues } : {}),
   };
 }
 
@@ -233,6 +286,29 @@ export function alias(value: string): string {
   }
 
   return `anon-${digest.slice(0, 16)}`;
+}
+
+/**
+ * The codec and decoded document for an encoded string under `key`, if any.
+ * A codec that throws is treated as not matching, which leaves the string to
+ * the strictest path: text redaction and text detection.
+ */
+function decodeEncodedValue(
+  value: string,
+  key: string,
+  rules: SanitizerRules,
+): { codec: EncodedValueCodec; decoded: unknown } | undefined {
+  for (const codec of rules.encodedValues ?? []) {
+    if (!codec.key.test(key)) continue;
+    let decoded: unknown;
+    try {
+      decoded = codec.decode(value);
+    } catch {
+      continue;
+    }
+    if (decoded !== undefined) return { codec, decoded };
+  }
+  return undefined;
 }
 
 function safeStructuralEnum(value: string, key: string, rules: SanitizerRules): boolean {
@@ -318,7 +394,11 @@ function sanitizeValue(value: unknown, key: string, inContainer: boolean, rules:
   if (typeof value === 'number' && rules.timestampKey.test(key)) {
     return Number.isInteger(value) && value > 1_000_000_000 ? REDACTED_EPOCH_MS : value;
   }
-  if (typeof value === 'string') return sanitizeString(value, key, inContainer, rules);
+  if (typeof value === 'string') {
+    const encoded = decodeEncodedValue(value, key, rules);
+    if (encoded) return encoded.codec.encode(sanitizeValue(encoded.decoded, key, inContainer, rules));
+    return sanitizeString(value, key, inContainer, rules);
+  }
   if (Array.isArray(value)) return value.map((entry) => sanitizeValue(entry, key, inContainer, rules));
   if (value !== null && typeof value === 'object') {
     const nextInContainer = inContainer || rules.sensitiveContainer.test(key);
@@ -396,6 +476,28 @@ function inspect(
     }
   }
   if (typeof value === 'string') {
+    // The detector half of the decode hook. The decoded document is inspected
+    // as if inline, and the encoded text is not scanned again: the redactor
+    // keeps what an inline document may keep (a non-clock number, say), so a
+    // raw-text scan of its own output would break the lockstep.
+    //
+    // That shortcut holds only for text the redactor could have written, which
+    // is always `encode(decode(text))`. Anything else (duplicate keys, where
+    // JSON.parse keeps only the last; odd spacing or escapes) can hold content
+    // the decoded document does not show, so it is flagged as unsanitized and
+    // the raw text is scanned as well.
+    const encoded = decodeEncodedValue(value, key, rules);
+    if (encoded) {
+      inspect(encoded.decoded, issues, `${location}<decoded>`, key, inContainer, rules);
+      let canonical: string | undefined;
+      try {
+        canonical = encoded.codec.encode(encoded.decoded);
+      } catch {
+        canonical = undefined;
+      }
+      if (canonical === value) return;
+      issues.push(`${location}: encoded document at ${key} is not in the sanitizer's canonical form`);
+    }
     if (rules.unsafeTextPatterns.some((pattern) => pattern.test(value))) {
       issues.push(`${location}: unsafe text at ${key}`);
     }

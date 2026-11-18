@@ -7,15 +7,23 @@
     "defaultPort": 0,
     "directoryQuery": "directory",
     "directoryHeader": "x-opencode-directory",
+    "readiness": "opencode server listening on $origin",
     "auth": {
       "usernameEnv": "OPENCODE_SERVER_USERNAME",
       "passwordEnv": "OPENCODE_SERVER_PASSWORD",
-      "defaultUsername": "opencode"
+      "defaultUsername": "opencode",
+      "realm": "opencode",
+      "unauthorizedBody": { "name": "UnauthorizedError", "data": { "message": "Unauthorized" } }
+    },
+    "envelope": {
+      "payloadKey": "properties",
+      "connectedType": "server.connected"
     },
     "attach": {
       "command": "attach",
       "sessionFlag": "--session",
-      "directoryFlag": "--dir"
+      "directoryFlag": "--dir",
+      "promptBody": { "messageID": "$messageId", "parts": [{ "type": "text", "text": "$text" }] }
     }
   },
   "routes": [
