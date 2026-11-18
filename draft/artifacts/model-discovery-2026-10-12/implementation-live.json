@@ -3,7 +3,7 @@
     "status": "available",
     "catalog": {
       "provider": "claude",
-      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "cwd": "/var/folders/zz/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/T/puppeteer-live-models-stpMHQ",
       "observedAt": "2026-10-12T18:49:05.751Z",
       "source": {
         "kind": "native-protocol",
@@ -190,7 +190,7 @@
     "status": "available",
     "catalog": {
       "provider": "codex",
-      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "cwd": "/var/folders/zz/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/T/puppeteer-live-models-stpMHQ",
       "observedAt": "2026-10-12T18:49:05.958Z",
       "source": {
         "kind": "native-protocol",
@@ -478,7 +478,7 @@
     "status": "available",
     "catalog": {
       "provider": "grok",
-      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "cwd": "/var/folders/zz/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/T/puppeteer-live-models-stpMHQ",
       "observedAt": "2026-10-12T18:49:07.017Z",
       "source": {
         "kind": "native-command",
@@ -515,7 +515,7 @@
     "status": "available",
     "catalog": {
       "provider": "kimi",
-      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "cwd": "/var/folders/zz/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/T/puppeteer-live-models-stpMHQ",
       "observedAt": "2026-10-12T18:49:08.177Z",
       "source": {
         "kind": "native-command",
@@ -552,7 +552,7 @@
     "status": "available",
     "catalog": {
       "provider": "opencode",
-      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "cwd": "/var/folders/zz/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/T/puppeteer-live-models-stpMHQ",
       "observedAt": "2026-10-12T18:49:10.270Z",
       "source": {
         "kind": "native-protocol",
@@ -783,7 +783,7 @@
     "status": "available",
     "catalog": {
       "provider": "antigravity",
-      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "cwd": "/var/folders/zz/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/T/puppeteer-live-models-stpMHQ",
       "observedAt": "2026-10-12T18:49:12.734Z",
       "source": {
         "kind": "native-command",
@@ -890,7 +890,7 @@
     "status": "available",
     "catalog": {
       "provider": "copilot",
-      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "cwd": "/var/folders/zz/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/T/puppeteer-live-models-stpMHQ",
       "observedAt": "2026-10-12T18:49:14.239Z",
       "source": {
         "kind": "native-protocol",
@@ -1380,7 +1380,7 @@
     "status": "available",
     "catalog": {
       "provider": "pi",
-      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "cwd": "/var/folders/zz/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/T/puppeteer-live-models-stpMHQ",
       "observedAt": "2026-10-12T18:49:14.625Z",
       "source": {
         "kind": "native-protocol",
@@ -1513,7 +1513,7 @@
     "status": "available",
     "catalog": {
       "provider": "hermes",
-      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "cwd": "/var/folders/zz/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy/T/puppeteer-live-models-stpMHQ",
       "observedAt": "2026-10-12T18:49:15.744Z",
       "source": {
         "kind": "native-helper",
