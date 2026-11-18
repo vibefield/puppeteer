@@ -418,8 +418,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
   };
   // One Claude usage service for the composition: each session's status line reaches its listeners, stamped with the
   // registered account the session's root names (session-account.ts). A root no registered account names (a typed
-  // root, an imposter) is handed no sink: the registry is the account authority, so its quota is shown nowhere.
-  const claudeAccountUsage = createClaudeAccountUsageService(envOption);
+  // root, an imposter) is handed no sink: the registry is the account authority, so its quota is shown nowhere. Its
+  // renewal of an aged sign-in starts the same Claude Code the launches use.
+  const claudeAccountUsage = createClaudeAccountUsageService({ ...envOption, ...chosen(resolved.claude) });
   const claudeAccountUsageSink = (
     cwd: string,
     profile: AgentProfile | undefined,
