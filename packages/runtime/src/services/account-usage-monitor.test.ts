@@ -932,7 +932,7 @@ describe('a push is a reading of the meters it carries: merged by id, and never 
     expect(answered?.refreshFailure).toBeUndefined();
 
     clock.ms = T0 + 35 * MINUTE;
-    await monitor.refresh({ force: true });
+    await monitor.refresh();
     expect(fetchUsage).toHaveBeenCalledTimes(2);
     clock.ms = T0 + 61 * MINUTE;
     await monitor.refresh();
