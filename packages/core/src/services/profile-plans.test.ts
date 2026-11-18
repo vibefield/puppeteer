@@ -312,4 +312,93 @@ describe('profileSetPlans', () => {
     ]);
     expect(work!.plans.map((plan) => plan.id)).toEqual(['anthropic']);
   });
+
+  it('carries a sign-in’s tier to its holding and to its plan’s account', () => {
+    const [work] = profileSetPlans(
+      [
+        set('work', [
+          profile(
+            'w-claude',
+            'claude',
+            'work',
+            identity({ email: 'kim@example.com', plan: 'max', planTier: { label: '20x' } }),
+          ),
+          profile(
+            'w-hermes',
+            'hermes',
+            'work',
+            harness([
+              {
+                service: OPENAI,
+                method: 'oauth',
+                subscription: true,
+                email: 'kim@example.com',
+                plan: 'pro',
+                planTier: {},
+                inUse: true,
+              },
+            ]),
+          ),
+        ]),
+      ],
+      PROVIDERS,
+    );
+    expect(work!.plans.map((plan) => [plan.id, plan.account])).toEqual([
+      ['anthropic', { email: 'kim@example.com', plan: 'max', planTier: { label: '20x' } }],
+      ['openai', { email: 'kim@example.com', plan: 'pro', planTier: {} }],
+    ]);
+    expect(work!.holdings['w-claude']).toEqual([
+      {
+        service: ANTHROPIC,
+        email: 'kim@example.com',
+        plan: 'max',
+        planTier: { label: '20x' },
+        key: false,
+        planId: 'anthropic',
+        runsOn: true,
+      },
+    ]);
+    expect(work!.holdings['w-hermes']![0]!.planTier).toEqual({});
+  });
+
+  it('keeps one plan for one account whether or not each holder told a tier', () => {
+    const [work] = profileSetPlans(
+      [
+        set('work', [
+          profile('w-claude', 'claude', 'work', identity({ email: 'kim@example.com', plan: 'max' })),
+          profile(
+            'w-opencode',
+            'opencode',
+            'work',
+            harness([
+              {
+                service: ANTHROPIC,
+                method: 'oauth',
+                subscription: true,
+                email: 'kim@example.com',
+                plan: 'max',
+                planTier: { label: '20x' },
+                inUse: true,
+              },
+            ]),
+          ),
+        ]),
+      ],
+      PROVIDERS,
+    );
+    // The account is the plan's key: a tier neither splits it nor joins it, and its namer's word is the plan's.
+    expect(work!.plans).toEqual([
+      {
+        id: 'anthropic',
+        service: ANTHROPIC,
+        account: { email: 'kim@example.com', plan: 'max' },
+        namedBy: 'w-claude',
+        holders: ['w-claude', 'w-opencode'],
+        alsoIn: [],
+      },
+    ]);
+    // Each holding keeps what its own agent told.
+    expect('planTier' in work!.holdings['w-claude']![0]!).toBe(false);
+    expect(work!.holdings['w-opencode']![0]!.planTier).toEqual({ label: '20x' });
+  });
 });

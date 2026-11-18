@@ -84,6 +84,35 @@ describe('account profile contracts', () => {
     ).toBe(true);
   });
 
+  it("carries a plan's tier as a label of at most eight characters, or as none", () => {
+    const identity = {
+      loggedIn: true,
+      plan: 'max',
+      verifiedAt: '2026-11-17T12:00:00.000Z',
+      source: { kind: 'native-status', stability: 'documented' },
+    };
+    // A label is the tier; an empty record shows no tier beside the name; no field says it was not read.
+    expect(ProfileIdentitySchema.parse({ ...identity, planTier: { label: '20x' } }).planTier).toEqual({ label: '20x' });
+    expect(ProfileIdentitySchema.parse({ ...identity, planTier: {} }).planTier).toEqual({});
+    expect(ProfileIdentitySchema.parse(identity).planTier).toBeUndefined();
+    for (const label of ['200', '5x', '1.5x', 'x'.repeat(8)]) {
+      expect(ProfileIdentitySchema.safeParse({ ...identity, planTier: { label } }).success, label).toBe(true);
+    }
+    // A badge is never handed a sentence, a raw token, bare punctuation, or anything beside its label.
+    for (const planTier of [
+      { label: '' },
+      { label: 'x'.repeat(9) },
+      { label: '20 x' },
+      { label: 'max_20x' },
+      { label: '-' },
+      { label: '+.' },
+      { label: '20x', color: 'gold' },
+      '20x',
+    ]) {
+      expect(ProfileIdentitySchema.safeParse({ ...identity, planTier }).success, JSON.stringify(planTier)).toBe(false);
+    }
+  });
+
   it('validates provider support declarations and typed failures', () => {
     expect(
       ProfileSupportSchema.parse({
@@ -180,6 +209,31 @@ describe('sign-in contracts', () => {
     expect(identity.account).toBe('person');
     // A vendor agent's single sign-in names its account without a list.
     expect(ProfileIdentitySchema.safeParse({ loggedIn: true, account: 'person', ...read }).success).toBe(true);
+  });
+
+  it("carries a sign-in's tier beside its plan", () => {
+    const tiered = { ...inUse, planTier: { label: '20x' } };
+    expect(ProfileSignInSchema.parse(tiered).planTier).toEqual({ label: '20x' });
+    expect(ProfileSignInSchema.parse({ ...inUse, planTier: {} }).planTier).toEqual({});
+    expect(ProfileSignInSchema.parse(inUse).planTier).toBeUndefined();
+    // The same rule as at the top level: one short word or none, and nothing beside it.
+    expect(ProfileSignInSchema.safeParse({ ...inUse, planTier: { label: 'team premium' } }).success).toBe(false);
+    expect(ProfileSignInSchema.safeParse({ ...inUse, planTier: { label: '20x', token: 'sk-secret' } }).success).toBe(
+      false,
+    );
+    // It travels in the list, and the in-use one's repeats at the top level.
+    expect(
+      ProfileIdentitySchema.safeParse({
+        loggedIn: true,
+        method: 'oauth',
+        account: 'person',
+        email: 'person@example.com',
+        plan: 'Pro',
+        planTier: { label: '20x' },
+        signIns: [tiered, other],
+        ...read,
+      }).success,
+    ).toBe(true);
   });
 
   it('keeps loggedIn and the list in agreement, with at most one sign-in in use', () => {

@@ -721,6 +721,65 @@ describe('createProfileOnboarding', () => {
     await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual(answer);
   });
 
+  it("repeats the in-use sign-in's tier at the top level, and drops a stale one", async () => {
+    const unread = {
+      service: { id: 'example', label: 'Example' },
+      method: 'oauth',
+      subscription: true,
+      inUse: true,
+      email: 'person@example.com',
+      plan: 'max',
+    };
+    const portal = { ...unread, planTier: { label: '20x' } };
+    const key = { service: { id: 'other-cloud', label: 'Other Cloud' }, method: 'api-key' };
+    const read = { verifiedAt: '2026-11-17T12:00:00.000Z', source: identity.source };
+    let answer: ProfileIdentity = { loggedIn: true, signIns: [key, portal], ...read };
+    const alpha = fakeProvider('alpha', { verify: async () => answer });
+    const box = await onboarding([alpha]);
+    const profile = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Work' })) as AgentProfile;
+
+    const tiered: ProfileIdentity = {
+      loggedIn: true,
+      method: 'oauth',
+      email: 'person@example.com',
+      plan: 'max',
+      planTier: { label: '20x' },
+      signIns: [key, portal],
+      ...read,
+    };
+    await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual(tiered);
+    expect(box.stored.snapshot?.profiles[0]?.identity).toStrictEqual(tiered);
+
+    // A plan the in-use sign-in says has no tier says so at the top level too.
+    const untiered = { ...unread, planTier: {} };
+    answer = { loggedIn: true, signIns: [key, untiered], ...read };
+    await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual({
+      ...tiered,
+      planTier: {},
+      signIns: [key, untiered],
+    });
+    // A stale tier at the top level goes when the in-use sign-in tells none,
+    answer = { loggedIn: true, planTier: { label: '5x' }, signIns: [key, unread], ...read };
+    await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual({
+      loggedIn: true,
+      method: 'oauth',
+      email: 'person@example.com',
+      plan: 'max',
+      signIns: [key, unread],
+      ...read,
+    });
+    // and when none is in use.
+    answer = { loggedIn: true, planTier: { label: '20x' }, signIns: [key, { ...portal, inUse: false }], ...read };
+    await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual({
+      loggedIn: true,
+      signIns: [key, { ...portal, inUse: false }],
+      ...read,
+    });
+    // A single-sign-in agent's tier passes through untouched.
+    answer = { loggedIn: true, plan: 'max', planTier: { label: '20x' }, ...read };
+    await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual(answer);
+  });
+
   it('never lets an adapter fault escape verification', async () => {
     const onError = vi.fn();
     const box = harness([

@@ -1,6 +1,11 @@
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AgentProfileSchema, ProfileProviderSchema, type AgentProfile } from '@vibefield/puppeteer-core';
+import {
+  AgentProfileSchema,
+  ProfileIdentitySchema,
+  ProfileProviderSchema,
+  type AgentProfile,
+} from '@vibefield/puppeteer-core';
 import {
   CLAUDE_PROFILE_ROOT_VARIABLE,
   claudeProfileIdentityFrom,
@@ -183,6 +188,28 @@ describe('Claude profile verification', () => {
     expect(calls[0]?.env[CLAUDE_PROFILE_ROOT_VARIABLE]).toBe(resolve('/Users/test/.puppeteer/profiles/claude/9f2b'));
   });
 
+  it('reads the tier from the status document of a Claude Code that reports one', async () => {
+    const reporting = (planTier: string): string => JSON.stringify({ ...JSON.parse(LOGGED_IN), planTier });
+    // The one document read so far: the family at the 20x tier, shown as the Ultra plan with no tier beside it.
+    const ultra = await service(reporting('max_20x')).verify(managed);
+    expect(ultra).toStrictEqual({
+      loggedIn: true,
+      method: 'claude.ai',
+      email: 'dev@example.com',
+      organization: 'Example Org',
+      plan: 'ultra',
+      planTier: {},
+      verifiedAt: NOW.toISOString(),
+      source: { kind: 'native-status', stability: 'documented' },
+    });
+    // Any other tier of the family keeps the family's name and wears its tier.
+    const tiered = await service(reporting('max_5x')).verify(managed);
+    expect(tiered).toMatchObject({ plan: 'max', planTier: { label: '5x' } });
+    // Both fit the contract a host reads them through.
+    expect(() => ProfileIdentitySchema.parse(ultra)).not.toThrow();
+    expect(() => ProfileIdentitySchema.parse(tiered)).not.toThrow();
+  });
+
   it('never forwards the undocumented secure-storage override', async () => {
     const calls: Call[] = [];
     await service(LOGGED_IN, calls).verify(managed);
@@ -285,6 +312,16 @@ describe('Claude profile verification', () => {
   });
 });
 
+/** The plan and tier a signed-in status document decodes to; a key is present only when the identity carries it. */
+function planOf(fields: Record<string, unknown>) {
+  const identity = claudeProfileIdentityFrom({ loggedIn: true, ...fields }, NOW.toISOString());
+  if ('status' in identity) throw new Error(identity.message);
+  return {
+    ...('plan' in identity ? { plan: identity.plan } : {}),
+    ...('planTier' in identity ? { planTier: identity.planTier } : {}),
+  };
+}
+
 describe('Claude status decoding', () => {
   it('drops blank optional fields instead of emitting empty strings', () => {
     expect(claudeProfileIdentityFrom({ loggedIn: true, email: '   ', orgName: '' }, NOW.toISOString())).toEqual({
@@ -292,5 +329,98 @@ describe('Claude status decoding', () => {
       verifiedAt: NOW.toISOString(),
       source: { kind: 'native-status', stability: 'documented' },
     });
+  });
+
+  it('reads the tier beside the family as the short label a view draws', () => {
+    expect(planOf({ subscriptionType: 'max', planTier: 'max_5x' })).toStrictEqual({
+      plan: 'max',
+      planTier: { label: '5x' },
+    });
+    // The plan word does not carry the tier, and both tokens are trimmed first.
+    expect(planOf({ subscriptionType: ' max ', planTier: ' max_5x ' })).toStrictEqual({
+      plan: 'max',
+      planTier: { label: '5x' },
+    });
+    // A tier nobody has read yet follows the same rule, with no table.
+    expect(planOf({ subscriptionType: 'pro', planTier: 'pro_2x' })).toStrictEqual({
+      plan: 'pro',
+      planTier: { label: '2x' },
+    });
+  });
+
+  it("says a plan has no tier when the tool's tier is the family itself", () => {
+    // The rule's one case of `{}`; the Ultra row below is the naming table's.
+    expect(planOf({ subscriptionType: 'max', planTier: 'max' })).toStrictEqual({ plan: 'max', planTier: {} });
+    expect(planOf({ subscriptionType: 'pro', planTier: ' pro ' })).toStrictEqual({ plan: 'pro', planTier: {} });
+  });
+
+  it('leaves the tier unread when the tool tells none, or tells it in a shape it has not been seen in', () => {
+    // Beside a tier it can read,
+    expect(planOf({ subscriptionType: 'max', planTier: 'max_5x' }).planTier).toEqual({ label: '5x' });
+    // no field, an empty or blank one, and anything but a string are all "not read", never "none".
+    expect(planOf({ subscriptionType: 'max' })).toStrictEqual({ plan: 'max' });
+    for (const planTier of ['', '   ', null, 20, ['max_20x'], { label: '20x' }]) {
+      expect(planOf({ subscriptionType: 'max', planTier }), JSON.stringify(planTier)).toStrictEqual({ plan: 'max' });
+    }
+  });
+
+  it('gives a one-word tier with no family in front as the tool wrote it', () => {
+    expect(planOf({ subscriptionType: 'max', planTier: 'ultra' })).toStrictEqual({
+      plan: 'max',
+      planTier: { label: 'ultra' },
+    });
+    expect(planOf({ subscriptionType: 'pro', planTier: '200' })).toStrictEqual({
+      plan: 'pro',
+      planTier: { label: '200' },
+    });
+  });
+
+  it('gives no label rather than a compound or a long one', () => {
+    expect(planOf({ subscriptionType: 'max', planTier: 'max_5x' }).planTier).toEqual({ label: '5x' });
+    // A raw token never reaches a badge: an underscore left, over eight characters, nothing left, or punctuation first.
+    for (const planTier of ['team_premium', 'max_20x_promo', 'max_enterprise', 'max_', 'max_-', 'max_+']) {
+      expect(planOf({ subscriptionType: 'max', planTier }), planTier).toStrictEqual({ plan: 'max' });
+    }
+  });
+
+  it('compares the family exactly', () => {
+    expect(planOf({ subscriptionType: 'max', planTier: 'max_5x' }).planTier).toEqual({ label: '5x' });
+    // No family to take off, or a family the tool has not been seen to case so.
+    expect(planOf({ planTier: 'max_5x' })).toStrictEqual({});
+    // With no family, even a one-word tier is not read: a label never sits beside no name.
+    for (const planTier of ['5x', 'max', 'ultra']) {
+      expect(planOf({ planTier }), planTier).toStrictEqual({});
+      expect(planOf({ subscriptionType: '  ', planTier }), planTier).toStrictEqual({});
+    }
+    expect(planOf({ subscriptionType: 'Max', planTier: 'max_5x' })).toStrictEqual({ plan: 'Max' });
+    expect(planOf({ subscriptionType: 'Max', planTier: 'max_20x' })).toStrictEqual({ plan: 'Max' });
+  });
+
+  it('shows the family at the 20x tier as the Ultra plan, with no tier beside it', () => {
+    expect(planOf({ subscriptionType: 'max', planTier: 'max_20x' })).toStrictEqual({ plan: 'ultra', planTier: {} });
+    // Both tokens are trimmed before the row is matched.
+    expect(planOf({ subscriptionType: ' max ', planTier: 'max_20x  ' })).toStrictEqual({
+      plan: 'ultra',
+      planTier: {},
+    });
+  });
+
+  it('holds the Ultra row to both tokens exactly, and leaves every other tier to the rule', () => {
+    // A tier of the family the row does not name keeps the family's name and wears its tier.
+    expect(planOf({ subscriptionType: 'max', planTier: 'max_5x' })).toStrictEqual({
+      plan: 'max',
+      planTier: { label: '5x' },
+    });
+    expect(planOf({ subscriptionType: 'max', planTier: 'max_40x' })).toStrictEqual({
+      plan: 'max',
+      planTier: { label: '40x' },
+    });
+    expect(planOf({ subscriptionType: 'max', planTier: 'max' })).toStrictEqual({ plan: 'max', planTier: {} });
+    // A case, a family or a token the row does not name exactly is not the row.
+    expect(planOf({ subscriptionType: 'max', planTier: 'MAX_20X' })).toStrictEqual({ plan: 'max' });
+    expect(planOf({ subscriptionType: 'max', planTier: 'max_20x_promo' })).toStrictEqual({ plan: 'max' });
+    expect(planOf({ subscriptionType: 'pro', planTier: 'max_20x' })).toStrictEqual({ plan: 'pro' });
+    expect(planOf({ planTier: 'max_20x' })).toStrictEqual({});
+    expect(planOf({ subscriptionType: 'max' })).toStrictEqual({ plan: 'max' });
   });
 });
