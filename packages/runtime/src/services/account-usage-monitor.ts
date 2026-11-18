@@ -37,9 +37,11 @@ export interface AccountUsageMonitorOptions {
 }
 
 export interface AccountUsageRefreshOptions {
-  /** Bypass the normal polling interval, but never a failure's backoff or Retry-After.
-   * Successful readings are reused for at least 30 seconds: a poll's, or a push
-   * that carries every meter the last poll did. */
+  /** Bypass the normal polling interval, and the wait after a failure that names no
+   * server refusal (the credential could not be read, the request did not complete),
+   * but never a rate limit's backoff or a Retry-After. A successful reading is reused
+   * for at least 30 seconds: a poll's, or a push that carries every meter the last
+   * poll did. A failed one is read past its wait at most once in 30 seconds. */
   force?: boolean;
   /** Only ask these registered accounts; the returned batch still contains every row. */
   profileIds?: readonly string[];
@@ -138,6 +140,18 @@ function covers(push: AccountUsageAvailable, polled: AccountUsageAvailable | und
     polled.snapshot.metrics.every((metric) => carried.has(metric.id)) &&
     (polled.snapshot.credits === undefined || push.snapshot.credits !== undefined)
   );
+}
+
+/**
+ * Whether a poll's failure is the provider refusing to be asked again yet: a rate limit, or a Retry-After still
+ * ahead. Its wait is the provider's, and nothing a person presses passes it. Any other failure's wait is only this
+ * monitor's own pacing: the cause may have been mended since (a sign-in renewed, a network back).
+ */
+function namesServerRefusal(failure: AccountUsageFailure | undefined, atMs: number): boolean {
+  if (!failure) return false;
+  if (failure.code === 'rate-limited') return true;
+  const retryAtMs = failure.retryAt ? Date.parse(failure.retryAt) : Number.NaN;
+  return retryAtMs > atMs;
 }
 
 interface ProviderRefreshState {
@@ -346,15 +360,17 @@ export function createAccountUsageMonitor(options: AccountUsageMonitorOptions): 
     const targets = requestOptions.profileIds === undefined ? undefined : new Set(requestOptions.profileIds);
     const due = orderedStates().filter((state) => {
       if (targets && (!state.profile || !targets.has(state.profile.id))) return false;
-      if (
-        requestOptions.force &&
-        state.consecutiveFailures === 0 &&
-        state.lastCompletedAtMs !== undefined &&
-        startedAtMs - state.lastCompletedAtMs < MANUAL_REFRESH_INTERVAL_MS
-      )
-        return false;
+      const forced = requestOptions.force === true;
+      const failed = state.consecutiveFailures > 0;
+      const justRead =
+        state.lastCompletedAtMs !== undefined && startedAtMs - state.lastCompletedAtMs < MANUAL_REFRESH_INTERVAL_MS;
+      if (forced && !failed && justRead) return false;
       if (state.nextRefreshAtMs <= startedAtMs) return true;
-      return requestOptions.force === true && state.consecutiveFailures === 0;
+      if (!forced) return false;
+      if (!failed) return true;
+      // After a failure a forced refresh reads past this monitor's own pacing, never past a provider's refusal,
+      // and no more often than the manual guard allows.
+      return !justRead && !namesServerRefusal(state.pollFailure, startedAtMs);
     });
     if (due.length === 0 && latest) return Promise.resolve(latest);
 
