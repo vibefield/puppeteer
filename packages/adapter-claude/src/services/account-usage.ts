@@ -15,6 +15,7 @@ import type {
   AccountUsageSource,
   AgentProfile,
 } from '@vibefield/puppeteer-core';
+import { createClaudeTokenRenewer, type ClaudeTokenRenewer } from './account-renewal.js';
 
 export const CLAUDE_USAGE_ENDPOINT = 'https://api.anthropic.com/api/oauth/usage';
 export const CLAUDE_OAUTH_BETA = 'oauth-2025-04-20';
@@ -692,6 +693,11 @@ export interface FetchClaudeAccountUsageDependencies extends FetchClaudeAccountU
   endpoint?: string;
   fetchImpl?: typeof fetch;
   resolveAccessToken?: () => Promise<string | undefined>;
+  /**
+   * Asks Claude Code to renew an aged access token; resolves true once `confirm` reads it fresh. Absent, an aged
+   * token is only reported: nothing here refreshes a token or writes a credential.
+   */
+  renewAccessToken?: (confirm: () => Promise<boolean>) => Promise<boolean>;
   now?: () => Date;
 }
 
@@ -715,7 +721,12 @@ export async function fetchClaudeAccountUsageWithDependencies(
     if (options.resolveAccessToken) {
       token = await options.resolveAccessToken();
     } else {
-      const credential = await readClaudeCredentialState(options);
+      let credential = await readClaudeCredentialState(options);
+      if (credential.state === 'aged' && options.renewAccessToken) {
+        // Claude Code owns the renewal and the write: this asks it to run once under the root, then reads again.
+        const fresh = async (): Promise<boolean> => (await readClaudeCredentialState(options)).state === 'fresh';
+        if (await options.renewAccessToken(fresh)) credential = await readClaudeCredentialState(options);
+      }
       if (credential.state === 'fresh') token = credential.accessToken;
       aged = credential.state === 'aged';
     }
@@ -907,22 +918,31 @@ export interface ClaudeAccountUsageService extends AccountUsageService {
 export interface ClaudeAccountUsageServiceOptions {
   /**
    * The environment the credential lookup reads (the config root, the Keychain account names, a token a host's
-   * environment carries); absent, this process's own. It reaches no program.
+   * environment carries); absent, this process's own. A renewal takes its allow-list from it, and nothing else of it
+   * reaches a program.
    */
   env?: NodeJS.ProcessEnv;
+  /** Renews an aged access token before a read; defaults to one that starts Claude Code under the account's root. */
+  renewer?: ClaudeTokenRenewer;
 }
 
-/** Complete account-usage capability advertised by the Claude adapter, with push listeners of its own. */
+/**
+ * Complete account-usage capability advertised by the Claude adapter, with push listeners of its own. Its reads
+ * renew an aged access token first, through Claude Code itself; the standalone fetch functions stay read-only.
+ */
 export function createClaudeAccountUsageService(
   serviceOptions: ClaudeAccountUsageServiceOptions = {},
 ): ClaudeAccountUsageService {
   const listeners = new Set<(result: AccountUsageFetchResult) => void>();
+  const env = serviceOptions.env;
+  const renewer = serviceOptions.renewer ?? createClaudeTokenRenewer(env === undefined ? {} : { env });
   return {
     provider: CLAUDE_ACCOUNT_USAGE_PROVIDER,
-    fetch: (options) =>
-      serviceOptions.env === undefined
-        ? fetchClaudeAccountUsageForProfile(options?.profile)
-        : fetchClaudeAccountUsageForProfileWithDependencies(options?.profile, { env: serviceOptions.env }),
+    fetch: (request) =>
+      fetchClaudeAccountUsageForProfileWithDependencies(request?.profile, {
+        ...(env === undefined ? {} : { env }),
+        renewAccessToken: (confirm) => renewer.renew(request?.profile, confirm),
+      }),
     subscribe(listener) {
       listeners.add(listener);
       return () => {
