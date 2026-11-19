@@ -111,6 +111,27 @@ export interface MonitorProject {
 }
 
 /**
+ * A stop the host has in flight for a row, in the host's own open words (for example `sent`, `resent`, `terminating`,
+ * `heard`). Presentation-free: the host's backend fills it, and each view draws it as it chooses.
+ */
+export interface MonitorStop {
+  readonly stage: string;
+  /** When the host sent the stop. */
+  readonly sentAt?: string | undefined;
+  /** When the host judged the stop unheard. */
+  readonly unheardAt?: string | undefined;
+}
+
+/** The last of a run's own ended turns, as the row's `turnsEnded` counts them. */
+export interface MonitorEndedTurn {
+  readonly at: string;
+  readonly turnId?: string | undefined;
+  readonly stopReason?: string | undefined;
+  /** The turn ended in failure. */
+  readonly failed?: true | undefined;
+}
+
+/**
  * One row of the model: everything a screen may draw about one agent or bare
  * terminal, computed by the backend.
  *
@@ -159,6 +180,18 @@ export interface MonitorAgentRow {
   readonly reply?: MonitorReply | undefined;
   readonly cost?: MonitorCost | undefined;
   readonly tokens?: MonitorTokens | undefined;
+  /**
+   * The host's stop in flight for this run, from a press or from anywhere else the host takes one. Absent: the host
+   * says nothing, and a view keeps its own reading.
+   */
+  readonly stop?: MonitorStop | undefined;
+  /**
+   * How many of the run's own turns have ended, never reset: a host hears a turn end by this advancing, never by
+   * status edges, which a quick idle between two turns can skip. Absent until the first turn ends.
+   */
+  readonly turnsEnded?: number | undefined;
+  /** The last turn end `turnsEnded` counted. */
+  readonly lastTurnEnded?: MonitorEndedTurn | undefined;
   /** A finished turn nobody has looked at yet: the backend's mark, cleared when any screen shows it. */
   readonly unread: boolean;
   readonly device: MonitorDeviceRef;

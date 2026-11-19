@@ -872,3 +872,54 @@ describe('assistant message', () => {
     ).toBeUndefined();
   });
 });
+
+describe('turn ends', () => {
+  it("counts the run's own turn ends, completed and failed, and projects the last", () => {
+    const before = apply(initial(), [
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'turn:started', turnId: 'p1' }, 2),
+    ]);
+    expect(projectAgentMonitorState(before).turnsEnded).toBeUndefined();
+    expect(projectAgentMonitorState(before).lastTurnEnded).toBeUndefined();
+
+    const completed = apply(before, [runtime({ type: 'turn:completed', turnId: 'p1', stopReason: 'end_turn' }, 3)]);
+    expect(projectAgentMonitorState(completed)).toMatchObject({
+      turnsEnded: 1,
+      lastTurnEnded: { at: '2026-08-16T12:00:03.000Z', turnId: 'p1', stopReason: 'end_turn' },
+    });
+
+    const failed = apply(completed, [
+      runtime({ type: 'turn:started', turnId: 'p2' }, 4),
+      runtime({ type: 'turn:failed', turnId: 'p2', error: 'boom' }, 5),
+    ]);
+    expect(projectAgentMonitorState(failed)).toMatchObject({
+      turnsEnded: 2,
+      lastTurnEnded: { at: '2026-08-16T12:00:05.000Z', turnId: 'p2', failed: true },
+    });
+  });
+
+  it('counts a turn end that the next turn follows at once, where the status never shows its idle', () => {
+    const state = apply(initial(), [
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'turn:started', turnId: 'p1' }, 2),
+      runtime({ type: 'turn:completed', turnId: 'p1' }, 3),
+      runtime({ type: 'turn:started', turnId: 'p2' }, 4),
+    ]);
+    expect(projectAgentMonitorState(state)).toMatchObject({
+      status: 'working',
+      turnsEnded: 1,
+      lastTurnEnded: { turnId: 'p1' },
+    });
+  });
+
+  it("never counts a child's turn end, and counts a turn end delivered twice once", () => {
+    const child = { agentId: 'worker', actorRole: 'child' as const };
+    const state = apply(initial(), [
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'turn:completed', turnId: 'child-turn' }, 2, child),
+      runtime({ type: 'turn:completed', turnId: 'p1' }, 3, { eventId: 'end-p1' }),
+      runtime({ type: 'turn:completed', turnId: 'p1' }, 3, { eventId: 'end-p1' }),
+    ]);
+    expect(projectAgentMonitorState(state)).toMatchObject({ turnsEnded: 1, lastTurnEnded: { turnId: 'p1' } });
+  });
+});

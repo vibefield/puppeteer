@@ -7,6 +7,7 @@ import type {
   MonitorPastSnapshot,
   MonitorSpawnDevice,
   MonitorSpawnTarget,
+  MonitorStop,
 } from '@vibefield/puppeteer-view-sdk/model';
 import type { AgentMonitorSource } from '../store.js';
 
@@ -69,6 +70,8 @@ export interface MonitorHostRun {
   /** The host's own liveness. False outranks a lagging mirror: a witnessed exit. */
   readonly alive?: boolean | undefined;
   readonly nativeSessionId?: string | undefined;
+  /** A stop the host has in flight for this run, in its own words; the row carries it as `stop`. */
+  readonly stop?: MonitorStop | undefined;
 }
 
 /** A terminal on this desktop no agent has claimed, as the host lists it. */

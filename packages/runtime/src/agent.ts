@@ -46,6 +46,14 @@ const TURN_OBSERVING_LEVELS: ReadonlySet<ObservationLevel> = new Set<Observation
   'native-log',
 ]);
 
+/**
+ * Whether a run observed at `level` witnesses its turns: its `working` and `idle` are then the agent's own word, so a
+ * host may read an idle as a turn's end. Under any other level an idle is an absence of evidence.
+ */
+export function observesTurns(level: ObservationLevel): boolean {
+  return TURN_OBSERVING_LEVELS.has(level);
+}
+
 interface AgentInternals {
   adapter: AgentAdapterBinding;
   info: AgentSessionInfo;
@@ -171,7 +179,7 @@ export class Agent {
   stopTurn(): Promise<AgentTurnStopReceipt> {
     const service = internals(this).adapter.services.turnStop;
     if (!service) return Promise.resolve({ accepted: false, reason: 'the adapter names no turn stop' });
-    if (this.status === 'idle' && TURN_OBSERVING_LEVELS.has(this.observationLevel)) {
+    if (this.status === 'idle' && observesTurns(this.observationLevel)) {
       return Promise.resolve({ accepted: false, reason: 'idle' });
     }
     return service.submit();

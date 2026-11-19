@@ -419,3 +419,20 @@ describe('terminal rows', () => {
     ).toBe('terminal');
   });
 });
+
+describe("the host's stop and the run's turn ends", () => {
+  it("carries the host's stop in flight onto the row, and nothing when the host says nothing", () => {
+    const stop = { stage: 'resent', sentAt: iso(T0 + 1_000) };
+    expect(derive(hostRun({ stop })).stop).toEqual(stop);
+    expect('stop' in derive()).toBe(false);
+  });
+  it("carries the runtime's turn-end count and the last end, once a turn has ended", () => {
+    const lastTurnEnded = { at: iso(T0 + 2_000), turnId: 'p1', stopReason: 'end_turn' };
+    expect(derive(hostRun(), monitorState({ turnsEnded: 3, lastTurnEnded }))).toMatchObject({
+      turnsEnded: 3,
+      lastTurnEnded,
+    });
+    expect('turnsEnded' in derive()).toBe(false);
+    expect('lastTurnEnded' in deriveUnheard()).toBe(false);
+  });
+});

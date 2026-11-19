@@ -253,4 +253,31 @@ describe('PaneFrame', () => {
     await test.advance(1);
     expect(test.stopping()).toBe(false);
   });
+
+  it("shows the host's stop stage in place of its own guess, with no timer, until the host says heard", async () => {
+    const test = mounted(ALL_VERBS);
+    await test.render(agent({ stop: { stage: 'sent', sentAt: new Date(NOW).toISOString() } }));
+    expect(test.stopping()).toBe(true);
+    await test.advance(STOPPING_TIMEOUT_MS * 2);
+    expect(test.stopping()).toBe(true);
+    await test.render(agent({ stop: { stage: 'resent' } }));
+    expect(test.stopping()).toBe(true);
+    await test.render(agent({ stop: { stage: 'heard' } }));
+    expect(test.stopping()).toBe(false);
+  });
+
+  it('shows a stop the host took from elsewhere without a press, and sends no second stop while it shows', async () => {
+    const stop = vi.fn(() => ({ accepted: true }));
+    const test = mounted({ ...ALL_VERBS, stop });
+    await test.render(agent());
+    expect(test.stopping()).toBe(false);
+    await test.render(agent({ stop: { stage: 'sent' } }));
+    expect(test.stopping()).toBe(true);
+    expect(test.verb('stop').disabled).toBe(true);
+    await test.pressStop();
+    expect(stop).not.toHaveBeenCalled();
+    // The host takes the stage away: nothing is in flight, and the frame holds no guess of its own.
+    await test.render(agent());
+    expect(test.stopping()).toBe(false);
+  });
 });
