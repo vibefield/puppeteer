@@ -1,3 +1,5 @@
+import type { Picture } from '@vibefield/puppeteer-view-sdk';
+
 // Fitting a body's copy inside its circle. Pure, so the ellipsis and the chord
 // arithmetic are testable with a fake measurer; the renderer supplies the real
 // one from its glyph atlas.
@@ -19,9 +21,10 @@ export type TextMeasure = (text: string, style: TextStyle) => number;
 export type CopyTone = 'ink' | 'orange' | 'green' | 'blue' | 'accent';
 
 export interface CopyLead {
-  /** A dot is a state mark; an icon names a sprite in the atlas. */
-  kind: 'dot' | 'icon';
+  /** A dot is a state mark; an icon names a sprite in the atlas; a picture is the host's (`HostMark.lead`). */
+  kind: 'dot' | 'icon' | 'picture';
   icon?: string;
+  picture?: Picture;
   /** The sprite's height, and its width unless `width` narrows it. */
   size: number;
   /** The horizontal room the lead takes, for a mark narrower than it is tall. */

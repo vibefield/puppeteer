@@ -681,3 +681,59 @@ describe('the profile glyph on an agent’s model line (UM-D6)', () => {
     expect(model.title).toBe(`puppeteer · Fable 5.1 · ${detailLine(idle)}`);
   });
 });
+
+describe("the host's mark on a body", () => {
+  const lead = { kind: 'stencil', key: 'ada', path: 'M4 4h16v16H4z' } as const;
+  const rim = { kind: 'colour', key: 'ada-face', image: 'data:image/png;base64,iVBORw0KGgo=' } as const;
+  const ada = { name: 'Ada', spoken: 'Ada, a helper', lead, rim, provider: 'hidden' } as const;
+  const say = (row: AgentView, unread = false) => bubbleModel({ agent: row, parameters, nowMs: NOW, unread });
+  const nameLine = (model: SwarmBubbleModel) => model.copy.find((line) => line.key === 'name');
+
+  it("names a body by it, leads with its picture in the folder's place, and hides no more than asked", () => {
+    const working = say(agent({ status: 'working', mark: ada }));
+    expect(nameLine(working)).toMatchObject({ text: 'Ada', lead: { kind: 'picture', picture: lead, tone: 'ink' } });
+    expect(working.ariaLabel).toMatch(/^Ada, a helper, Fable 5\.1, working: /);
+    expect(working.title).toMatch(/^Ada · Fable 5\.1 · /);
+    expect(working).not.toHaveProperty('watermark');
+    expect(working.rim).toBe(rim);
+
+    // a mark that leaves the provider shown keeps the watermark, and a body with no lead keeps its folder
+    const shown = say(agent({ mark: { name: 'Ada' } }));
+    expect(shown.watermark).toEqual({ sprite: 'imposter', opacity: SWARM_WEIGHT.watermark });
+    expect(nameLine(shown)?.lead).toMatchObject({ kind: 'icon', icon: 'folder', tone: 'accent' });
+    expect(shown).not.toHaveProperty('rim');
+  });
+
+  it('draws its attention as a wait: the waiting light and its word, after the backend’s own block', () => {
+    const asking = say(agent({ mark: { attention: { word: 'Asking you' } } }), true);
+    const state = asking.copy.find((line) => line.key === 'state');
+    expect(state).toMatchObject({ text: 'Asking you', lead: { kind: 'icon', icon: 'question' } });
+    expect(asking.light).toBe('orange');
+    expect(asking.ariaLabel).toMatch(/, Asking you$/);
+    expect(asking).not.toHaveProperty('blockerKind');
+    // the folder turns solid behind a state line, the mark's lead the same way
+    expect(nameLine(say(agent({ mark: { lead, attention: { word: 'Asking you' } } })))?.lead).toMatchObject({
+      kind: 'picture',
+      opacity: SWARM_WEIGHT.title,
+    });
+
+    // the agent's own wait is drawn, not the host's word
+    const blocked = say(
+      agent({
+        status: 'blocked',
+        wait: { kind: 'permission', since: AT, tool: 'Bash' },
+        mark: { attention: { word: 'Asking you' } },
+      }),
+    );
+    expect(blocked.copy.find((line) => line.key === 'state')?.text).not.toBe('Asking you');
+    expect(blocked.blockerKind).toBe('permission');
+  });
+
+  it('draws a body with no mark, or an empty one, as it ships', () => {
+    for (const row of [agent(), agent({ status: 'working' }), terminal()]) {
+      const plain = say(row);
+      expect(say({ ...row, mark: {} })).toEqual(plain);
+      expect(Object.keys(say({ ...row, mark: {} }))).toEqual(Object.keys(plain));
+    }
+  });
+});

@@ -1,4 +1,6 @@
 /// <reference types="@webgpu/types" />
+import type { PictureBitmap } from '@vibefield/puppeteer-view-sdk';
+import { isPictureDataUrl } from '@vibefield/puppeteer-view-sdk/toolkit';
 import type { TextStyle } from '../text-layout.js';
 
 // The swarm's type, rasterised once per glyph and drawn as instanced quads.
@@ -196,41 +198,69 @@ export class GlyphAtlas {
     const regionKey = `s|${key}|${size}`;
     const known = this.regions.get(regionKey);
     if (known) return known;
-    const devicePx = Math.max(1, Math.round(size * this.dpr));
     const image = this.spriteImages.get(key);
-    if (image?.complete && image.naturalWidth > 0) {
-      const slot = this.allocate(devicePx, devicePx);
-      if (!slot) return undefined;
-      this.context.drawImage(image, slot.x, slot.y, devicePx, devicePx);
-      const region: AtlasRegion = {
-        u0: slot.x / this.size,
-        v0: slot.y / this.size,
-        u1: (slot.x + devicePx) / this.size,
-        v1: (slot.y + devicePx) / this.size,
-        width: devicePx / this.dpr,
-        height: devicePx / this.dpr,
-        left: 0,
-        top: 0,
-        advance: devicePx / this.dpr,
-      };
-      this.regions.set(regionKey, region);
-      this.dirty = true;
-      return region;
-    }
-    if (!image && !this.pendingSprites.has(key)) {
-      this.pendingSprites.add(key);
-      const element = new Image();
-      element.decoding = 'async';
-      element.onload = () => {
-        this.spriteImages.set(key, element);
-        this.pendingSprites.delete(key);
-        this.onSpriteReady?.();
-      };
-      element.onerror = () => this.pendingSprites.delete(key);
+    if (image?.complete && image.naturalWidth > 0) return this.place(regionKey, image, size);
+    if (!image) {
       const white = svg.replaceAll('currentColor', '#ffffff');
-      element.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(white)}`;
+      this.decode(key, `data:image/svg+xml;charset=utf-8,${encodeURIComponent(white)}`);
     }
     return undefined;
+  }
+
+  /**
+   * A host's full-colour picture (`HostMark`) at a CSS size, drawn as it is, never whitened: the text pass samples its
+   * own colours (`GLYPH_MODE.colour`). A data URL decodes as a sprite does, absent until it lands; a bitmap draws at
+   * once; any other string is never drawn, so a mark never makes the swarm fetch (`isPictureDataUrl`). `key` names
+   * the picture, so a new key is a new picture.
+   */
+  picture(key: string, image: string | PictureBitmap, size: number): AtlasRegion | undefined {
+    const regionKey = `p|${key}|${size}`;
+    const known = this.regions.get(regionKey);
+    if (known) return known;
+    // A bitmap the model names by its size alone is the browser's ImageBitmap (`PictureBitmap`).
+    if (typeof image !== 'string') return this.place(regionKey, image as unknown as CanvasImageSource, size);
+    if (!isPictureDataUrl(image)) return undefined;
+    const decoded = this.spriteImages.get(`picture:${key}`);
+    if (decoded?.complete && decoded.naturalWidth > 0) return this.place(regionKey, decoded, size);
+    if (!decoded) this.decode(`picture:${key}`, image);
+    return undefined;
+  }
+
+  /** An image drawn into the atlas at a CSS size: its region, or undefined when the atlas is full. */
+  private place(regionKey: string, source: CanvasImageSource, size: number): AtlasRegion | undefined {
+    const devicePx = Math.max(1, Math.round(size * this.dpr));
+    const slot = this.allocate(devicePx, devicePx);
+    if (!slot) return undefined;
+    this.context.drawImage(source, slot.x, slot.y, devicePx, devicePx);
+    const region: AtlasRegion = {
+      u0: slot.x / this.size,
+      v0: slot.y / this.size,
+      u1: (slot.x + devicePx) / this.size,
+      v1: (slot.y + devicePx) / this.size,
+      width: devicePx / this.dpr,
+      height: devicePx / this.dpr,
+      left: 0,
+      top: 0,
+      advance: devicePx / this.dpr,
+    };
+    this.regions.set(regionKey, region);
+    this.dirty = true;
+    return region;
+  }
+
+  /** Decodes an image once, keyed; the owner hears when it lands, since a field held still asks for no frame. */
+  private decode(key: string, src: string): void {
+    if (this.pendingSprites.has(key)) return;
+    this.pendingSprites.add(key);
+    const element = new Image();
+    element.decoding = 'async';
+    element.onload = () => {
+      this.spriteImages.set(key, element);
+      this.pendingSprites.delete(key);
+      this.onSpriteReady?.();
+    };
+    element.onerror = () => this.pendingSprites.delete(key);
+    element.src = src;
   }
 
   /** Upload what changed since the last frame. One copy of the whole canvas:
