@@ -13,6 +13,7 @@ import type {
   EvidenceCompleteness,
   EvidenceQuality,
   MonitorMetricFamily,
+  MonitorTurnEnd,
   NativeSessionRef,
 } from './types.js';
 import type {
@@ -405,6 +406,8 @@ function reduceRuntime(state: MonitorAccumulatorState, input: RuntimeMonitorInpu
     usage: applied.usage,
     expiredLeaseIds: withRefreshedLeases(state.expiredLeaseIds, applied.entries),
     compactionCount: state.compactionCount + applied.compactionStarts,
+    // Counted here, after the repeat check above, so a turn end delivered twice counts once.
+    ...(input.turnEnded ? { turnsEnded: (state.turnsEnded ?? 0) + 1, lastTurnEnded: input.turnEnded } : {}),
   };
   return finishAccepted(state, next, input);
 }
@@ -821,6 +824,8 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
   const actor = actorFor(envelope);
   const event = envelope.event;
   const updates: MonitorFamilyUpdate[] = [];
+  // The run's own turn end, never a child's: what `turnsEnded` counts.
+  let turnEnded: MonitorTurnEnd | undefined;
 
   switch (event.type) {
     case 'process:started':
@@ -892,9 +897,21 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
           }),
         );
       }
+      if (!actor) {
+        const turnId = event.turnId ?? envelope.turnId;
+        turnEnded = {
+          at: envelope.timestamp,
+          ...(turnId ? { turnId } : {}),
+          ...(event.stopReason ? { stopReason: event.stopReason } : {}),
+        };
+      }
       break;
     }
-    case 'turn:failed':
+    case 'turn:failed': {
+      if (!actor) {
+        const turnId = event.turnId ?? envelope.turnId;
+        turnEnded = { at: envelope.timestamp, ...(turnId ? { turnId } : {}), failed: true };
+      }
       updates.push(
         retract('status', actorScopedKey('turn', actor)),
         retract('status', actorScopedKey('responding', actor)),
@@ -910,6 +927,7 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
+    }
     case 'conversation:assistant-message': {
       updates.push(
         event.final === false
@@ -1148,5 +1166,6 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
     provisional: envelope.confidence === 'inferred',
     updates,
     evidence: [{ namespace: 'agent-event', id: eventId }],
+    ...(turnEnded ? { turnEnded } : {}),
   };
 }

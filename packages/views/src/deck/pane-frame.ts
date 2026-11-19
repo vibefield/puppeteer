@@ -64,6 +64,13 @@ export interface PaneFrameAgent {
    * own native control), and the title names none.
    */
   stopKey?: string | undefined;
+  /**
+   * The host's stop in flight, in its own open words (for example `sent`,
+   * `resent`, `terminating`, `heard`). While a stage other than `heard` is
+   * present the frame shows the stop in flight, with no timer of its own.
+   * Absent: the frame keeps its own guess around its press.
+   */
+  stop?: { stage: string; sentAt?: string | undefined; unheardAt?: string | undefined } | undefined;
 }
 
 const STOP_KEY_GLYPHS: Readonly<Record<TerminalKey, string>> = { escape: '⎋', 'ctrl-c': '⌃C' };

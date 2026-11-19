@@ -271,6 +271,13 @@ export function PaneFrame({ pane, session, agent, remote, color, fallbackCwd, zo
   const endsSession = verbs.stopKind === 'session';
   const [stopping, setStopping] = useState(false);
   const [pausing, setPausing] = useState(false);
+  // A host that names its stop's stage decides the stopping state, with no timer: stopping until `heard`, or until the
+  // host takes the stage away. A host that names none keeps the frame's own guess around its press.
+  const hostStage = agent?.stop?.stage;
+  const shownStopping = hostStage === undefined ? stopping : hostStage !== 'heard';
+  useEffect(() => {
+    if (hostStage !== undefined) setStopping(false);
+  }, [hostStage]);
   const control = useRef({ sessionId: session.id, stop: false, pause: false });
   if (control.current.sessionId !== session.id) control.current = { sessionId: session.id, stop: false, pause: false };
   useEffect(() => {
@@ -319,11 +326,11 @@ export function PaneFrame({ pane, session, agent, remote, color, fallbackCwd, zo
   // Fence synchronous repeated presses and late replies after a pane changes
   // sessions. The host coalesces requests from mirrored panes as well.
   const stop = (): void => {
-    if (!verbs.stop || stopping || control.current.stop) return;
+    if (!verbs.stop || shownStopping || control.current.stop) return;
     const request = control.current;
     request.stop = true;
     if (endsSession) setPausing(false);
-    if (endsSession || status === 'working') setStopping(true);
+    if (hostStage === undefined && (endsSession || status === 'working')) setStopping(true);
     void Promise.resolve()
       .then(() => verbs.stop?.(session.id))
       .then(
@@ -339,7 +346,7 @@ export function PaneFrame({ pane, session, agent, remote, color, fallbackCwd, zo
       });
   };
   const pause = (): void => {
-    if (!verbs.pause || !model.turnActive || stopping || pausing || control.current.stop || control.current.pause)
+    if (!verbs.pause || !model.turnActive || shownStopping || pausing || control.current.stop || control.current.pause)
       return;
     const request = control.current;
     request.pause = true;
@@ -372,7 +379,7 @@ export function PaneFrame({ pane, session, agent, remote, color, fallbackCwd, zo
       model={model}
       {...(color ? { color } : {})}
       zoomed={zoomed}
-      stopping={stopping}
+      stopping={shownStopping}
       pausing={pausing}
       verbs={verbs}
       onStop={stop}

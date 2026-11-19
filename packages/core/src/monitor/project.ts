@@ -432,6 +432,12 @@ export function projectAgentMonitorState(
     subagents,
     ...(Object.keys(omitted).length > 0 ? { omitted } : {}),
     compaction: basis.compaction,
+    ...(accumulator.turnsEnded
+      ? {
+          turnsEnded: accumulator.turnsEnded,
+          ...(accumulator.lastTurnEnded ? { lastTurnEnded: accumulator.lastTurnEnded } : {}),
+        }
+      : {}),
     environment,
     session: {
       ...(basis.nativeSessionId !== undefined ? { nativeSessionId: basis.nativeSessionId } : {}),

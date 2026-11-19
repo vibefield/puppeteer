@@ -7,6 +7,7 @@ import type {
   MonitorMetricFamily,
   MonitorNotification,
   MonitorStructuredQuestion,
+  MonitorTurnEnd,
   NativeSessionRef,
   RuntimeRunId,
 } from './types.js';
@@ -321,6 +322,8 @@ export interface RuntimeMonitorInput {
   provisional: boolean;
   updates: MonitorFamilyUpdate[];
   evidence: EvidenceRef[];
+  /** The run's own turn ended with this event: counted once, as `turnsEnded`, when the input is accepted. */
+  turnEnded?: MonitorTurnEnd | undefined;
 }
 
 export type WorkspaceMonitorObservation = {
@@ -568,6 +571,9 @@ export interface MonitorAccumulatorState {
   usage: MonitorUsageSlice;
   expiredLeaseIds: ReadonlySet<string>;
   compactionCount: number;
+  /** The run's own turn ends accepted so far; absent until the first. */
+  turnsEnded?: number | undefined;
+  lastTurnEnded?: MonitorTurnEnd | undefined;
 }
 
 export interface MonitorReduceResult {

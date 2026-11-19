@@ -236,6 +236,16 @@ export interface MonitorCompactionState {
   count: number;
 }
 
+/** One ended turn of the run itself, never a child's, as `AgentMonitorState.turnsEnded` counts it. */
+export interface MonitorTurnEnd {
+  /** The turn end's event time. */
+  at: string;
+  turnId?: string | undefined;
+  stopReason?: string | undefined;
+  /** The turn ended in failure (`turn:failed`). */
+  failed?: true | undefined;
+}
+
 export interface MonitorEnvironmentState {
   cwd?: string | undefined;
   git?: AgentGitState | null | undefined;
@@ -300,6 +310,14 @@ export interface AgentMonitorState {
   omitted?: Partial<Record<MonitorBoundedCollection, number>> | undefined;
 
   compaction: MonitorCompactionState;
+  /**
+   * How many of the run's own turns have ended (`turn:completed` or `turn:failed`), counted once per event and never
+   * reset. A host hears "the turn it acted on ended" by this count advancing, never by status edges: the runtime
+   * coalesces status, so a quick idle between two turns can go unpublished. Absent until the first turn ends.
+   */
+  turnsEnded?: number | undefined;
+  /** The last turn end `turnsEnded` counted. Present with it. */
+  lastTurnEnded?: MonitorTurnEnd | undefined;
   environment: MonitorEnvironmentState;
   session: MonitorSessionState;
   freshness: MonitorFreshnessState;
