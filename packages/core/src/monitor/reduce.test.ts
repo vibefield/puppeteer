@@ -922,4 +922,35 @@ describe('turn ends', () => {
     ]);
     expect(projectAgentMonitorState(state)).toMatchObject({ turnsEnded: 1, lastTurnEnded: { turnId: 'p1' } });
   });
+
+  const replayed = { replay: true, source: 'native-transcript' } as const;
+
+  it("counts a turn end an attach replays from the agent's record, at the time the record gives it", () => {
+    const state = apply(initial(), [
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'turn:started', turnId: 'p1', prompt: 'first' }, 2, replayed),
+      runtime({ type: 'turn:completed', turnId: 'p1', stopReason: 'end_turn' }, 3, replayed),
+    ]);
+    expect(projectAgentMonitorState(state)).toMatchObject({
+      turnsEnded: 1,
+      lastTurnEnded: { at: '2026-08-16T12:00:03.000Z', turnId: 'p1', stopReason: 'end_turn' },
+    });
+  });
+
+  it('counts a turn once when its replayed end is followed by its live one, and the next turn after it', () => {
+    const state = apply(initial(), [
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'turn:completed', turnId: 'p1', stopReason: 'end_turn' }, 2, replayed),
+      runtime({ type: 'turn:completed', turnId: 'p1' }, 3),
+    ]);
+    expect(projectAgentMonitorState(state)).toMatchObject({
+      turnsEnded: 1,
+      lastTurnEnded: { at: '2026-08-16T12:00:02.000Z', turnId: 'p1', stopReason: 'end_turn' },
+    });
+    const next = apply(state, [
+      runtime({ type: 'turn:started', turnId: 'p2' }, 4),
+      runtime({ type: 'turn:completed', turnId: 'p2' }, 5),
+    ]);
+    expect(projectAgentMonitorState(next)).toMatchObject({ turnsEnded: 2, lastTurnEnded: { turnId: 'p2' } });
+  });
 });

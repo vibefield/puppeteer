@@ -9,6 +9,7 @@ import {
   ClaudeTranscriptProjection,
   projectClaudeTranscriptAssistants,
   projectClaudeTranscriptOpenWork,
+  projectClaudeTranscriptReplayAfter,
 } from './conversation.js';
 import { decodeClaudeTranscript, transcriptRecordId } from './wire.js';
 
@@ -655,5 +656,158 @@ describe('Claude transcript open work (an attach reads where the agent stands)',
         { ...toolCall('s-1', 'a-1', 'toolu_side', 'Read', { file_path: '/tmp/x' }), isSidechain: true },
       ]),
     ).toEqual([]);
+  });
+});
+
+describe('Claude transcript replay after a cursor (an attach given one)', () => {
+  const at = (second: number) => new Date(Date.parse('2026-11-19T09:00:00.000Z') + second * 1_000).toISOString();
+  const prompt = (uuid: string, parentUuid: string | null, text: string, turnOrigin?: string) => ({
+    type: 'user',
+    uuid,
+    parentUuid,
+    timestamp: at(0),
+    sessionId: 'session-1',
+    promptId: `prompt-of-${uuid}`,
+    ...(turnOrigin === undefined ? {} : { turnOrigin }),
+    message: { role: 'user', content: text },
+  });
+  const toolCall = (uuid: string, parentUuid: string, id: string) => ({
+    type: 'assistant',
+    uuid,
+    parentUuid,
+    timestamp: at(1),
+    sessionId: 'session-1',
+    message: {
+      role: 'assistant',
+      stop_reason: 'tool_use',
+      content: [{ type: 'tool_use', id, name: 'Bash', input: { command: 'pnpm test' } }],
+    },
+  });
+  const toolResult = (uuid: string, parentUuid: string, id: string) => ({
+    type: 'user',
+    uuid,
+    parentUuid,
+    timestamp: at(2),
+    sessionId: 'session-1',
+    message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'done' }] },
+  });
+  const reply = (uuid: string, parentUuid: string, text: string, stopReason: string | null) => ({
+    type: 'assistant',
+    uuid,
+    parentUuid,
+    timestamp: at(3),
+    sessionId: 'session-1',
+    message: { role: 'assistant', stop_reason: stopReason, content: [{ type: 'text', text }] },
+  });
+  const replay = (rows: readonly Record<string, unknown>[], turnId: string, turnEnded?: boolean) =>
+    projectClaudeTranscriptReplayAfter(decodeClaudeTranscript(jsonl(rows)), {
+      turnId,
+      ...(turnEnded === undefined ? {} : { turnEnded }),
+    });
+  const events = (rows: readonly Record<string, unknown>[], turnId: string, turnEnded?: boolean) =>
+    replay(rows, turnId, turnEnded).events.map(({ event }) => event);
+
+  it("keeps an assistant row's stop reason, and none when the row names none", () => {
+    const [ended, streaming] = decodeClaudeTranscript(
+      jsonl([reply('a-1', 'p-1', 'hi', 'end_turn'), reply('a-2', 'p-1', 'hel', null)]),
+    );
+    expect(ended?.stopReason).toBe('end_turn');
+    expect(streaming).not.toHaveProperty('stopReason');
+  });
+
+  it('replays each turn after an ended cursor turn: its start, its final replies, and the end its record shows', () => {
+    const rows = [
+      prompt('p-1', null, 'first', 'human'),
+      reply('a-1', 'p-1', 'one', 'end_turn'),
+      prompt('p-2', 'a-1', 'second', 'human'),
+      reply('a-2', 'p-2', 'two', 'end_turn'),
+      prompt('p-3', 'a-2', 'third', 'human'),
+      toolCall('a-3', 'p-3', 'toolu_bash'),
+    ];
+    const replayed = replay(rows, 'prompt-of-p-1', true);
+    expect(replayed.found).toBe(true);
+    expect(replayed.events.map(({ event }) => event)).toEqual([
+      { type: 'turn:started', turnId: 'prompt-of-p-2', prompt: 'second' },
+      {
+        type: 'conversation:assistant-message',
+        messageId: 'a-2',
+        turnId: 'prompt-of-p-2',
+        text: 'two',
+        final: true,
+        displayOnly: false,
+      },
+      { type: 'turn:completed', turnId: 'prompt-of-p-2', stopReason: 'end_turn', lastAssistantMessage: 'two' },
+      // the turn still running is started and left open: its end is the live rail's
+      { type: 'turn:started', turnId: 'prompt-of-p-3', prompt: 'third' },
+    ]);
+    // keyed as the hooks key them, on the observation as on the event
+    expect(replayed.events.map(({ turnId, promptId }) => [turnId, promptId])).toEqual([
+      ['prompt-of-p-2', 'prompt-of-p-2'],
+      ['prompt-of-p-2', 'prompt-of-p-2'],
+      ['prompt-of-p-2', 'prompt-of-p-2'],
+      ['prompt-of-p-3', 'prompt-of-p-3'],
+    ]);
+  });
+
+  it('replays the rest of a cursor turn the host did not hear end, with no second start', () => {
+    const rows = [
+      prompt('p-1', null, 'run the tests', 'human'),
+      toolCall('a-1', 'p-1', 'toolu_bash'),
+      toolResult('r-1', 'a-1', 'toolu_bash'),
+      reply('a-2', 'r-1', 'all green', 'end_turn'),
+    ];
+    expect(events(rows, 'prompt-of-p-1')).toEqual([
+      expect.objectContaining({ type: 'conversation:assistant-message', messageId: 'a-2', turnId: 'prompt-of-p-1' }),
+      { type: 'turn:completed', turnId: 'prompt-of-p-1', stopReason: 'end_turn', lastAssistantMessage: 'all green' },
+    ]);
+    // heard to its end: nothing follows it
+    expect(replay(rows, 'prompt-of-p-1', true)).toEqual({ found: true, events: [] });
+  });
+
+  it('finds no cursor the record no longer holds, and replays nothing', () => {
+    const rows = [prompt('p-1', null, 'first', 'human'), reply('a-1', 'p-1', 'one', 'end_turn')];
+    expect(replay(rows, 'prompt-of-cleared', true)).toEqual({ found: false, events: [] });
+  });
+
+  it('ends no turn its record does not end (a tool stop, an interruption, a pause, an unknown reason)', () => {
+    const rows = [
+      prompt('p-1', null, 'first', 'human'),
+      reply('a-1', 'p-1', 'one', 'end_turn'),
+      // interrupted mid-tool: the marker is no prompt, and the turn gets no end
+      prompt('p-2', 'a-1', 'run the tests', 'human'),
+      toolCall('a-2', 'p-2', 'toolu_bash'),
+      toolResult('r-2', 'a-2', 'toolu_bash'),
+      prompt('m-2', 'r-2', '[Request interrupted by user for tool use]'),
+      // a pause goes on
+      prompt('p-3', 'm-2', 'search the web', 'human'),
+      reply('a-3', 'p-3', 'searching', 'pause_turn'),
+      // a reason this build does not know is no end
+      prompt('p-4', 'a-3', 'and then', 'human'),
+      reply('a-4', 'p-4', 'later', 'some_future_reason'),
+    ];
+    const replayed = events(rows, 'prompt-of-p-1', true);
+    expect(replayed.map((event) => [event.type, 'turnId' in event ? event.turnId : undefined])).toEqual([
+      ['turn:started', 'prompt-of-p-2'],
+      ['turn:started', 'prompt-of-p-3'],
+      ['conversation:assistant-message', 'prompt-of-p-3'],
+      ['turn:started', 'prompt-of-p-4'],
+      ['conversation:assistant-message', 'prompt-of-p-4'],
+    ]);
+  });
+
+  it("replays no subagent's sidechain, and continues a turn a row repeats the id of", () => {
+    const rows = [
+      prompt('p-1', null, 'first', 'human'),
+      reply('a-1', 'p-1', 'one', 'end_turn'),
+      prompt('p-2', 'a-1', 'second', 'human'),
+      { ...reply('s-1', 'p-2', 'side answer', 'end_turn'), isSidechain: true },
+      { ...prompt('p-2b', 'p-2', 'second, again', 'human'), promptId: 'prompt-of-p-2' },
+      reply('a-2', 'p-2b', 'two', 'end_turn'),
+    ];
+    expect(events(rows, 'prompt-of-p-1', true)).toEqual([
+      { type: 'turn:started', turnId: 'prompt-of-p-2', prompt: 'second' },
+      expect.objectContaining({ type: 'conversation:assistant-message', messageId: 'a-2', turnId: 'prompt-of-p-2' }),
+      { type: 'turn:completed', turnId: 'prompt-of-p-2', stopReason: 'end_turn', lastAssistantMessage: 'two' },
+    ]);
   });
 });

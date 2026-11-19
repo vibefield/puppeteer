@@ -42,6 +42,7 @@ import type { UpdateCommandRunner } from './distribution/update.js';
 import type {
   AgentProvider,
   AgentProviderDisposeOptions,
+  AgentSessionInfo,
   LaunchEnvironmentRequest,
   ProfileRegistrySnapshot,
   ProfileStore,
@@ -4505,6 +4506,75 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
       expect('error' in conflict && conflict.error.code).toBe('RUNTIME_RUN_CONFLICT');
     }
     expect(attachCalls).toHaveLength(1);
+    await second.dispose();
+  });
+
+  it("says on an attach given the host's cursor whether it replayed after it, on its result alone", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-replay-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-replay-registry-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const attachCalls: Array<Parameters<NonNullable<AgentProvider['attachSession']>>[0]> = [];
+    const names = ['found', 'cleared', 'plain', 'uncursored'];
+    // each binding's word on its replay: found the cursor, did not, or gives none
+    const answers: Record<string, () => Promise<boolean>> = {
+      'native-found': async () => true,
+      'native-cleared': async () => false,
+    };
+    let created = 0;
+    const providerFor = () =>
+      ({
+        ...fakeProvider('one', handles),
+        async createSession() {
+          const name = names[created++]!;
+          return standaloneSession(`native-${name}`, `terminal-${name}`);
+        },
+        async attachSession(options) {
+          attachCalls.push(options);
+          const session = standaloneSession(options.sessionId, options.runtimeSessionId);
+          const answer = answers[options.sessionId];
+          return answer === undefined ? session : Object.assign(session, { replayedAfter: answer });
+        },
+      }) satisfies AgentProvider;
+    const registry = () => createFileCreationRequestRegistry({ directory: registryDirectory });
+    const runtimeFor = () =>
+      createAgentRuntime({ host, defaultCwd: root, providers: [providerFor()], creationRegistry: registry() });
+    const first = runtimeFor();
+    const runs: AgentSessionInfo[] = [];
+    for (const name of names) {
+      const run = await first.createSession({ agent: 'one', creationRequestId: `replay-${name}`, cwd: root });
+      if ('error' in run) throw new Error(run.error.message);
+      runs.push(run);
+    }
+    await first.dispose({ detach: true });
+
+    const second = runtimeFor();
+    const cursor = { turnId: 'turn-1', turnEnded: true };
+    const attach = async (index: number, withCursor: boolean) => {
+      const run = runs[index]!;
+      const attached = await second.attach({
+        agent: 'one',
+        creationRequestId: `replay-${names[index]}`,
+        runtimeRunId: run.runtimeRunId,
+        expectedRuntimeEpoch: run.runtimeEpoch,
+        sessionId: run.nativeSession.id,
+        terminalSessionId: run.terminalSessionId,
+        cwd: root,
+        ...(withCursor ? { replayAfter: cursor } : {}),
+      });
+      if ('error' in attached) throw new Error(attached.error.message);
+      return attached;
+    };
+    expect(await attach(0, true)).toMatchObject({ replayedAfter: true });
+    expect(await attach(1, true)).toMatchObject({ replayedAfter: false, replayMissed: 'cursor-not-found' });
+    expect(await attach(2, true)).toMatchObject({ replayedAfter: false, replayMissed: 'not-replayable' });
+    const uncursored = await attach(3, false);
+    expect(uncursored).not.toHaveProperty('replayedAfter');
+    expect(uncursored).not.toHaveProperty('replayMissed');
+    // the provider is handed the cursor as given, and none when the host gave none
+    expect(attachCalls.map((call) => call.replayAfter)).toEqual([cursor, cursor, cursor, undefined]);
+    expect(attachCalls[3]).not.toHaveProperty('replayAfter');
+    // the run's kept info never carries the attach's word
+    expect(second.sessionInfo('terminal-found')).not.toHaveProperty('replayedAfter');
     await second.dispose();
   });
 

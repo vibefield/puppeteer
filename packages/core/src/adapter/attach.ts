@@ -19,6 +19,26 @@ export type AgentAttachNext = 'retry' | 'respawn' | 'native-log' | 'resume';
 export const AGENT_ATTACH_NEXT: readonly AgentAttachNext[] = ['retry', 'respawn', 'native-log', 'resume'];
 
 /**
+ * Where a host's own record of a session it re-attaches stops: the last turn it heard begin, by the id the turn
+ * events carried (`turn:started`, `turn:completed`, `turn:failed`), and whether it heard that turn end. An attach given
+ * it replays, marked `replay`, what the agent's durable record holds after it: each later turn's start, its final
+ * replies, and its end where the record shows one.
+ */
+export interface AttachReplayCursor {
+  turnId: string;
+  turnEnded?: boolean | undefined;
+}
+
+/**
+ * Why an attach given a cursor replayed nothing after it:
+ * - `cursor-not-found`: the record was read and no longer holds the cursor's turn (a clear, a rewind, a pruned record);
+ * - `record-unread`: no record was found for the session, or its read failed;
+ * - `not-read-in-time`: the record's first read did not finish within the attach's bound;
+ * - `not-replayable`: the adapter replays nothing after a cursor.
+ */
+export type AttachReplayMiss = 'cursor-not-found' | 'record-unread' | 'not-read-in-time' | 'not-replayable';
+
+/**
  * Why an attach was refused, in a neutral word a host can state without the vendor's text. An adapter names one only
  * when it knows it:
  * - `endpoint-held`: another listener holds the endpoint the process was launched against (a hook port, say). In a

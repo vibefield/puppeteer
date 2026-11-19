@@ -5,7 +5,7 @@
  * optional correction-aware monitor batches and capabilities cross this boundary.
  */
 
-import type { AgentEvent } from '@vibefield/puppeteer-core';
+import type { AgentEvent, AttachReplayCursor } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch, ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 
 export interface SemanticObservationPollHint {
@@ -45,9 +45,19 @@ export interface SemanticObservationAttachRequest {
    * rebind, whose process is not in the middle of what the record last shows.
    */
   attached?: boolean | undefined;
+  /**
+   * With `attached`: where the host's own record of the session stops. The first read replays, before the open work,
+   * what the durable record holds after it, marked `replay`, and settles the handle's `replayedAfter`.
+   */
+  replayAfter?: AttachReplayCursor | undefined;
 }
 
 export interface SemanticObservationHandle {
+  /**
+   * For an attach given `replayAfter`: settles once the first read has replayed what follows the cursor (true), or
+   * found no cursor in the durable record (false). Absent for every other attach.
+   */
+  readonly replayedAfter?: Promise<boolean> | undefined;
   onEvent(listener: (event: SemanticObservationEvent) => void): () => void;
   onBatch(listener: (batch: AdapterMonitorObservationBatch) => void): () => void;
   onError(listener: (error: Error) => void): () => void;

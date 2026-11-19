@@ -549,7 +549,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       // posting to the bridge it was launched against; rebinding that ingress
       // and tailing the transcript by id is the whole re-attach. The profile
       // binding resolves the config root the same way a launch does.
-      async attachSession({ sessionId, runtimeSessionId, cwd, host, agentOptions, profile, ingress }) {
+      async attachSession({ sessionId, runtimeSessionId, cwd, host, agentOptions, profile, ingress, replayAfter }) {
         if (!ingress) {
           throw new Error('Claude attach needs the ingress the process was launched against');
         }
@@ -575,6 +575,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           observeSubagentStatus: true,
           accountUsage: claudeAccountUsageSink(cwd, profile, launch),
           automate: host.automateTerminal,
+          ...(replayAfter === undefined ? {} : { replayAfter }),
         });
       },
       async prepareSession({

@@ -29,6 +29,7 @@ import {
   type AgentEventConfidence,
   type AgentAdapterBinding,
   type AgentForwarderRuntime,
+  type AttachReplayCursor,
   type BoundIngress,
   type HostIngress,
   type ObservationLevel,
@@ -288,6 +289,11 @@ export interface AttachClaudeTuiSessionOptions extends Pick<
   ingress: BoundIngress;
   /** Route semantic automation to the adopted terminal. */
   automate(runtimeSessionId: string, operation: TerminalAutomationOperation): Promise<TerminalAutomationResult>;
+  /**
+   * Where the host's own record of the session stops: the transcript's first read replays what follows it, and the
+   * session's `replayedAfter()` says whether it found it, or refuses when there was no transcript to read.
+   */
+  replayAfter?: AttachReplayCursor | undefined;
 }
 
 /**
@@ -462,10 +468,15 @@ interface ClaudeObservation {
   dispose(): Promise<void>;
   /** Arm the durable transcript rail now rather than at the first hook (a re-attach knows the path already). */
   observeTranscript(path: string): void;
+  /** A re-attach that found no transcript: an attach given a cursor says it read none. */
+  noTranscript(): void;
 }
 
 function createClaudeObservation(
-  options: PrepareClaudeTuiSessionOptions & { attached?: boolean | undefined },
+  options: PrepareClaudeTuiSessionOptions & {
+    attached?: boolean | undefined;
+    replayAfter?: AttachReplayCursor | undefined;
+  },
   bridge: HookBridge,
   bound: ClaudeBoundIdentity,
   selection: ClaudeSessionSelection,
@@ -502,6 +513,17 @@ function createClaudeObservation(
   // An attached process was running before this observer: the first transcript it tails is read for what is still
   // open (the turn, its tools, a question), once. A later one (a `/clear` heard live, a picker rebind) starts idle.
   let bootstrapOpenWork = options.attached === true;
+  // An attach given a cursor is answered once, by that first transcript's first read: whether it found the cursor,
+  // or a refusal when there was no transcript to read or its read failed.
+  let answerReplay: { found(replayed: boolean): void; unread(reason: Error): void } | undefined;
+  const replayAnswer =
+    options.attached === true && options.replayAfter !== undefined
+      ? new Promise<boolean>((resolve, reject) => {
+          answerReplay = { found: resolve, unread: reject };
+        })
+      : undefined;
+  // a host that never asks still holds the promise; its refusal is never left unhandled
+  replayAnswer?.catch(() => undefined);
   let capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
   let semanticCapabilitiesPublished = false;
   let hookRailAvailable = true;
@@ -813,6 +835,9 @@ function createClaudeObservation(
     const attached = bootstrapOpenWork;
     bootstrapOpenWork = false;
     transcriptPath = path;
+    // The cursor goes to the attach that answers it, and to no later one.
+    const answer = attached ? answerReplay : undefined;
+    if (answer !== undefined) answerReplay = undefined;
     const nextAttachment = (async (): Promise<SemanticObservationHandle | undefined> => {
       const prior = await priorAttachment?.catch(() => undefined);
       await prior?.dispose();
@@ -823,6 +848,7 @@ function createClaudeObservation(
         transcriptPath: path,
         pollIntervalMs: options.transcriptPollIntervalMs,
         ...(attached ? { attached: true } : {}),
+        ...(answer !== undefined && options.replayAfter !== undefined ? { replayAfter: options.replayAfter } : {}),
       });
       if (disposed || generation !== semanticGeneration) {
         await handle.dispose();
@@ -907,6 +933,20 @@ function createClaudeObservation(
       return undefined;
     });
     semanticAttachment = nextAttachment;
+    if (answer !== undefined) {
+      // The attachment resolves after its first read, which settles the replay before it does; no handle is a read
+      // that failed or was overtaken.
+      void nextAttachment.then(async (handle) => {
+        if (handle?.replayedAfter === undefined) answer.unread(new Error('the transcript was not read'));
+        else answer.found(await handle.replayedAfter);
+      });
+    }
+  }
+
+  /** An attach that found no transcript to read says so at once. */
+  function noTranscript(): void {
+    answerReplay?.unread(new Error('no transcript was found for the session'));
+    answerReplay = undefined;
   }
 
   function observeTranscript(path: string): void {
@@ -1163,12 +1203,14 @@ function createClaudeObservation(
           const handle = await semanticAttachment;
           await handle?.poll();
         },
+        ...(replayAnswer === undefined ? {} : { replayedAfter: () => replayAnswer }),
         dispose,
       };
       return adoptedSession;
     },
     dispose,
     observeTranscript,
+    noTranscript,
   };
 }
 
@@ -1226,6 +1268,7 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
     // hook, and its transcript already says where it stands.
     const transcript = locateClaudeTranscript(options.sessionId, root);
     if (transcript !== undefined) observation.observeTranscript(transcript);
+    else observation.noTranscript();
     return await observation.adopt(options.runtimeSessionId);
   } catch (err) {
     await bridge.dispose();

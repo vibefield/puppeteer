@@ -161,6 +161,7 @@ import {
   composeExtensionProviders,
   createExtensionInventoryReader,
 } from './extensions/inventory.js';
+import { attachReplayOutcome } from './attach-replay.js';
 import { createExtensionActRunner } from './extensions/act.js';
 import { createExtensionCatalogReader } from './extensions/catalog.js';
 import { launchValues } from './host/environment.js';
@@ -185,6 +186,8 @@ import type {
 } from './identity/creation-registry.js';
 import { createSystemMonitorClock } from './monitor/clock.js';
 import { AgentMonitorService } from './services/monitor-service.js';
+
+export { ATTACH_REPLAY_BOUND_MS } from './attach-replay.js';
 
 interface ManagedSession {
   session: AgentAdapterBinding;
@@ -4079,6 +4082,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             ...(profile === undefined ? {} : { profile }),
             ...(request.attachRecord === undefined ? {} : { attachRecord: request.attachRecord }),
             ...(request.onAttachRecord === undefined ? {} : { onAttachRecord: request.onAttachRecord }),
+            ...(request.replayAfter === undefined ? {} : { replayAfter: request.replayAfter }),
           });
         } catch (error) {
           report(error);
@@ -4146,16 +4150,18 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           if (request.workspace?.resumeRoot === undefined) await workspace.destroy().catch(report);
           return restored;
         }
+        // The attach's own word, on its result alone: the run's kept info never carries it.
+        const replay = request.replayAfter === undefined ? {} : await attachReplayOutcome(session);
         if (profile !== undefined) {
           const managed = sessionsByRunId.get(restored.runtimeRunId);
           if (managed) {
             bindRunProfile(managed.run, profile);
             managed.info.profileId = profile.id;
             if (profile.set !== undefined) managed.info.profileSetId = profile.set;
-            return cloneAgentSessionInfo(managed.info);
+            return { ...cloneAgentSessionInfo(managed.info), ...replay };
           }
         }
-        return restored;
+        return { ...restored, ...replay };
       })();
       pendingCreations.add(pending);
       const clear = () => pendingCreations.delete(pending);
