@@ -332,14 +332,16 @@ describe('Codex TUI preparation', () => {
     threadRecords('draft words my prompt', 'turn-3');
     await expect(glued).resolves.toMatchObject({ status: 'uncertain' });
 
-    // A refused paste stays rejected, and a staged paste asks for nothing more.
+    // A staged paste the terminal accepts asks for nothing more.
+    await expect(session.services.prompt.submit({ text: 'staged', mode: 'paste-only' })).resolves.toEqual({
+      status: 'confirmed',
+    });
+
+    // A refused paste stays rejected.
     terminalHost.automateTerminal = vi.fn(async () => ({ accepted: false as const, reason: 'human-input-conflict' }));
     await expect(session.services.prompt.submit({ text: 'refused' })).resolves.toEqual({
       status: 'rejected',
       reason: 'human-input-conflict',
-    });
-    await expect(session.services.prompt.submit({ text: 'staged', mode: 'paste-only' })).resolves.toEqual({
-      status: 'confirmed',
     });
     expect(fakes.observerListeners.size).toBe(0);
   });
