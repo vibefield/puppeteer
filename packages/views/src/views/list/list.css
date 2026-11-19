@@ -123,8 +123,20 @@
   opacity: 0.4;
 }
 
-.mv-list .vf-monitor-list-row.is-blocked .vf-monitor-list-status {
+.mv-list .vf-monitor-list-row.is-blocked .vf-monitor-list-status,
+.mv-list .vf-monitor-list-row.is-attention .vf-monitor-list-status {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--mv-list-colour) 30%, transparent);
+}
+
+.mv-list .vf-monitor-list-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mv-list .vf-monitor-list-name .vf-host-picture {
+  flex: none;
 }
 
 .mv-list .vf-monitor-list-project {

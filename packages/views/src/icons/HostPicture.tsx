@@ -1,6 +1,24 @@
 import { useEffect, useRef } from 'react';
-import type { Picture, PictureBitmap } from '@vibefield/puppeteer-view-sdk';
+import type { HostMark, Picture, PictureBitmap } from '@vibefield/puppeteer-view-sdk';
 import { isPictureDataUrl } from '@vibefield/puppeteer-view-sdk/toolkit';
+
+/** A host's picture in a row's line: the side the list, rain, timeline and find draw it at. */
+export const ROW_PICTURE_SIZE = 14;
+
+/** The host's `lead` picture, drawn in a row's lead before its name; nothing for a row without one. */
+export function RowLead({ mark }: { mark?: HostMark | undefined }) {
+  return mark?.lead ? <HostPicture picture={mark.lead} size={ROW_PICTURE_SIZE} className="vf-row-lead" /> : null;
+}
+
+/** The host's `trail` picture, drawn after a row's name; nothing for a row without one. */
+export function RowTrail({ mark }: { mark?: HostMark | undefined }) {
+  return mark?.trail ? <HostPicture picture={mark.trail} size={ROW_PICTURE_SIZE} className="vf-row-trail" /> : null;
+}
+
+/** Whether a row's mark gives a picture for its line. A row without one keeps the markup it ships with. */
+export function hasRowPicture(mark: HostMark | undefined): boolean {
+  return mark?.lead !== undefined || mark?.trail !== undefined;
+}
 
 export interface HostPictureProps {
   picture: Picture;

@@ -1,3 +1,4 @@
+import type { HostMark } from '@vibefield/puppeteer-view-sdk';
 import type { AgentVisualStatus } from '../monitor/agent-status.js';
 
 /**
@@ -12,6 +13,11 @@ export interface FindAgent {
   readonly project: string;
   readonly detail: string;
   readonly color: string;
+  /**
+   * The host's mark on the row (`HostMark`): its name and spoken words in the project's place, its `lead` before the
+   * title and its `trail` after it. Its `provider` never hides the speaker: there it says what ran the session.
+   */
+  readonly mark?: HostMark | undefined;
   readonly agent?:
     | {
         readonly provider: { readonly id: string; readonly label: string };

@@ -56,6 +56,7 @@ import {
   type TimelineScale,
 } from './timeline-scale.js';
 import { laneLabel, laneName, laneSubLine, OPENS_IN_HISTORY, readoutAt, recordState } from './timeline-words.js';
+import { RowLead, RowTrail } from '../../icons/HostPicture.js';
 
 // The timeline — Godview's swarm through time (DESIGN §8; TL, design F
 // "Wakes" with its map of the day, `draft/godview-timeline/`). Each lane is
@@ -190,6 +191,7 @@ function nameRow({ lane, y, h }: PlacedLane): ReactElement {
   const device = lane.ended === undefined ? lane.row.device : lane.ended.device;
   const active = lane.row?.active === true;
   const pane = lane.row?.attachment;
+  const mark = lane.ended === undefined ? lane.row.mark : lane.ended.mark;
   return (
     <div
       key={lane.id}
@@ -205,7 +207,9 @@ function nameRow({ lane, y, h }: PlacedLane): ReactElement {
       <span className="vf-monitor-timeline-who">
         {device.self ? null : <PeerMark name={device.name} />}
         <FolderMark terminal={lane.kind === 'terminal'} />
+        <RowLead mark={mark} />
         <b>{laneName(lane)}</b>
+        <RowTrail mark={mark} />
       </span>
       {two ? <small>{sub}</small> : null}
     </div>

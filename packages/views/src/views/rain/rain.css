@@ -65,6 +65,17 @@
   border-bottom: 1px solid currentcolor;
 }
 
+.mv-rain .vf-monitor-rain-tooltip-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mv-rain .vf-monitor-rain-tooltip-name .vf-host-picture {
+  flex: none;
+}
+
 .mv-rain .vf-monitor-rain-tooltip-head strong {
   overflow: hidden;
   color: var(--mv-rain-title);

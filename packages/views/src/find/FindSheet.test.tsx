@@ -68,6 +68,22 @@ describe('FindSheet', () => {
     expect(markup).toContain('role="option"');
   });
 
+  it("draws a marked agent by the host's mark: its name, its words, and its pictures around the title", () => {
+    const lead = { kind: 'stencil', key: 'dot', path: 'M0 0h24v24H0z' } as const;
+    const trail = { kind: 'stencil', key: 'face', path: 'M2 2h20v20H2z' } as const;
+    const marked = { ...agent('a', 'vibe-field', 'n-a'), mark: { name: 'Ada', spoken: 'Ada, a helper', lead, trail } };
+    const markup = renderToStaticMarkup(
+      <FindSheet open agents={[marked]} onClose={NOOP} onSelect={NOOP} history={NEVER} nowMs={NOW} />,
+    );
+    expect(markup).toContain('aria-label="Ada, Ada, a helper on main, model-1, working"');
+    const order = ['data-picture="dot"', 'class="vf-find-row-title">Ada', 'data-picture="face"'];
+    const at = order.map((text) => markup.indexOf(text));
+    expect(at.every((index) => index >= 0)).toBe(true);
+    expect([...at].sort((x, y) => x - y)).toEqual(at);
+    // the speaker and the agent's mark still say what ran it
+    expect(markup).toContain('model-1');
+  });
+
   it('says so when no live agent can be listed', () => {
     const markup = renderToStaticMarkup(
       <FindSheet open agents={[]} onClose={() => undefined} onSelect={() => undefined} history={NEVER} />,

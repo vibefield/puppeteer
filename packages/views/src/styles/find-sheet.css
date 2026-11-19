@@ -163,6 +163,16 @@
   font-weight: 700;
 }
 
+.vf-find-row-head > .vf-row-lead {
+  flex: none;
+  align-self: center;
+}
+
+.vf-find-row-title .vf-row-trail {
+  margin-left: 5px;
+  vertical-align: -2px;
+}
+
 .vf-find-row-title small {
   margin-left: 7px;
   color: var(--text-muted);
