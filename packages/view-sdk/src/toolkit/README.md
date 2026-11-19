@@ -30,6 +30,7 @@ Two rules hold for everything here:
 | `marks-atlas.ts` | `MARKS_ATLAS_URL`, the swarm's SDF atlas as a data URL |
 | `canvas.ts` | `sizeCanvas` (device-pixel backing store, CSS-pixel element, writes only on change), `canvasRatio`, `watchDevicePixelRatio` |
 | `motion.ts` | `createMotionLoop(callback, { animations, reducedMotion, hidden?, moving?, fps?, still? })`, which requests no frame at all while animations are off, motion is reduced, the stage is out of sight or the view has nothing moving, and re-evaluates on `loop.update(themeMotion(input.theme))`; stopped, `loop.requestStill()` asks for one still frame, merged with every request before it, and owed while the stage is out of sight. `themeMotion(theme)` reads an absent `hidden` as false; `motionAllowed(theme)` says whether a view may move at all |
+| `picture.ts` | `isPictureDataUrl`: whether a host's colour picture given as a string may be drawn (`HostMark`). A `data:image/…` URL alone; any other string is never drawn, so a mark cannot make a view fetch |
 | `keys.ts` | `keyLegend(key)`: how a declared key is printed, as the keyboard's legend (`↵`, `↘`) or its character. The host's bar prints a view's keys in its tooltip with it, and a view prints the key of one of its own controls on that control, under its glyph (MV-D8, M177 ruling 4) |
 
 ## Ported, with identical output

@@ -135,6 +135,15 @@ describe('the history capability (a minor: plain data in place of `never`)', () 
     expect(Object.isFrozen(lent.ended[0])).toBe(true);
   });
 
+  it("lendHistory joins the host's mark on a run it saw end, by the ended row's id, and none where it has none", () => {
+    const trail = { kind: 'stencil', key: 'ada', path: 'M0 0h24v24H0z' } as const;
+    const mark = { name: 'Ada', spoken: 'Ada, a helper', trail };
+    const lent = lendHistory(PAST, { ...LEND, marks: new Map([['past:claude:a', mark]]) });
+    expect(lent.ended[0]?.mark).toBe(mark);
+    expect(lent.ended[1]).not.toHaveProperty('mark');
+    expect(lendHistory(PAST, LEND).ended.every((lane) => !('mark' in lane))).toBe(true);
+  });
+
   it('keepPast keeps the snapshot a re-read did not move — a new readAt alone moves nothing', () => {
     const reread: MonitorPastSnapshot = JSON.parse(JSON.stringify({ ...PAST, readAt: PAST.readAt + 30_000 }));
     expect(keepPast(PAST, reread)).toBe(PAST);
