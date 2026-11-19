@@ -100,7 +100,11 @@ describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
       const receipt = await session.services.prompt.submit({
         text: `Reply with exactly ${CODEX_LIVE_RESPONSE_MARKER} and do not use tools.`,
       });
-      expect(receipt, host.output(session.runtimeSessionId)).toEqual({ status: 'confirmed' });
+      // Confirmed only on the thread's own record of the pasted text, which names its turn.
+      expect(receipt, host.output(session.runtimeSessionId)).toEqual({
+        status: 'confirmed',
+        turnId: expect.any(String),
+      });
       try {
         await waitFor(
           () => projection!.envelopes.some(({ event }) => event.type === 'turn:completed'),
