@@ -3,14 +3,16 @@
 // is the authoring copy; `shaders.test.ts` keeps the two identical.
 export default `// Glyphs and marks, one quad each, tinted by the instance. Type comes from the
 // rasterised atlas as coverage; vendor marks come from the signed-distance
-// atlas and are reconstructed at any size from the field.
+// atlas and are reconstructed at any size from the field; a host's colour
+// picture keeps its own colours from the rasterised atlas.
 
 struct Glyph {
   // x, y, width, height (CSS px)
   rect: vec4f,
   uv: vec4f,
   color: vec4f,
-  // x: 0 = coverage from the glyph atlas, 1 = signed distance from the marks;
+  // x: 0 = coverage from the glyph atlas, 1 = signed distance from the marks,
+  //    2 = the glyph atlas's own colours (a host's colour picture);
   // y: the field's px range on screen (pxRange × quad px / tile texels)
   params: vec4f,
 };
@@ -40,11 +42,12 @@ fn vs(@builtin(vertex_index) vertex: u32, @builtin(instance_index) instance: u32
 @fragment
 fn fs(in: GlyphVertex) -> @location(0) vec4f {
   let glyph = glyphs[in.index];
-  // Both taps stay in uniform control flow; the select picks one.
-  let alpha = textureSample(atlas, atlasSampler, in.uv).a;
+  // Both taps stay in uniform control flow; the selects pick one.
+  let texel = textureSample(atlas, atlasSampler, in.uv);
   let field = textureSample(marks, atlasSampler, in.uv).r;
   let fromField = clamp(glyph.params.y * (field - 0.5) + 0.5, 0.0, 1.0);
-  let coverage = select(alpha, fromField, glyph.params.x > 0.5);
-  return premul(glyph.color) * coverage;
+  let coverage = select(texel.a, fromField, glyph.params.x > 0.5);
+  // The atlas is uploaded premultiplied, so a picture's own colours need only the instance's alpha.
+  return select(premul(glyph.color) * coverage, texel * glyph.color.a, glyph.params.x > 1.5);
 }
 `;

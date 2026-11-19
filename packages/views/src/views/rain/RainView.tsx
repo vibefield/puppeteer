@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 import type { AgentStatus, AgentView, MonitorPalette } from '@vibefield/puppeteer-view-sdk';
-import type { ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
+import { hasRowPicture, RowLead, RowTrail, type ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
 import {
   approachRecede,
   createMotionLoop,
   detailLine,
   everyReceded,
   modelWord,
-  projectName,
   recedeTarget,
+  rowName,
+  rowSpoken,
   sizeCanvas,
   themeMotion,
   watchDevicePixelRatio,
@@ -388,7 +389,15 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
           aria-hidden="true"
         >
           <header className="vf-monitor-rain-tooltip-head">
-            <strong>{projectName(hovered)}</strong>
+            {hasRowPicture(hovered.mark) ? (
+              <div className="vf-monitor-rain-tooltip-name">
+                <RowLead mark={hovered.mark} />
+                <strong>{rowName(hovered)}</strong>
+                <RowTrail mark={hovered.mark} />
+              </div>
+            ) : (
+              <strong>{rowName(hovered)}</strong>
+            )}
             <span>{hovered.status}</span>
           </header>
           <dl>
@@ -422,7 +431,7 @@ export function RainView({ input, commands }: ReactMonitorViewProps): ReactEleme
               onClick={() => commands.select(agent.id)}
               aria-current={agent.active ? 'true' : undefined}
             >
-              {`${projectName(agent)}, ${agentName(agent)}, ${agent.status}: ${detailLine(agent)}`}
+              {`${rowSpoken(agent)}, ${agentName(agent)}, ${agent.status}: ${detailLine(agent)}`}
             </button>
           </li>
         ))}

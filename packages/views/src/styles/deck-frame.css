@@ -352,6 +352,11 @@
   transition: none;
 }
 
+.vf-pane-lead {
+  flex: none;
+  display: block;
+}
+
 .vf-pane-name {
   min-width: 0;
   max-width: 50cqw;

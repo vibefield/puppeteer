@@ -170,6 +170,43 @@ describe('a row', () => {
     expect(row!.getAttribute('aria-label')).toBe('puppeteer, Opus 5.5, work, idle: idle');
   });
 
+  it("draws the host's mark: its name and words, its pictures around the name, and its attention's tint", async () => {
+    const lead = { kind: 'stencil', key: 'dot', path: 'M0 0h24v24H0z' } as const;
+    const trail = { kind: 'colour', key: 'ada-face', image: 'data:image/png;base64,iVBORw0KGgo=' } as const;
+    const { root } = await mount({
+      agents: [
+        agentViewFixture({
+          id: 'a',
+          createdAt: 1_000,
+          project: { name: 'vibe-field', seq: 1 },
+          provider: { id: 'claude', label: 'Claude' },
+          model: 'Opus 5.5',
+          mark: {
+            name: 'Ada',
+            spoken: 'Ada, a helper',
+            lead,
+            trail,
+            provider: 'hidden',
+            attention: { word: 'Asking you' },
+          },
+        }),
+        agentViewFixture({ id: 'b', createdAt: 2_000, project: { name: 'rosetta', seq: 2 } }),
+      ],
+    });
+    const [marked, plain] = rows(root);
+    expect(marked!.className).toContain(' is-attention');
+    expect(marked!.getAttribute('aria-label')).toBe('Ada, a helper, Opus 5.5, idle, Asking you: idle');
+    const name = marked!.querySelector('.vf-monitor-list-name')!;
+    const parts = [...name.children].map((child) => child.getAttribute('data-picture') ?? child.textContent);
+    expect(parts).toEqual(['dot', 'Ada', 'ada-face']);
+    // a hidden provider still says what runs the row in its agent column
+    expect(marked!.querySelector('.vf-monitor-list-agent svg')).not.toBeNull();
+    // a row with no mark keeps the markup it ships with
+    expect(plain!.querySelector('.vf-monitor-list-name')).toBeNull();
+    expect(plain!.querySelector('.vf-monitor-list-project > strong')?.textContent).toBe('rosetta');
+    expect(plain!.className).not.toContain('is-attention');
+  });
+
   it('a peer’s row names its desktop first, and no write word, whatever its row’s `writable`', async () => {
     const { root } = await mount({
       agents: [

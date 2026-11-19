@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { AgentIcon } from '@vibefield/puppeteer-view-sdk/react';
+import { AgentIcon, HostPicture } from '@vibefield/puppeteer-view-sdk/react';
 import {
   NARROW_PANE_WIDTH,
   paneFrameModel,
@@ -212,6 +212,7 @@ export function PaneFrameChrome({
                 <AgentIcon providerId={model.providerId} />
               </span>
             ) : null}
+            {model.lead ? <HostPicture picture={model.lead} size={14} className="vf-pane-lead" /> : null}
             <span className="vf-pane-name">{model.name}</span>
           </span>
         </span>

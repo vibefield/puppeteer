@@ -5,7 +5,8 @@ import {
   formatShort,
   formatWords,
   modelWord,
-  projectName,
+  rowName,
+  rowSpoken,
   STATE_WORDS,
   statusWord,
   waitWord,
@@ -123,9 +124,12 @@ export function endedName(run: Pick<EndedLaneView, 'title' | 'provider' | 'proje
   return run.title || [run.provider?.label, run.project.name].filter(Boolean).join(' · ');
 }
 
-/** A lane's name, as its name column prints it: a row's project, or an ended run's own name. */
+/**
+ * A lane's name, as its name column prints it: the host's mark's name, else a row's project or an ended run's own
+ * name.
+ */
 export function laneName(lane: TimelineLane): string {
-  return lane.ended === undefined ? projectName(lane.row) : endedName(lane.ended);
+  return lane.ended === undefined ? rowName(lane.row) : lane.ended.mark?.name || endedName(lane.ended);
 }
 
 /**
@@ -149,12 +153,13 @@ export function laneLabel(lane: TimelineLane, nowMs: number): string {
   if (lane.ended !== undefined) {
     const run = lane.ended;
     const where = run.device.self ? '' : `on ${run.device.name}, `;
-    const who = [run.title, run.project.name, run.provider?.label].filter(Boolean).join(', ');
+    const named = [run.title, run.project.name, run.provider?.label].filter(Boolean).join(', ');
+    const who = run.mark?.spoken || run.mark?.name || named;
     return `${where}${who}, ended, last active ${formatWords(nowMs - run.endedAt)} ago`;
   }
   const row = lane.row;
   const where = row.device.self ? '' : `on ${row.device.name}, `;
-  const name = projectName(row);
+  const name = rowSpoken(row);
   const current = lane.current;
   const length = formatWords(nowMs - current.fromMs);
   if (lane.kind === 'terminal') {

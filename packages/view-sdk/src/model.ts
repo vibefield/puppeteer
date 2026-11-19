@@ -491,6 +491,49 @@ export interface FrameScheduler {
 /* What a view draws: the replica's join of the model with one window's own facts. Still plain
  * data (no DOM), so the replica imports it from `./model` (L3). */
 
+/** A bitmap a view can draw (an `ImageBitmap` in a browser), named by its size alone so the model names no DOM type. */
+export interface PictureBitmap {
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * A picture a host hands the views to draw on a row. `key` names it: the same key promises the same picture, so a view
+ * caches it and redraws only for a new key.
+ * - `colour`: a full-colour picture the host drew, drawn as it is: a bitmap, or a `data:image/…` URL. Any other
+ *   string is not drawn (`isPictureDataUrl`), so a picture never makes a view fetch.
+ * - `stencil`: a one-colour mark, an SVG path in the marks' 24-unit box, that the view tints in the row's ink.
+ */
+export type Picture =
+  | { readonly kind: 'colour'; readonly key: string; readonly image: string | PictureBitmap }
+  | { readonly kind: 'stencil'; readonly key: string; readonly path: string };
+
+/** A host's own ask for the person on a row, which the backend cannot see: its word, drawn as a wait is drawn. */
+export interface HostAttention {
+  readonly word: string;
+}
+
+/**
+ * What a host marks a row with, as only its window knows it. Every field is optional, and the views know nothing of
+ * what the host means by it; a row with no mark draws as it ships.
+ * - `lead`: drawn in the row's lead, in the project's place.
+ * - `trail`: drawn after the row's name.
+ * - `rim`: drawn on a spatial body's rim.
+ * - `name` and `spoken`: the row's name and its accessible name, in the project's place.
+ * - `provider: 'hidden'`: the provider's mark is not drawn where it stands for the row (a body's watermark, a pane's
+ *   badge). It stays where it says what runs the row (a list's agent column, find's speaker).
+ * - `attention`: the host asks for the person, and the views draw it in their waiting light.
+ */
+export interface HostMark {
+  readonly lead?: Picture | undefined;
+  readonly trail?: Picture | undefined;
+  readonly rim?: Picture | undefined;
+  readonly name?: string | undefined;
+  readonly spoken?: string | undefined;
+  readonly provider?: 'hidden' | undefined;
+  readonly attention?: HostAttention | undefined;
+}
+
 /**
  * One agent as a view sees it: the backend's row, joined by the replica with
  * what only this window knows, and coloured by the view host.
@@ -512,6 +555,11 @@ export interface AgentView extends MonitorAgentRow {
    * instead of a removal and an arrival. Absent: the row's own id. A view keys spatial identity by `visualId ?? id`.
    */
   readonly visualId?: string | undefined;
+  /**
+   * The host's mark on this row (window-local: the replica's `setLocal({ marks })`), the host's own object. Absent:
+   * the row draws as it ships.
+   */
+  readonly mark?: HostMark | undefined;
 }
 
 /** The model a view draws. Unchanged agents keep their object across updates (MV-D21). */

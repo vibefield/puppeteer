@@ -18,3 +18,4 @@ export * from './canvas.js';
 export * from './motion.js';
 export * from './worker.js';
 export * from './keys.js';
+export * from './picture.js';

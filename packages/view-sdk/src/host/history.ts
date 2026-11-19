@@ -13,7 +13,7 @@
  *   same project wear the same ink, and receded by the window's own rule.
  */
 
-import type { MonitorEndedRow, MonitorPastSnapshot, MonitorPastSpan } from '../model.js';
+import type { HostMark, MonitorEndedRow, MonitorPastSnapshot, MonitorPastSpan } from '../model.js';
 import type { EndedLaneView, MonitorHistory, MonitorView } from '../view.js';
 
 /** The day a view's past covers (T2). */
@@ -67,12 +67,20 @@ export interface LendHistoryOptions {
   readonly colourFor: (seq: number | undefined) => string;
   /** The window's own rule for a lane drawn faint (`AgentView.receded`'s, over its device and profile filters). */
   readonly receded: (lane: MonitorEndedRow) => boolean;
+  /** The host's mark on each run it saw end, by the ended row's id (`past:…`), as `marks` key live rows. */
+  readonly marks?: ReadonlyMap<string, HostMark> | undefined;
 }
 
 /** `past` as a view sees it. Call it once per snapshot (and per theme or filter), never per publish. */
 export function lendHistory(past: MonitorPastSnapshot, options: LendHistoryOptions): MonitorHistory {
-  const ended: EndedLaneView[] = past.ended.map((lane) =>
-    Object.freeze({ ...lane, colour: options.colourFor(lane.project.seq), receded: options.receded(lane) }),
-  );
+  const ended: EndedLaneView[] = past.ended.map((lane) => {
+    const mark = options.marks?.get(lane.id);
+    return Object.freeze({
+      ...lane,
+      colour: options.colourFor(lane.project.seq),
+      receded: options.receded(lane),
+      ...(mark === undefined ? {} : { mark }),
+    });
+  });
   return Object.freeze({ ...past, ended: Object.freeze(ended) });
 }

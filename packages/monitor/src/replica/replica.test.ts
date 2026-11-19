@@ -560,6 +560,41 @@ describe('createMonitorReplica', () => {
     expect(third.model.byId.get('a')?.visualId).toBeUndefined();
   });
 
+  it("joins each row's host mark: the same object keeps the row's view, and a gone entry draws as it ships", () => {
+    const { frames, replica } = setup();
+    replica.apply(snapshot(1, [row('a'), row('b', { createdAt: 2_000 })]));
+    frames.frame();
+    const first = replica.getSnapshot();
+    expect(first.model.agents.every((view) => !('mark' in view))).toBe(true);
+
+    const ada = { name: 'Ada', spoken: 'Ada, a helper', provider: 'hidden' as const };
+    replica.setLocal(local({ marks: new Map([['a', ada]]) }));
+    frames.frame();
+    const second = replica.getSnapshot();
+    expect(second.changes).toEqual({ added: [], updated: ['a'], removed: [] });
+    expect(second.model.byId.get('a')?.mark).toBe(ada);
+    expect(second.model.byId.get('b')).toBe(first.model.byId.get('b'));
+
+    // The host keeps an unchanged mark's object in a new map: nothing moved, nothing is published.
+    replica.setLocal(local({ marks: new Map([['a', ada]]) }));
+    frames.frame();
+    expect(replica.getSnapshot()).toBe(second);
+
+    // A new object is a new mark: only its row moves.
+    replica.setLocal(local({ marks: new Map([['a', { ...ada, attention: { word: 'Asking you' } }]]) }));
+    frames.frame();
+    const third = replica.getSnapshot();
+    expect(third.changes).toEqual({ added: [], updated: ['a'], removed: [] });
+    expect(third.model.byId.get('a')?.mark?.attention).toEqual({ word: 'Asking you' });
+
+    // The entry goes: the row draws as it ships.
+    replica.setLocal(local({}));
+    frames.frame();
+    const fourth = replica.getSnapshot();
+    expect(fourth.changes).toEqual({ added: [], updated: ['a'], removed: [] });
+    expect(fourth.model.byId.get('a')).not.toHaveProperty('mark');
+  });
+
   it('a row that arrives later is joined with the facts already set', () => {
     const { frames, replica } = setup();
     replica.setLocal(local({ activeIds: new Set(['late']), spawnHints: new Map([['late', { x: 1, y: 2 }]]) }));

@@ -285,6 +285,16 @@ describe('the rain’s words', () => {
     expect(view.commands.selects).toEqual(['b']);
   });
 
+  it("offers a marked agent by the host's spoken words", async () => {
+    const marked = [{ ...agents[0]!, mark: { name: 'Ada', spoken: 'Ada, a helper' } }, agents[1]!];
+    const view = await mount({ agents: marked });
+    const buttons = [...view.root.querySelectorAll<HTMLButtonElement>('.vf-monitor-rain-agents button')];
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      'Ada, a helper, Opus, working: working',
+      'project, , idle: Done.',
+    ]);
+  });
+
   it('shows the column under the pointer: its project, status, branch, model, line and context', async () => {
     const view = await mount({ agents });
     const surface = view.root.querySelector('.vf-monitor-rain-surface')!;

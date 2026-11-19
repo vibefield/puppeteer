@@ -17,6 +17,7 @@ import type {
   AgentView,
   ModelChanges,
   MonitorEndedRow,
+  HostMark,
   MonitorModel,
   MonitorPastSnapshot,
   MonitorSpawnMenu,
@@ -136,6 +137,8 @@ export interface EndedLaneView extends MonitorEndedRow {
    * its place and is drawn faint. Under a profile filter a run whose profile is unknown recedes.
    */
   readonly receded: boolean;
+  /** The host's mark on the run it saw end, by the ended row's id, as `AgentView.mark`. Absent: drawn as it ships. */
+  readonly mark?: HostMark | undefined;
 }
 
 /**

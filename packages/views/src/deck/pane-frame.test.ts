@@ -142,6 +142,32 @@ describe('paneFrameModel', () => {
   it('names the device a remote session lives on', () => {
     expect(paneFrameModel({ session: session(), remoteDevice: 'studio', nowMs: NOW }).remote).toBe('studio');
   });
+
+  it("names the badge by the host's mark, draws its lead, and hides the provider mark only when told", () => {
+    const lead = { kind: 'stencil', key: 'ada', path: 'M4 4h16v16H4z' } as const;
+    const marked = paneFrameModel({
+      session: session(),
+      agent: agent({ mark: { name: 'Ada', lead, provider: 'hidden' } }),
+      nowMs: NOW,
+    });
+    expect(marked.name).toBe('Ada');
+    expect(marked.lead).toBe(lead);
+    expect(marked).not.toHaveProperty('providerId');
+    // the readout still says what runs the pane
+    expect(marked.readout).toEqual({ model: 'gpt-5.3-codex', configured: false });
+
+    const shown = paneFrameModel({ session: session(), agent: agent({ mark: { lead } }), nowMs: NOW });
+    expect(shown).toMatchObject({ name: 'rosetta', providerId: 'codex', lead });
+  });
+
+  it('draws the badge as it ships for a row with no mark, or an empty one', () => {
+    const bare = paneFrameModel({ session: session(), agent: agent(), nowMs: NOW });
+    const empty = paneFrameModel({ session: session(), agent: agent({ mark: { name: '' } }), nowMs: NOW });
+    for (const model of [bare, empty]) {
+      expect(model).toMatchObject({ name: 'rosetta', providerId: 'codex' });
+      expect(model).not.toHaveProperty('lead');
+    }
+  });
 });
 
 describe('stopKeyLabel', () => {

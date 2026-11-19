@@ -11,7 +11,8 @@
  *
  * It also carries the presentation components React-drawn views share (M6):
  * `AgentIcon` (a provider's mark) and `ProfileGlyph` (a profile set's mark),
- * drawn from the toolkit's marks.
+ * drawn from the toolkit's marks, and `HostPicture` with `RowLead` and
+ * `RowTrail` (a host's own pictures on a row, `HostMark`).
  */
 
 import { createElement, type ComponentType } from 'react';
@@ -28,6 +29,14 @@ import {
 
 export { AgentIcon, type AgentIconProps } from './AgentIcon.js';
 export { ProfileGlyph, type ProfileGlyphProps } from './ProfileGlyph.js';
+export {
+  HostPicture,
+  hasRowPicture,
+  ROW_PICTURE_SIZE,
+  RowLead,
+  RowTrail,
+  type HostPictureProps,
+} from './HostPicture.js';
 
 export interface ReactMonitorViewProps {
   readonly input: MonitorViewInput;

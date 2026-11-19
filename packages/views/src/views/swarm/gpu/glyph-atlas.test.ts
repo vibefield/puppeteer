@@ -76,3 +76,42 @@ describe('a sprite that decodes after the frame that asked for it', () => {
     expect(ready).not.toHaveBeenCalled();
   });
 });
+
+describe("a host's colour picture", () => {
+  const URL = 'data:image/png;base64,iVBORw0KGgo=';
+
+  it('decodes a data URL as it is, never whitened, and places it once it lands', () => {
+    const ready = vi.fn();
+    const atlas = atlasSaying(ready);
+    expect(atlas.picture('ada-face', URL, 14)).toBeUndefined();
+    expect(atlas.picture('ada-face', URL, 14)).toBeUndefined();
+    expect(images.map((image) => image.src)).toEqual([URL]);
+    images[0]!.land();
+    expect(ready).toHaveBeenCalledTimes(1);
+    expect(atlas.picture('ada-face', URL, 14)).toMatchObject({ width: 14, height: 14 });
+    // a sprite of the same key is another picture
+    expect(atlas.sprite('ada-face', SVG, 14)).toBeUndefined();
+  });
+
+  it('never decodes a string that is not a data URL, so a mark cannot make the swarm fetch', () => {
+    const atlas = atlasSaying(vi.fn());
+    expect(atlas.picture('ada-remote', 'https://example.com/face.png', 14)).toBeUndefined();
+    expect(atlas.picture('ada-path', '/face.png', 14)).toBeUndefined();
+    expect(images).toHaveLength(0);
+  });
+
+  it('draws a bitmap at once, as it is', () => {
+    const drawn: unknown[] = [];
+    class RecordingCanvas extends FakeCanvas {
+      override getContext(): object {
+        return { drawImage: (source: unknown) => drawn.push(source), clearRect: () => {} };
+      }
+    }
+    vi.stubGlobal('OffscreenCanvas', RecordingCanvas);
+    const bitmap = { width: 28, height: 28 };
+    const atlas = atlasSaying(vi.fn());
+    expect(atlas.picture('ada-face', bitmap, 14)).toMatchObject({ width: 14, height: 14 });
+    expect(drawn).toEqual([bitmap]);
+    expect(images).toHaveLength(0);
+  });
+});

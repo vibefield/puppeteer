@@ -2,7 +2,16 @@ import { describe, expect, it } from 'vitest';
 import type { MonitorAgentRow, MonitorDeviceRef, MonitorSpawnDevice } from '../model.js';
 import { agentViewFixture } from '../testing/fixtures.js';
 import * as toolkit from './index.js';
-import { deviceWord, detailLine, modelWord, projectName, THIS_DESKTOP, waitBodyLine } from './words.js';
+import {
+  deviceWord,
+  detailLine,
+  modelWord,
+  projectName,
+  rowName,
+  rowSpoken,
+  THIS_DESKTOP,
+  waitBodyLine,
+} from './words.js';
 
 const PEER: MonitorDeviceRef = { id: 'desk-2', name: 'Laptop', os: 'linux', self: false };
 const rowDevice = (device: MonitorDeviceRef): MonitorDeviceRef => device;
@@ -140,5 +149,19 @@ describe('waitBodyLine: what a blocked body says in the name’s place, in the s
     expect(waitBodyLine({ kind: 'question', since })).toBe('question');
     expect(waitBodyLine({ kind: 'failure', since })).toBe('failed');
     expect(waitBodyLine({ kind: 'sandbox', since })).toBe('sandbox');
+  });
+});
+
+describe("a row's name under the host's mark", () => {
+  it("prints the mark's name in the project's place and says its spoken words, each falling back", () => {
+    const plain = agentViewFixture({ id: 'a', project: { name: 'vibe-field', seq: 1 } });
+    expect([rowName(plain), rowSpoken(plain)]).toEqual(['vibe-field', 'vibe-field']);
+    const named = { ...plain, mark: { name: 'Ada' } };
+    expect([rowName(named), rowSpoken(named)]).toEqual(['Ada', 'Ada']);
+    const spoken = { ...plain, mark: { name: 'Ada', spoken: 'Ada, a helper' } };
+    expect([rowName(spoken), rowSpoken(spoken)]).toEqual(['Ada', 'Ada, a helper']);
+    // an empty name is no name: the project's stands
+    expect(rowName({ ...plain, mark: { name: '' } })).toBe('vibe-field');
+    expect(toolkit.rowName).toBe(rowName);
   });
 });

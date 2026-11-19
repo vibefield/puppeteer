@@ -1,4 +1,5 @@
 import type { TerminalKey } from '@vibefield/puppeteer-core';
+import type { HostMark, Picture } from '@vibefield/puppeteer-view-sdk';
 import type { AgentVisualStatus } from '../monitor/agent-status.js';
 import { folderName } from '../monitor/folder-name.js';
 
@@ -13,8 +14,10 @@ import { folderName } from '../monitor/folder-name.js';
 export interface PaneFrameModel {
   /** The folder, never the terminal title. */
   name: string;
-  /** The agent mark before the name; absent for a bare shell. */
+  /** The agent mark before the name; absent for a bare shell, and where the host's mark hides the provider. */
   providerId?: string;
+  /** The host's picture before the name (`HostMark.lead`). */
+  lead?: Picture;
   /** The device a remote session lives on; absent means local. */
   remote?: string;
   /** model · effort, lowercase in the type; italic effort while only configured. */
@@ -71,6 +74,11 @@ export interface PaneFrameAgent {
    * Absent: the frame keeps its own guess around its press.
    */
   stop?: { stage: string; sentAt?: string | undefined; unheardAt?: string | undefined } | undefined;
+  /**
+   * The host's mark on the pane's row (`HostMark`): its `lead` before the name, its `name` in the name's place, and
+   * no provider mark when its `provider` is `hidden`. Absent: the badge as it ships.
+   */
+  mark?: HostMark | undefined;
 }
 
 const STOP_KEY_GLYPHS: Readonly<Record<TerminalKey, string>> = { escape: '⎋', 'ctrl-c': '⌃C' };
@@ -115,11 +123,12 @@ export function paneBadgeName(session: PaneFrameSession, agent?: PaneFrameAgent,
 
 export function paneFrameModel({ session, agent, remoteDevice, fallbackCwd, nowMs }: PaneFrameInput): PaneFrameModel {
   const model: PaneFrameModel = {
-    name: paneBadgeName(session, agent, fallbackCwd),
+    name: agent?.mark?.name || paneBadgeName(session, agent, fallbackCwd),
     ...(remoteDevice ? { remote: remoteDevice } : {}),
   };
   if (!agent) return model;
-  model.providerId = agent.providerId;
+  if (agent.mark?.provider !== 'hidden') model.providerId = agent.providerId;
+  if (agent.mark?.lead) model.lead = agent.mark.lead;
 
   model.readout = {
     model: agent.model ?? agent.providerLabel,

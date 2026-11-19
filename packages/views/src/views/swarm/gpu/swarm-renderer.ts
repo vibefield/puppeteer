@@ -1,10 +1,12 @@
 /// <reference types="@webgpu/types" />
+import type { Picture } from '@vibefield/puppeteer-view-sdk';
 import { AGENT_MARK_ATLAS, agentMarkSvg, agentMarkTile, type Rgba } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { bodyLayout, burnFlamesDrawn, FIGURE_STYLE, FLAME_GAP, FLAME_SIZE, type BodyLayout } from '../body-layout.js';
 import type { SwarmBubbleModel } from '../bubble-model.js';
 import { leadAdvance, type CopyLead, type CopyTone, type TextStyle } from '../text-layout.js';
 import { FRAME_FLOATS, FRAME_LAYOUT, packFrame, writeRgba } from './frame-layout.js';
 import { GlyphAtlas } from './glyph-atlas.js';
+import { GLYPH_FLOATS, GLYPH_MODE, packGlyph, rimPlacement, stencilSvg, type GlyphMode } from './glyph-pack.js';
 import { PROFILE_ICON_PREFIX, profileIconSvg } from './profile-icons.js';
 import { climb, onField, SWARM_WEIGHT, WORKING_CORE_STRENGTH } from '../weight.js';
 import bodyShader from './shaders/body.wgsl.js';
@@ -167,7 +169,6 @@ const F_PENDING = 16384;
 const DASH_TURN_SECONDS = 0.9;
 
 const BODY_FLOATS = 40;
-const GLYPH_FLOATS = 16;
 const INITIAL_BODIES = 32;
 const INITIAL_GLYPHS = 2048;
 
@@ -522,30 +523,22 @@ async function buildRenderer(
     v1: number,
     colour: Rgba,
     alpha: number,
-    field = 0,
+    mode: GlyphMode = GLYPH_MODE.coverage,
+    pxRange = 0,
   ): void => {
     if (glyphCount >= glyphCapacity) {
       const previous = glyphData;
       allocateGlyphs(glyphCapacity * 2);
       glyphData.set(previous);
     }
-    const offset = glyphCount * GLYPH_FLOATS;
-    glyphData[offset] = x;
-    glyphData[offset + 1] = y;
-    glyphData[offset + 2] = w;
-    glyphData[offset + 3] = h;
-    glyphData[offset + 4] = u0;
-    glyphData[offset + 5] = v0;
-    glyphData[offset + 6] = u1;
-    glyphData[offset + 7] = v1;
-    glyphData[offset + 8] = colour[0];
-    glyphData[offset + 9] = colour[1];
-    glyphData[offset + 10] = colour[2];
-    glyphData[offset + 11] = colour[3] * alpha;
-    glyphData[offset + 12] = field > 0 ? 1 : 0;
-    glyphData[offset + 13] = field;
-    glyphData[offset + 14] = 0;
-    glyphData[offset + 15] = 0;
+    packGlyph(glyphData, glyphCount * GLYPH_FLOATS, {
+      rect: [x, y, w, h],
+      uv: [u0, v0, u1, v1],
+      colour,
+      alpha,
+      mode,
+      pxRange,
+    });
     glyphCount += 1;
   };
 
@@ -571,6 +564,7 @@ async function buildRenderer(
       (tile.y + texels) / height,
       colour,
       alpha,
+      GLYPH_MODE.field,
       screenPxRange,
     );
   };
@@ -606,6 +600,32 @@ async function buildRenderer(
       region.v1,
       colour,
       alpha,
+    );
+  };
+
+  /**
+   * A host's picture (`HostMark`), `size` CSS px, centred on (cx, cy): a stencil is a sprite tinted like any mark, a
+   * colour picture keeps its own colours and takes the instance's alpha alone.
+   */
+  const pushPicture = (picture: Picture, size: number, cx: number, cy: number, colour: Rgba, alpha: number): void => {
+    if (picture.kind === 'stencil') {
+      pushSprite(`stencil:${picture.key}`, stencilSvg(picture.path), size, cx, cy, colour, alpha);
+      return;
+    }
+    const region = atlas.picture(picture.key, picture.image, size);
+    if (!region) return;
+    pushGlyph(
+      cx - region.width / 2,
+      cy - region.height / 2,
+      region.width,
+      region.height,
+      region.u0,
+      region.v0,
+      region.u1,
+      region.v1,
+      colour,
+      alpha,
+      GLYPH_MODE.colour,
     );
   };
 
@@ -741,6 +761,8 @@ async function buildRenderer(
         const leadAlpha = rung(lead.opacity ?? line.opacity) * dim;
         const leadCentreX = pen + leadAdvance(lead) / 2;
         if (lead.kind === 'dot') pushSprite('dot', DOT_SVG, lead.size, leadCentreX, lineY - 0.5, leadColour, leadAlpha);
+        else if (lead.kind === 'picture' && lead.picture)
+          pushPicture(lead.picture, lead.size, leadCentreX, lineY, leadColour, leadAlpha);
         else
           pushSprite(
             `icon:${lead.icon}`,
@@ -758,6 +780,15 @@ async function buildRenderer(
       const metrics = atlas.fontMetrics(line.style);
       const baseline = lineY + (metrics.ascent - metrics.descent) / 2;
       pushText(line.text, line.style, pen, baseline, colour, alpha);
+    }
+    if (model.rim) {
+      // On the rim at its 45° point, over the context ring: the theme's shadow, a ring in its ink, a disc in its
+      // surface, then the host's picture. Nothing of it is the host's but the picture.
+      const at = rimPlacement(body.x, body.y, radius);
+      pushSprite('dot', DOT_SVG, at.disc + 3, at.x, at.y + 1, theme.shadow, dim);
+      pushSprite('dot', DOT_SVG, at.disc + 2, at.x, at.y, ink, SWARM_WEIGHT.edge * dim);
+      pushSprite('dot', DOT_SVG, at.disc, at.x, at.y, theme.surface, dim);
+      pushPicture(model.rim, at.picture, at.x, at.y, ink, dim);
     }
     const figure = (item: { text: string; hot: boolean; none: boolean }, centreY: number): void => {
       // The gauge's own climb already says a context is nearly spent; the figure

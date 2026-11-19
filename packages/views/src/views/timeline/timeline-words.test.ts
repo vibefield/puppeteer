@@ -255,6 +255,18 @@ describe('words for the record', () => {
     // A row is named as before.
     expect(laneName(lane())).toBe('notes');
   });
+
+  it("names a lane by the host's mark, live or ended, and says its spoken words", () => {
+    const live = lane({ model: 'opus', mark: { name: 'Ada', spoken: 'Ada, a helper' } });
+    expect(laneName(live)).toBe('Ada');
+    expect(laneLabel(live, NOW)).toBe('Ada, a helper, opus, blocked on a permission for 5 minutes');
+    const ended = run({ mark: { name: 'Ada' } });
+    expect(laneName(ended)).toBe('Ada');
+    expect(laneLabel(ended, NOW)).toBe('Ada, ended, last active 3 minutes ago');
+    expect(laneLabel(run({ mark: { name: 'Ada', spoken: 'Ada, a helper' } }), NOW)).toBe(
+      'Ada, a helper, ended, last active 3 minutes ago',
+    );
+  });
 });
 
 describe('recordState', () => {

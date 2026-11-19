@@ -496,6 +496,10 @@
   min-width: 0;
 }
 
+.mv-timeline .vf-monitor-timeline-who .vf-host-picture {
+  flex: none;
+}
+
 .mv-timeline .vf-monitor-timeline-who b {
   overflow: hidden;
   font-size: 11px;

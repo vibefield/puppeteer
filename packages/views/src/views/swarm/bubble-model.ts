@@ -1,4 +1,4 @@
-import type { AgentStatus, AgentView, MonitorWait } from '@vibefield/puppeteer-view-sdk';
+import type { AgentStatus, AgentView, MonitorWait, Picture } from '@vibefield/puppeteer-view-sdk';
 import {
   detailLine,
   formatElapsed,
@@ -7,7 +7,8 @@ import {
   modelWord,
   openingWord,
   profileMarkName,
-  projectName,
+  rowName,
+  rowSpoken,
   STATE_WORDS,
   unreadSpoken,
   waitBodyLine,
@@ -122,8 +123,10 @@ export interface SwarmBubbleModel {
   /** A mounted body's band, in the colour of the pane it is worked in (revised 2026-09-12: a pane owns its
    * colour); the outer light joins it only while `active`, that is, while its pane is the selected one. */
   linked?: string;
-  /** The provider mark, watermarked behind the copy. */
+  /** The provider mark, watermarked behind the copy; none where the host's mark hides the provider. */
   watermark?: { sprite: string; opacity: number };
+  /** The host's picture on the rim at its 45° point (`HostMark.rim`), on a disc of the theme's own. */
+  rim?: Picture;
   blockerKind?: SwarmBlockerKind;
   ariaLabel: string;
   title: string;
@@ -218,6 +221,34 @@ function projectFolder(style: TextStyle, options: { solid?: boolean; tone?: Copy
     tone: options.tone ?? 'accent',
     ...(options.solid ? { opacity: SWARM_WEIGHT.title } : {}),
   };
+}
+
+/**
+ * The host's picture in the folder's place (`HostMark.lead`): at the folder's size, square, and in the body's ink
+ * where it is a stencil. The project's colour, which only the folder wore, goes with the folder.
+ */
+function hostLead(picture: Picture, style: TextStyle, options: { solid?: boolean } = {}): CopyLead {
+  const size = Math.round(style.size * (options.solid ? 1.3 : 1.15));
+  return {
+    kind: 'picture',
+    picture,
+    size,
+    gap: 4,
+    tone: 'ink',
+    ...(options.solid ? { opacity: SWARM_WEIGHT.title } : {}),
+  };
+}
+
+/** The provider's watermark, unless the host's mark hides the provider (`HostMark.provider`). */
+function watermarkOf(agent: AgentView): { watermark?: { sprite: string; opacity: number } } {
+  if (agent.mark?.provider === 'hidden') return {};
+  return { watermark: { sprite: agent.provider?.id ?? '', opacity: SWARM_WEIGHT.watermark } };
+}
+
+/** A name's lead: the host's picture where its mark gives one, else the project's folder. */
+function nameLead(agent: AgentView, style: TextStyle, options: { solid?: boolean; tone?: CopyTone } = {}): CopyLead {
+  const picture = agent.mark?.lead;
+  return picture ? hostLead(picture, style, options) : projectFolder(style, options);
 }
 
 /** The atlas's name for a profile's mark: `profile:<mark>`, `:filled` for the desktop's default. */
@@ -363,7 +394,9 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   const { agent, parameters, nowMs } = input;
   /** The crowd's shared fit (`fit.ts`): every body is its base size times this. */
   const scale = input.scale ?? 1;
-  const project = projectName(agent);
+  // The host's mark names the body and says it (`HostMark.name`, `.spoken`); else the project does.
+  const project = rowName(agent);
+  const spoken = rowSpoken(agent);
   const percent = contextPercent(agent);
   const contextLabel = percent === undefined ? 'CTX:--%' : `CTX:${percent.toString().padStart(2, '0')}%`;
   const base = {
@@ -398,7 +431,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         style: TERMINAL_NAME,
         opacity: SWARM_WEIGHT.title,
         tone: 'ink',
-        lead: projectFolder(TERMINAL_NAME, { tone: 'ink' }),
+        lead: nameLead(agent, TERMINAL_NAME, { tone: 'ink' }),
       },
       running
         ? {
@@ -445,10 +478,10 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       ...(opening ? { pending: { turning } } : {}),
       ariaLabel:
         (opening
-          ? `${project}, new terminal, opening${opening.on ? ` on ${opening.on}` : ''}`
+          ? `${spoken}, new terminal, opening${opening.on ? ` on ${opening.on}` : ''}`
           : remote
-            ? `on ${remote.name}, ${project}, remote session, ${agent.status}`
-            : `${project}, unassigned terminal, ${agent.status}`) +
+            ? `on ${remote.name}, ${spoken}, remote session, ${agent.status}`
+            : `${spoken}, unassigned terminal, ${agent.status}`) +
         (input.profile ? `, under ${input.profile.label}` : ''),
       title: remote ? `${remote.name} · ${agent.detail}` : agent.detail,
     };
@@ -464,7 +497,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   const detail = detailLine(agent);
   // The glyph is all a sighted person sees of the profile on the body; the words are here (UM-D6).
   const under = input.profile ? `, under ${input.profile.label}` : '';
-  const ariaLabel = `${project}, ${model}${under}, ${agent.status}: ${detail}, ${contextLabel}`;
+  const ariaLabel = `${spoken}, ${model}${under}, ${agent.status}: ${detail}, ${contextLabel}`;
   const title = `${project} · ${model}${input.profile ? ` · ${input.profile.label}` : ''} · ${detail}`;
   const modelLine: CopyLine = {
     key: 'model',
@@ -509,7 +542,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         style: WORKING_NAME,
         opacity: SWARM_WEIGHT.title,
         tone: 'ink',
-        lead: projectFolder(WORKING_NAME),
+        lead: nameLead(agent, WORKING_NAME),
         ...(branch ? { gapBefore: 1 } : {}),
       },
       modelLine,
@@ -540,7 +573,8 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       hollow: false,
       running: false,
       unread: input.unread,
-      watermark: { sprite: agent.provider?.id ?? '', opacity: SWARM_WEIGHT.watermark },
+      ...watermarkOf(agent),
+      ...(agent.mark?.rim ? { rim: agent.mark.rim } : {}),
       // The flames are the glance; the exact rate is a word away, for a pointer
       // and for a screen reader.
       ariaLabel: `${ariaLabel}, burning ${formatRatePerHour(perHour)}`,
@@ -549,6 +583,9 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   }
 
   const wait = appearance === 'blocked' ? drawnWait(agent) : undefined;
+  // The host's own ask for the person, which the backend cannot see (`HostMark.attention`): drawn as a wait is, in
+  // the waiting light with its word on the state line, after the backend's own block and before an unread reply.
+  const attention = agent.mark?.attention;
   // What the body needs from the user takes the name's place, in its own words
   // behind its own mark: what a blocker is waiting on (the swarm body's order,
   // M14), or the reply that arrived unseen. The project's name moves above it,
@@ -568,13 +605,15 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
           icon: 'failure',
           spoken: message ?? STATE_WORDS.status.blocked,
         }
-      : input.unread
-        ? {
-            text: message ?? STATE_WORDS.unread.line,
-            icon: 'message',
-            spoken: unreadSpoken(message),
-          }
-        : undefined;
+      : attention
+        ? { text: attention.word, icon: waitMark('question'), spoken: attention.word }
+        : input.unread
+          ? {
+              text: message ?? STATE_WORDS.unread.line,
+              icon: 'message',
+              spoken: unreadSpoken(message),
+            }
+          : undefined;
   const nameStyle = state ? PROJECT_ABOVE : SMALL_NAME;
   const copy: CopyLine[] = [
     {
@@ -583,7 +622,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       style: nameStyle,
       opacity: state ? SWARM_WEIGHT.supporting : SWARM_WEIGHT.title,
       tone: 'ink',
-      lead: projectFolder(nameStyle, state ? { solid: true } : {}),
+      lead: nameLead(agent, nameStyle, state ? { solid: true } : {}),
     },
     ...(state
       ? [
@@ -614,11 +653,16 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     // more of the chord than a name would.
     copyMaxWidthRatio: state ? 0.86 : 0.84,
     ...(ring ? { ring } : {}),
-    ...(appearance === 'blocked' ? { light: 'orange' as const } : input.unread ? { light: 'blue' as const } : {}),
+    ...(appearance === 'blocked' || attention
+      ? { light: 'orange' as const }
+      : input.unread
+        ? { light: 'blue' as const }
+        : {}),
     hollow: false,
     running: false,
     unread: input.unread,
-    watermark: { sprite: agent.provider?.id ?? '', opacity: SWARM_WEIGHT.watermark },
+    ...watermarkOf(agent),
+    ...(agent.mark?.rim ? { rim: agent.mark.rim } : {}),
     ...(wait ? { blockerKind: wait.kind } : {}),
     ariaLabel: state ? `${ariaLabel}, ${state.spoken}` : ariaLabel,
     title,

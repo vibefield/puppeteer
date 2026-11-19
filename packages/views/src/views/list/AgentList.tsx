@@ -1,6 +1,12 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 import type { AgentStatus, AgentView, MonitorSpawnTarget, MonitorViewCommands } from '@vibefield/puppeteer-view-sdk';
-import { AgentIcon, type ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
+import {
+  AgentIcon,
+  hasRowPicture,
+  RowLead,
+  RowTrail,
+  type ReactMonitorViewProps,
+} from '@vibefield/puppeteer-view-sdk/react';
 import {
   detailLine,
   deviceWord,
@@ -8,7 +14,8 @@ import {
   formatPercent,
   menuOf,
   modelWord,
-  projectName,
+  rowName,
+  rowSpoken,
   spawnTargetFor,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { normalizeListParameters } from './list-parameters.js';
@@ -143,7 +150,8 @@ const ListRow = memo(function ListRow({
 }): ReactElement {
   const isAgent = agent.kind === 'agent';
   const remote = !agent.device.self;
-  const project = projectName(agent);
+  const project = rowName(agent);
+  const attention = agent.mark?.attention;
   const model = modelWord(agent);
   const detail = detailLine(agent);
   const branch = isAgent ? agent.project.branch : undefined;
@@ -155,7 +163,9 @@ const ListRow = memo(function ListRow({
         type="button"
         className={`vf-monitor-list-row is-${agent.status}${agent.active ? ' is-active' : ''}${
           agent.stale ? ' is-stale' : ''
-        }${agent.attachment ? ' is-linked' : ''}${remote ? ' is-remote' : ''}${agent.receded ? ' is-receded' : ''}`}
+        }${agent.attachment ? ' is-linked' : ''}${remote ? ' is-remote' : ''}${agent.receded ? ' is-receded' : ''}${
+          attention ? ' is-attention' : ''
+        }`}
         style={rowStyle}
         aria-current={agent.active ? 'true' : undefined}
         // The status belongs to the ROW's name, not to the dot: a
@@ -165,14 +175,22 @@ const ListRow = memo(function ListRow({
         // that changes what the row means, and a screen reader must not
         // reach the end of the line to learn it. Nothing says who may type
         // there: every peer session is writable (James, 2026-10-28).
-        aria-label={`${
-          remote ? `on ${deviceWord(agent.device)}, ` : ''
-        }${project}, ${name}, ${agent.status}: ${detail}`}
+        aria-label={`${remote ? `on ${deviceWord(agent.device)}, ` : ''}${rowSpoken(agent)}, ${name}, ${agent.status}${
+          attention ? `, ${attention.word}` : ''
+        }: ${detail}`}
         onClick={() => commands.select(agent.id)}
       >
         <span className="vf-monitor-list-status" aria-hidden="true" />
         <span className="vf-monitor-list-project">
-          <strong>{project}</strong>
+          {hasRowPicture(agent.mark) ? (
+            <span className="vf-monitor-list-name">
+              <RowLead mark={agent.mark} />
+              <strong>{project}</strong>
+              <RowTrail mark={agent.mark} />
+            </span>
+          ) : (
+            <strong>{project}</strong>
+          )}
           {branch ? <small>{branch}</small> : null}
         </span>
         <span className="vf-monitor-list-agent">

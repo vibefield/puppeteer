@@ -168,6 +168,33 @@ describe('PaneFrameChrome', () => {
     expect(stopping).toContain('title="Stopping the turn…"');
   });
 
+  it("draws the host's mark: its stencil lead before its name, and no provider mark when it hides it", () => {
+    const lead = { kind: 'stencil', key: 'ada', path: 'M4 4h16v16H4z' } as const;
+    const html = markup({ session: session(), agent: agent({ mark: { name: 'Ada', lead, provider: 'hidden' } }) });
+    expect(html).not.toContain('vf-pane-mark');
+    expect(html).toContain('data-picture="ada"');
+    expect(html).toContain('<path d="M4 4h16v16H4z" fill="currentColor">');
+    expect(html.indexOf('data-picture="ada"')).toBeLessThan(html.indexOf('class="vf-pane-name">Ada<'));
+    expect(html).toContain('title="Ada"');
+  });
+
+  it("draws a colour lead as the host's own picture, after the provider mark the mark leaves shown", () => {
+    const lead = { kind: 'colour', key: 'ada-face', image: 'data:image/png;base64,iVBORw0KGgo=' } as const;
+    const html = markup({ session: session(), agent: agent({ mark: { lead } }) });
+    expect(html).toContain('<img class="vf-host-picture vf-pane-lead" src="data:image/png;base64,iVBORw0KGgo="');
+    expect(html.indexOf('vf-pane-mark')).toBeLessThan(html.indexOf('data-picture="ada-face"'));
+    expect(html).toContain('class="vf-pane-name">rosetta<');
+  });
+
+  it('draws nothing for a colour lead that is not a data URL, so the frame fetches nothing', () => {
+    const lead = { kind: 'colour', key: 'ada-face', image: 'https://example.com/face.png' } as const;
+    const html = markup({ session: session(), agent: agent({ mark: { name: 'Ada', lead } }) });
+    expect(html).not.toContain('example.com');
+    expect(html).not.toContain('data-picture');
+    expect(html).not.toContain('<img');
+    expect(html).toContain('class="vf-pane-name">Ada<');
+  });
+
   it('marks a remote session with the tether and names its device', () => {
     const html = markup({ session: session(), remote: 'studio' });
     expect(html).toContain('class="vf-pane-os"');

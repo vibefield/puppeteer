@@ -9,6 +9,7 @@ import {
   type MonitorModelSnapshot,
   type MonitorSpawnMenu,
   type MonitorActivity,
+  type HostMark,
 } from '@vibefield/puppeteer-view-sdk/model';
 import { classifyTerminalStatus } from '../terminal-status.js';
 import { freezeJson, sameJson } from './json.js';
@@ -71,6 +72,12 @@ export interface MonitorReplicaLocal {
    * view reads `visualId ?? id`. Puppeteer's Godview computes it with `visualIdsForRows`.
    */
   readonly visualIds?: ReadonlyMap<string, string> | undefined;
+  /**
+   * The host's mark on each row, as only this window knows it: a picture, a name and the words to say, and the host's
+   * own ask for the person. Keyed by row id and joined as `AgentView.mark`. The host keeps an unchanged mark's object,
+   * so its row keeps its view; a new object re-joins the row, and an absent entry draws the row as it ships.
+   */
+  readonly marks?: ReadonlyMap<string, HostMark> | undefined;
 }
 
 /** The theme's colour function (L7). The same `key` promises the same colours, so only a new key re-colours. */
@@ -344,6 +351,7 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
     const activity = activityOf(row, previous?.activity);
     const { status, statusSince } = statusOf(row, activity);
     const visualId = local.visualIds?.get(row.id);
+    const mark = local.marks?.get(row.id);
     if (
       previous !== undefined &&
       held?.row === row &&
@@ -355,7 +363,8 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
       previous.activity === activity &&
       previous.status === status &&
       previous.statusSince === statusSince &&
-      previous.visualId === visualId
+      previous.visualId === visualId &&
+      previous.mark === mark
     ) {
       return previous;
     }
@@ -370,6 +379,7 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
       ...(spawnHint ? { spawnHint } : {}),
       ...(activity ? { activity } : {}),
       ...(visualId === undefined ? {} : { visualId }),
+      ...(mark === undefined ? {} : { mark }),
     });
   };
 
@@ -576,6 +586,12 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
         const before = previous.visualIds;
         const after = next.visualIds;
         if (after) for (const [id, visualId] of after) if (before?.get(id) !== visualId) touch(id);
+        if (before) for (const id of before.keys()) if (!after?.has(id)) touch(id);
+      }
+      if (next.marks !== previous.marks) {
+        const before = previous.marks;
+        const after = next.marks;
+        if (after) for (const [id, mark] of after) if (before?.get(id) !== mark) touch(id);
         if (before) for (const id of before.keys()) if (!after?.has(id)) touch(id);
       }
       if (next.receded !== previous.receded || next.visible !== previous.visible) {

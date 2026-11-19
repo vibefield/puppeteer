@@ -7,7 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import type { HistoryPort, HistorySearchHit, HistorySearchStatus, HistorySessionFacts } from './history-port.js';
-import { AgentIcon } from '@vibefield/puppeteer-view-sdk/react';
+import { AgentIcon, RowLead, RowTrail } from '@vibefield/puppeteer-view-sdk/react';
 import type { FindAgent } from './find-agent.js';
 import {
   FIND_DEBOUNCE_MS,
@@ -79,8 +79,10 @@ function FindRowView({
 }) {
   const { agent } = row;
   const facet = agent.agent;
-  const title = row.title ?? agent.project;
-  const place = [row.title ? agent.project : undefined, facet?.branch].filter(Boolean).join(' · ');
+  const name = agent.mark?.name || agent.project;
+  const spoken = agent.mark?.spoken || name;
+  const title = row.title ?? name;
+  const place = [row.title ? name : undefined, facet?.branch].filter(Boolean).join(' · ');
   const model = facet ? (facet.model ?? facet.provider.label) : 'terminal';
   const speaker = facet?.provider.label ?? 'agent';
   const style = { '--agent-color': agent.color } as CSSProperties;
@@ -89,7 +91,7 @@ function FindRowView({
       id={optionId(index)}
       role="option"
       aria-selected={active}
-      aria-label={`${title}, ${agent.project}${facet?.branch ? ` on ${facet.branch}` : ''}, ${model}, ${agent.status}`}
+      aria-label={`${title}, ${spoken}${facet?.branch ? ` on ${facet.branch}` : ''}, ${model}, ${agent.status}`}
       className={`vf-find-row is-${agent.status}${active ? ' is-active' : ''}`}
       style={style}
       onMouseMove={onHover}
@@ -97,8 +99,10 @@ function FindRowView({
     >
       <div className="vf-find-row-head">
         <span className="vf-find-status" aria-hidden="true" />
+        <RowLead mark={agent.mark} />
         <span className="vf-find-row-title">
           {title}
+          <RowTrail mark={agent.mark} />
           {place ? <small>{place}</small> : null}
         </span>
         <span className="vf-find-row-meta">
