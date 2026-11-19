@@ -15,8 +15,10 @@
  * `codex --remote` only creates a thread on the first prompt, which left the
  * panel stuck on preparing until the user typed.
  *
- * Injection is still bracketed-paste into the native TUI; confirmation is
- * best-effort `confirmed` (the structured driver has deterministic receipts).
+ * Injection is still bracketed-paste into the native TUI. A paste is
+ * `confirmed` only on the thread's own record of the pasted text, and
+ * `uncertain` without it (`prompt-echo.ts`), as the structured driver
+ * confirms only on its echoed client id.
  */
 
 import {
@@ -28,6 +30,7 @@ import {
   type AgentRunBriefing,
 } from '@vibefield/puppeteer-core';
 import { CODEX_BRIEFING_CAPABILITIES } from './briefing.js';
+import { CodexPromptEchoes } from './prompt-echo.js';
 import { randomUUID } from 'node:crypto';
 import type {
   AgentHost,
@@ -35,6 +38,7 @@ import type {
   AgentTuiSessionOptions,
   PromptReceipt,
   PromptSubmission,
+  TerminalAutomationResult,
   TerminalSpec,
 } from '@vibefield/puppeteer-core';
 import { resolveCodexExecutable } from '../detection.js';
@@ -270,9 +274,11 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   let adoptedRuntimeSessionId: string | undefined;
   let adoptedSession: CodexTuiSession | undefined;
   let disposed = false;
+  const echoes = new CodexPromptEchoes(observer.events);
   async function dispose(): Promise<void> {
     if (disposed) return;
     disposed = true;
+    echoes.dispose();
     await observer.dispose().catch(() => undefined);
     await resumeTap?.dispose();
     await server.dispose();
@@ -302,12 +308,30 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
         services: {
           prompt: {
             async submit(submission: PromptSubmission): Promise<PromptReceipt> {
-              const result = await host.automateTerminal(runtimeSessionId, {
-                kind: 'paste',
-                text: submission.text,
-                submit: submission.mode !== 'paste-only',
-              });
-              return result.accepted ? { status: 'confirmed' } : { status: 'rejected', reason: result.reason };
+              const submitted = submission.mode !== 'paste-only';
+              // Listening first: the thread can record the input before the paste call returns.
+              const echo = submitted ? echoes.expect(submission.text) : undefined;
+              let result: TerminalAutomationResult;
+              try {
+                result = await host.automateTerminal(runtimeSessionId, {
+                  kind: 'paste',
+                  text: submission.text,
+                  submit: submitted,
+                });
+              } catch (error) {
+                echo?.withdraw({ status: 'rejected', reason: error instanceof Error ? error.message : String(error) });
+                throw error;
+              }
+              if (!result.accepted) {
+                const refused: PromptReceipt = { status: 'rejected', reason: result.reason };
+                if (!echo) return refused;
+                echo.withdraw(refused);
+                return echo.receipt;
+              }
+              // A paste left staged is all a paste-only submission asks for.
+              if (!echo) return { status: 'confirmed' };
+              echo.arm(submission.confirmationTimeoutMs ?? 5000);
+              return echo.receipt;
             },
           },
         },

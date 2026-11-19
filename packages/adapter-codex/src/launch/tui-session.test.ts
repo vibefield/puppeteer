@@ -1,18 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentHost } from '@vibefield/puppeteer-core';
+import type { AdapterEventCandidate, AgentHost } from '@vibefield/puppeteer-core';
 
-const fakes = vi.hoisted(() => ({
-  createObserver: vi.fn(),
-  observerOnCandidate: vi.fn(() => () => undefined),
-  observerDispose: vi.fn(),
-  serverDispose: vi.fn(),
-  serverReady: vi.fn(),
-  spawnServer: vi.fn(),
-  transport: {},
-  tapReady: vi.fn(),
-  tapDispose: vi.fn(),
-  tapClientMessage: undefined as ((message: unknown) => void) | undefined,
-}));
+const fakes = vi.hoisted(() => {
+  const observerListeners = new Set<(candidate: AdapterEventCandidate) => void>();
+  return {
+    createObserver: vi.fn(),
+    observerListeners,
+    observerOnCandidate: vi.fn((listener: (candidate: AdapterEventCandidate) => void) => {
+      observerListeners.add(listener);
+      return () => {
+        observerListeners.delete(listener);
+      };
+    }),
+    observerDispose: vi.fn(),
+    serverDispose: vi.fn(),
+    serverReady: vi.fn(),
+    spawnServer: vi.fn(),
+    transport: {},
+    tapReady: vi.fn(),
+    tapDispose: vi.fn(),
+    tapClientMessage: undefined as ((message: unknown) => void) | undefined,
+  };
+});
 
 vi.mock('../observation/observer.js', () => ({
   createCodexObserver: fakes.createObserver,
@@ -48,9 +57,24 @@ function host(): AgentHost {
   };
 }
 
+/** The observer publishes the thread's record of a submitted input as `turn:started` with its text. */
+function threadRecords(prompt: string, turnId: string): void {
+  const candidate: AdapterEventCandidate = {
+    type: 'turn:started',
+    sessionId: 'thread-1',
+    timestamp: '2026-11-19T00:00:00.000Z',
+    monotonicTime: 0,
+    source: 'native-hook',
+    confidence: 'authoritative',
+    event: { type: 'turn:started', turnId, prompt },
+  };
+  for (const listener of [...fakes.observerListeners]) listener(candidate);
+}
+
 describe('Codex TUI preparation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fakes.observerListeners.clear();
     fakes.serverReady.mockResolvedValue(undefined);
     fakes.serverDispose.mockResolvedValue(undefined);
     fakes.tapReady.mockResolvedValue(undefined);
@@ -273,7 +297,15 @@ describe('Codex TUI preparation', () => {
     expect(fakes.observerOnCandidate).toHaveBeenCalledOnce();
     await expect(prepared.adopt('other-pane')).rejects.toThrow('already adopted');
 
-    await first.services.prompt.submit({ text: 'hello' });
+    // The thread records the input before the paste call returns.
+    terminalHost.automateTerminal = vi.fn(async () => {
+      threadRecords('hello', 'turn-1');
+      return { accepted: true as const };
+    });
+    await expect(first.services.prompt.submit({ text: 'hello' })).resolves.toEqual({
+      status: 'confirmed',
+      turnId: 'turn-1',
+    });
     expect(terminalHost.automateTerminal).toHaveBeenCalledWith('existing-pane', {
       kind: 'paste',
       text: 'hello',
@@ -282,6 +314,43 @@ describe('Codex TUI preparation', () => {
     await prepared.dispose();
     expect(fakes.observerDispose).toHaveBeenCalledOnce();
     expect(fakes.serverDispose).toHaveBeenCalledOnce();
+  });
+
+  it("confirms a pasted prompt only on the thread's own record of it", async () => {
+    const terminalHost = host();
+    const session = await (await prepareCodexTuiSession({ cwd: '/work', host: terminalHost })).adopt('pane');
+
+    // Accepted by the terminal, recorded later: confirmed with the thread's turn.
+    const recorded = session.services.prompt.submit({ text: 'run the tests', confirmationTimeoutMs: 1_000 });
+    await vi.waitFor(() => expect(terminalHost.automateTerminal).toHaveBeenCalledTimes(1));
+    threadRecords('run the tests', 'turn-2');
+    await expect(recorded).resolves.toEqual({ status: 'confirmed', turnId: 'turn-2' });
+
+    // Someone else's input, or a draft glued to ours, is never ours: no match in time is uncertain.
+    const glued = session.services.prompt.submit({ text: 'my prompt', confirmationTimeoutMs: 60 });
+    await vi.waitFor(() => expect(terminalHost.automateTerminal).toHaveBeenCalledTimes(2));
+    threadRecords('draft words my prompt', 'turn-3');
+    await expect(glued).resolves.toMatchObject({ status: 'uncertain' });
+
+    // A refused paste stays rejected, and a staged paste asks for nothing more.
+    terminalHost.automateTerminal = vi.fn(async () => ({ accepted: false as const, reason: 'human-input-conflict' }));
+    await expect(session.services.prompt.submit({ text: 'refused' })).resolves.toEqual({
+      status: 'rejected',
+      reason: 'human-input-conflict',
+    });
+    await expect(session.services.prompt.submit({ text: 'staged', mode: 'paste-only' })).resolves.toEqual({
+      status: 'confirmed',
+    });
+    expect(fakes.observerListeners.size).toBe(0);
+  });
+
+  it('settles a prompt still waiting for its record as uncertain when the session is disposed', async () => {
+    const prepared = await prepareCodexTuiSession({ cwd: '/work', host: host() });
+    const session = await prepared.adopt('pane');
+    const waiting = session.services.prompt.submit({ text: 'hello', confirmationTimeoutMs: 60_000 });
+    await vi.waitFor(() => expect(fakes.observerListeners.size).toBe(1));
+    await prepared.dispose();
+    await expect(waiting).resolves.toMatchObject({ status: 'uncertain' });
   });
 
   it("resumes a thread at the chosen model and effort through the observer's first thread/resume", async () => {
