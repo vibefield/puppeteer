@@ -10,7 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
 } from 'react';
-import type { ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
+import { RowLead, RowTrail, type ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
 import {
   canvasRatio,
   createMotionLoop,
@@ -56,7 +56,6 @@ import {
   type TimelineScale,
 } from './timeline-scale.js';
 import { laneLabel, laneName, laneSubLine, OPENS_IN_HISTORY, readoutAt, recordState } from './timeline-words.js';
-import { RowLead, RowTrail } from '../../icons/HostPicture.js';
 
 // The timeline — Godview's swarm through time (DESIGN §8; TL, design F
 // "Wakes" with its map of the day, `draft/godview-timeline/`). Each lane is

@@ -5,11 +5,12 @@ import {
   formatShort,
   formatWords,
   modelWord,
+  rowName,
+  rowSpoken,
   STATE_WORDS,
   statusWord,
   waitWord,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
-import { rowName, rowSpoken } from '../../monitor/row-mark.js';
 import type { LaneSpan, TimelineLane, TimelineMoment } from './timeline-lanes.js';
 
 // What the timeline says in words: each body's readout at the head's moment,

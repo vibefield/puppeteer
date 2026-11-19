@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 import type { AgentStatus, AgentView, MonitorPalette } from '@vibefield/puppeteer-view-sdk';
-import type { ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
+import { hasRowPicture, RowLead, RowTrail, type ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
 import {
   approachRecede,
   createMotionLoop,
@@ -8,13 +8,13 @@ import {
   everyReceded,
   modelWord,
   recedeTarget,
+  rowName,
+  rowSpoken,
   sizeCanvas,
   themeMotion,
   watchDevicePixelRatio,
   type MotionLoop,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
-import { hasRowPicture, RowLead, RowTrail } from '../../icons/HostPicture.js';
-import { rowName, rowSpoken } from '../../monitor/row-mark.js';
 import { normalizeRainParameters, type RainParameters } from './rain-parameters.js';
 import { rainDataString, rainTailLength, reconcileRainColumns, type RainDrop } from './rain-streams.js';
 

@@ -1,4 +1,4 @@
-import type { MonitorAgentRow, MonitorDeviceRef, MonitorSpawnDevice, MonitorWait } from '../model.js';
+import type { HostMark, MonitorAgentRow, MonitorDeviceRef, MonitorSpawnDevice, MonitorWait } from '../model.js';
 import { STATE_WORDS, statusWord, waitWord } from './state-words.js';
 
 // THE WORDS A ROW GOES BY (MV-D11): its name, what runs it, the line under its
@@ -42,6 +42,21 @@ export function deviceWord(device: DeviceLike): string {
 export function projectName(row: Pick<MonitorAgentRow, 'kind' | 'project' | 'provider'>): string {
   if (row.project.name) return row.project.name;
   return row.kind === 'agent' ? (row.provider?.label ?? '') : TERMINAL_NAME;
+}
+
+/** A row a host may mark (`AgentView`, `EndedLaneView`): what `rowName` and `rowSpoken` read. */
+export type MarkedRow = Pick<MonitorAgentRow, 'kind' | 'project' | 'provider'> & {
+  readonly mark?: HostMark | undefined;
+};
+
+/** A row's name where a view prints its project's: the host's mark's name (`HostMark.name`), else `projectName`. */
+export function rowName(row: MarkedRow): string {
+  return row.mark?.name || projectName(row);
+}
+
+/** A row's name as a screen reader hears it: the host's spoken words (`HostMark.spoken`), else its printed name. */
+export function rowSpoken(row: MarkedRow): string {
+  return row.mark?.spoken || rowName(row);
 }
 
 /** What runs an agent, where its model's name stands: the model, else its provider's label. */

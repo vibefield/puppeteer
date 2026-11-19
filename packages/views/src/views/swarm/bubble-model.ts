@@ -7,13 +7,14 @@ import {
   modelWord,
   openingWord,
   profileMarkName,
+  rowName,
+  rowSpoken,
   STATE_WORDS,
   unreadSpoken,
   waitBodyLine,
   waitMark,
   waitWord,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
-import { rowName, rowSpoken } from '../../monitor/row-mark.js';
 import { bodyIdOf } from './body-id.js';
 import { radiusForStatus, type SwarmParameters } from './swarm-parameters.js';
 import type { CopyLead, CopyLine, CopyTone, TextStyle } from './text-layout.js';

@@ -7,9 +7,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import type { HistoryPort, HistorySearchHit, HistorySearchStatus, HistorySessionFacts } from './history-port.js';
-import { AgentIcon } from '@vibefield/puppeteer-view-sdk/react';
+import { AgentIcon, RowLead, RowTrail } from '@vibefield/puppeteer-view-sdk/react';
 import type { FindAgent } from './find-agent.js';
-import { RowLead, RowTrail } from '../icons/HostPicture.js';
 import {
   FIND_DEBOUNCE_MS,
   FIND_MAX_SNIPPETS,

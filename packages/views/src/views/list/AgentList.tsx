@@ -1,6 +1,12 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 import type { AgentStatus, AgentView, MonitorSpawnTarget, MonitorViewCommands } from '@vibefield/puppeteer-view-sdk';
-import { AgentIcon, type ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
+import {
+  AgentIcon,
+  hasRowPicture,
+  RowLead,
+  RowTrail,
+  type ReactMonitorViewProps,
+} from '@vibefield/puppeteer-view-sdk/react';
 import {
   detailLine,
   deviceWord,
@@ -8,10 +14,10 @@ import {
   formatPercent,
   menuOf,
   modelWord,
+  rowName,
+  rowSpoken,
   spawnTargetFor,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
-import { hasRowPicture, RowLead, RowTrail } from '../../icons/HostPicture.js';
-import { rowName, rowSpoken } from '../../monitor/row-mark.js';
 import { normalizeListParameters } from './list-parameters.js';
 import { ListSpawnMenu } from './ListSpawnMenu.js';
 
