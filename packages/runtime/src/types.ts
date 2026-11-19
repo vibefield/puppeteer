@@ -45,6 +45,8 @@ import type {
   AgentEventSourceRef,
   AgentAttachNext,
   AgentAttachRecord,
+  AttachReplayCursor,
+  AttachReplayMiss,
   AgentHost,
   AgentLaunchProvider,
   BoundIngress,
@@ -164,6 +166,8 @@ export interface AttachProviderSessionOptions {
    * restart reads the new facts and not the ones this attach was handed.
    */
   onAttachRecord?: ((record: AgentAttachRecord) => void) | undefined;
+  /** Where the host's own record of the session stops, so the attach replays what the agent's record holds after it. */
+  replayAfter?: AttachReplayCursor | undefined;
 }
 
 /** How the runtime is leaving when it disposes a provider. */
@@ -366,6 +370,13 @@ export interface AgentSessionInfo {
   profileSetId?: string;
   /** What the launch did with its briefing, by field name. Absent when it was asked to carry none. */
   briefing?: AgentBriefingReceipt;
+  /**
+   * For an attach given `replayAfter`: whether it replayed what the agent's record holds after the cursor. Absent for
+   * every other create, resume or attach, and for an attach of a run this runtime already holds.
+   */
+  replayedAfter?: boolean;
+  /** Why an attach given `replayAfter` replayed nothing after it; present with `replayedAfter: false`. */
+  replayMissed?: AttachReplayMiss;
 }
 
 export type AgentSessionErrorCode =
@@ -923,6 +934,12 @@ export interface AttachAgentOptions {
   attachRecord?: AgentAttachRecord | undefined;
   /** Where the attached run reports a changed attach record, for as long as it lives. */
   onAttachRecord?: ((record: AgentAttachRecord) => void) | undefined;
+  /**
+   * Where the host's own record of the session stops. The attach then reads the agent's durable record at once, waits
+   * for that read up to {@link ATTACH_REPLAY_BOUND_MS}, replays (marked `replay`) what it holds after the cursor, and
+   * says on its result whether it did (`replayedAfter`, and `replayMissed` when not). Absent: the attach is as before.
+   */
+  replayAfter?: AttachReplayCursor | undefined;
   /** The workspace the run was launched in; defaults to direct mode at `cwd`. */
   workspace?: AgentWorkspaceRequest | undefined;
   externalRefs?: readonly ExternalRef[] | undefined;

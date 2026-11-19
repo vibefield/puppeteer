@@ -10,6 +10,7 @@ import type {
 import {
   ClaudeTranscriptProjection,
   projectClaudeTranscriptOpenWork,
+  projectClaudeTranscriptReplayAfter,
   type ClaudeTranscriptDelta,
 } from './conversation.js';
 import { createClaudeTranscriptReader } from './services/jsonl-reader.js';
@@ -71,6 +72,14 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
     let activePoll: Promise<void> | undefined;
     let pendingPoll: Promise<void> | undefined;
     const transcriptReader = createClaudeTranscriptReader(request.transcriptPath);
+    // An attach given a cursor says, once its first read has replayed what follows it, whether it found the cursor.
+    let settleReplay: ((replayed: boolean) => void) | undefined;
+    const replayedAfter =
+      request.attached === true && request.replayAfter !== undefined
+        ? new Promise<boolean>((resolve) => {
+            settleReplay = resolve;
+          })
+        : undefined;
 
     const emitEvent = (value: SemanticObservationEvent): void => notify(eventListeners, value);
 
@@ -82,11 +91,32 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
       // Existing messages form a silent baseline on every attachment,
       // including picker rebinds. Only later changes are live observations.
       const pending: SemanticObservationEvent[] = firstTranscriptPoll ? [] : changed;
+      let replayFound: boolean | undefined;
       // An attached session's first read: what the transcript shows still open is where the agent stands now. It
       // happened before this observer, so it is replay, except a question the agent waits on, which is announced
       // live once after it, so the person is told (re-attach study, §3.3).
       if (firstTranscriptPoll && request.attached === true) {
-        const open = projectClaudeTranscriptOpenWork(projection.sessionRows(records));
+        const rows = projection.sessionRows(records);
+        let open = projectClaudeTranscriptOpenWork(rows);
+        // What followed the host's cursor comes first, as replay. A turn still open that the replay starts is started
+        // there, before its replies, as open at attach; the open work then does not start it again.
+        if (request.replayAfter !== undefined) {
+          const replayed = projectClaudeTranscriptReplayAfter(rows, request.replayAfter);
+          const opening = new Set(
+            open.flatMap(({ event }) => (event.type === 'turn:started' && event.turnId ? [event.turnId] : [])),
+          );
+          const started = new Set<string>();
+          for (const value of replayed.events) {
+            const { event } = value;
+            const opens = event.type === 'turn:started' && event.turnId !== undefined && opening.has(event.turnId);
+            if (opens) started.add(event.turnId!);
+            pending.push({ ...value, replay: true, ...(opens ? { openAtAttach: true } : {}) });
+          }
+          open = open.filter(
+            ({ event }) => !(event.type === 'turn:started' && event.turnId !== undefined && started.has(event.turnId)),
+          );
+          replayFound = replayed.found;
+        }
         const found = new Map(open.map((value) => [value.event, value]));
         const { replay, announce } = partitionAttachBootstrap(open.map(({ event }) => event));
         for (const event of replay) pending.push({ ...found.get(event)!, replay: true, openAtAttach: true });
@@ -100,6 +130,8 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
         const pause = yieldIfNeeded();
         if (pause) await pause;
       }
+      // Settled after the replay is out, so a host told `true` has been handed all of it.
+      if (replayFound !== undefined) settleReplay?.(replayFound);
     };
 
     const project = async (): Promise<void> => {
@@ -140,6 +172,7 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
     }
 
     return Promise.resolve({
+      ...(replayedAfter ? { replayedAfter } : {}),
       onEvent(listener) {
         eventListeners.add(listener);
         return () => eventListeners.delete(listener);

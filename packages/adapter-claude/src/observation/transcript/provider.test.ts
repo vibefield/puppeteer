@@ -209,6 +209,106 @@ describe('ClaudeTranscriptObservationProvider', () => {
     expect((await read(false)).events).toEqual([]);
   });
 
+  describe("an attach given the host's cursor (where its own record of the session stops)", () => {
+    const sessionId = 'session-1';
+    const at = (second: number) => new Date(Date.parse('2026-11-19T09:00:00.000Z') + second * 1_000).toISOString();
+    const prompt = (uuid: string, parentUuid: string | null, text: string) => ({
+      type: 'user',
+      uuid,
+      parentUuid,
+      promptId: `pid-${uuid}`,
+      turnOrigin: 'human',
+      isSidechain: false,
+      sessionId,
+      timestamp: at(0),
+      message: { role: 'user', content: text },
+    });
+    const reply = (uuid: string, parentUuid: string, text: string) => ({
+      type: 'assistant',
+      uuid,
+      parentUuid,
+      isSidechain: false,
+      sessionId,
+      timestamp: at(1),
+      message: { role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text }] },
+    });
+    const toolCall = (uuid: string, parentUuid: string) => ({
+      type: 'assistant',
+      uuid,
+      parentUuid,
+      isSidechain: false,
+      sessionId,
+      timestamp: at(2),
+      message: {
+        role: 'assistant',
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', id: 'toolu-bash', name: 'Bash', input: { command: 'pnpm test' } }],
+      },
+    });
+    // the host heard p-1 to its end; p-2 began and ended while it was away; p-3 is running a tool now
+    const rows = [
+      prompt('p-1', null, 'first'),
+      reply('a-1', 'p-1', 'one'),
+      prompt('p-2', 'a-1', 'second'),
+      reply('a-2', 'p-2', 'two'),
+      prompt('p-3', 'a-2', 'run the tests'),
+      toolCall('a-3', 'p-3'),
+    ];
+    const attach = async (request: { attached?: true; replayAfter?: { turnId: string; turnEnded?: boolean } }) => {
+      const root = mkdtempSync(join(tmpdir(), 'claude-transcript-replay-'));
+      roots.push(root);
+      const path = join(root, 'session-1.jsonl');
+      writeFileSync(path, rows.map((row) => JSON.stringify(row)).join('\n') + '\n');
+      const handle = await new ClaudeTranscriptObservationProvider().attach({
+        nativeSessionId: sessionId,
+        transcriptPath: path,
+        pollIntervalMs: 0,
+        ...request,
+      });
+      handles.push(handle);
+      const events: SemanticObservationEvent[] = [];
+      handle.onEvent((event) => events.push(event));
+      await handle.poll();
+      return { handle, events };
+    };
+    const shape = (events: readonly SemanticObservationEvent[]) =>
+      events.map(({ event, turnId, replay, openAtAttach }) => ({ type: event.type, turnId, replay, openAtAttach }));
+
+    it('replays what follows it before the open work, starts the open turn once, and says it found it', async () => {
+      const { handle, events } = await attach({ attached: true, replayAfter: { turnId: 'pid-p-1', turnEnded: true } });
+      expect(shape(events)).toEqual([
+        { type: 'turn:started', turnId: 'pid-p-2', replay: true, openAtAttach: undefined },
+        { type: 'conversation:assistant-message', turnId: 'pid-p-2', replay: true, openAtAttach: undefined },
+        { type: 'turn:completed', turnId: 'pid-p-2', replay: true, openAtAttach: undefined },
+        // the turn still running: started where the replay reaches it, before its replies, and left to the live rail
+        { type: 'turn:started', turnId: 'pid-p-3', replay: true, openAtAttach: true },
+        { type: 'tool:requested', turnId: 'pid-p-3', replay: true, openAtAttach: true },
+      ]);
+      expect(events[2]?.event).toEqual({
+        type: 'turn:completed',
+        turnId: 'pid-p-2',
+        stopReason: 'end_turn',
+        lastAssistantMessage: 'two',
+      });
+      await expect(handle.replayedAfter).resolves.toBe(true);
+    });
+
+    it('says a cursor the record no longer holds was not found, and still reads the open work', async () => {
+      const { handle, events } = await attach({ attached: true, replayAfter: { turnId: 'pid-cleared' } });
+      expect(shape(events)).toEqual([
+        { type: 'turn:started', turnId: 'pid-p-3', replay: true, openAtAttach: true },
+        { type: 'tool:requested', turnId: 'pid-p-3', replay: true, openAtAttach: true },
+      ]);
+      await expect(handle.replayedAfter).resolves.toBe(false);
+    });
+
+    it('replays nothing for an attach that is no re-attach, and gives it no answer', async () => {
+      const { handle, events } = await attach({ replayAfter: { turnId: 'pid-p-1', turnEnded: true } });
+      expect(events).toEqual([]);
+      expect(handle.replayedAfter).toBeUndefined();
+    });
+  });
+
   it('publishes one live reply per 2.1.308 turn, keyed to its prompt, across request bookkeeping', async () => {
     const sessionId = 'session-1';
     const history = [{ promptUuid: 'prompt-1', prompt: 'List the files', answer: 'Two files.', tool: true }];

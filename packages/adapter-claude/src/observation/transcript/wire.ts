@@ -41,6 +41,11 @@ export interface ClaudeTranscriptRecord {
   turnOrigin?: string | undefined;
   /** Claude's own marker of a compaction summary, which continues a turn instead of opening one. */
   isCompactSummary?: true | undefined;
+  /**
+   * An assistant row's `message.stop_reason` (`end_turn`, `tool_use`, `max_tokens`, …): why the model stopped writing
+   * that message. Read only by an attach's replay, which takes a terminal one as its turn's end.
+   */
+  stopReason?: string | undefined;
   isSidechain: boolean;
   /** The row's message content, slimmed at decode ({@link ClaudeTranscriptBlock}); absent when nothing is kept. */
   content?: readonly ClaudeTranscriptBlock[] | undefined;
@@ -116,7 +121,9 @@ export function decodeClaudeTranscript(text: string, startIndex = 0, sourceId = 
     }
     const body = transcriptObject(parsed);
     if (!body) continue;
-    const content = transcriptBlocks(transcriptObject(body.message));
+    const message = transcriptObject(body.message);
+    const content = transcriptBlocks(message);
+    const stopReason = transcriptString(message?.stop_reason);
     rows.push({
       sourceId,
       index: startIndex + index,
@@ -141,6 +148,7 @@ export function decodeClaudeTranscript(text: string, startIndex = 0, sourceId = 
         : {}),
       ...(transcriptString(body.turnOrigin) ? { turnOrigin: transcriptString(body.turnOrigin) } : {}),
       ...(body.isCompactSummary === true ? { isCompactSummary: true as const } : {}),
+      ...(stopReason ? { stopReason } : {}),
       isSidechain: body.isSidechain === true,
       ...(content.length > 0 ? { content } : {}),
       keptBytes: estimateKeptBytes(content),

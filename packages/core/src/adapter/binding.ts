@@ -33,6 +33,12 @@ export interface AgentAdapterBinding {
    * Runtime marks the run's continuation `resumable: false` while it is false. Absent = always seen.
    */
   durableRecordSeen?(): boolean;
+  /**
+   * For a binding attached with a replay cursor: settles once the durable record's first read has replayed what it
+   * holds after the cursor (true), or found no cursor to replay after (false). Rejects when no record was found or its
+   * read failed. Absent: the adapter does not replay.
+   */
+  replayedAfter?(): Promise<boolean>;
   /** Unstamped normalized facts. Runtime is the only owner of validation and envelopes. */
   readonly events: AgentAdapterEventSource;
   /** Explicit upper-level capabilities; commands never travel inside event payloads. */

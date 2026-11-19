@@ -1,4 +1,4 @@
-import type { AgentEvent, AssistantMessageEvent } from '@vibefield/puppeteer-core';
+import type { AgentEvent, AssistantMessageEvent, AttachReplayCursor } from '@vibefield/puppeteer-core';
 import {
   claudeQuestionRequestId,
   normalizeClaudeQuestionRequested,
@@ -658,4 +658,95 @@ export function projectClaudeTranscriptOpenWork(
     }
   }
   return open;
+}
+
+/**
+ * The row Claude writes when a person interrupts a turn (Esc): a user row with no `turnOrigin`, whose text the
+ * synthetic-preamble heuristic would read as a prompt. No hook announces it, so a replay never opens a turn at it.
+ */
+const INTERRUPTION_MARKER_PREFIX = '[Request interrupted by user';
+
+/**
+ * The stop reasons that end a turn: the model finished, ran out of room, hit a stop sequence or refused. `tool_use`
+ * and `pause_turn` go on, and a reason not named here is read as no end.
+ */
+const TERMINAL_STOP_REASONS: ReadonlySet<string> = new Set(['end_turn', 'max_tokens', 'stop_sequence', 'refusal']);
+
+/** Whether a replay opens a turn at a row: a prompt the hooks announce, never an interruption's marker. */
+function opensReplayTurn(record: ClaudeTranscriptRecord): boolean {
+  if (answeredToolIds(record).length > 0 || !opensUserTurn(record)) return false;
+  return record.turnOrigin !== undefined || !transcriptText(record).trimStart().startsWith(INTERRUPTION_MARKER_PREFIX);
+}
+
+/** One root turn of the transcript, as an attach's replay reads it. */
+interface ReplayTurn {
+  readonly prompt: ClaudeTranscriptRecord;
+  readonly turnId: string;
+  /** Its root assistant messages with text, each once by its record id, its last row's text. */
+  readonly replies: Map<string, { record: ClaudeTranscriptRecord; text: string }>;
+  /** Its last root assistant row. */
+  last: ClaudeTranscriptRecord | undefined;
+}
+
+/**
+ * What the transcript holds after a host's cursor, for an attach given one ({@link AttachReplayCursor}): the turns
+ * the host did not hear, keyed as the hooks key them (the prompt's `promptId`, as
+ * {@link projectClaudeTranscriptOpenWork} keys its turn). Read from the root rows in causal order:
+ * - A turn opens at a person's prompt, never at an interruption's marker; a row that repeats the running turn's id
+ *   continues it.
+ * - The cursor's turn is the prompt whose turn id is the cursor's. When the transcript no longer holds it (a /clear, a
+ *   rewind, a window past it), nothing is replayed and `found` is false.
+ * - Each turn after the cursor's opens with `turn:started` and its prompt. The cursor's own turn, whose start the host
+ *   heard, opens with nothing, and is replayed only while the host did not hear it end.
+ * - A turn's replies are its root assistant messages with text, keyed to the turn.
+ * - A turn ends, as `turn:completed` with the model's stop reason and its last words, only when its last assistant row
+ *   names a terminal one ({@link TERMINAL_STOP_REASONS}). An end is never inferred from silence: a turn that ended any
+ *   other way (a failure, an interruption) gets none, and no `turn:failed` is replayed; the next turn's start is the
+ *   host's evidence that it ended, and a turn still running stays the open work's.
+ */
+export function projectClaudeTranscriptReplayAfter(
+  records: readonly ClaudeTranscriptRecord[],
+  cursor: AttachReplayCursor,
+): { found: boolean; events: SemanticObservationEvent[] } {
+  const turns: ReplayTurn[] = [];
+  let current: ReplayTurn | undefined;
+  for (const record of causalOrder(records).ordered) {
+    if (record.isSidechain) continue;
+    if (record.type === 'user') {
+      const turnId = record.promptId ?? transcriptRecordId(record);
+      if (opensReplayTurn(record) && turnId !== current?.turnId) {
+        current = { prompt: record, turnId, replies: new Map(), last: undefined };
+        turns.push(current);
+      }
+      continue;
+    }
+    if (record.type !== 'assistant' || current === undefined) continue;
+    current.last = record;
+    const text = transcriptText(record);
+    if (text) current.replies.set(transcriptRecordId(record), { record, text });
+  }
+  const at = turns.findIndex((turn) => turn.turnId === cursor.turnId);
+  if (at < 0) return { found: false, events: [] };
+  const events: SemanticObservationEvent[] = [];
+  const from = cursor.turnEnded === true ? at + 1 : at;
+  for (const turn of turns.slice(from)) {
+    const { turnId } = turn;
+    if (turn !== turns[at]) {
+      const started: AgentEvent = { type: 'turn:started', turnId, prompt: transcriptText(turn.prompt) };
+      events.push(observation(started, turn.prompt, { turnId }));
+    }
+    for (const { record, text } of turn.replies.values()) events.push(assistant(record, text, turnId));
+    const stopReason = turn.last?.stopReason;
+    if (turn.last !== undefined && stopReason !== undefined && TERMINAL_STOP_REASONS.has(stopReason)) {
+      const lastWords = [...turn.replies.values()].at(-1)?.text;
+      const completed: AgentEvent = {
+        type: 'turn:completed',
+        turnId,
+        stopReason,
+        ...(lastWords ? { lastAssistantMessage: lastWords } : {}),
+      };
+      events.push(observation(completed, turn.last, { turnId }));
+    }
+  }
+  return { found: true, events };
 }

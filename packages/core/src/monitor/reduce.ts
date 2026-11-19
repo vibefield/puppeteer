@@ -396,6 +396,10 @@ function reduceRuntime(state: MonitorAccumulatorState, input: RuntimeMonitorInpu
   };
   const applied = applyUpdates(state.runtime.entries, state.usage, input.updates, context);
   const seenEventIds = sourced ? withEventId(state.runtime.seenEventIds, input.eventId) : state.runtime.seenEventIds;
+  // A turn ends once. Its end may reach the run twice under two event ids: an attach replays it from the agent's record
+  // and the agent's own end of it arrives live after, so an end for the turn last counted is not counted again.
+  const turnEndedAgain =
+    input.turnEnded?.turnId !== undefined && input.turnEnded.turnId === state.lastTurnEnded?.turnId;
   const next: MonitorAccumulatorState = {
     ...state,
     runtime: {
@@ -407,7 +411,9 @@ function reduceRuntime(state: MonitorAccumulatorState, input: RuntimeMonitorInpu
     expiredLeaseIds: withRefreshedLeases(state.expiredLeaseIds, applied.entries),
     compactionCount: state.compactionCount + applied.compactionStarts,
     // Counted here, after the repeat check above, so a turn end delivered twice counts once.
-    ...(input.turnEnded ? { turnsEnded: (state.turnsEnded ?? 0) + 1, lastTurnEnded: input.turnEnded } : {}),
+    ...(input.turnEnded && !turnEndedAgain
+      ? { turnsEnded: (state.turnsEnded ?? 0) + 1, lastTurnEnded: input.turnEnded }
+      : {}),
   };
   return finishAccepted(state, next, input);
 }
