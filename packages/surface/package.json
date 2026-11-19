@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-surface",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "type": "module",
   "description": "Vendor-neutral evidence and Agent Surface Model (ASM) runtime for captured coding-agent behavior.",
   "license": "MIT",

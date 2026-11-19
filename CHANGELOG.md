@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.6](https://github.com/vibefield/puppeteer/compare/v0.4.5...v0.4.6) (2026-11-19)
+
+
+### Features
+
+* every view draws a host's mark on a row: a picture, a name, its words and its attention ([#103](https://github.com/vibefield/puppeteer/issues/103)) ([7879498](https://github.com/vibefield/puppeteer/commit/7879498aba2320c227da2cd91b9b674e3968e9f1))
+
 ## [0.4.5](https://github.com/vibefield/puppeteer/compare/v0.4.4...v0.4.5) (2026-11-19)
 
 
