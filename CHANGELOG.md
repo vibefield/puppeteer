@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.5](https://github.com/vibefield/puppeteer/compare/v0.4.4...v0.4.5) (2026-11-19)
+
+
+### Features
+
+* a host's stop stage reaches the frame and the row, and a run's turn ends are counted ([#100](https://github.com/vibefield/puppeteer/issues/100)) ([430fdcd](https://github.com/vibefield/puppeteer/commit/430fdcd209d069dd75a796a99f8820c17199c64c))
+* an attach given the host's cursor replays what the agent's record holds after it ([#102](https://github.com/vibefield/puppeteer/issues/102)) ([1b4aa18](https://github.com/vibefield/puppeteer/commit/1b4aa18e7f8f5dadf3776fb3832ed474fef6f190))
+
+
+### Bug Fixes
+
+* **adapter-codex:** a pasted prompt is confirmed only on the thread's own record of it ([#99](https://github.com/vibefield/puppeteer/issues/99)) ([d2c105d](https://github.com/vibefield/puppeteer/commit/d2c105dd2687c6124a039ef24e5ec957608ea8e4))
+
 ## [0.4.4](https://github.com/vibefield/puppeteer/compare/v0.4.3...v0.4.4) (2026-11-18)
 
 
