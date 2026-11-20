@@ -4086,12 +4086,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           });
         } catch (error) {
           report(error);
+          // as a failed create's (`providerError`): only the adapter's own refusal carries words, its sentence held
+          // to one line; any other error's text is the reporter's alone, and the failure says the generic sentence
           const failure = sessionFailure(
             provisional,
             'ATTACH_FAILED',
-            `agent provider could not attach to the running session: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
+            isAgentAttachRefusedError(error)
+              ? `agent provider could not attach to the running session: ${
+                  boundSpawnThroughText(error.message.replace(/\r\n|\r|\n/gu, ' ')) || request.agent
+                }`
+              : 'agent provider could not attach to the running session',
           );
           // the adapter's word on what the host does instead, carried as it said it, and why, when that is a word
           // this copy knows (a host states it without the vendor's text)
