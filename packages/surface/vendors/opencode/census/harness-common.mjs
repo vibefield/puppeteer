@@ -17,11 +17,44 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer, request as httpRequest } from 'node:http';
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
+import { devNull } from 'node:os';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 export function flag(name, fallback) {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : fallback;
+}
+
+/**
+ * A path for console lines and error messages: relative to `root` (POSIX
+ * separators) when it is inside it, else only its last segment. Console output
+ * on a runner travels into lane logs and relays, which must not carry an
+ * operator's checkout or account path.
+ */
+export function displayPath(path, root) {
+  const inside = relative(root, path);
+  if (inside === '') return '.';
+  if (!inside.startsWith('..') && !isAbsolute(inside)) return inside.split(sep).join('/');
+  return `<outside the repository>/${basename(path)}`;
+}
+
+/**
+ * A destination a script replaces whole (staging sibling included). Once it,
+ * or its `.staging` sibling, exists it must be `<kindRoot>/<name>`, with a name
+ * matching `name` (default `opencode@<2.x.y>`), so a mistyped flag never
+ * removes an unrelated tree such as `references/opencode@1.19.5`. A destination
+ * that does not exist yet may be anywhere: nothing is removed there.
+ */
+export function replaceableDestination(path, kindRoot, name = /^opencode@2\.\d+\.\d+$/) {
+  const destination = resolve(path);
+  const owned = dirname(destination) === resolve(kindRoot) && name.test(basename(destination));
+  if (!owned && (existsSync(destination) || existsSync(`${destination}.staging`))) {
+    throw new Error(
+      `refusing to replace ${basename(destination)}: an existing destination must be ` +
+        `${basename(kindRoot)}/opencode@<2.x.y> in this vendor`,
+    );
+  }
+  return destination;
 }
 
 export function delay(ms) {
@@ -265,11 +298,27 @@ export async function sendProviderResponse(response, result, waitForGate) {
   if (responseStillOpen(response)) response.end('data: [DONE]\n\n');
 }
 
+/**
+ * The fake provider answers `scenario.responses` in turn order. Two optional,
+ * opt-in hooks serve harnesses that need more than the 1.x census did, and
+ * leave a scenario without them answered exactly as before:
+ *
+ * - `scenario.intercept({...context, request})` runs before a chat request
+ *   takes a turn. A non-undefined result answers that request without
+ *   consuming a scripted turn, and the request record carries
+ *   `intercepted: <result.label ?? true>` (an out-of-band request such as a
+ *   title-generation call, which must not shift the scripted conversation).
+ * - `scenario.recordHeaders` adds each request's headers to its record.
+ *
+ * `connections()` counts every TCP connection the provider accepted, so a run
+ * can report inbound loopback traffic without any per-process read.
+ */
 export async function startProvider(scenario, context) {
   const requests = [];
   const releasedGates = new Set();
   const gateWaiters = new Map();
   let turn = 0;
+  let connections = 0;
 
   const waitForGate = (name, response) => {
     if (releasedGates.has(name)) return Promise.resolve(responseStillOpen(response));
@@ -311,7 +360,13 @@ export async function startProvider(scenario, context) {
       } catch {
         body = { unparsed: raw };
       }
-      requests.push({ method: request.method, url: request.url, body });
+      const record = {
+        method: request.method,
+        url: request.url,
+        ...(scenario.recordHeaders ? { headers: { ...request.headers } } : {}),
+        body,
+      };
+      requests.push(record);
 
       if (request.method === 'GET' && request.url?.startsWith('/v1/models')) {
         response.writeHead(200, { 'content-type': 'application/json' });
@@ -326,14 +381,25 @@ export async function startProvider(scenario, context) {
         return;
       }
 
-      turn += 1;
-      const build = scenario.responses[turn - 1] ?? (() => textResponse(turn));
-      void sendProviderResponse(response, build({ ...context, request: body, turn }), waitForGate).catch((error) => {
+      const fail = (error) => {
         if (!responseStillOpen(response)) return;
         if (!response.headersSent) response.writeHead(500, { 'content-type': 'application/json' });
         response.end(JSON.stringify({ error: { message: String(error) } }));
-      });
+      };
+      const intercepted = scenario.intercept?.({ ...context, request: body, turn });
+      if (intercepted !== undefined) {
+        record.intercepted = intercepted?.label ?? true;
+        void sendProviderResponse(response, intercepted?.result ?? intercepted, waitForGate).catch(fail);
+        return;
+      }
+
+      turn += 1;
+      const build = scenario.responses[turn - 1] ?? (() => textResponse(turn));
+      void sendProviderResponse(response, build({ ...context, request: body, turn }), waitForGate).catch(fail);
     });
+  });
+  server.on('connection', () => {
+    connections += 1;
   });
   await new Promise((done, reject) => {
     server.once('error', reject);
@@ -344,6 +410,7 @@ export async function startProvider(scenario, context) {
   return {
     baseURL: `http://127.0.0.1:${address.port}/v1`,
     requests,
+    connections: () => connections,
     release,
     close: async () => {
       server.closeAllConnections?.();
@@ -370,7 +437,24 @@ export function probeVersion(artifact, environment, pattern = /^(\d+\.\d+\.\d+)$
   return match[1] ?? match[0];
 }
 
-export function initializeControlledRepository(workspace) {
+/**
+ * `git init/add/commit` the controlled workspace. With `home`, git runs on an
+ * explicit environment: PATH, HOME set to `home` (inside the disposable root),
+ * and neither global nor system config, so an operator setting such as
+ * `core.fsmonitor` or `init.templateDir` cannot start a daemon or copy files
+ * into the root. Without it git inherits the process environment, as the 1.x
+ * census always ran it.
+ */
+export function initializeControlledRepository(workspace, { home } = {}) {
+  const env = home
+    ? {
+        PATH: process.env.PATH ?? '/usr/bin:/bin',
+        HOME: home,
+        GIT_CONFIG_GLOBAL: devNull,
+        GIT_CONFIG_NOSYSTEM: '1',
+        GIT_TERMINAL_PROMPT: '0',
+      }
+    : undefined;
   const git = (...args) => {
     const result = spawnSync(
       'git',
@@ -385,7 +469,7 @@ export function initializeControlledRepository(workspace) {
         'core.hooksPath=/dev/null',
         ...args,
       ],
-      { cwd: workspace, encoding: 'utf8', timeout: 15_000 },
+      { cwd: workspace, encoding: 'utf8', timeout: 15_000, ...(env ? { env } : {}) },
     );
     if (result.status !== 0) {
       throw new Error(`controlled git ${args[0]} failed: ${(result.stderr || result.error?.message || '').trim()}`);
@@ -399,8 +483,14 @@ export function initializeControlledRepository(workspace) {
 /**
  * Start a server process and resolve with the origin its stdout announces.
  * `ready` must capture the origin in its first group; stderr is kept for logs.
+ * `readyTimeoutMs` (default 30 s, the 1.x census's) bounds the wait: a first
+ * launch on a fresh home can be slower than a warm one.
  */
-export async function startServerProcess(artifact, args, { cwd, environment, ready: readyPattern, name = 'OpenCode' }) {
+export async function startServerProcess(
+  artifact,
+  args,
+  { cwd, environment, ready: readyPattern, name = 'OpenCode', readyTimeoutMs = 30_000 },
+) {
   const child = spawn(artifact, args, {
     cwd,
     env: environment,
@@ -441,7 +531,7 @@ export async function startServerProcess(artifact, args, { cwd, environment, rea
   };
   let baseURL;
   try {
-    baseURL = await withTimeout(ready, 30_000, `${name} server readiness`);
+    baseURL = await withTimeout(ready, readyTimeoutMs, `${name} server readiness`);
   } catch (error) {
     await stop();
     throw error;
