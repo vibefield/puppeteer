@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.7](https://github.com/vibefield/puppeteer/compare/v0.4.6...v0.4.7) (2026-11-20)
+
+
+### Bug Fixes
+
+* **runtime:** a failed attach says the adapter's refusal or a generic sentence, as create does ([#105](https://github.com/vibefield/puppeteer/issues/105)) ([f7c4848](https://github.com/vibefield/puppeteer/commit/f7c4848bcecfe9de5ed5272deaaf07eca78b2b2f))
+
 ## [0.4.6](https://github.com/vibefield/puppeteer/compare/v0.4.5...v0.4.6) (2026-11-19)
 
 
