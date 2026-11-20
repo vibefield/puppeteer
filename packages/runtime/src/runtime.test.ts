@@ -4685,6 +4685,62 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     }
   });
 
+  it("says only an adapter's refusal, or a generic sentence, when an attach fails, as a failed create does", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-attach-failure-words-'));
+    const registry = createFileCreationRequestRegistry({ directory: join(root, 'claims') });
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const errors: unknown[] = [];
+    let thrown: Error = new Error('sentinel detail of the adapter');
+    const provider: AgentProvider = {
+      ...fakeProvider('one', handles),
+      async attachSession() {
+        throw thrown;
+      },
+    };
+    const first = createAgentRuntime({ host, defaultCwd: root, providers: [provider], creationRegistry: registry });
+    const second = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      creationRegistry: registry,
+      onError: (error) => errors.push(error),
+    });
+    try {
+      const created = await first.createSession({ agent: 'one', creationRequestId: 'attach-failure-words' });
+      if ('error' in created) throw new Error(created.error.message);
+      await first.dispose({ detach: true });
+      const request = {
+        agent: 'one',
+        creationRequestId: 'attach-failure-words',
+        runtimeRunId: created.runtimeRunId,
+        expectedRuntimeEpoch: created.runtimeEpoch,
+        sessionId: created.nativeSession.id,
+        terminalSessionId: created.terminalSessionId,
+        cwd: root,
+      };
+      const failed = await second.attach(request);
+      expect('error' in failed && failed.error.code).toBe('ATTACH_FAILED');
+      expect('error' in failed && failed.error.message).toBe('agent provider could not attach to the running session');
+      // the thrown error is the reporter's, whole
+      expect(errors).toContainEqual(expect.objectContaining({ message: 'sentinel detail of the adapter' }));
+      // an attach refusal keeps its own sentence, held to one line, and its next step
+      thrown = new AgentAttachRefusedError('retry', 'the helper is\nnot ready yet');
+      const claim = (await registry.lookup(request)) as { runtimeEpoch?: number } | undefined;
+      const refused = await second.attach({
+        ...request,
+        expectedRuntimeEpoch: claim?.runtimeEpoch ?? request.expectedRuntimeEpoch,
+      });
+      expect('error' in refused && refused.error.message).toBe(
+        'agent provider could not attach to the running session: the helper is not ready yet',
+      );
+      expect('error' in refused && refused.error.next).toBe('retry');
+    } finally {
+      await first.dispose();
+      await second.dispose();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('waits for an in-flight attach to release its binding when the runtime shuts down', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-attach-shutdown-'));
     const registry = createFileCreationRequestRegistry({ directory: join(root, 'claims') });
