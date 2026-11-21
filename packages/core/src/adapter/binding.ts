@@ -7,7 +7,12 @@
  */
 
 import type { ObservationLevel } from '../events/index.js';
-import type { AgentAdapterEventSource, AgentPromptService, AgentTurnStopService } from '../services/index.js';
+import type {
+  AgentAdapterEventSource,
+  AgentModelSwitchService,
+  AgentPromptService,
+  AgentTurnStopService,
+} from '../services/index.js';
 
 /**
  * The low-level handle every adapter returns for one live agent process/thread.
@@ -50,6 +55,11 @@ export interface AgentAdapterBinding {
      * its stop sends, and names that honestly.
      */
     readonly turnStop?: AgentTurnStopService | undefined;
+    /**
+     * Changing the running agent's model or one of its controls, through the agent's own means. Absent while the
+     * adapter has no evidenced way: a host then offers no switch, never a guessed command.
+     */
+    readonly modelSwitch?: AgentModelSwitchService | undefined;
   };
   /**
    * Tear down observation/control. Process lifecycle stays with the host.

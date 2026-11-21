@@ -11,3 +11,4 @@ export * from './profiles.js';
 export * from './profile-plans.js';
 export * from './extensions.js';
 export * from './models.js';
+export * from './model-switch.js';
