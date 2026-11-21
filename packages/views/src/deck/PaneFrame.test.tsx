@@ -93,6 +93,11 @@ describe('PaneFrameChrome', () => {
     expect(html).toContain('class="vf-pane-meter is-hot"');
     expect(html).toContain('--ctx:0.88');
     expect(html).toContain('class="vf-pane-figure is-hot"');
+    // one capsule holds the meter, then its figure
+    const capsule = html.indexOf('class="vf-pane-context"');
+    expect(capsule).toBeGreaterThan(html.indexOf('class="vf-pane-bottom"'));
+    expect(html.indexOf('vf-pane-meter')).toBeGreaterThan(capsule);
+    expect(html.indexOf('vf-pane-figure')).toBeGreaterThan(html.indexOf('vf-pane-meter'));
     expect(html).not.toContain('is-resume');
   });
 
