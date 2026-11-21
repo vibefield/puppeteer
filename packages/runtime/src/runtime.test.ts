@@ -588,6 +588,75 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
+  it("offers the adapter's own model switch, and asks it only of an agent it has seen idle", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-model-switch-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const asked: unknown[] = [];
+    const switching = (provider: AgentProvider): AgentProvider => ({
+      ...provider,
+      async createSession(options) {
+        const binding = await provider.createSession(options);
+        return {
+          ...binding,
+          services: {
+            ...binding.services,
+            modelSwitch: {
+              offer: { model: true, controls: ['effort'], persistence: 'default' },
+              async submit(request) {
+                asked.push(request);
+                return { status: 'sent' };
+              },
+            },
+          },
+        };
+      },
+    });
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [
+        fakeProvider('plain', handles),
+        switching(fakeProvider('switching', handles)),
+        switching(fakeProvider('unseen', handles, 'terminal-only')),
+      ],
+    });
+
+    const plain = await runtime.spawn({ agent: 'plain', cwd: root });
+    const named = await runtime.spawn({ agent: 'switching', cwd: root });
+    const unseen = await runtime.spawn({ agent: 'unseen', cwd: root });
+    if ('error' in plain || 'error' in named || 'error' in unseen) throw new Error('unexpected spawn failure');
+    const toSonnet = { kind: 'model', modelId: 'sonnet' } as const;
+
+    // no guessed command: an adapter that names no switch offers none
+    expect(plain.modelSwitch).toBeUndefined();
+    await expect(plain.switchModel(toSonnet)).resolves.toEqual({
+      status: 'rejected',
+      reason: 'the adapter names no model switch',
+      retryable: false,
+    });
+    expect(named.modelSwitch).toEqual({ model: true, controls: ['effort'], persistence: 'default' });
+    // an agent seen idle is asked
+    expect(named.status).toBe('idle');
+    await expect(named.switchModel(toSonnet)).resolves.toEqual({ status: 'sent' });
+    expect(asked).toEqual([toSonnet]);
+    // mid-turn nothing is typed, and the refusal says the state it met
+    handles.get(named.terminalSessionId)?.emit(testEnvelope({ type: 'turn:started', turnId: 'turn-1', prompt: 'go' }));
+    await vi.waitFor(() => expect(named.status).toBe('working'));
+    await expect(named.switchModel({ kind: 'control', controlId: 'effort', value: 'high' })).resolves.toEqual({
+      status: 'rejected',
+      reason: 'working',
+    });
+    // an adapter that cannot see turns reads idle for want of evidence: no witness that its input is free
+    expect(unseen.status).toBe('idle');
+    await expect(unseen.switchModel(toSonnet)).resolves.toEqual({
+      status: 'rejected',
+      reason: "the agent's turns are not observed",
+    });
+    expect(asked).toEqual([toSonnet]);
+
+    await runtime.dispose();
+  });
+
   it('validates adapter candidates before assigning runtime delivery order', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-candidates-'));
     const candidateListeners = new Set<(candidate: AdapterEventCandidate) => void>();
