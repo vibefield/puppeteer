@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.8](https://github.com/vibefield/puppeteer/compare/v0.4.7...v0.4.8) (2026-11-21)
+
+
+### Features
+
+* a running agent's model and effort can be changed through its adapter ([#108](https://github.com/vibefield/puppeteer/issues/108)) ([3a7f174](https://github.com/vibefield/puppeteer/commit/3a7f174b70e4aafe3cb05e0518177f23f58e49cf))
+* **views:** the pane frame's badge and meter are capsules inside the pane ([#107](https://github.com/vibefield/puppeteer/issues/107)) ([23c5f63](https://github.com/vibefield/puppeteer/commit/23c5f63c9cf9af42ebd86674cacb63032607c362))
+
 ## [0.4.7](https://github.com/vibefield/puppeteer/compare/v0.4.6...v0.4.7) (2026-11-20)
 
 
