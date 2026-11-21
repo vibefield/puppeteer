@@ -7,6 +7,9 @@ import {
   type AgentMonitorHandle,
   type AgentMonitorState,
   type AgentMonitorStatus,
+  type AgentModelSwitchOffer,
+  type AgentModelSwitchReceipt,
+  type AgentModelSwitchRequest,
   type AgentTurnStop,
   type AgentTurnStopReceipt,
   type ObservationLevel,
@@ -183,6 +186,37 @@ export class Agent {
       return Promise.resolve({ accepted: false, reason: 'idle' });
     }
     return service.submit();
+  }
+
+  /**
+   * What this agent's adapter can change on the running session: its model, some of its controls, and how far the
+   * agent keeps a change. Undefined while the adapter names no switch, and then a host offers none.
+   */
+  get modelSwitch(): AgentModelSwitchOffer | undefined {
+    return internals(this).adapter.services.modelSwitch?.offer;
+  }
+
+  /**
+   * Ask the adapter to change the running agent's model or one control. An adapter that names no switch is refused,
+   * never given a guessed command. The request is sent only to an agent this runtime has SEEN idle: a working agent
+   * may queue it behind its turn or read it as prose, a blocked one is showing a dialog the text would land in, and
+   * an adapter that cannot see turns reads idle for want of evidence, which is no witness that the input is free.
+   * `sent` is the terminal's answer, never the agent's: what it serves next is its own model and effort evidence.
+   */
+  switchModel(request: AgentModelSwitchRequest): Promise<AgentModelSwitchReceipt> {
+    const service = internals(this).adapter.services.modelSwitch;
+    if (!service) {
+      return Promise.resolve({
+        status: 'rejected',
+        reason: 'the adapter names no model switch',
+        retryable: false,
+      });
+    }
+    if (!observesTurns(this.observationLevel)) {
+      return Promise.resolve({ status: 'rejected', reason: "the agent's turns are not observed" });
+    }
+    if (this.status !== 'idle') return Promise.resolve({ status: 'rejected', reason: this.status });
+    return service.submit(request);
   }
 
   observeMonitor(): AgentMonitorHandle {

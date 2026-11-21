@@ -63,6 +63,7 @@ import {
 import { claudeConfigRoot } from './launch/config-root.js';
 import { createClaudeSessionSelection, type ClaudeSessionSelection } from './observation/session-selection.js';
 import { createPromptInjector, type PromptInjector } from './services/prompt.js';
+import { createClaudeModelSwitch } from './services/model-switch.js';
 import { createClaudeTurnStop } from './services/turn-stop.js';
 import type { ClaudeAccountUsageSink } from './services/account-usage.js';
 import { claudeContextWindowEvent, claudeEnvironmentEvents } from './observation/status-channel.js';
@@ -1197,6 +1198,18 @@ function createClaudeObservation(
           turnStop: createClaudeTurnStop({
             automate: (operation) => options.automate(runtimeSessionId, operation),
             isDisposed: () => disposed,
+          }),
+          modelSwitch: createClaudeModelSwitch({
+            automate: (operation) => options.automate(runtimeSessionId, operation),
+            isDisposed: () => disposed,
+            blocked: () =>
+              injector.isActive()
+                ? 'a prompt injection is active'
+                : pendingPermissionIds.size > 0
+                  ? 'native permission dialog pending'
+                  : pendingQuestionIds.size > 0
+                    ? 'native question dialog pending'
+                    : undefined,
           }),
         },
         pollTranscript: async () => {
