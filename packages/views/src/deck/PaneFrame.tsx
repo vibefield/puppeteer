@@ -89,9 +89,10 @@ export interface PaneFrameChromeProps {
 }
 
 /**
- * The chrome around one terminal, as MARKUP: the badge growing out of the top
- * edge, the model · effort readout, the ghost verbs under the pointer, the grey
- * meter along the bottom edge with its figure in the corner. The line and the
+ * The chrome around one terminal, as MARKUP: the badge, a capsule inside the
+ * top-right corner, the model · effort readout, the ghost verbs under the
+ * pointer, and the context capsule inside the bottom-right corner, its grey
+ * meter beside its figure. The line and the
  * glow are the frame's own `::before`; the selected pane's radius is CSS on
  * Ghosttea's own pane element (both in `styles/deck-frame.css`). Pure over its
  * props so a host's static tests and
@@ -218,13 +219,13 @@ export function PaneFrameChrome({
         </span>
       </span>
       {model.context ? (
-        <>
-          <i
-            className={`vf-pane-meter${model.context.hot ? ' is-hot' : ''}`}
-            style={{ '--ctx': model.context.percent / 100 } as CSSProperties}
-            aria-hidden="true"
-          />
-          <span className="vf-pane-bottom">
+        <span className="vf-pane-bottom">
+          <span className="vf-pane-context">
+            <i
+              className={`vf-pane-meter${model.context.hot ? ' is-hot' : ''}`}
+              style={{ '--ctx': model.context.percent / 100 } as CSSProperties}
+              aria-hidden="true"
+            />
             <span
               className={`vf-pane-figure${model.context.hot ? ' is-hot' : ''}`}
               title={`Context window ${model.context.percent}% used`}
@@ -232,7 +233,7 @@ export function PaneFrameChrome({
               {model.context.percent}%
             </span>
           </span>
-        </>
+        </span>
       ) : null}
     </div>
   );
