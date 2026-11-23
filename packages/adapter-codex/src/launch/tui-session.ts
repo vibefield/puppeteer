@@ -19,6 +19,10 @@
  * `confirmed` only on the thread's own record of the pasted text, and
  * `uncertain` without it (`prompt-echo.ts`), as the structured driver
  * confirms only on its echoed client id.
+ *
+ * The thread's model and effort are changed on the app-server, never typed: a
+ * third connection, opted into the experimental API, asks for the change and
+ * hears every one made (`services/model-switch.ts`).
  */
 
 import {
@@ -43,6 +47,7 @@ import type {
 } from '@vibefield/puppeteer-core';
 import { resolveCodexExecutable } from '../detection.js';
 import { createCodexObserver } from '../observation/observer.js';
+import { createCodexModelSwitch } from '../services/model-switch.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
 import { spawnAppServer, type AppServerTransportKind } from '../transport/app-server-process.js';
 import {
@@ -275,10 +280,23 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   let adoptedSession: CodexTuiSession | undefined;
   let disposed = false;
   const echoes = new CodexPromptEchoes(observer.events);
+  // Its own connection to the app-server itself, never through the picker's tap: the tap reads the TUI's requests.
+  const modelSwitch = createCodexModelSwitch({
+    connect: () => connectAppServerEndpoint(serverEndpoint),
+    threadId: () => observer.sessionId,
+    isDisposed: () => disposed,
+    onSettings: (params) => observer.settingsUpdated(params),
+  });
+  // Listening from the start is what lets a change made in the TUI's own picker be observed. It is not awaited and
+  // a failure is not kept: the session is whole without it, and a switch asked for later opens the connection again.
+  const listenForSettings = (): void => void modelSwitch.listen().catch(() => undefined);
+  const unsubscribeThread = observer.onThread(listenForSettings);
   async function dispose(): Promise<void> {
     if (disposed) return;
     disposed = true;
+    unsubscribeThread();
     echoes.dispose();
+    await modelSwitch.dispose();
     await observer.dispose().catch(() => undefined);
     await resumeTap?.dispose();
     await server.dispose();
@@ -297,6 +315,8 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
       }
       if (adoptedSession) return adoptedSession;
       adoptedRuntimeSessionId = runtimeSessionId;
+      // A thread this recipe owns or resumed is attached already; a picker's attaches later (`onThread`, above).
+      if (observer.sessionId !== undefined) listenForSettings();
       adoptedSession = {
         get sessionId(): string {
           return observer.sessionId ?? threadId;
@@ -334,6 +354,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
               return echo.receipt;
             },
           },
+          modelSwitch,
         },
         dispose,
       };

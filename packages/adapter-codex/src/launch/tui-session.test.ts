@@ -13,6 +13,8 @@ const fakes = vi.hoisted(() => {
       };
     }),
     observerDispose: vi.fn(),
+    observerOnThread: vi.fn((_listener: (info: { threadId: string }) => void) => () => true),
+    observerSettingsUpdated: vi.fn(),
     serverDispose: vi.fn(),
     serverReady: vi.fn(),
     spawnServer: vi.fn(),
@@ -92,6 +94,8 @@ describe('Codex TUI preparation', () => {
       threadPath: () => '/tmp/thread.jsonl',
       events: { onCandidate: fakes.observerOnCandidate },
       attachThread: vi.fn(),
+      onThread: fakes.observerOnThread,
+      settingsUpdated: fakes.observerSettingsUpdated,
       dispose: fakes.observerDispose,
     });
   });
@@ -227,6 +231,8 @@ describe('Codex TUI preparation', () => {
         threadPath: () => undefined,
         events: { onCandidate: fakes.observerOnCandidate },
         attachThread: vi.fn(),
+        onThread: fakes.observerOnThread,
+        settingsUpdated: fakes.observerSettingsUpdated,
         dispose: fakes.observerDispose,
       });
       const prepared = await prepareCodexTuiSession({
@@ -456,6 +462,8 @@ describe('Codex TUI preparation', () => {
       threadPath: () => undefined,
       events: { onCandidate: fakes.observerOnCandidate },
       attachThread: vi.fn(),
+      onThread: fakes.observerOnThread,
+      settingsUpdated: fakes.observerSettingsUpdated,
       dispose: fakes.observerDispose,
     });
     const prepared = await prepareCodexTuiSession({
@@ -528,6 +536,8 @@ describe('Codex TUI preparation', () => {
       threadPath: () => undefined,
       events: { onCandidate: fakes.observerOnCandidate },
       attachThread,
+      onThread: fakes.observerOnThread,
+      settingsUpdated: fakes.observerSettingsUpdated,
       dispose: fakes.observerDispose,
     });
     const prepared = await prepareCodexTuiSession({
@@ -567,6 +577,8 @@ describe('Codex TUI preparation', () => {
       threadPath: () => undefined,
       events: { onCandidate: fakes.observerOnCandidate },
       attachThread,
+      onThread: fakes.observerOnThread,
+      settingsUpdated: fakes.observerSettingsUpdated,
       dispose: fakes.observerDispose,
     });
     try {
@@ -584,5 +596,117 @@ describe('Codex TUI preparation', () => {
     } finally {
       process.off('unhandledRejection', unhandled);
     }
+  });
+
+  describe('the model switch', () => {
+    /** A connection that answers every request with `{}`, and can speak as the app-server. */
+    function settingsConnection() {
+      const sent: { id?: number; method?: string; params?: Record<string, unknown> }[] = [];
+      let deliver: (message: unknown) => void = () => undefined;
+      const close = vi.fn();
+      Object.assign(fakes.transport, {
+        send(message: { id?: number; method?: string; params?: Record<string, unknown> }) {
+          sent.push(message);
+          if (message.id !== undefined) queueMicrotask(() => deliver({ jsonrpc: '2.0', id: message.id, result: {} }));
+        },
+        onMessage(handler: (message: unknown) => void) {
+          deliver = handler;
+        },
+        onClose: () => undefined,
+        close,
+      });
+      return { sent, close, say: (message: unknown) => deliver(message) };
+    }
+    const settled = () => new Promise((resolve) => setTimeout(resolve, 5));
+
+    it('listens on a connection of its own to the app-server from adoption, and hands the observer what it hears', async () => {
+      const connection = settingsConnection();
+      try {
+        const prepared = await prepareCodexTuiSession({ cwd: '/work/repo', executable: '/opt/codex', host: host() });
+        expect(connection.sent).toEqual([]);
+        const session = await prepared.adopt('pane');
+        await settled();
+        expect(session.services.modelSwitch?.offer).toEqual({
+          model: true,
+          controls: ['effort'],
+          persistence: 'session',
+        });
+        expect(connection.sent.map(({ method }) => method)).toEqual(['initialize', 'initialized', 'thread/resume']);
+        expect(connection.sent[2]!.params).toEqual({ threadId: 'thread-1', excludeTurns: true });
+
+        const settings = { threadId: 'thread-1', threadSettings: { model: 'gpt-test', effort: 'low' } };
+        connection.say({ jsonrpc: '2.0', method: 'thread/settings/updated', params: settings });
+        expect(fakes.observerSettingsUpdated).toHaveBeenCalledExactlyOnceWith(settings);
+
+        await expect(session.services.modelSwitch!.submit({ kind: 'model', modelId: 'gpt-other' })).resolves.toEqual({
+          status: 'sent',
+        });
+        expect(connection.sent.at(-1)).toMatchObject({
+          method: 'thread/settings/update',
+          params: { threadId: 'thread-1', model: 'gpt-other' },
+        });
+
+        await session.dispose();
+        expect(connection.close).toHaveBeenCalledOnce();
+        expect(fakes.observerDispose).toHaveBeenCalledOnce();
+      } finally {
+        for (const key of Object.keys(fakes.transport)) delete (fakes.transport as Record<string, unknown>)[key];
+      }
+    });
+
+    it("waits for a picker's thread before it listens", async () => {
+      const connection = settingsConnection();
+      let selectedThread: string | undefined;
+      fakes.createObserver.mockResolvedValue({
+        get sessionId() {
+          return selectedThread;
+        },
+        observationLevel: () => 'structured',
+        threadPath: () => undefined,
+        events: { onCandidate: fakes.observerOnCandidate },
+        attachThread: vi.fn(),
+        onThread: fakes.observerOnThread,
+        settingsUpdated: fakes.observerSettingsUpdated,
+        dispose: fakes.observerDispose,
+      });
+      try {
+        const prepared = await prepareCodexTuiSession({
+          cwd: '/work/repo',
+          executable: '/opt/codex',
+          host: host(),
+          resumeInvocation: ['resume'],
+        });
+        await prepared.adopt('pane');
+        await settled();
+        expect(connection.sent).toEqual([]);
+
+        selectedThread = 'thread-picked';
+        fakes.observerOnThread.mock.lastCall![0]({ threadId: 'thread-picked' });
+        await settled();
+        expect(connection.sent.map(({ method }) => method)).toEqual(['initialize', 'initialized', 'thread/resume']);
+        expect(connection.sent[2]!.params).toEqual({ threadId: 'thread-picked', excludeTurns: true });
+        await prepared.dispose();
+      } finally {
+        for (const key of Object.keys(fakes.transport)) delete (fakes.transport as Record<string, unknown>)[key];
+      }
+    });
+
+    it('leaves the session whole when the connection cannot be made', async () => {
+      const unhandled = vi.fn();
+      process.on('unhandledRejection', unhandled);
+      try {
+        // The suite's bare transport: nothing can be sent on it.
+        const prepared = await prepareCodexTuiSession({ cwd: '/work/repo', executable: '/opt/codex', host: host() });
+        const session = await prepared.adopt('pane');
+        await settled();
+        expect(unhandled).not.toHaveBeenCalled();
+        const receipt = await session.services.modelSwitch!.submit({ kind: 'model', modelId: 'gpt-other' });
+        expect(receipt.status).toBe('rejected');
+        await session.dispose();
+        expect(unhandled).not.toHaveBeenCalled();
+      } finally {
+        process.off('unhandledRejection', unhandled);
+      }
+    });
   });
 });

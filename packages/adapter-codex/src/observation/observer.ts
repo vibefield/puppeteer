@@ -144,6 +144,13 @@ export interface CodexObserver {
    * provider, after publishing the `codex-model-provider-refused` diagnostic.
    */
   attachThread(threadId: string): Promise<void>;
+  /**
+   * Take the app-server's own `thread/settings/updated` as another connection of this session heard it. Codex sends
+   * that notification only to a connection that opted into its experimental API, which this one does not
+   * (`services/model-switch.ts`), so without it a changed model or effort is never observed here. It is read as a
+   * notification of this connection's own is: after the history, and only for the observed thread.
+   */
+  settingsUpdated(params: Record<string, unknown>): void;
   dispose(): Promise<void>;
 }
 
@@ -462,7 +469,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     );
   }
 
-  client.onNotification((method, params) => {
+  function receive(method: string, params: Record<string, unknown> | undefined): void {
     if (!attached) {
       const notificationParams = params ?? {};
       if (attaching) {
@@ -489,7 +496,9 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     }
     // Only our thread's notifications drive the normalized stream (avoid cross-thread bleed).
     consumeNotification(method, params ?? {});
-  });
+  }
+
+  client.onNotification(receive);
 
   client.onServerRequest((method, params, id) => approvals.handle(method, params, id));
 
@@ -650,6 +659,10 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         if (error instanceof CodexModelProviderRefusedError) publishProviderRefusal(threadId, error);
         throw error;
       }),
+    settingsUpdated(params) {
+      if (disposed) return;
+      receive('thread/settings/updated', params);
+    },
     async dispose() {
       approvals.settleAll('unknown', { lifecycle: 'dispose' });
       disposed = true; // stop the attach retry loop if it is still running

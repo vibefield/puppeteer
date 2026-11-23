@@ -58,18 +58,19 @@
     "thread/inject_items",
     "thread/read",
     "thread/resume",
+    "thread/settings/update",
     "thread/start",
     "thread/turns/list",
     "turn/start"
   ],
   "unmapped": {
-    "count": 222,
-    "sha256": "5eb38726a313d7e0d41b7f665a2f99a1635207c9d3a431f5ad9a4ca22e9862b5",
+    "count": 221,
+    "sha256": "7444e978761df9943849c605efe4f9673951ca41d79fe0a3c3638f1298434b20",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 276,
     "semantic": 26,
-    "observedOrControlled": 28
+    "observedOrControlled": 29
   }
 }

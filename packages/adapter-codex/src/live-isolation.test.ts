@@ -250,6 +250,7 @@ describe('the opt-in live tests', () => {
       'launch/briefing.live.test.ts',
       'launch/invocation-probe.live.test.ts',
       'launch/models.live.test.ts',
+      'model-switch.live.test.ts',
       'native-tui.live.test.ts',
       'observation/observer.live.test.ts',
       'services/account-usage.live.test.ts',
