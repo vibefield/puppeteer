@@ -211,11 +211,18 @@ export function agentReply(state: AgentMonitorState | undefined, maxLength: numb
   return { text, ...(at === undefined ? {} : { at }), final: message.final };
 }
 
-export function agentTokens(state: AgentMonitorState | undefined): MonitorTokens | undefined {
+/** A carried figure the host handed over, when it is one: finite and not negative. */
+export function carriedAmount(value: number | undefined): number | undefined {
+  return value !== undefined && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+/** The run's own tokens, on top of what the host carried from the session's earlier runs (`MonitorHostRun.carried`). */
+export function agentTokens(state: AgentMonitorState | undefined, carried?: number): MonitorTokens | undefined {
   const usage = state?.usage;
-  if (!usage) return undefined;
-  const total = usage.cumulativeTokens;
-  const perMinute = usage.burnRatePerMin;
+  const before = carriedAmount(carried);
+  const own = usage?.cumulativeTokens;
+  const total = before === undefined ? own : before + (own ?? 0);
+  const perMinute = usage?.burnRatePerMin;
   if (total === undefined && perMinute === undefined) return undefined;
   return {
     ...(total === undefined ? {} : { total }),
@@ -264,7 +271,7 @@ export function deriveAgentRow(input: DeriveAgentRowInput): MonitorAgentRow {
   const usedPercent = state?.context?.usedPercent;
   const wait = agentWait(state, statusSince, input.replyMaxLength);
   const reply = agentReply(state, input.replyMaxLength);
-  const tokens = agentTokens(state);
+  const tokens = agentTokens(state, host.carried?.tokens);
   const attachable = host.terminalSessionId !== undefined;
   return {
     id: input.id,

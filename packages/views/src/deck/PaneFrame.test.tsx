@@ -4,10 +4,10 @@ import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PaneFrame, PaneFrameChrome, STOPPING_TIMEOUT_MS, type PaneFrameVerbs } from './PaneFrame.js';
-import { paneFrameModel, type PaneFrameAgent, type PaneFrameSession } from './pane-frame.js';
+import { paneFrameModel, type PaneFrameAgent, type PaneFrameClock, type PaneFrameSession } from './pane-frame.js';
 
-// The frame's MARKUP, statically: the badge, the readout, the verbs a host
-// lends, the meter — what a host's rows and a screen reader reach. The stopping
+// The frame's MARKUP, statically: the badge, the readout, the context ring, the
+// running time, the verbs a host lends — what a host's rows and a screen reader reach. The stopping
 // state is the portal's own, so the last rows mount `PaneFrame` into a pane
 // element; a real pane's layout stays the host's smoke to witness.
 
@@ -40,7 +40,7 @@ function agent(overrides: Partial<PaneFrameAgent> = {}): PaneFrameAgent {
 }
 
 function markup(
-  input: { session: PaneFrameSession; agent?: PaneFrameAgent; remote?: string },
+  input: { session: PaneFrameSession; agent?: PaneFrameAgent; remote?: string; clock?: PaneFrameClock },
   verbs: PaneFrameVerbs = ALL_VERBS,
   options: { zoomed?: boolean; stopping?: boolean; pausing?: boolean; color?: string } = {},
 ): string {
@@ -48,6 +48,7 @@ function markup(
     session: input.session,
     ...(input.agent ? { agent: input.agent } : {}),
     ...(input.remote ? { remoteDevice: input.remote } : {}),
+    ...(input.clock ? { clock: input.clock } : {}),
     nowMs: NOW,
   });
   return renderToStaticMarkup(
@@ -76,11 +77,13 @@ describe('PaneFrameChrome', () => {
     expect(html).toContain('aria-label="Fullscreen the pane"');
     expect(html).not.toContain('is-stop');
     expect(html).not.toContain('is-resume');
-    expect(html).not.toContain('vf-pane-meter');
+    expect(html).not.toContain('vf-pane-context');
+    expect(html).not.toContain('vf-pane-clock');
+    expect(html).not.toContain('vf-pane-facts');
     expect(html).not.toContain('vf-pane-mark');
   });
 
-  it('draws an agent with its mark, the readout, the stop verb with the turn time, and a hot meter', () => {
+  it('draws an agent with its mark, the readout, the stop verb with the turn time, and a hot ring', () => {
     const html = markup({ session: session(), agent: agent() }, ALL_VERBS, { color: 'hsl(268 58% 56%)' });
     expect(html).toContain('class="vf-pane-frame is-hot"');
     expect(html).toContain('--pane-color:hsl(268 58% 56%)');
@@ -90,15 +93,33 @@ describe('PaneFrameChrome', () => {
     expect(html).toContain('aria-label="Stop the turn"');
     expect(html).toContain('class="vf-pane-verb-text">1:05<');
     expect(html).toContain('title="Fullscreen ⌘⇧↵"');
-    expect(html).toContain('class="vf-pane-meter is-hot"');
-    expect(html).toContain('--ctx:0.88');
-    expect(html).toContain('class="vf-pane-figure is-hot"');
-    // one capsule holds the meter, then its figure
-    const capsule = html.indexOf('class="vf-pane-context"');
-    expect(capsule).toBeGreaterThan(html.indexOf('class="vf-pane-bottom"'));
-    expect(html.indexOf('vf-pane-meter')).toBeGreaterThan(capsule);
-    expect(html.indexOf('vf-pane-figure')).toBeGreaterThan(html.indexOf('vf-pane-meter'));
+    // the ring, then its figure, right after the readout and inside the top band: nothing at the pane's foot
+    const ring = html.indexOf('class="vf-pane-context is-hot"');
+    expect(ring).toBeGreaterThan(html.indexOf('class="vf-pane-readout"'));
+    expect(ring).toBeLessThan(html.indexOf('class="vf-pane-badge"'));
+    expect(html).toContain('title="Context window 88% used"');
+    expect(html).toContain('stroke-dasharray:88 100');
+    expect(html.indexOf('vf-pane-ring-arc')).toBeGreaterThan(html.indexOf('vf-pane-ring-track'));
+    expect(html.indexOf('class="vf-pane-figure">88%<')).toBeGreaterThan(html.indexOf('vf-pane-ring-arc'));
+    expect(html).not.toContain('vf-pane-bottom');
+    expect(html).not.toContain('vf-pane-meter');
     expect(html).not.toContain('is-resume');
+  });
+
+  it('says how long the session has run, after the ring, and on a shell that has no readout', () => {
+    const running = markup({ session: session(), agent: agent(), clock: { ms: 3_600_000, at: NOW - 5 * 60_000 } });
+    expect(running).toContain('class="vf-pane-clock" title="Running for 1h 05m">1h 05m<');
+    expect(running.indexOf('vf-pane-clock')).toBeGreaterThan(running.indexOf('vf-pane-figure'));
+    expect(running.indexOf('vf-pane-clock')).toBeLessThan(running.indexOf('class="vf-pane-badge"'));
+
+    const shell = markup({ session: session(), clock: { ms: 0, at: NOW - 12 * 60_000 } });
+    expect(shell).toContain('class="vf-pane-facts"');
+    expect(shell).toContain('>12m<');
+    expect(shell).not.toContain('vf-pane-readout');
+
+    // a stopped clock stands where it stopped, and says so
+    const stopped = markup({ session: session({ exited: true }), clock: { ms: 26 * 3_600_000 } });
+    expect(stopped).toContain('class="vf-pane-clock is-stopped" title="Ran for 1d 02h">1d 02h<');
   });
 
   it('offers resume, not stop, once the run has ended', () => {

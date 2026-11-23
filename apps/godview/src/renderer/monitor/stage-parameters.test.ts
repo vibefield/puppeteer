@@ -18,9 +18,9 @@ const SIDES = [
 ] as const;
 
 describe('terminal safe area', () => {
-  it('defaults to closed sides, a 24px band above and a 30px band below', () => {
+  it('defaults to closed sides, a 24px band above and an 8px band below', () => {
     const defaults = monitorParameterDefaults(STAGE_PARAMETER_GROUPS);
-    expect(SIDES.map(([, key]) => defaults[key])).toEqual([24, 0, 30, 0]);
+    expect(SIDES.map(([, key]) => defaults[key])).toEqual([24, 0, 8, 0]);
   });
 
   it('keeps the same numbers as the deck stylesheet falls back to', () => {

@@ -5,6 +5,7 @@ import {
   NARROW_PANE_WIDTH,
   paneFrameModel,
   type PaneFrameAgent,
+  type PaneFrameClock,
   type PaneFrameModel,
   type PaneFrameSession,
 } from './pane-frame.js';
@@ -95,10 +96,11 @@ export interface PaneFrameChromeProps {
 }
 
 /**
- * The chrome around one terminal, as MARKUP: the badge, a capsule inside the
- * top-right corner, the model · effort readout, the ghost verbs under the
- * pointer, and the context capsule inside the bottom-right corner, its grey
- * meter beside its figure. The line and the
+ * The chrome around one terminal, as MARKUP, all of it in the top band: at the
+ * left the model · effort readout, the context ring with its figure right
+ * after it, and the session's running time; then the ghost verbs under the
+ * pointer, and the badge, a capsule inside the top-right corner. Nothing is
+ * drawn at the pane's foot. The line and the
  * glow are the frame's own `::before`; the selected pane's radius is CSS on
  * Ghosttea's own pane element (both in `styles/deck-frame.css`). Pure over its
  * props so a host's static tests and
@@ -137,17 +139,48 @@ export function PaneFrameChrome({
   return (
     <div className={className} style={style} data-vf-pane-frame={sessionId}>
       <span className="vf-pane-top">
-        {model.readout ? (
-          <span
-            className="vf-pane-readout"
-            title={`${model.readout.model}${model.readout.effort ? ` · ${model.readout.effort}` : ''}`}
-          >
-            {model.readout.model}
-            {model.readout.effort ? (
-              <>
-                {' · '}
-                {model.readout.configured ? <em>{model.readout.effort}</em> : model.readout.effort}
-              </>
+        {model.readout || model.context || model.clock ? (
+          <span className="vf-pane-facts">
+            {model.readout ? (
+              <span
+                className="vf-pane-readout"
+                title={`${model.readout.model}${model.readout.effort ? ` · ${model.readout.effort}` : ''}`}
+              >
+                {model.readout.model}
+                {model.readout.effort ? (
+                  <>
+                    {' · '}
+                    {model.readout.configured ? <em>{model.readout.effort}</em> : model.readout.effort}
+                  </>
+                ) : null}
+              </span>
+            ) : null}
+            {model.context ? (
+              <span
+                className={`vf-pane-context${model.context.hot ? ' is-hot' : ''}`}
+                title={`Context window ${model.context.percent}% used`}
+              >
+                <svg className="vf-pane-ring" viewBox="0 0 12 12" aria-hidden="true">
+                  <circle className="vf-pane-ring-track" cx="6" cy="6" r="5" />
+                  <circle
+                    className="vf-pane-ring-arc"
+                    cx="6"
+                    cy="6"
+                    r="5"
+                    pathLength={100}
+                    style={{ strokeDasharray: `${model.context.percent} 100` }}
+                  />
+                </svg>
+                <span className="vf-pane-figure">{model.context.percent}%</span>
+              </span>
+            ) : null}
+            {model.clock ? (
+              <span
+                className={`vf-pane-clock${model.clock.running ? '' : ' is-stopped'}`}
+                title={`${model.clock.running ? 'Running for' : 'Ran for'} ${model.clock.text}`}
+              >
+                {model.clock.text}
+              </span>
             ) : null}
           </span>
         ) : null}
@@ -224,23 +257,6 @@ export function PaneFrameChrome({
           </span>
         </span>
       </span>
-      {model.context ? (
-        <span className="vf-pane-bottom">
-          <span className="vf-pane-context">
-            <i
-              className={`vf-pane-meter${model.context.hot ? ' is-hot' : ''}`}
-              style={{ '--ctx': model.context.percent / 100 } as CSSProperties}
-              aria-hidden="true"
-            />
-            <span
-              className={`vf-pane-figure${model.context.hot ? ' is-hot' : ''}`}
-              title={`Context window ${model.context.percent}% used`}
-            >
-              {model.context.percent}%
-            </span>
-          </span>
-        </span>
-      ) : null}
     </div>
   );
 }
@@ -256,6 +272,8 @@ export interface PaneFrameProps {
   color?: string | undefined;
   /** The host's remembered folder for a session with no cwd yet (see `PaneFrameInput`). */
   fallbackCwd?: string | undefined;
+  /** The session's running time as the host keeps it (see `PaneFrameClock`); absent: the band says none. */
+  clock?: PaneFrameClock | undefined;
   zoomed: boolean;
   nowMs: number;
   verbs: PaneFrameVerbs;
@@ -267,12 +285,24 @@ export interface PaneFrameProps {
  * attribute on the pane so its own padding can tighten (the chrome reads the
  * width through container queries).
  */
-export function PaneFrame({ pane, session, agent, remote, color, fallbackCwd, zoomed, nowMs, verbs }: PaneFrameProps) {
+export function PaneFrame({
+  pane,
+  session,
+  agent,
+  remote,
+  color,
+  fallbackCwd,
+  clock,
+  zoomed,
+  nowMs,
+  verbs,
+}: PaneFrameProps) {
   const model = paneFrameModel({
     session,
     ...(agent ? { agent } : {}),
     ...(remote ? { remoteDevice: remote } : {}),
     ...(fallbackCwd ? { fallbackCwd } : {}),
+    ...(clock ? { clock } : {}),
     nowMs,
   });
   const status = agent?.status;

@@ -86,7 +86,7 @@ import {
 import { AppPaneFrame, useAppPaneFrameVerbs } from './deck/pane-frame-host.js';
 import { AppDeckLaunchers, recordBornShell, usePaneSessionUsed } from './deck/launcher-host.js';
 import { launcherSessionUsed } from './deck/launcher-fresh.js';
-import { paneFallbackCwds, paneFrameAgents } from './deck/pane-frame.js';
+import { paneClocks, paneFallbackCwds, paneFrameAgents } from './deck/pane-frame.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
 import { useWorkspaceSettings } from './deck/workspace-settings.js';
 import '@vibecook/ghosttea-react/styles.css';
@@ -480,6 +480,7 @@ function Godview() {
   // The frame's facts, keyed like the rows (PU-14: the frame is the package's).
   const frameAgentsBySession = useMemo(() => paneFrameAgents(agentsBySession), [agentsBySession]);
   const frameFallbackCwds = useMemo(() => paneFallbackCwds(agentsBySession), [agentsBySession]);
+  const frameClocks = useMemo(() => paneClocks(workspace?.panes ?? []), [workspace?.panes]);
   const activeAgent = agents.find((agent) => agent.active);
   // Retry keys (M176 item 1): the facts a chrome piece renders, held as one value, since the hooks that read them hand
   // back a fresh object each render. The deck's two pieces: the panes Ghosttea lays out and the rows they show. The
@@ -704,7 +705,7 @@ function Godview() {
     '--vf-monitor-stage-height': `${stageParameters[STAGE_HEIGHT_KEY] ?? 35}%`,
     '--vf-terminal-safe-top': `${stageParameters[SAFE_AREA_TOP_KEY] ?? 34}px`,
     '--vf-terminal-safe-right': `${stageParameters[SAFE_AREA_RIGHT_KEY] ?? 28}px`,
-    '--vf-terminal-safe-bottom': `${stageParameters[SAFE_AREA_BOTTOM_KEY] ?? 30}px`,
+    '--vf-terminal-safe-bottom': `${stageParameters[SAFE_AREA_BOTTOM_KEY] ?? 8}px`,
     '--vf-terminal-safe-left': `${stageParameters[SAFE_AREA_LEFT_KEY] ?? 30}px`,
     '--vf-scanline-density': `${stageParameters[SCANLINE_DENSITY_KEY] ?? 2}px`,
     '--vf-scanline-opacity': stageParameters[SCANLINE_OPACITY_KEY] ?? 0.4,
@@ -908,6 +909,7 @@ function Godview() {
             agentsBySession={frameAgentsBySession}
             paneColors={paneColors}
             fallbackCwdBySession={frameFallbackCwds}
+            clocksBySession={frameClocks}
             verbs={frameVerbs}
             frame={AppPaneFrame}
             zoomedPaneId={zoomedPaneId}

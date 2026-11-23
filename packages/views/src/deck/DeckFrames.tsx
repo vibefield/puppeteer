@@ -1,7 +1,10 @@
 import { useEffect, useState, type ComponentType, type RefObject } from 'react';
 import { GHOSTTEA_PANE_SELECTOR, usePaneElements } from './pane-elements.js';
 import { PaneFrame, type PaneFrameVerbs } from './PaneFrame.js';
-import type { PaneFrameAgent, PaneFrameSession } from './pane-frame.js';
+import type { PaneFrameAgent, PaneFrameClock, PaneFrameSession } from './pane-frame.js';
+
+/** How often the frames read the clock while a session's running time is the only thing moving: it says minutes. */
+export const RUN_CLOCK_TICK_MS = 10_000;
 
 /** A pane Ghosttea has laid out: its id and the session it shows. */
 export interface DeckFramePane {
@@ -19,6 +22,8 @@ export interface DeckFrameSlotProps {
   color?: string | undefined;
   /** The host's remembered folder for the pane's session when its summary has no cwd. */
   fallbackCwd?: string | undefined;
+  /** The session's running time as the host keeps it. */
+  clock?: PaneFrameClock | undefined;
   zoomed: boolean;
   nowMs: number;
   verbs: PaneFrameVerbs;
@@ -37,6 +42,11 @@ export interface DeckFramesProps {
    * one from the parent pane at a split).
    */
   fallbackCwdBySession?: ReadonlyMap<string, string> | undefined;
+  /**
+   * How long each session has run, per SESSION id, as the host keeps it (see `PaneFrameClock`): the band says it after
+   * the readout. A session with no entry says none.
+   */
+  clocksBySession?: ReadonlyMap<string, PaneFrameClock> | undefined;
   verbs: PaneFrameVerbs;
   /**
    * The frame per pane; `PaneFrame` by default. A host whose facts need hooks
@@ -82,6 +92,7 @@ export function DeckFrames({
   agentsBySession,
   paneColors,
   fallbackCwdBySession,
+  clocksBySession,
   verbs,
   frame: Frame = DefaultFrame,
   paneSelector = GHOSTTEA_PANE_SELECTOR,
@@ -93,14 +104,17 @@ export function DeckFrames({
   const elements = usePaneElements(deckRef, paneSelector, panes, DECK_FRAMED_CLASS);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
-  // The stop verb carries the turn's time, so the clock ticks while a mounted agent works.
+  // The stop verb carries the turn's time, so the clock ticks each second while a mounted agent works. A session's
+  // running time says minutes, so while it is all that moves the clock is read a few times a minute.
   const working = panes.some((pane) => agentsBySession.get(pane.session.id)?.status === 'working');
+  const running = panes.some((pane) => clocksBySession?.get(pane.session.id)?.at !== undefined);
+  const tickMs = working ? 1_000 : running ? RUN_CLOCK_TICK_MS : undefined;
   useEffect(() => {
-    if (!working) return;
+    if (tickMs === undefined) return;
     setNowMs(Date.now());
-    const timer = window.setInterval(() => setNowMs(Date.now()), 1_000);
+    const timer = window.setInterval(() => setNowMs(Date.now()), tickMs);
     return () => window.clearInterval(timer);
-  }, [working]);
+  }, [tickMs]);
 
   return (
     <>
@@ -110,6 +124,7 @@ export function DeckFrames({
         const agent = agentsBySession.get(pane.session.id);
         const color = paneColors.get(pane.id);
         const fallbackCwd = fallbackCwdBySession?.get(pane.session.id);
+        const clock = clocksBySession?.get(pane.session.id);
         return (
           <Frame
             key={pane.id}
@@ -119,6 +134,7 @@ export function DeckFrames({
             {...(agent ? { agent } : {})}
             {...(color ? { color } : {})}
             {...(fallbackCwd ? { fallbackCwd } : {})}
+            {...(clock ? { clock } : {})}
             zoomed={(zoomedPaneId === undefined ? elements.zoomedPaneId : (zoomedPaneId ?? undefined)) === pane.id}
             nowMs={nowMs}
             verbs={verbs}

@@ -9,11 +9,13 @@
    selected pane (in the ink for a bare shell), and only that pane rounds its
    corners. The name is a badge, a capsule 4px inside the top-right corner; the
    model and effort are a quiet readout at the top-left; the context share is a
-   second capsule 4px inside the bottom-right corner, a short grey meter beside
-   its figure; the verbs appear only under the pointer. (Until 2026-11-21 the
-   badge grew out of the top edge and the meter ran the whole bottom edge:
-   square blocks that a rounded pane's corners cut, on a ground a host may draw
-   as glass.) The pane
+   small ring with its figure right after the readout, and the session's
+   running time follows it; the verbs appear only under the pointer. Nothing is
+   drawn at the pane's foot. (Until 2026-11-21 the badge grew out of the top
+   edge and the meter ran the whole bottom edge: square blocks that a rounded
+   pane's corners cut, on a ground a host may draw as glass. From then until
+   2026-11-23 the share was a capsule inside the bottom-right corner, a 44 x 4
+   grey meter beside its figure, in a 30px band of its own.) The pane
    colour is the project colour of the agent mounted in it (record §02), and a
    pane showing a bare shell has none. Every other colour here is mixed from
    the terminal's own ink, which the HOST sets as `--vf-godview-terminal-ink`
@@ -32,7 +34,7 @@
    (set by Ghosttea on the pane — the project colour), `--vf-green` (the resume
    verb, per the record's Spec: green after an exit — drawn in ink if absent),
    and `--vf-terminal-safe-{top,right,bottom,left}` (the tunables; the bands
-   24 · 0 · 30 · 0 as fallbacks). Two more are optional, for a host whose pane
+   24 · 0 · 8 · 0 as fallbacks). Two more are optional, for a host whose pane
    colours are too light for a white label: `--vf-pane-badge-ink` (the selected
    badge's label; white if absent) and `--vf-pane-badge-shade` (how far the
    selected badge's fill is mixed toward black; 0% if absent). */
@@ -41,16 +43,18 @@
 
 /* Ghosttea sizes its grid from the pane's content box and keeps a 2px origin
    inside the surface, so the inset is padding here. The bands, revised
-   2026-09-12: nothing at the sides, 24px above for the badge and the readout,
-   30px below for the meter and its figure, so the grid lands at
-   26 · 2 · 32 · 2 (top · right · bottom · left) and only the top and bottom
-   chrome ever meets a TUI's edge. Each side is a tunable in the system control
-   panel (monitor/stage-parameters.ts), fed in as a variable; the fallbacks are
-   the bands, and a test keeps the two in step. Under 220px the sides tighten
-   to 16px and 14px, or to the tuned inset when that is tighter still. The two
-   capsules stand inside these bands, so no row of the grid is under either. */
+   2026-09-12: nothing at the sides, 24px above for the badge and the readout.
+   Below, 8px since 2026-11-23 (30px while the context capsule stood there):
+   the selected pane's own corner radius, so its last row clears the rounded
+   corners and the line. The grid lands at 26 · 2 · 10 · 2 (top · right ·
+   bottom · left) and only the top chrome ever meets a TUI's edge. Each side is
+   a tunable in the system control panel (monitor/stage-parameters.ts), fed in
+   as a variable; the fallbacks are the bands, and a test keeps the two in
+   step. Under 220px the sides tighten to 16px and 14px, or to the tuned inset
+   when that is tighter still. The top row stands inside its band, so no row of
+   the grid is under it. */
 .vf-deck-framed .ghostty-pane {
-  padding: var(--vf-terminal-safe-top, 24px) var(--vf-terminal-safe-right, 0px) var(--vf-terminal-safe-bottom, 30px)
+  padding: var(--vf-terminal-safe-top, 24px) var(--vf-terminal-safe-right, 0px) var(--vf-terminal-safe-bottom, 8px)
     var(--vf-terminal-safe-left, 0px);
   transition:
     border-radius 240ms ease,
@@ -62,8 +66,8 @@
   padding-left: min(var(--vf-terminal-safe-left, 0px), 14px);
 }
 
-/* Only the selected pane rounds; the line, the glow, the badge and the
-   meter's ends follow because the pane clips its own box. */
+/* Only the selected pane rounds; the line, the glow and the badge follow
+   because the pane clips its own box. */
 .vf-deck-framed .ghostty-pane.is-active {
   border-radius: 8px;
 }
@@ -147,7 +151,8 @@
 }
 
 /* one row inside the top band, 4px in from the top and the right, so nothing in
-   it meets the pane's edge or its corner: readout · verbs · badge */
+   it meets the pane's edge or its corner: readout · ring · clock, then verbs ·
+   badge */
 .vf-pane-top {
   position: absolute;
   top: 4px;
@@ -160,12 +165,25 @@
   height: 18px;
 }
 
-/* the readout: model · effort, lowercase, at the top-left; shrinks before the
-   badge. Its ink is 70% (50% until 2026-11-21, about 3:1 on a light ground). */
-.vf-pane-readout {
+/* what the band says of the session, at the top-left, 11px in: the readout,
+   the context ring, the running time. The group shrinks before the badge, and
+   inside it the readout gives way first: the ring and the clock keep their
+   width. */
+.vf-pane-facts {
+  display: flex;
   flex: 0 4 auto;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
   margin: 0 auto 0 11px;
+  overflow: hidden;
+}
+
+/* the readout: model · effort, lowercase. Its ink is 70% (50% until
+   2026-11-21, about 3:1 on a light ground). */
+.vf-pane-readout {
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   color: color-mix(in srgb, var(--ink) 70%, transparent);
   font-size: 10.5px;
@@ -397,61 +415,44 @@
   content: '';
 }
 
-/* one row inside the bottom band, 4px in from the foot and the sides, the
-   context capsule at its right */
-.vf-pane-bottom {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  left: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  height: 18px;
-}
-
-/* the context capsule: the meter, then its figure, on the resting badge's own
-   tint and hairline */
+/* the context share, right after the readout: a small ring, then its figure.
+   The ring is 12 across and 2 wide (the phone card's ring at the band's own
+   size): its track the ink at 18%, its arc at 72%, from twelve o'clock and
+   clockwise with a square end. Always grey, heavier past 80%, never orange. */
 .vf-pane-context {
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: 7px;
-  height: 18px;
-  padding: 0 8px;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--ink) 7%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 9%, transparent);
+  gap: 4px;
 }
 
-/* the meter: a 44 × 4 track filled from the left to the share; always grey,
-   heavier past 80%, never orange */
-.vf-pane-meter {
-  position: relative;
+.vf-pane-ring {
   display: block;
   flex: none;
-  width: 44px;
-  height: 4px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  width: 12px;
+  height: 12px;
+  transform: rotate(-90deg);
 }
 
-.vf-pane-meter::before {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: calc(100% * var(--ctx, 0));
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--ink) 46%, transparent);
-  content: '';
-  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+.vf-pane-ring circle {
+  fill: none;
+  stroke-width: 2;
 }
 
-.vf-pane-meter.is-hot::before {
-  background: color-mix(in srgb, var(--ink) 86%, transparent);
+.vf-pane-ring-track {
+  stroke: color-mix(in srgb, var(--ink) 18%, transparent);
 }
 
-/* the figure, beside the meter */
+.vf-pane-ring-arc {
+  stroke: color-mix(in srgb, var(--ink) 72%, transparent);
+  transition: stroke-dasharray 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vf-pane-context.is-hot .vf-pane-ring-arc {
+  stroke: color-mix(in srgb, var(--ink) 90%, transparent);
+}
+
+/* the figure, beside the ring */
 .vf-pane-figure {
   color: color-mix(in srgb, var(--ink) 72%, transparent);
   font-size: 10px;
@@ -459,14 +460,31 @@
   line-height: 1;
 }
 
-.vf-pane-figure.is-hot {
+.vf-pane-context.is-hot .vf-pane-figure {
   color: var(--ink);
   font-weight: 700;
+}
+
+/* the session's running time, to the minute, in the readout's own type; a
+   stopped clock steps back */
+.vf-pane-clock {
+  flex: none;
+  color: color-mix(in srgb, var(--ink) 70%, transparent);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.vf-pane-clock.is-stopped {
+  color: color-mix(in srgb, var(--ink) 50%, transparent);
 }
 
 /* ── narrow panes: container queries on the frame, never on the window ─── */
 
 @container (max-width: 300px) {
+  .vf-pane-clock,
   .vf-deck-framed .ghostty-pane:hover .vf-pane-readout {
     display: none;
   }
@@ -474,7 +492,7 @@
 
 @container (max-width: 220px) {
   .vf-pane-readout,
-  .vf-pane-meter {
+  .vf-pane-ring {
     display: none;
   }
 
@@ -501,7 +519,7 @@
   .vf-pane-verbs,
   .vf-pane-badge,
   .vf-pane-mark,
-  .vf-pane-meter::before {
+  .vf-pane-ring-arc {
     transition: none;
   }
 

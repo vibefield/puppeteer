@@ -19,7 +19,7 @@
    - `--pane-color` — set on the launcher by `DeckLaunchers` from the host's
      pane colours; `--ghostty-pane-color` (Ghosttea's, on the pane) and then
      the ink at 70% are the fallbacks, as the frame's.
-   - `--vf-terminal-safe-top`/`-bottom` — the frame's bands (24px · 30px). */
+   - `--vf-terminal-safe-top`/`-bottom` — the frame's bands (24px · 8px). */
 
 /* The host layer covers the pane and is the width container the narrow tiers
    query (a Ghosttea pane is not a container). It takes no pointer itself. */
@@ -69,7 +69,7 @@
   display: flex;
   flex-direction: column;
   width: min(360px, calc(100% - 40px));
-  max-height: calc(100% - var(--l-top) - var(--vf-terminal-safe-bottom, 30px) - 8px);
+  max-height: calc(100% - var(--l-top) - var(--vf-terminal-safe-bottom, 8px) - 8px);
   font-size: 11px;
   line-height: 1.3;
   transform: translateX(-50%);
@@ -729,7 +729,7 @@
   --cell-origin: var(--vf-terminal-cell-origin, 2px);
   --grid-top: calc(var(--vf-terminal-safe-top, 24px) + var(--cell-origin));
   --grid-right: calc(var(--vf-terminal-safe-right, 0px) + var(--cell-origin));
-  --grid-bottom: calc(var(--vf-terminal-safe-bottom, 30px) + var(--cell-origin));
+  --grid-bottom: calc(var(--vf-terminal-safe-bottom, 8px) + var(--cell-origin));
   --grid-left: calc(var(--vf-terminal-safe-left, 0px) + var(--cell-origin));
   position: absolute;
   inset: 0;

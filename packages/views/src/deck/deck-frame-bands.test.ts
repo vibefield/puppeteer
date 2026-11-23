@@ -2,9 +2,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-// The frame's two capsule rows stand INSIDE the bands the pane's padding
-// reserves, so no row of the terminal's grid is ever under the badge or the
-// context capsule. The stylesheet is the authority; this reads it.
+// The frame's one row stands INSIDE the band the pane's padding reserves at
+// the top, so no row of the terminal's grid is ever under the badge, the
+// readout, the context ring or the clock. Nothing is drawn at the foot, whose
+// band is only the selected pane's corner. The stylesheet is the authority;
+// this reads it.
 
 const css = readFileSync(fileURLToPath(new URL('../styles/deck-frame.css', import.meta.url)), 'utf8');
 
@@ -35,17 +37,16 @@ describe('the pane frame stylesheet', () => {
     expect(px(block('.vf-pane-badge'), 'height')).toBe(px(row, 'height'));
   });
 
-  it('keeps the context capsule inside the bottom band, clear of the edge', () => {
-    const row = block('.vf-pane-bottom');
-    expect(px(row, 'bottom')).toBeGreaterThan(0);
-    expect(px(row, 'right')).toBeGreaterThan(0);
-    expect(px(row, 'bottom') + px(row, 'height')).toBeLessThanOrEqual(band('bottom'));
-    expect(px(block('.vf-pane-context'), 'height')).toBe(px(row, 'height'));
+  it('draws the context ring inside the top row, and nothing at the foot', () => {
+    const row = block('.vf-pane-top');
+    const ring = block('.vf-pane-ring');
+    expect(px(ring, 'height')).toBeLessThanOrEqual(px(row, 'height'));
+    expect(px(ring, 'width')).toBe(px(ring, 'height'));
+    expect(css).not.toContain('.vf-pane-bottom');
+    expect(css).not.toContain('.vf-pane-meter');
   });
 
-  it("draws the meter as a short track inside the capsule, never the pane's whole edge", () => {
-    const meter = block('.vf-pane-meter');
-    expect(meter).toContain('position: relative');
-    expect(px(meter, 'width')).toBeLessThan(100);
+  it("keeps a foot band as deep as the selected pane's corner, so its last row clears the rounding", () => {
+    expect(band('bottom')).toBe(px(block('.vf-deck-framed .ghostty-pane.is-active'), 'border-radius'));
   });
 });

@@ -12,6 +12,7 @@ import {
 import { createAgentMonitorStore } from '../store.js';
 import {
   agentStatus,
+  carriedAmount,
   classifyTerminalStatus,
   deriveAgentRow,
   deriveTerminalRow,
@@ -28,6 +29,7 @@ import { USAGE_STEP_MS, UsageLedger, type UsageHistory } from './usage-ledger.js
 import type {
   CreateMonitorBackendOptions,
   MonitorBackend,
+  MonitorCarriedUsage,
   MonitorClock,
   MonitorHostProfileSet,
   MonitorHostRun,
@@ -164,7 +166,14 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   const observed = new Map<string, AgentMonitorState | undefined>();
   const costCache = new Map<
     string,
-    { history: UsageHistory | undefined; ratePerMin: number | undefined; cost: MonitorCost | undefined }
+    {
+      history: UsageHistory | undefined;
+      ratePerMin: number | undefined;
+      carriedUsd: number | undefined;
+      carriedCoverage: 'complete' | 'partial' | undefined;
+      unpriced: boolean;
+      cost: MonitorCost | undefined;
+    }
   >();
   let entries = new Map<string, RowEntry>();
   /** Unread (L5): the fold, and what each screen reports it shows in its active pane. */
@@ -186,24 +195,49 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   let cancelStep: (() => void) | undefined;
   let disposed = false;
 
-  /** The row's cost from the ledger's history and core's live rate; the same object while neither moved. */
+  /**
+   * The row's cost from the ledger's history and core's live rate, on top of what the host carried from the session's
+   * earlier runs (`MonitorHostRun.carried`); the same object while none of them moved. The carried total is priced
+   * work: with it the row has a cost before the run has priced anything of its own (its series then reads nothing
+   * spent in the window), and work the run could not price (`unpriced`) makes the whole a floor.
+   */
   const costOf = (
     runtimeRunId: string,
     history: UsageHistory | undefined,
     ratePerMin: number | undefined,
+    carried: MonitorCarriedUsage | undefined,
+    unpriced: boolean,
   ): MonitorCost | undefined => {
+    const carriedUsd = carriedAmount(carried?.usd);
+    const carriedCoverage = carriedUsd === undefined ? undefined : (carried?.coverage ?? 'complete');
     const cached = costCache.get(runtimeRunId);
-    if (cached && cached.history === history && cached.ratePerMin === ratePerMin) return cached.cost;
+    if (
+      cached &&
+      cached.history === history &&
+      cached.ratePerMin === ratePerMin &&
+      cached.carriedUsd === carriedUsd &&
+      cached.carriedCoverage === carriedCoverage &&
+      cached.unpriced === unpriced
+    )
+      return cached.cost;
+    const own = history?.total;
     const cost =
-      history?.total === undefined
+      own === undefined && carriedUsd === undefined
         ? undefined
         : freezeTree({
-            usd: history.total,
-            coverage: history.coverage,
+            usd: (own ?? 0) + (carriedUsd ?? 0),
+            coverage:
+              carriedCoverage === undefined
+                ? (history?.coverage ?? 'unavailable')
+                : carriedCoverage === 'partial' || (own === undefined ? unpriced : history?.coverage !== 'complete')
+                  ? 'partial'
+                  : 'complete',
             ...(ratePerMin === undefined ? {} : { burnPerHour: ratePerMin * 60 }),
-            series: { stepMs: history.stepMs, steps: history.steps, lastStepAt: history.lastStepAt },
+            ...(history === undefined
+              ? {}
+              : { series: { stepMs: history.stepMs, steps: history.steps, lastStepAt: history.lastStepAt } }),
           });
-    costCache.set(runtimeRunId, { history, ratePerMin, cost });
+    costCache.set(runtimeRunId, { history, ratePerMin, carriedUsd, carriedCoverage, unpriced, cost });
     return cost;
   };
 
@@ -432,7 +466,13 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
         seq,
         profileSet: resolveProfileSet(agent.host, sets),
         stale: isStale(agent.host, agent.state, nowMs, staleAfterMs),
-        cost: costOf(runtimeRunId, ledger.history(runtimeRunId), agent.state?.usage.costRatePerMin),
+        cost: costOf(
+          runtimeRunId,
+          ledger.history(runtimeRunId),
+          agent.state?.usage.costRatePerMin,
+          agent.host.carried,
+          (agent.state?.usage.cumulativeTokens ?? 0) > 0,
+        ),
         unread: unread.unreadIds.has(agent.id),
       };
       const previous = entries.get(agent.id);

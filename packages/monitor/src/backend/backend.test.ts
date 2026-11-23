@@ -450,6 +450,85 @@ describe('cost', () => {
     expect(t.rows()[0]?.cost).toMatchObject({ usd: 0.25, coverage: 'partial' });
   });
 
+  it("adds the run's own cost and tokens to what its host carried from the session's earlier runs", async () => {
+    const t = testBackend({
+      facts: facts({ runs: [hostRun({ carried: { usd: 10, tokens: 2_000_000 } })] }),
+      states: [priced({ usage: { ...priced().usage, cumulativeTokens: 500 } })],
+    });
+    await t.backend.ready;
+    const [row] = t.rows();
+    // the total is the session's; the rate and the series are the run's alone
+    expect(row?.cost).toEqual({
+      usd: 11.25,
+      coverage: 'complete',
+      burnPerHour: 6,
+      series: { stepMs: 30_000, steps: [...new Array<number>(18).fill(0), 0.75, 0.5], lastStepAt: T0 },
+    });
+    expect(row?.tokens).toEqual({ total: 2_000_500 });
+    // the host's figure moves (a later reading of its own record): the row follows
+    t.host.update({ runs: [hostRun({ carried: { usd: 12, tokens: 2_000_000 } })] });
+    expect(t.rows()[0]?.cost?.usd).toBe(13.25);
+  });
+
+  it('has the carried cost before the run has priced anything, with nothing spent in the window', async () => {
+    const t = testBackend({
+      facts: facts({ runs: [hostRun({ carried: { usd: 4.5, tokens: 900 } })] }),
+      states: [monitorState()],
+    });
+    await t.backend.ready;
+    expect(t.rows()[0]?.cost).toEqual({
+      usd: 4.5,
+      coverage: 'complete',
+      series: { stepMs: 30_000, steps: new Array<number>(20).fill(0), lastStepAt: T0 },
+    });
+    expect(t.rows()[0]?.tokens).toEqual({ total: 900 });
+    // a run that has reported no state yet has the carried figures and no series
+    const unobserved = testBackend({ facts: facts({ runs: [hostRun({ carried: { usd: 4.5, tokens: 900 } })] }) });
+    await unobserved.backend.ready;
+    expect(unobserved.rows()[0]?.cost).toEqual({ usd: 4.5, coverage: 'complete' });
+    expect(unobserved.rows()[0]?.tokens).toEqual({ total: 900 });
+  });
+
+  it('says a floor when any of the session went unpriced: before this run, or in it', async () => {
+    const carriedPartial = testBackend({
+      facts: facts({ runs: [hostRun({ carried: { usd: 3, coverage: 'partial' } })] }),
+      states: [priced()],
+    });
+    await carriedPartial.backend.ready;
+    expect(carriedPartial.rows()[0]?.cost).toMatchObject({ usd: 4.25, coverage: 'partial' });
+
+    const ownPartial = testBackend({
+      facts: facts({ runs: [hostRun({ carried: { usd: 3 } })] }),
+      states: [priced({ usage: { samples: [], costUsd: 0.25, costCoverage: 'partial', costHistory: [] } })],
+    });
+    await ownPartial.backend.ready;
+    expect(ownPartial.rows()[0]?.cost).toMatchObject({ usd: 3.25, coverage: 'partial' });
+
+    // the run has used tokens no price reached: the carried total stands, as a floor
+    const ownUnpriced = testBackend({
+      facts: facts({ runs: [hostRun({ carried: { usd: 3 } })] }),
+      states: [monitorState({ usage: { samples: [], cumulativeTokens: 500 } })],
+    });
+    await ownUnpriced.backend.ready;
+    expect(ownUnpriced.rows()[0]?.cost).toMatchObject({ usd: 3, coverage: 'partial' });
+  });
+
+  it('carries nothing from a figure that is no amount', async () => {
+    const t = testBackend({
+      facts: facts({ runs: [hostRun({ carried: { usd: Number.NaN, tokens: -5 } })] }),
+      states: [priced({ usage: { ...priced().usage, cumulativeTokens: 500 } })],
+    });
+    await t.backend.ready;
+    expect(t.rows()[0]?.cost?.usd).toBe(1.25);
+    expect(t.rows()[0]?.tokens).toEqual({ total: 500 });
+    const bare = testBackend({
+      facts: facts({ runs: [hostRun({ carried: { usd: Number.POSITIVE_INFINITY } })] }),
+      states: [monitorState()],
+    });
+    await bare.backend.ready;
+    expect(bare.rows()[0]?.cost).toBeUndefined();
+  });
+
   it('forgets the ledger with the run', async () => {
     const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [priced()] });
     await t.backend.ready;
