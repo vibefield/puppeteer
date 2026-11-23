@@ -526,6 +526,40 @@ every set at once (so it can say where else an account is used) and answers, per
   the two ("Claude Max"; a label that already names the product, such as "SuperGrok Heavy", stands alone; the product
   alone when no plan was reported). Never select behaviour on them.
 
+### Identity freshness (2026-11-23)
+
+A profile's identity is a reading, and until this date it was taken at two moments: when a login pane closed, and
+when a host asked (`verifyProfile`). The account moves without either. A plan is upgraded or lapses, an organisation
+changes, a sign-in is replaced in the agent's own app. Usage, polled beside it, stayed current, so a view drew
+today's meters under the plan the account was on when it signed in. Found in a host on 2026-11-23: six Claude Code
+sign-ins whose recorded readings were three to seven days old, two of them naming a plan the agent's own
+`claude auth status --json` no longer reported and four holding no tier, read before the tier was.
+
+Runtime's `createProfileIdentityMonitor` (`services/profile-identity-monitor.ts`) keeps the readings true. It is
+host-composed, as the usage monitor is: the host gives it the sign-ins to keep read (`listProfiles`) and the read
+itself (`verify`, the runtime's `verifyProfile`, which records what it reads and so announces it through
+`onProfilesChanged`).
+
+- **A reading holds for an hour** (`PROFILE_IDENTITY_REFRESH_MS`, a host may set `refreshMs`). Its age is the
+  registry's own stamp, `identity.verifiedAt`, never a clock of the monitor's: a host that restarts reads nothing it
+  read within the hour, and a sign-in another path has just read waits the whole interval from that reading. A
+  sign-in with no reading is read at once; a retired one never is.
+- **A host asks** with `refresh({ force, profileIds })`: a person pressing Refresh on an account reads it now,
+  whatever its age, at most once in 30 seconds.
+- **Reads are bounded**: two at a time by default, since a read may start the agent's own process (Claude Code's
+  status command, Grok's ACP agent, Hermes's short run).
+- **A failure that may pass** is retried after a minute, doubling up to the interval; one that will not pass (no
+  status surface) waits the interval like a reading.
+
+When a reading can change is the agent's fact, which is why the cadence is here and not in each host. Measured for
+Claude Code on 2026-11-23: its status command reported the account's present plan under a root whose sign-in was a
+week old and had not been repeated, so a read alone is enough. What refreshes the agent's own knowledge was not
+isolated (its access token is renewed about every eight hours, by its own start; see `account-renewal.ts`); a plan
+changed minutes ago may read as the old one until then. No other agent was measured.
+
+Not built: an interval an adapter declares for itself, and a read asked for by an account-usage reading (a renewed
+sign-in, a set of meters that changed). The hour covers both at the cost of a delay.
+
 ### Installs (2026-10-29)
 
 A host that offers agents a person does not have yet — VibeField's Get — needs the vendor's own first install, run
