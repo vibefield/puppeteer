@@ -85,7 +85,10 @@ export interface MonitorReply {
 export type CostCoverage = 'complete' | 'partial' | 'unavailable';
 
 export interface MonitorCost {
-  /** Estimated API-equivalent USD for observed work, never an invoice. */
+  /**
+   * Estimated API-equivalent USD for observed work, never an invoice: the run's own, on top of what its host carried
+   * from the session's earlier runs where the host keeps that.
+   */
   readonly usd: number;
   readonly coverage: CostCoverage;
   /** USD an hour, at the backend's current burn. */
@@ -95,6 +98,7 @@ export interface MonitorCost {
 }
 
 export interface MonitorTokens {
+  /** The run's own tokens, on top of what its host carried from the session's earlier runs. */
   readonly total?: number | undefined;
   readonly perMinute?: number | undefined;
 }

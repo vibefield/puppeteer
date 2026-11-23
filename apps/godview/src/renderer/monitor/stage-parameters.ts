@@ -14,8 +14,9 @@ import type { MonitorParameterGroup } from '@vibefield/puppeteer-views';
  * The terminal safe area is the deck's, not a view's: the inset, per side,
  * between a pane's edge and the terminal grid inside it (record §07). The
  * defaults are the frame's bands as revised 2026-09-12: the sides closed, a
- * 24px band above for the badge and the readout, 30px below for the meter and
- * its figure. The deck stylesheet carries the same numbers as its fallbacks;
+ * 24px band above for the badge and the readout, and 8px below since 2026-11-23,
+ * when the context share left the foot for the top band (30px until then, for
+ * the meter and its figure). The deck stylesheet carries the same numbers as its fallbacks;
  * Ghosttea keeps a 2px origin of its own inside whatever inset is set.
  */
 export const STAGE_PARAMETER_GROUPS: readonly MonitorParameterGroup[] = [
@@ -29,7 +30,7 @@ export const STAGE_PARAMETER_GROUPS: readonly MonitorParameterGroup[] = [
       { key: 'safeAreaLeft', label: 'Left', min: 0, max: 120, step: 1, defaultValue: 0 },
       { key: 'safeAreaTop', label: 'Top', min: 0, max: 120, step: 1, defaultValue: 24 },
       { key: 'safeAreaRight', label: 'Right', min: 0, max: 120, step: 1, defaultValue: 0 },
-      { key: 'safeAreaBottom', label: 'Bottom', min: 0, max: 120, step: 1, defaultValue: 30 },
+      { key: 'safeAreaBottom', label: 'Bottom', min: 0, max: 120, step: 1, defaultValue: 8 },
     ],
   },
   {

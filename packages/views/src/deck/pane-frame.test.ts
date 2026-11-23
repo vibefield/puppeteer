@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatRunTime,
   formatTurnElapsed,
   paneBadgeName,
   paneFrameModel,
@@ -111,7 +112,7 @@ describe('paneFrameModel', () => {
     ).toEqual({ kind: 'resume' });
   });
 
-  it('shows no meter while the provider cannot say, and resume once the process has ended', () => {
+  it('shows no ring while the provider cannot say, and resume once the process has ended', () => {
     expect(
       paneFrameModel({ session: session(), agent: agent({ contextPercent: undefined }), nowMs: NOW }).context,
     ).toBeUndefined();
@@ -128,7 +129,7 @@ describe('paneFrameModel', () => {
     });
   });
 
-  it('clamps the context share into the meter', () => {
+  it('clamps the context share into the ring', () => {
     expect(paneFrameModel({ session: session(), agent: agent({ contextPercent: 140 }), nowMs: NOW }).context).toEqual({
       percent: 100,
       hot: true,
@@ -137,6 +138,48 @@ describe('paneFrameModel', () => {
       percent: 0,
       hot: false,
     });
+  });
+
+  it("reads the host's clock: the time before this terminal, and its own since its birth", () => {
+    // no clock, no word
+    expect(paneFrameModel({ session: session(), nowMs: NOW }).clock).toBeUndefined();
+    // a terminal born 90 s ago, nothing before it
+    expect(paneFrameModel({ session: session(), clock: { ms: 0, at: NOW - 90_000 }, nowMs: NOW }).clock).toEqual({
+      text: '1m',
+      running: true,
+    });
+    // a resumed session: 2 h 58 m before this terminal, 3 m in it
+    expect(
+      paneFrameModel({
+        session: session(),
+        agent: agent(),
+        clock: { ms: 178 * 60_000, at: NOW - 3 * 60_000 },
+        nowMs: NOW,
+      }).clock,
+    ).toEqual({ text: '3h 01m', running: true });
+    // stopped: the whole of it, whatever the clock on the wall says
+    expect(
+      paneFrameModel({ session: session({ exited: true }), clock: { ms: 45 * 60_000 }, nowMs: NOW }).clock,
+    ).toEqual({ text: '45m', running: false });
+    // a birth the wall clock has not reached yet adds nothing
+    expect(paneFrameModel({ session: session(), clock: { ms: 60_000, at: NOW + 5_000 }, nowMs: NOW }).clock?.text).toBe(
+      '1m',
+    );
+    // a clock that names no time says none
+    expect(paneFrameModel({ session: session(), clock: { ms: Number.NaN }, nowMs: NOW }).clock).toBeUndefined();
+    expect(paneFrameModel({ session: session(), clock: { ms: -1 }, nowMs: NOW }).clock).toBeUndefined();
+    expect(paneFrameModel({ session: session(), clock: { ms: 0, at: Number.NaN }, nowMs: NOW }).clock).toBeUndefined();
+  });
+
+  it('says a running time to the minute: minutes, then hours and minutes, then days and hours', () => {
+    expect(formatRunTime(0)).toBe('0m');
+    expect(formatRunTime(59_999)).toBe('0m');
+    expect(formatRunTime(59 * 60_000 + 59_000)).toBe('59m');
+    expect(formatRunTime(60 * 60_000)).toBe('1h 00m');
+    expect(formatRunTime(23 * 3_600_000 + 59 * 60_000)).toBe('23h 59m');
+    expect(formatRunTime(24 * 3_600_000)).toBe('1d 00h');
+    expect(formatRunTime(75 * 3_600_000)).toBe('3d 03h');
+    expect(formatRunTime(-5)).toBe('0m');
   });
 
   it('names the device a remote session lives on', () => {

@@ -1,4 +1,4 @@
-import type { PaneFrameAgent } from '@vibefield/puppeteer-views';
+import type { PaneFrameAgent, PaneFrameClock } from '@vibefield/puppeteer-views';
 import type { MonitorAgent } from '../monitor/types.js';
 
 /**
@@ -57,4 +57,19 @@ export function paneFrameAgents(
     if (frame) frames.set(sessionId, frame);
   }
   return frames;
+}
+
+/**
+ * Each live session's running time, for the band: its terminal's own birth, running on. This host carries no time
+ * across a resume, and a terminal has no exit time, so an exited session says none.
+ */
+export function paneClocks(
+  panes: readonly { session: { id: string; exited: boolean; createdAtMs?: number | undefined } }[],
+): ReadonlyMap<string, PaneFrameClock> {
+  const clocks = new Map<string, PaneFrameClock>();
+  for (const { session } of panes) {
+    const at = session.createdAtMs;
+    if (!session.exited && at !== undefined && Number.isFinite(at) && at > 0) clocks.set(session.id, { ms: 0, at });
+  }
+  return clocks;
 }

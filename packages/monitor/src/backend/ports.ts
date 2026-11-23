@@ -24,6 +24,20 @@ export interface MonitorRunSource extends AgentMonitorSource {
  * `ProjectIdentityStore` (L4); verbs leave through `MonitorCommandSink`.
  */
 
+/**
+ * What a session had used before the run that continues it, as the host kept it. The runtime counts a run's own live
+ * usage alone (a resumed session's history is replayed, never counted again), and the backend holds its totals in
+ * memory, so only a host that keeps them can say what came before: a resume in a new run, or the same run met again
+ * by a new backend.
+ */
+export interface MonitorCarriedUsage {
+  /** Estimated API-equivalent USD. */
+  readonly usd?: number | undefined;
+  /** How much of that work was priced. Absent: all of it. */
+  readonly coverage?: 'complete' | 'partial' | undefined;
+  readonly tokens?: number | undefined;
+}
+
 /** What only the host knows about one run it manages. */
 export interface MonitorHostRun {
   readonly creationId?: string | undefined;
@@ -77,6 +91,12 @@ export interface MonitorHostRun {
   readonly nativeSessionId?: string | undefined;
   /** A stop the host has in flight for this run, in its own words; the row carries it as `stop`. */
   readonly stop?: MonitorStop | undefined;
+  /**
+   * What the session had used before this run's own counting began (see `MonitorCarriedUsage`). The row's cost and
+   * token totals are this plus what the run has used since; its rate and its recent series are the run's alone.
+   * Absent: the totals are the run's own.
+   */
+  readonly carried?: MonitorCarriedUsage | undefined;
 }
 
 /** A terminal on this desktop no agent has claimed, as the host lists it. */

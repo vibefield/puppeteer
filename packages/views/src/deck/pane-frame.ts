@@ -29,6 +29,8 @@ export interface PaneFrameModel {
   readout?: { model: string; effort?: string; configured: boolean };
   /** The share of the context window in use; absent while the provider says nothing. */
   context?: { percent: number; hot: boolean };
+  /** How long the session has run, as the band says it; `running` while it runs on. Absent: the host keeps no clock. */
+  clock?: { text: string; running: boolean };
   /** Cancellation is available only while the host observes an active turn. */
   turnActive?: boolean;
   /**
@@ -91,6 +93,16 @@ export interface PaneFrameAgent {
   mark?: HostMark | undefined;
 }
 
+/**
+ * How long a session has run, as its host keeps it: `ms` as of `at` (epoch ms), running on from `at`. A host that
+ * carries a session's time across a resume hands the time before this terminal as `ms` and the terminal's birth as
+ * `at`. Absent `at`: the session has stopped, and `ms` is the whole of it. The frame keeps no time of its own.
+ */
+export interface PaneFrameClock {
+  ms: number;
+  at?: number | undefined;
+}
+
 const STOP_KEY_GLYPHS: Readonly<Record<TerminalKey, string>> = { escape: '⎋', 'ctrl-c': '⌃C' };
 
 /** A stop key as the title names it: its glyph, or a key this build has no glyph for by its own word. */
@@ -98,10 +110,10 @@ export function stopKeyLabel(key: string): string {
   return Object.hasOwn(STOP_KEY_GLYPHS, key) ? STOP_KEY_GLYPHS[key as TerminalKey] : key;
 }
 
-/** Past this share the meter and figure darken; the record keeps them grey, never orange. */
+/** Past this share the ring's arc and its figure darken; the record keeps them grey, never orange. */
 export const CONTEXT_HOT_PERCENT = 80;
 
-/** Below this width the readout hides and the stop verb keeps only its square; the pane's sides tighten. */
+/** Below this width the readout, the ring and the clock hide and the stop verb keeps only its square; the pane's sides tighten. */
 export const NARROW_PANE_WIDTH = 220;
 
 export interface PaneFrameInput {
@@ -115,6 +127,8 @@ export interface PaneFrameInput {
   fallbackCwd?: string | undefined;
   /** The device name a remote session lives on; absent for a local session. */
   remoteDevice?: string | undefined;
+  /** The session's running time (see `PaneFrameClock`); absent: the band says none. */
+  clock?: PaneFrameClock | undefined;
   nowMs: number;
 }
 
@@ -126,12 +140,39 @@ export function formatTurnElapsed(elapsedMs: number): string {
   return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`;
 }
 
+/**
+ * A session's running time as the band says it, to the minute: minutes under an hour, then hours and minutes, then
+ * days and hours. It is a clock a glance reads, so it carries no seconds and moves once a minute.
+ */
+export function formatRunTime(ranMs: number): string {
+  const minutes = Math.max(0, Math.floor(ranMs / 60_000));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ${String(minutes % 60).padStart(2, '0')}m`;
+  return `${Math.floor(hours / 24)}d ${String(hours % 24).padStart(2, '0')}h`;
+}
+
+/** The time a clock reads at `nowMs`; undefined for a clock that names no finite time. */
+export function clockRanMs(clock: PaneFrameClock, nowMs: number): number | undefined {
+  if (!Number.isFinite(clock.ms) || clock.ms < 0) return undefined;
+  if (clock.at === undefined) return clock.ms;
+  if (!Number.isFinite(clock.at)) return undefined;
+  return clock.ms + Math.max(0, nowMs - clock.at);
+}
+
 /** A pane's folder: a basename, by the project, then the session's own directory. Terminal titles are deliberately ignored. */
 export function paneBadgeName(session: PaneFrameSession, agent?: PaneFrameAgent, fallbackCwd?: string): string {
   return folderName(agent?.project || session.cwd || agent?.cwd || fallbackCwd, 'terminal');
 }
 
-export function paneFrameModel({ session, agent, remoteDevice, fallbackCwd, nowMs }: PaneFrameInput): PaneFrameModel {
+export function paneFrameModel({
+  session,
+  agent,
+  remoteDevice,
+  fallbackCwd,
+  clock,
+  nowMs,
+}: PaneFrameInput): PaneFrameModel {
   const folder = paneBadgeName(session, agent, fallbackCwd);
   const title = agent?.mark?.name ? undefined : agent?.title?.trim() || undefined;
   const model: PaneFrameModel = {
@@ -139,6 +180,8 @@ export function paneFrameModel({ session, agent, remoteDevice, fallbackCwd, nowM
     ...(title ? { folder } : {}),
     ...(remoteDevice ? { remote: remoteDevice } : {}),
   };
+  const ranMs = clock ? clockRanMs(clock, nowMs) : undefined;
+  if (ranMs !== undefined) model.clock = { text: formatRunTime(ranMs), running: clock?.at !== undefined };
   if (!agent) return model;
   if (agent.mark?.provider !== 'hidden') model.providerId = agent.providerId;
   if (agent.mark?.lead) model.lead = agent.mark.lead;
