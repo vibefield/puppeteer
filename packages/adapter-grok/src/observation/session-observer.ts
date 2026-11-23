@@ -26,6 +26,8 @@ interface GrokSummary {
   cwd?: unknown;
   current_model_id?: unknown;
   currentModelId?: unknown;
+  /** The session's title: the one Grok wrote for it, or the one a person's `/rename` gave it. Absent while it has none. */
+  generated_title?: unknown;
   [key: string]: unknown;
 }
 
@@ -74,6 +76,8 @@ export function createGrokSessionObserver(
   let lastCompactionCount: number | undefined;
   let lastEnvironment: string | undefined;
   let lastModelId: string | undefined;
+  /** The title last read from summary.json: null is none, and undefined is no read yet. */
+  let lastTitle: string | null | undefined;
   /** Each JSON file's key at its last successful parse, so a partial in-place rewrite is read again. */
   let parsedSignalsKey: string | undefined;
   let parsedSummaryKey: string | undefined;
@@ -369,6 +373,27 @@ export function createGrokSessionObserver(
       const summary = JSON.parse(await readFile(summaryPath, 'utf8')) as GrokSummary;
       parsedSummaryKey = key;
       lastActivityAt = Date.now();
+      // The title is the session's state, not a happening, and Grok keeps it here alone: a `/rename` writes no update
+      // record. The first read says the title the session has, and a later read says a new one, or none after
+      // `/rename --auto` until Grok writes another. It is as of the read, so it is never a replay.
+      const title =
+        typeof summary.generated_title === 'string' && summary.generated_title.trim() !== ''
+          ? summary.generated_title.trim()
+          : null;
+      if (title !== lastTitle) {
+        const said = lastTitle !== undefined || title !== null;
+        lastTitle = title;
+        if (said) {
+          emit({
+            event: { type: 'session:title-updated', title },
+            timestamp: new Date().toISOString(),
+            phase: 'live',
+            source: 'native-log',
+            confidence: 'authoritative',
+            nativeEvent: { code: 'grok-summary-title' },
+          });
+        }
+      }
       const currentCwd =
         typeof summary.info?.cwd === 'string'
           ? summary.info.cwd

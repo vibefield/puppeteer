@@ -276,6 +276,25 @@ A repeated request for a still-pending tool call now resolves the superseded one
 publishing the repeat: both carry the toolCallId as `requestId`, and the previous order removed the
 repeat from Agent state while Grok still waited for it.
 
+## Session title (probe, 1.0.92, 2026-11-23)
+
+Read from the exact native TUI in the adapter's isolated live rig (loopback model, throwaway `GROK_HOME`), never
+from a person's own session. A session's title is in its `summary.json` alone:
+
+- Before the first prompt, `summary.json` has no `generated_title`, and `session_summary` is empty.
+- At the first prompt Grok asks its title model for one: a streamed `/v1/responses` request with a forced
+  function call, `tool_choice: { type: "function", name: "session_title" }`, whose argument `session_title` is the
+  title. The answer lands as `generated_title`, and `session_summary` says the same words. A plain message in answer
+  is not read: Grok then writes the prompt's own text as both.
+- `/rename <title>` in the TUI writes `generated_title: <title>` and `title_is_manual: true`.
+- `/rename --auto` removes `generated_title` and `title_is_manual` and empties `session_summary`. In the rig no new
+  title followed before the next prompt.
+- None of the three appends a record to `updates.jsonl`. No rename reaches the durable update stream, so the
+  adapter reads the title where Grok keeps it, on the summary's own poll.
+
+These observations promote no Surface baseline and no platform support claim. The adapter's
+`session-title.live.test.ts` holds them under `GROK_LIVE=1`.
+
 ## Privacy
 
 The previous `sanitize-captures.mjs`/`privacy.mjs` passed their own gate while leaking several kinds of
