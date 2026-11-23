@@ -933,4 +933,105 @@ describe('createGrokSessionObserver', () => {
       },
     ]);
   });
+
+  /** Grok 1.0.92 keeps a session's title in summary.json alone: a `/rename` appends nothing to updates.jsonl. */
+  describe('the session title in summary.json', () => {
+    async function titledSession(summary: Record<string, unknown>) {
+      const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-title-'));
+      temporaryDirectories.push(directory);
+      const updatesPath = join(directory, 'updates.jsonl');
+      const summaryPath = join(directory, 'summary.json');
+      await writeFile(updatesPath, '');
+      await writeFile(summaryPath, JSON.stringify(summary));
+      const observer = createGrokSessionObserver(updatesPath, { pollIntervalMs: 60_000, summaryPath });
+      const titles: (string | null)[] = [];
+      const received: GrokObservedEvent[] = [];
+      observer.onEvent((observed) => {
+        received.push(observed);
+        if (observed.event.type === 'session:title-updated') titles.push(observed.event.title);
+      });
+      return {
+        observer,
+        titles,
+        received,
+        rewrite: (next: Record<string, unknown>) => writeFile(summaryPath, JSON.stringify(next)),
+      };
+    }
+
+    it('says the title a session has at the first read, live and once', async () => {
+      const { observer, titles, received } = await titledSession({
+        info: { cwd: '/repo' },
+        generated_title: 'Fix the login bug',
+      });
+      await observer.poll();
+      await observer.poll();
+      observer.stop();
+
+      expect(titles).toEqual(['Fix the login bug']);
+      const said = received.find(({ event }) => event.type === 'session:title-updated');
+      // The title is the session's state as of the read, never the log's history, and its evidence carries no words.
+      expect(said).toMatchObject({
+        phase: 'live',
+        source: 'native-log',
+        confidence: 'authoritative',
+        nativeEvent: { code: 'grok-summary-title' },
+      });
+    });
+
+    it('says a rename, then none after the title is handed back, then the next one Grok writes', async () => {
+      const { observer, titles, rewrite } = await titledSession({
+        info: { cwd: '/repo' },
+        session_summary: 'fix the login bug please',
+        generated_title: 'Fix the login bug',
+      });
+      await observer.poll();
+      // A rewrite that leaves the title as it was says nothing.
+      await rewrite({
+        info: { cwd: '/repo' },
+        session_summary: 'fix the login bug please',
+        generated_title: 'Fix the login bug',
+        num_messages: 4,
+      });
+      await observer.poll();
+      // `/rename invoices by hand`.
+      await rewrite({
+        info: { cwd: '/repo' },
+        session_summary: 'fix the login bug please',
+        generated_title: 'invoices by hand',
+        title_is_manual: true,
+      });
+      await observer.poll();
+      // `/rename --auto`: Grok drops the field and empties the summary.
+      await rewrite({ info: { cwd: '/repo' }, session_summary: '' });
+      await observer.poll();
+      await rewrite({ info: { cwd: '/repo' }, session_summary: '', generated_title: '  Login and invoices  ' });
+      await observer.poll();
+      observer.stop();
+
+      expect(titles).toEqual(['Fix the login bug', 'invoices by hand', null, 'Login and invoices']);
+    });
+
+    it('says nothing for a session that has no title, whatever its summary says', async () => {
+      const { observer, titles, rewrite } = await titledSession({
+        info: { cwd: '/repo' },
+        session_summary: 'fix the login bug please',
+      });
+      await observer.poll();
+      await rewrite({ info: { cwd: '/repo' }, session_summary: 'fix the login bug please', generated_title: '   ' });
+      await observer.poll();
+      await rewrite({ info: { cwd: '/repo' }, session_summary: 'fix the login bug please', generated_title: 7 });
+      await observer.poll();
+      observer.stop();
+
+      expect(titles).toEqual([]);
+    });
+
+    it('says the title of a summary that names neither a cwd nor a model', async () => {
+      const { observer, titles } = await titledSession({ generated_title: 'Fix the login bug' });
+      await observer.poll();
+      observer.stop();
+
+      expect(titles).toEqual(['Fix the login bug']);
+    });
+  });
 });

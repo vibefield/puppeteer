@@ -148,7 +148,7 @@ function writeChatCompletion(response: ServerResponse, body: unknown): void {
   }
   const text =
     kind === 'session-title'
-      ? 'Pinned Grok native TUI proof'
+      ? GROK_LIVE_SESSION_TITLE
       : kind === 'dashboard-summary'
         ? 'Pinned Grok native TUI proof complete'
         : GROK_LIVE_RESPONSE_MARKER;
@@ -170,8 +170,83 @@ function writeChatCompletion(response: ServerResponse, body: unknown): void {
   response.end('data: [DONE]\n\n');
 }
 
-function writeTitleResponse(response: ServerResponse): void {
-  const text = 'Pinned Grok native TUI proof';
+/** The title the loopback model writes for a session. */
+export const GROK_LIVE_SESSION_TITLE = 'Pinned Grok native TUI proof';
+
+/** 1.0.92 asks for a title as a forced `session_title` function call on the Responses route, and reads only that. */
+function forcedTitleFunction(body: unknown): string | undefined {
+  const choice = body && typeof body === 'object' ? (body as { tool_choice?: unknown }).tool_choice : undefined;
+  if (!choice || typeof choice !== 'object') return undefined;
+  const { type, name } = choice as { type?: unknown; name?: unknown };
+  return type === 'function' && name === 'session_title' ? name : undefined;
+}
+
+function writeTitleFunctionCall(response: ServerResponse, name: string): void {
+  const args = JSON.stringify({ session_title: GROK_LIVE_SESSION_TITLE });
+  const item = {
+    type: 'function_call',
+    id: 'fc-puppeteer-grok-title',
+    call_id: 'call_puppeteer_grok_title',
+    name,
+    arguments: args,
+    status: 'completed',
+  };
+  const completed = {
+    id: 'resp-puppeteer-grok-title',
+    object: 'response',
+    status: 'completed',
+    created_at: 1_788_019_200,
+    model: 'grok-4.5',
+    output: [item],
+    usage: {
+      input_tokens: 20,
+      input_tokens_details: { cached_tokens: 0 },
+      output_tokens: 6,
+      output_tokens_details: { reasoning_tokens: 0 },
+      total_tokens: 26,
+    },
+  };
+  const started = { ...completed, status: 'in_progress', output: [], usage: null };
+  response.writeHead(200, {
+    'content-type': 'text/event-stream',
+    'cache-control': 'no-cache',
+    connection: 'close',
+  });
+  let sequence = 0;
+  const sendEvent = (eventName: string, value: Record<string, unknown>): void => {
+    response.write(`event: ${eventName}\ndata: ${JSON.stringify({ ...value, sequence_number: sequence++ })}\n\n`);
+  };
+  sendEvent('response.created', { type: 'response.created', response: started });
+  sendEvent('response.in_progress', { type: 'response.in_progress', response: started });
+  sendEvent('response.output_item.added', {
+    type: 'response.output_item.added',
+    output_index: 0,
+    item: { ...item, arguments: '', status: 'in_progress' },
+  });
+  sendEvent('response.function_call_arguments.delta', {
+    type: 'response.function_call_arguments.delta',
+    item_id: item.id,
+    output_index: 0,
+    delta: args,
+  });
+  sendEvent('response.function_call_arguments.done', {
+    type: 'response.function_call_arguments.done',
+    item_id: item.id,
+    output_index: 0,
+    arguments: args,
+  });
+  sendEvent('response.output_item.done', { type: 'response.output_item.done', output_index: 0, item });
+  sendEvent('response.completed', { type: 'response.completed', response: completed });
+  response.end();
+}
+
+function writeTitleResponse(response: ServerResponse, body: unknown): void {
+  const forced = forcedTitleFunction(body);
+  if (forced !== undefined) {
+    writeTitleFunctionCall(response, forced);
+    return;
+  }
+  const text = GROK_LIVE_SESSION_TITLE;
   const item = {
     type: 'message',
     id: 'msg-puppeteer-grok-title',
@@ -268,7 +343,7 @@ export async function startGrokLoopbackProvider(): Promise<GrokLoopbackProvider>
         return;
       }
       if (request.method === 'POST' && request.url?.startsWith('/v1/responses')) {
-        writeTitleResponse(response);
+        writeTitleResponse(response, body);
         return;
       }
       if (request.method === 'GET' && request.url?.startsWith('/v1/models')) {

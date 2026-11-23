@@ -630,6 +630,57 @@ describe('The control rail and the durable-log observer', () => {
       await binding.dispose();
     }
   });
+
+  it('names the monitor’s session by the title in summary.json, through a rename and its handing back', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-title-control-'));
+    const updatesPath = join(directory, 'updates.jsonl');
+    const summaryPath = join(directory, 'summary.json');
+    // A resumed session: its log has history, and its summary names the title Grok wrote for it.
+    await writeFile(
+      updatesPath,
+      JSON.stringify({
+        timestamp: 1_784_669_125,
+        method: 'session/update',
+        params: {
+          sessionId: 'grok-session',
+          update: { sessionUpdate: 'user_message_chunk', content: { type: 'text', text: 'hello' } },
+        },
+      }) + '\n',
+    );
+    await writeFile(summaryPath, JSON.stringify({ info: { cwd: '/repo' }, generated_title: 'Fix the login bug' }));
+    const acp = fakeAcp();
+    const observer = createGrokSessionObserver(updatesPath, { pollIntervalMs: 60_000 });
+    const binding = createPendingControlSession(acp.binding.sessionId, 'rt', () => acp.binding, observer);
+    const projection = projectAgentEvents(binding);
+    const said = () =>
+      projection.envelopes.flatMap((envelope) => (envelope.event.type === 'session:title-updated' ? [envelope] : []));
+    try {
+      await observer.poll();
+      expect(monitorOf(projection.envelopes).session.title).toBe('Fix the login bug');
+      // The title is the session's state as of the read: it is live evidence, beside a replayed log.
+      expect(said().map(({ replay, source }) => [replay === true, source])).toEqual([[false, 'native-log']]);
+
+      await writeFile(
+        summaryPath,
+        JSON.stringify({ info: { cwd: '/repo' }, generated_title: 'invoices by hand', title_is_manual: true }),
+      );
+      await observer.poll();
+      expect(monitorOf(projection.envelopes).session.title).toBe('invoices by hand');
+
+      await writeFile(summaryPath, JSON.stringify({ info: { cwd: '/repo' }, session_summary: '' }));
+      await observer.poll();
+      expect(monitorOf(projection.envelopes).session.title).toBeUndefined();
+      expect(said().map(({ event }) => (event.type === 'session:title-updated' ? event.title : undefined))).toEqual([
+        'Fix the login bug',
+        'invoices by hand',
+        null,
+      ]);
+    } finally {
+      projection.dispose();
+      await binding.dispose();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('A launch or resume replay of the durable log', () => {
