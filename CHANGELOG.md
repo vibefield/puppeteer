@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.11](https://github.com/vibefield/puppeteer/compare/v0.4.10...v0.4.11) (2026-11-23)
+
+
+### Features
+
+* a session's own title names its row in every view ([#114](https://github.com/vibefield/puppeteer/issues/114)) ([e57e314](https://github.com/vibefield/puppeteer/commit/e57e314e45685ea203d266867cad7f31f84bdc08))
+
 ## [0.4.10](https://github.com/vibefield/puppeteer/compare/v0.4.9...v0.4.10) (2026-11-23)
 
 
