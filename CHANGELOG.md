@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.10](https://github.com/vibefield/puppeteer/compare/v0.4.9...v0.4.10) (2026-11-23)
+
+
+### Features
+
+* **runtime:** a sign-in's identity is read again as it ages ([#112](https://github.com/vibefield/puppeteer/issues/112)) ([fa77d71](https://github.com/vibefield/puppeteer/commit/fa77d714bf89eba0fbb9e7aa3ac82e0082f35d6b))
+
 ## [0.4.9](https://github.com/vibefield/puppeteer/compare/v0.4.8...v0.4.9) (2026-11-23)
 
 
