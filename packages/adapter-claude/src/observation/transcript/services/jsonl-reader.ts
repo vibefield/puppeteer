@@ -11,7 +11,16 @@ const READ_CHUNK_BYTES = 256 * 1024;
 export interface ClaudeTranscriptReader {
   /** The same immutable snapshot reference is returned until decoded records change. */
   read(): Promise<readonly ClaudeTranscriptRecord[]>;
+  /**
+   * The session's title as the rows read so far say it: the name a person gave it, else the one Claude wrote. A title
+   * row that names another session is not this session's; one that names none is. Title rows never join the window,
+   * so a new one moves this and not the snapshot.
+   */
+  title(nativeSessionId: string): string | undefined;
 }
+
+/** How many sessions' titles one file's reader remembers: a transcript holds its own, and those it was forked from. */
+const MAX_TITLED_SESSIONS = 16;
 
 /**
  * Append-aware reader: unchanged polls do no I/O and partial final rows remain pending. Only
@@ -49,7 +58,22 @@ export function createClaudeTranscriptReader(
   const records: ClaudeTranscriptRecord[] = [];
   let cachedSnapshot: readonly ClaudeTranscriptRecord[] | undefined;
 
+  /** Each session's latest title rows, by the session id the row repeats ('' for a row that repeats none). */
+  const titles = new Map<string, { person?: string; provider?: string }>();
+  const noteTitle = (record: ClaudeTranscriptRecord): void => {
+    const title = record.title;
+    if (!title) return;
+    const session = record.sessionId ?? '';
+    const held = titles.get(session);
+    if (!held && titles.size >= MAX_TITLED_SESSIONS) {
+      const oldest = titles.keys().next().value;
+      if (oldest !== undefined) titles.delete(oldest);
+    }
+    titles.set(session, { ...held, [title.by]: title.text });
+  };
+
   const retain = (record: ClaudeTranscriptRecord): void => {
+    noteTitle(record);
     // Request bookkeeping never reaches the window: it would crowd conversation rows out of it and
     // invalidate the snapshot (re-projecting everything) without changing anything projected.
     if (!isClaudeTranscriptConversationRow(record)) return;
@@ -158,6 +182,11 @@ export function createClaudeTranscriptReader(
       // Never expose the mutable retention buffer: callers may retain a poll
       // result while a later append is decoded.
       return snapshot();
+    },
+    title(nativeSessionId) {
+      const own = titles.get(nativeSessionId);
+      const unnamed = titles.get('');
+      return own?.person ?? unnamed?.person ?? own?.provider ?? unnamed?.provider;
     },
   };
 }

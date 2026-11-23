@@ -1075,6 +1075,52 @@ describe('SubagentStop re-entrancy', () => {
   });
 });
 
+describe("the session's title on the hook rail", () => {
+  const titles = (result: NormalizedHook) =>
+    result.events.filter((event) => event.type === 'session:title-updated').map((event) => event.title);
+
+  it('names the title a start carries, and says a later one once, at the prompt that first carries it', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const started = normalizer.normalize(
+      fakeClaudeHookPayload('SessionStart', { source: 'startup', session_title: 'invoices' }),
+    );
+    expect(started.events[0]).toMatchObject({ type: 'session:started', title: 'invoices' });
+    const prompt = (title?: string, extra: Record<string, unknown> = {}) =>
+      normalizer.normalize(
+        fakeClaudeHookPayload('UserPromptSubmit', {
+          prompt: 'go on',
+          prompt_id: 'prompt',
+          ...(title === undefined ? {} : { session_title: title }),
+          ...extra,
+        }),
+      );
+    // The same title again is no news, and neither is a prompt that carries none.
+    expect(titles(prompt('invoices'))).toEqual([]);
+    expect(titles(prompt())).toEqual([]);
+    expect(titles(prompt('Split the invoice writer'))).toEqual(['Split the invoice writer']);
+    expect(titles(prompt('Split the invoice writer'))).toEqual([]);
+    // A subagent's prompt does not name the session.
+    expect(titles(prompt('worker', { agent_id: 'worker-1', agent_type: 'worker' }))).toEqual([]);
+    expect(titles(prompt('   '))).toEqual([]);
+  });
+
+  it('a session that started with no title says its first one, and a rebind starts over', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const started = normalizer.normalize(fakeClaudeHookPayload('SessionStart', { source: 'startup' }));
+    expect(started.events[0]).not.toHaveProperty('title', expect.anything());
+    const prompt = (title: string) =>
+      normalizer.normalize(
+        fakeClaudeHookPayload('UserPromptSubmit', { prompt: 'go on', prompt_id: 'prompt', session_title: title }),
+      );
+    expect(titles(prompt('Mend the invoice writer'))).toEqual(['Mend the invoice writer']);
+    // Another session, rotated to inside the same process: its start names no title, so the same words are news.
+    normalizer.normalize(fakeClaudeHookPayload('SessionStart', { session_id: 'chosen', source: 'resume' }), {
+      rebind: true,
+    });
+    expect(titles(prompt('Mend the invoice writer'))).toEqual(['Mend the invoice writer']);
+  });
+});
+
 describe('Claude 2.1.226 hook additions', () => {
   it('marks a SessionStart the observer rotated to as an in-process native identity rebind', () => {
     expect(

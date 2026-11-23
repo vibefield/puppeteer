@@ -12,8 +12,13 @@ import { folderName } from '../monitor/folder-name.js';
  * (VibeField's AR-5 rule — the views dial nothing and know no host).
  */
 export interface PaneFrameModel {
-  /** The folder, never the terminal title. */
+  /**
+   * The session's own title where the host hands one, else the folder. Never the terminal's title: that is terminal
+   * text, and the session's title is its provider's own word.
+   */
   name: string;
+  /** The folder, where a title names the pane: what a pointer reads after the name. */
+  folder?: string;
   /** The agent mark before the name; absent for a bare shell, and where the host's mark hides the provider. */
   providerId?: string;
   /** The host's picture before the name (`HostMark.lead`). */
@@ -53,6 +58,11 @@ export interface PaneFrameAgent {
   status: AgentVisualStatus;
   alive: boolean;
   statusSince?: string | undefined;
+  /**
+   * The session's own title, as the host's monitor says it (the model row's `title`): the badge's name where
+   * present, with the folder left to the pointer.
+   */
+  title?: string | undefined;
   /** The project the badge is named by, before the session's cwd. */
   project?: string | undefined;
   /** The agent's cwd, the badge's last fallback. */
@@ -116,14 +126,17 @@ export function formatTurnElapsed(elapsedMs: number): string {
   return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`;
 }
 
-/** A pane badge is always a folder basename; terminal titles are deliberately ignored. */
+/** A pane's folder: a basename, by the project, then the session's own directory. Terminal titles are deliberately ignored. */
 export function paneBadgeName(session: PaneFrameSession, agent?: PaneFrameAgent, fallbackCwd?: string): string {
   return folderName(agent?.project || session.cwd || agent?.cwd || fallbackCwd, 'terminal');
 }
 
 export function paneFrameModel({ session, agent, remoteDevice, fallbackCwd, nowMs }: PaneFrameInput): PaneFrameModel {
+  const folder = paneBadgeName(session, agent, fallbackCwd);
+  const title = agent?.mark?.name ? undefined : agent?.title?.trim() || undefined;
   const model: PaneFrameModel = {
-    name: agent?.mark?.name || paneBadgeName(session, agent, fallbackCwd),
+    name: agent?.mark?.name || title || folder,
+    ...(title ? { folder } : {}),
     ...(remoteDevice ? { remote: remoteDevice } : {}),
   };
   if (!agent) return model;

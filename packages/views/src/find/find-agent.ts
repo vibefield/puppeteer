@@ -11,6 +11,11 @@ export interface FindAgent {
   readonly createdAtMs: number;
   readonly status: AgentVisualStatus;
   readonly project: string;
+  /**
+   * The session's own title as the host's monitor says it (the model row's `title`): the row's title while the
+   * transcript's record names none, and a fact the words are matched against.
+   */
+  readonly title?: string | undefined;
   readonly detail: string;
   readonly color: string;
   /**

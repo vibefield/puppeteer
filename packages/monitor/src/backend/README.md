@@ -18,8 +18,8 @@ computed at its home desktop (MV-D22) and the sync plane carries them (L8); the 
 | `sink` | `select(resolved)` · `create(resolved)` | fieldd's doors; the Ghosttea workspace |
 | `history?` | `MonitorHistoryPort`: `read({sinceMs, untilMs}, {silenceMs, signal?})` → `MonitorRecordedActivity` (`fidelity: turns \| bounds`, `partial`, `detail?`, `sessions[]`: provider, native id, first/last activity, project key, title, turns with their silences; `runs[]`: the host's own runs, provider, native id, run id, birth, profile set, project key, title). Asked at each `readPast`, never polled; a throw is the host's words for `unavailable` | fieldd over rosettad (`index.activity`'s reader) and its session records; absent in puppeteer Godview, so its views are lent no past |
 
-`MonitorHostRun`: `runtimeRunId` · `createdAt` · `provider {id,label}` · `terminalSessionId?` · `replacedTerminalSessionId?`
-(AR-4) · `terminalIdentity?` · `projectKey?` (the canonical root the host folds to) · `workspace? {root, sourcePath,
+`MonitorHostRun`: `runtimeRunId` · `createdAt` · `provider {id,label}` · `title?` (the host's own for the run) ·
+`terminalSessionId?` · `replacedTerminalSessionId?` (AR-4) · `terminalIdentity?` · `projectKey?` (the canonical root the host folds to) · `workspace? {root, sourcePath,
 branch}` · `fallbackBranch?` (M26) · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · `pending?` · `alive?` · `nativeSessionId?`.
 `MonitorHostTerminal`: `sessionId` · `identity?` · `createdAt` (0 = unknown, VibeField's floor rows) · `cwd?` · `title?` ·
 `activity? {kind}` · `profileSet?` · `workloadClass?` · `exited?`.
@@ -65,6 +65,7 @@ host that breaks one.
 | `detail` | pending → `unobserved · resumes when idle`; no state → `starting`; else core's `presentAgentMonitorHeadline(state).detail` | `cwd ?? 'Unassigned terminal'` |
 | `activity` | core's `{ kind, line (trimmed), since }` (M2) | `{ kind }`: the host's session activity kind, no line |
 | `project.name` | `folderName(state.environment.cwd \|\| workspace.sourcePath \|\| workspace.root \|\| host.cwd, provider.label)` — both hosts' chain | `folderName(cwd, title \|\| 'terminal')` |
+| `title` | core's `state.session.title` (the provider's own: a person's name for the session, else the one the provider wrote), else the host's `title` for the run; one line, at most 120 code points | — |
 | `project.branch` | the observed branch when the observation names one; else the host's `fallbackBranch` (M26: pu supplies its workspace's, as its seam read `git?.branch ?? workspace.branch`; vf supplies none); else vf's rule: `git !== undefined ? null : workspace.branch` | — |
 | `project.seq` | `identity.deal(projectKey ?? state.environment.cwd)` in row order; absent with no key, and while the host's key is `null` (it is still folding the project: no fallback) | absent (the ramp) |
 | `provider` | host `provider` | — |

@@ -118,7 +118,7 @@ function factsFields(agent: FindAgent, facts: HistorySessionFacts | undefined): 
   const push = (name: string, value: string | undefined, weight: number): void => {
     if (value) fields.push({ name, value, weight });
   };
-  push('title', facts?.title, 3);
+  push('title', facts?.title ?? agent.title, 3);
   push('summary', facts?.summary, 1.5);
   push('project', agent.project, 3);
   push('branch', facet?.branch, 2);
@@ -168,7 +168,7 @@ export interface FindRow<Agent extends FindAgent = FindAgent> {
   agent: Agent;
   nativeSessionId?: string;
   facts?: HistorySessionFacts;
-  /** The transcript's own title, when the daemon has one. */
+  /** The transcript's own title, when the daemon has one; else the session's as the host's monitor says it. */
   title?: string;
   factsScore: number;
   matched: string[];
@@ -250,11 +250,13 @@ export function createFindRows<Agent extends FindAgent>(): (input: BuildFindRows
       const nativeSessionId = nativeSessionIdOf(agent);
       const known = nativeSessionId ? facts.get(nativeSessionId) : undefined;
       const ordered = (nativeSessionId ? hitsByNative.get(nativeSessionId) : undefined) ?? NO_HITS;
+      // The transcript's own title, else the one the host's monitor says for the row.
+      const title = known?.title || agent.title || undefined;
       const held = cached.get(agent);
       if (
         held !== undefined &&
         held.facts === known &&
-        held.title === known?.title &&
+        held.title === title &&
         held.summary === known?.summary &&
         held.hits === ordered &&
         held.terms === terms &&
@@ -277,7 +279,7 @@ export function createFindRows<Agent extends FindAgent>(): (input: BuildFindRows
           agent,
           ...(nativeSessionId ? { nativeSessionId } : {}),
           ...(known ? { facts: known } : {}),
-          ...(known?.title ? { title: known.title } : {}),
+          ...(title ? { title } : {}),
           factsScore: factScore,
           matched,
           hits: [...ordered],
@@ -288,7 +290,7 @@ export function createFindRows<Agent extends FindAgent>(): (input: BuildFindRows
       }
       cached.set(agent, {
         facts: known,
-        title: known?.title,
+        title,
         summary: known?.summary,
         hits: ordered,
         terms,

@@ -17,6 +17,7 @@ import {
   rowName,
   rowSpoken,
   spawnTargetFor,
+  titledProject,
 } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { normalizeListParameters } from './list-parameters.js';
 import { ListSpawnMenu } from './ListSpawnMenu.js';
@@ -155,6 +156,8 @@ const ListRow = memo(function ListRow({
   const model = modelWord(agent);
   const detail = detailLine(agent);
   const branch = isAgent ? agent.project.branch : undefined;
+  // Under a title the small line says where the session works: its project, then its branch.
+  const place = [titledProject(agent), branch].filter(Boolean).join(' · ');
   const rowStyle = { '--mv-list-colour': agent.colour } as CSSProperties;
   const name = isAgent ? [model, agent.account].filter(Boolean).join(', ') : remote ? 'remote session' : 'terminal';
   return (
@@ -191,7 +194,7 @@ const ListRow = memo(function ListRow({
           ) : (
             <strong>{project}</strong>
           )}
-          {branch ? <small>{branch}</small> : null}
+          {place ? <small>{place}</small> : null}
         </span>
         <span className="vf-monitor-list-agent">
           {isAgent ? (

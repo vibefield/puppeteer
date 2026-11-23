@@ -51,6 +51,11 @@ export interface CopyLine {
   /** Line box height as a multiple of the size; the copy's `line-height: 1.05`. */
   lineHeight?: number;
   lead?: CopyLead;
+  /**
+   * How many rows the text may take where the layout wraps (`CopyLayoutOptions.wrap`): a sentence standing where a
+   * label stood (a session's title in the name's place) takes two, broken between words. Absent: one.
+   */
+  maxLines?: number;
 }
 
 export interface PlacedLine extends CopyLine {
@@ -79,6 +84,11 @@ export interface CopyLayoutOptions {
   centerY?: number;
   /** Breathing room between the text and the rim; the DOM let text touch it. */
   inset?: number;
+  /**
+   * Let a line that asks for rows (`CopyLine.maxLines`) take them when its words do not fit one. A body's layout
+   * asks for it on every rung; without it every line is one row, cut as it always was.
+   */
+  wrap?: boolean;
 }
 
 const ELLIPSIS = '…';
@@ -118,15 +128,19 @@ export function chordWidth(radius: number, yTop: number, yBottom: number): numbe
   return 2 * Math.sqrt(radius * radius - reach * reach);
 }
 
-export function layoutCopy(lines: readonly CopyLine[], options: CopyLayoutOptions): CopyLayout {
-  const { radius, measure, maxWidthRatio } = options;
+/** Where each line's box stands and the room its text has, which depend on the stack and never on the words. */
+function copyGeometry(
+  lines: readonly CopyLine[],
+  options: CopyLayoutOptions,
+): { rows: { y: number; height: number; leadWidth: number; room: number }[]; top: number; total: number } {
+  const { radius, maxWidthRatio } = options;
   const centerY = options.centerY ?? 0;
   const inset = options.inset ?? 2;
   const heights = lines.map((line) => line.style.size * (line.lineHeight ?? DEFAULT_LINE_HEIGHT));
   const total = lines.reduce((sum, line, index) => sum + (line.gapBefore ?? 0) + heights[index]!, 0);
   const top = centerY - total / 2;
   let cursor = top;
-  const placed: PlacedLine[] = lines.map((line, index) => {
+  const rows = lines.map((line, index) => {
     const height = heights[index]!;
     cursor += line.gapBefore ?? 0;
     const y = cursor + height / 2;
@@ -136,7 +150,18 @@ export function layoutCopy(lines: readonly CopyLine[], options: CopyLayoutOption
       maxWidthRatio * radius * 2,
       chordWidth(radius, y - height / 2, y + height / 2) - inset * 2,
     );
-    const text = fitText(line.text, line.style, available - leadWidth, measure);
+    return { y, height, leadWidth, room: available - leadWidth };
+  });
+  return { rows, top, total };
+}
+
+/** One row a line: each fitted to its own chord. */
+function placeCopy(lines: readonly CopyLine[], options: CopyLayoutOptions): CopyLayout {
+  const { measure } = options;
+  const { rows, top, total } = copyGeometry(lines, options);
+  const placed: PlacedLine[] = lines.map((line, index) => {
+    const { y, height, leadWidth, room } = rows[index]!;
+    const text = fitText(line.text, line.style, room, measure);
     const textWidth = text.length === 0 ? 0 : measure(text, line.style);
     return {
       ...line,
@@ -148,6 +173,55 @@ export function layoutCopy(lines: readonly CopyLine[], options: CopyLayoutOption
     };
   });
   return { lines: placed, top, bottom: top + total };
+}
+
+/** The key of a wrapped line's second row: its line's own, marked, so a reader of keys still finds the first. */
+export function secondRowKey(key: string): string {
+  return `${key}:2`;
+}
+
+/**
+ * The first line that asks for two rows and is cut in one, split between words: its first row keeps the lead and as
+ * many whole words as its chord holds, its second the rest (cut by the ellipsis rule if they still run over).
+ * Undefined where nothing asks, the words fit, or no whole word fits the first row: then the line is cut as it was.
+ */
+function wrapCopy(
+  lines: readonly CopyLine[],
+  single: CopyLayout,
+  options: CopyLayoutOptions,
+): readonly CopyLine[] | undefined {
+  const index = lines.findIndex(
+    (line, at) => (line.maxLines ?? 1) > 1 && single.lines[at]!.text !== displayText(line.text, line.style),
+  );
+  if (index === -1) return undefined;
+  const line = lines[index]!;
+  const words = line.text.split(/\s+/).filter(Boolean);
+  if (words.length < 2) return undefined;
+  const { lead: _lead, gapBefore: _gapBefore, maxLines: _maxLines, ...bare } = line;
+  const second = (text: string): CopyLine => ({ ...bare, key: secondRowKey(line.key), text });
+  const stack = (first: string, rest: string): CopyLine[] => [
+    ...lines.slice(0, index),
+    { ...line, text: first },
+    second(rest),
+    ...lines.slice(index + 1),
+  ];
+  // The rows' places do not depend on their words: the stack with two rows says how much room the first has.
+  const room = copyGeometry(stack('', ''), options).rows[index]!.room;
+  let count = 0;
+  for (let taken = 1; taken < words.length; taken += 1) {
+    const candidate = displayText(words.slice(0, taken).join(' '), line.style);
+    if (options.measure(candidate, line.style) > room) break;
+    count = taken;
+  }
+  if (count === 0) return undefined;
+  return stack(words.slice(0, count).join(' '), words.slice(count).join(' '));
+}
+
+export function layoutCopy(lines: readonly CopyLine[], options: CopyLayoutOptions): CopyLayout {
+  const single = placeCopy(lines, options);
+  if (!options.wrap) return single;
+  const wrapped = wrapCopy(lines, single, options);
+  return wrapped ? placeCopy(wrapped, options) : single;
 }
 
 /**
@@ -181,18 +255,27 @@ export interface CopyLadderOptions extends CopyLayoutOptions {
  */
 export function ladderCopy(lines: readonly CopyLine[], options: CopyLadderOptions): CopyLayout {
   const pinned = (line: CopyLine): boolean => !options.order.includes(line.key);
-  const reads = (layout: CopyLayout, source: readonly CopyLine[]): boolean =>
-    layout.lines.every((placed, index) => legible(placed, source[index]!));
+  // The lines of `source` the layout cut below a legible stub. A line that took a second row (`wrap`) reads by
+  // its rows: the first holds whole words, and the second is its own stub.
+  const unread = (layout: CopyLayout, source: readonly CopyLine[]): CopyLine[] =>
+    source.filter((line) => {
+      const first = layout.lines.find((placed) => placed.key === line.key);
+      const second = layout.lines.find((placed) => placed.key === secondRowKey(line.key));
+      if (first === undefined) return true;
+      if (second === undefined) return !legible(first, line);
+      const glyphs = [...second.text];
+      return second.text.endsWith(ELLIPSIS) && glyphs.length - 1 < LEGIBLE_GLYPHS;
+    });
   let kept = lines;
   for (;;) {
     const layout = layoutCopy(kept, options);
-    const failing = kept.filter((line, index) => !legible(layout.lines[index]!, line));
+    const failing = unread(layout, kept);
     if (failing.length === 0) return layout;
     // A line the ladder never drops (the name) that no drop could rescue costs the others nothing: with every
     // droppable line gone it would still be cut short, so they stay.
     if (failing.every(pinned)) {
       const alone = kept.filter(pinned);
-      if (!reads(layoutCopy(alone, options), alone)) return layout;
+      if (unread(layoutCopy(alone, options), alone).length > 0) return layout;
     }
     let victim = -1;
     let rank = options.order.length;

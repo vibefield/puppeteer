@@ -45,18 +45,36 @@ export function projectName(row: Pick<MonitorAgentRow, 'kind' | 'project' | 'pro
 }
 
 /** A row a host may mark (`AgentView`, `EndedLaneView`): what `rowName` and `rowSpoken` read. */
-export type MarkedRow = Pick<MonitorAgentRow, 'kind' | 'project' | 'provider'> & {
+export type MarkedRow = Pick<MonitorAgentRow, 'kind' | 'project' | 'provider' | 'title'> & {
   readonly mark?: HostMark | undefined;
 };
 
-/** A row's name where a view prints its project's: the host's mark's name (`HostMark.name`), else `projectName`. */
+/**
+ * A row's name, where a view prints one: the host's mark's name (`HostMark.name`), else the session's own title,
+ * else `projectName`. A session is named by what it is about once it says so, and by where it works until then.
+ */
 export function rowName(row: MarkedRow): string {
-  return row.mark?.name || projectName(row);
+  return row.mark?.name || row.title || projectName(row);
 }
 
-/** A row's name as a screen reader hears it: the host's spoken words (`HostMark.spoken`), else its printed name. */
+/**
+ * The project of a row its title names, for the line beside or under the name where a view has room for it, and for
+ * a pointer's and a screen reader's words: its folder's name. Absent where the project is the name already, under a
+ * host's mark, which takes the name's place whole, and for a session in no folder.
+ */
+export function titledProject(row: MarkedRow): string | undefined {
+  if (row.mark?.name || !row.title) return undefined;
+  return row.project.name || undefined;
+}
+
+/**
+ * A row's name as a screen reader hears it: the host's spoken words (`HostMark.spoken`), else its printed name, and
+ * after a title the project it works in.
+ */
 export function rowSpoken(row: MarkedRow): string {
-  return row.mark?.spoken || rowName(row);
+  if (row.mark?.spoken) return row.mark.spoken;
+  const project = titledProject(row);
+  return project ? `${rowName(row)}, ${project}` : rowName(row);
 }
 
 /** What runs an agent, where its model's name stands: the model, else its provider's label. */

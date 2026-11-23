@@ -142,6 +142,10 @@ const MonitorMessageValueSchema = z.strictObject({
   final: z.boolean(),
   messageId: NonEmptyStringSchema.optional(),
 });
+const MonitorTitleValueSchema = z.strictObject({
+  kind: z.literal('title'),
+  title: NonEmptyStringSchema.max(512),
+});
 const MonitorContextValueSchema = z.strictObject({
   kind: z.literal('context'),
   actor: ActorRunRefSchema.optional(),
@@ -236,7 +240,7 @@ const MonitorFamilyUpdateSchema = z.union([
   familyUpdateSchema(z.literal('delegation'), MonitorActorValueSchema),
   familyUpdateSchema(z.literal('compaction'), MonitorCompactionValueSchema),
   familyUpdateSchema(z.literal('environment'), MonitorEnvironmentValueSchema),
-  familyUpdateSchema(z.literal('conversation'), MonitorMessageValueSchema),
+  familyUpdateSchema(z.literal('conversation'), z.union([MonitorMessageValueSchema, MonitorTitleValueSchema])),
 ]);
 
 export const AdapterMonitorObservationBatchSchema = z.strictObject({

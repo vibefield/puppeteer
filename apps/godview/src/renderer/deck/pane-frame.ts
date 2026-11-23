@@ -23,6 +23,8 @@ export function paneFrameAgent(agent: MonitorAgent): PaneFrameAgent | undefined 
     status: agent.status,
     alive: facet.monitor.alive,
     statusSince: facet.monitor.statusSince,
+    // The session's own title, as core's state says it: the badge's name where there is one.
+    ...(facet.monitor.session.title ? { title: facet.monitor.session.title } : {}),
     project: agent.project,
     ...(agent.cwd ? { cwd: agent.cwd } : {}),
     ...(facet.model ? { model: facet.model } : {}),

@@ -255,6 +255,11 @@ export interface MonitorEnvironmentState {
 export interface MonitorSessionState {
   nativeSessionId?: string | undefined;
   startedAt?: string | undefined;
+  /**
+   * The provider's own title for the session: the name a person gave it, else the one the provider wrote for it. One
+   * line, bounded. Absent while it has none, and for a provider that says none. It is the person's content.
+   */
+  title?: string | undefined;
 }
 
 export type MonitorFamilySupport = 'supported' | 'degraded' | 'unsupported';

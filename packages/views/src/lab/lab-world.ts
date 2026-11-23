@@ -137,6 +137,35 @@ export interface LabWorldOptions {
   /** The same field a moment later: the active agent stops on a permission, the one asking a question gets its
    * answer and works, an unread one is closed, and a new one arrives. Every other row is unchanged. */
   readonly churn?: boolean | undefined;
+  /**
+   * Sessions that have named themselves (`?titles=1`): each agent's run says a title of its own, from a fixed list by
+   * its place in the world, and every fourth says none, as a session does before its first words. Dealt after the
+   * world is built, with no draw of the seed, so every other fact of every row is the untitled world's.
+   */
+  readonly titles?: boolean | undefined;
+}
+
+/** Titles as providers write them and people give them: a few words, a long sentence, one word. */
+const TITLES: readonly string[] = [
+  'Mend the invoice writer',
+  'Godview agent session fuzzy search',
+  'invoices',
+  'Why does the pane frame flicker when a terminal is resized during a turn',
+  'Split the usage ledger',
+  'Fix flaky CI on Windows',
+  'Review PR 482',
+];
+
+/** The row with its run saying a title, or the row as it is where it has no run to say one. */
+function titled(row: Row, index: number): Row {
+  const facet = row.agent.agent;
+  const monitor = facet?.monitor;
+  if (!facet || !monitor || index % 4 === 3) return row;
+  const title = TITLES[index % TITLES.length]!;
+  return {
+    ...row,
+    agent: { ...row.agent, agent: { ...facet, monitor: { ...monitor, session: { ...monitor.session, title } } } },
+  };
 }
 
 export interface LabWorld {
@@ -239,7 +268,8 @@ export function labWorld(options: LabWorldOptions): LabWorld {
     );
   }
   rows.sort((left, right) => left.group - right.group);
-  return { nowMs, agents: rows.map((row) => row.agent) };
+  const named = options.titles ? rows.map(titled) : rows;
+  return { nowMs, agents: named.map((row) => row.agent) };
 }
 
 interface BuildInput {

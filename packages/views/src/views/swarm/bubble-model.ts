@@ -10,6 +10,7 @@ import {
   rowName,
   rowSpoken,
   STATE_WORDS,
+  titledProject,
   unreadSpoken,
   waitBodyLine,
   waitMark,
@@ -170,6 +171,13 @@ export interface BubbleModelInput {
 const TERMINAL_NAME: TextStyle = { size: 11, weight: 800, letterSpacing: -0.035 };
 const SMALL_NAME: TextStyle = { size: 12, weight: 800, letterSpacing: -0.035 };
 const WORKING_NAME: TextStyle = { size: 14, weight: 800, letterSpacing: -0.035 };
+/**
+ * A session's title in the name's place: a sentence, not a label, so it is set under a name's size and takes two rows
+ * where a body draws everything (`text-layout.ts`, `maxLines`), broken between words. One row cuts a title to a word.
+ */
+const SMALL_TITLE: TextStyle = { size: 9.5, weight: 800, letterSpacing: -0.03 };
+const WORKING_TITLE: TextStyle = { size: 10.5, weight: 800, letterSpacing: -0.03 };
+const TITLE_ROWS = { maxLines: 2, lineHeight: 1.12 } as const;
 /** The small labels: 7px 800. The terminal's lines are uppercase; the model · effort
  * line is lowercase (2026-09-09), and italic while the effort is only launch intent. */
 const LABEL_STACKED: TextStyle = { size: 7, weight: 800, transform: 'uppercase', letterSpacing: 0.1 };
@@ -394,9 +402,14 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   const { agent, parameters, nowMs } = input;
   /** The crowd's shared fit (`fit.ts`): every body is its base size times this. */
   const scale = input.scale ?? 1;
-  // The host's mark names the body and says it (`HostMark.name`, `.spoken`); else the project does.
+  // The host's mark names the body and says it (`HostMark.name`, `.spoken`); else the session's own title does, and
+  // the project until it has one. The name fits its chord by the one ellipsis rule, so a long title is cut on the
+  // body and whole in the pointer's words, with the project a title leaves unsaid.
   const project = rowName(agent);
   const spoken = rowSpoken(agent);
+  const place = titledProject(agent);
+  // The name is the session's own title: it is set as one (`SMALL_TITLE`), not as a project's name.
+  const titledName = !agent.mark?.name && Boolean(agent.title);
   const percent = contextPercent(agent);
   const contextLabel = percent === undefined ? 'CTX:--%' : `CTX:${percent.toString().padStart(2, '0')}%`;
   const base = {
@@ -498,7 +511,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   // The glyph is all a sighted person sees of the profile on the body; the words are here (UM-D6).
   const under = input.profile ? `, under ${input.profile.label}` : '';
   const ariaLabel = `${spoken}, ${model}${under}, ${agent.status}: ${detail}, ${contextLabel}`;
-  const title = `${project} · ${model}${input.profile ? ` · ${input.profile.label}` : ''} · ${detail}`;
+  const title = `${project}${place ? ` · ${place}` : ''} · ${model}${input.profile ? ` · ${input.profile.label}` : ''} · ${detail}`;
   const modelLine: CopyLine = {
     key: 'model',
     text: effort ? `${model} · ${effort.text}` : model,
@@ -539,11 +552,12 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       {
         key: 'name',
         text: project,
-        style: WORKING_NAME,
+        style: titledName ? WORKING_TITLE : WORKING_NAME,
         opacity: SWARM_WEIGHT.title,
         tone: 'ink',
-        lead: nameLead(agent, WORKING_NAME),
+        lead: nameLead(agent, titledName ? WORKING_TITLE : WORKING_NAME),
         ...(branch ? { gapBefore: 1 } : {}),
+        ...(titledName ? TITLE_ROWS : {}),
       },
       modelLine,
       ...host,
@@ -614,7 +628,8 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
               spoken: unreadSpoken(message),
             }
           : undefined;
-  const nameStyle = state ? PROJECT_ABOVE : SMALL_NAME;
+  // Above a state line the name is one small row whatever it says; standing alone, a title takes its own setting.
+  const nameStyle = state ? PROJECT_ABOVE : titledName ? SMALL_TITLE : SMALL_NAME;
   const copy: CopyLine[] = [
     {
       key: 'name',
@@ -623,6 +638,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       opacity: state ? SWARM_WEIGHT.supporting : SWARM_WEIGHT.title,
       tone: 'ink',
       lead: nameLead(agent, nameStyle, state ? { solid: true } : {}),
+      ...(titledName && !state ? TITLE_ROWS : {}),
     },
     ...(state
       ? [

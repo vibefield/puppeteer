@@ -967,7 +967,7 @@
         <div class="stats" aria-label="API summary">
           <div class="stat"><strong>1</strong><span>Agent object per runtime run</span></div>
           <div class="stat"><strong>19</strong><span>top-level event categories</span></div>
-          <div class="stat"><strong>37</strong><span>normalized event routes</span></div>
+          <div class="stat"><strong>38</strong><span>normalized event routes</span></div>
           <div class="stat"><strong>3</strong><span>selector forms</span></div>
         </div>
       </header>
@@ -1827,7 +1827,7 @@ unsubscribe();</code></pre>
           <section id="catalog">
             <h2>Complete event catalog</h2>
             <p class="section-note">
-              All 37 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
+              All 38 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
               routes, native payload types, descriptions, and field names.
             </p>
 
@@ -1847,14 +1847,14 @@ unsubscribe();</code></pre>
               <button class="filter-button" type="button" data-filter="other">Other</button>
               <button class="small-button" id="expand-visible" type="button">Expand visible</button>
               <button class="small-button" id="collapse-all" type="button">Collapse</button>
-              <span class="result-count" id="event-count">37 / 37 routes</span>
+              <span class="result-count" id="event-count">38 / 38 routes</span>
             </div>
 
             <div id="event-sections">
               <section class="category-section" id="category-behavior" data-section-category="behavior">
                 <div class="category-header">
                   <h3>Behavior event domains</h3>
-                  <span class="badge category-session">22 routes</span>
+                  <span class="badge category-session">23 routes</span>
                   <p>
                     Seven independent categories for lifecycle, turns, reasoning, tools, interactions, delegation, and
                     compaction.
@@ -1916,6 +1916,27 @@ unsubscribe();</code></pre>
                       <div class="projection-row">
                         <span class="chip">lifecycle → exited</span><span class="chip">closes in-flight state</span>
                       </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-category="session">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">session:title-updated</span
+                        ><span class="native-type">session:title-updated</span></span
+                      ><span class="badge category-session">session</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>
+                        The provider's own title for the session changed: the name a person gave it, or the one the
+                        provider wrote for it. Null says it has none now. A start names the title it has in
+                        <code>session:started</code>.
+                      </p>
+                      <pre><code>interface SessionTitleUpdatedEvent {
+  type: 'session:title-updated';
+  title: string | null;
+}</code></pre>
+                      <div class="projection-row"><span class="chip">monitor session.title</span></div>
                     </div>
                   </details>
 

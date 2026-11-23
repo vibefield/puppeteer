@@ -31,8 +31,8 @@ import { LAB_NOW_MS, LAB_SEED } from './lab-world.js';
 // origin.
 //
 // URL: `theme=light|dark` · `size=compact|default|wide` (all three when absent) ·
-// `n=<rows>` · `animations=0|1` · `seed=<text>` · `capture=1`. A view's lab may
-// add its own (the timeline's `history=`), read by its `capabilities`.
+// `n=<rows>` · `animations=0|1` · `seed=<text>` · `titles=1` (sessions that have named themselves) · `capture=1`. A
+// view's lab may add its own (the timeline's `history=`), read by its `capabilities`.
 
 export type LabSize = 'compact' | 'default' | 'wide';
 
@@ -61,6 +61,8 @@ export interface LabParams {
   readonly animations: boolean;
   readonly capture: boolean;
   readonly seed: string;
+  /** The world's sessions say titles of their own (`labWorld({ titles: true })`). */
+  readonly titles: boolean;
 }
 
 export function readLabParams(search: string, defaults: { n?: number } = {}): LabParams {
@@ -74,6 +76,7 @@ export function readLabParams(search: string, defaults: { n?: number } = {}): La
     animations: params.get('animations') !== '0',
     capture: params.get('capture') === '1',
     seed: params.get('seed') || LAB_SEED,
+    titles: params.get('titles') === '1',
   };
 }
 
@@ -171,8 +174,16 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
   const chromeRef = useRef<HTMLDivElement>(null);
   const palette = useMonitorPalette(stageRef);
   const model = useMemo(
-    () => labModel({ n: params.n, seed: params.seed, tint: palette.tint, neutral: palette.neutral, churn }),
-    [params.n, params.seed, palette.tint, palette.neutral, churn],
+    () =>
+      labModel({
+        n: params.n,
+        seed: params.seed,
+        tint: palette.tint,
+        neutral: palette.neutral,
+        churn,
+        titles: params.titles,
+      }),
+    [params.n, params.seed, palette.tint, palette.neutral, churn, params.titles],
   );
   const replica = useMemo(() => labReplica(model), [model]);
   const build = options.capabilities;

@@ -355,6 +355,65 @@ describe('bubbleModel', () => {
     expect(replied.title).toBe('puppeteer · Fable 5.1 · Shipped.');
   });
 
+  it("names a body by its session's title, and keeps the project for a pointer and a screen reader", () => {
+    const titled = bubbleModel({
+      agent: agent({ title: 'Mend the invoice writer' }),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+    });
+    expect(titled.copy.find((line) => line.key === 'name')?.text).toBe('Mend the invoice writer');
+    expect(titled.title).toBe('Mend the invoice writer · puppeteer · Fable 5.1 · idle');
+    expect(titled.ariaLabel).toBe('Mend the invoice writer, puppeteer, Fable 5.1, idle: idle, CTX:--%');
+    // The colour and the folder's mark are still the project's: a title changes the words and their setting alone.
+    const plain = bubbleModel({ agent: agent(), parameters, nowMs: NOW, unread: false });
+    const nameOf = (model: typeof plain) => model.copy.find((line) => line.key === 'name')!;
+    expect(titled.accent).toBe(plain.accent);
+    expect(nameOf(titled).lead).toMatchObject({ kind: 'icon', icon: 'folder', tone: 'accent' });
+    expect(titled.copy.map((line) => line.key)).toEqual(plain.copy.map((line) => line.key));
+    // A title is a sentence: it is set under a name's size and may take two rows; a project's name takes one.
+    expect(nameOf(titled).style.size).toBeLessThan(nameOf(plain).style.size);
+    expect(nameOf(titled).maxLines).toBe(2);
+    expect(nameOf(plain)).not.toHaveProperty('maxLines');
+    // Above a state line the name is the one small row it always was, title or not.
+    const unread = (title?: string) =>
+      nameOf(
+        bubbleModel({
+          agent: agent({ title, reply: { text: 'Done.', at: AT } }),
+          parameters,
+          nowMs: NOW,
+          unread: true,
+        }),
+      );
+    expect(unread('Mend the invoice writer').style).toEqual(unread().style);
+    expect(unread('Mend the invoice writer')).not.toHaveProperty('maxLines');
+    // A working body keeps its branch line above the name; the title takes the name's line alone.
+    const working = bubbleModel({
+      agent: agent({
+        status: 'working',
+        title: 'Mend the invoice writer',
+        project: { name: 'puppeteer', branch: 'main', seq: 1 },
+      }),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+    });
+    expect(working.copy.slice(0, 2).map((line) => [line.key, line.text])).toEqual([
+      ['branch', 'main'],
+      ['name', 'Mend the invoice writer'],
+    ]);
+    expect(working.copy[1]!.maxLines).toBe(2);
+    // The host's mark outranks the title, and no project follows it.
+    const marked = bubbleModel({
+      agent: agent({ title: 'Mend the invoice writer', mark: { name: 'Ada' } }),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+    });
+    expect(marked.copy.find((line) => line.key === 'name')?.text).toBe('Ada');
+    expect(marked.title).toBe('Ada · Fable 5.1 · idle');
+  });
+
   it('draws no live fact for a run not heard from yet: its line says so, the rest waits', () => {
     const starting = bubbleModel({
       agent: agent({

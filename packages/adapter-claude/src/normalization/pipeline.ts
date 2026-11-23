@@ -56,7 +56,12 @@ import {
 import { normalizeClaudeNotification } from './notification.js';
 import { normalizeClaudeModelSwitched, normalizeClaudeSessionModel } from './model.js';
 import { ClaudeModeNormalizer } from './mode.js';
-import { normalizeClaudeSessionExited, normalizeClaudeSessionReady, normalizeClaudeSessionStarted } from './session.js';
+import {
+  normalizeClaudeSessionExited,
+  normalizeClaudeSessionReady,
+  normalizeClaudeSessionStarted,
+  normalizeClaudeSessionTitle,
+} from './session.js';
 import {
   normalizeClaudeToolCompleted,
   normalizeClaudeToolFailed,
@@ -104,6 +109,8 @@ export class ClaudeHookNormalizer {
   private compactionCounter = 0;
   private activeCompaction: { id: string; promptId?: string | undefined; trigger?: string | undefined } | undefined;
   private lastClosedCompaction: { id: string; promptId?: string | undefined } | undefined;
+  /** The title the session's hooks last said, so a prompt that repeats it says nothing. */
+  private sessionTitle: string | undefined;
   private readonly effort = new ClaudeEffortNormalizer();
   private readonly mode = new ClaudeModeNormalizer();
 
@@ -409,6 +416,10 @@ export class ClaudeHookNormalizer {
           this.lastClosedCompaction = undefined;
         }
         result.events.push(normalizeClaudeSessionStarted(body, isRebind));
+        // The start says the title the session has; a rebind is another session, which may have none.
+        if (!result.agentId && (isRebind || nonEmptyClaudeString(body.session_title) !== undefined)) {
+          this.sessionTitle = nonEmptyClaudeString(body.session_title);
+        }
         const environment = normalizeClaudeSessionEnvironment(body);
         if (environment) result.events.push(environment);
         const model = normalizeClaudeSessionModel(body);
@@ -447,6 +458,15 @@ export class ClaudeHookNormalizer {
         );
         if (!result.agentId) this.resolveInterruptedPermissions(result, name, promptId);
         result.events.push(normalizeClaudeTurnStarted(body, promptId));
+        // The main thread's prompt carries the title the session goes by now (2.1.207+), which a `/rename` or Claude's
+        // own naming moved since the start: said once per change.
+        if (!result.agentId) {
+          const title = nonEmptyClaudeString(body.session_title);
+          if (title !== undefined && title !== this.sessionTitle) {
+            this.sessionTitle = title;
+            result.events.push(normalizeClaudeSessionTitle(title));
+          }
+        }
         break;
 
       case 'MessageDisplay': {

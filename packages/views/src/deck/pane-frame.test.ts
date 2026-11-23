@@ -160,6 +160,28 @@ describe('paneFrameModel', () => {
     expect(shown).toMatchObject({ name: 'rosetta', providerId: 'codex', lead });
   });
 
+  it("names the badge by the session's title, keeps the folder for the pointer, and gives way to a mark", () => {
+    const titled = paneFrameModel({
+      session: session(),
+      agent: agent({ title: 'Mend the invoice writer' }),
+      nowMs: NOW,
+    });
+    expect(titled).toMatchObject({ name: 'Mend the invoice writer', folder: 'rosetta', providerId: 'codex' });
+    // No title, or a blank one: the folder names the pane, and nothing repeats it.
+    for (const title of [undefined, '', '   ']) {
+      const plain = paneFrameModel({ session: session(), agent: agent({ title }), nowMs: NOW });
+      expect(plain.name).toBe('rosetta');
+      expect(plain).not.toHaveProperty('folder');
+    }
+    const marked = paneFrameModel({
+      session: session(),
+      agent: agent({ title: 'Mend the invoice writer', mark: { name: 'Ada' } }),
+      nowMs: NOW,
+    });
+    expect(marked.name).toBe('Ada');
+    expect(marked).not.toHaveProperty('folder');
+  });
+
   it('draws the badge as it ships for a row with no mark, or an empty one', () => {
     const bare = paneFrameModel({ session: session(), agent: agent(), nowMs: NOW });
     const empty = paneFrameModel({ session: session(), agent: agent({ mark: { name: '' } }), nowMs: NOW });

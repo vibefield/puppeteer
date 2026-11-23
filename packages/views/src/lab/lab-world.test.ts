@@ -13,6 +13,25 @@ describe('labWorld', () => {
     expect(serialise(labWorld({ n: 20, seed: 'other' }))).not.toBe(serialise(labWorld({ n: 20 })));
   });
 
+  it('gives its sessions titles of their own on request, and changes no other fact of any row', () => {
+    const plain = labWorld({ n: 20 });
+    const named = labWorld({ n: 20, titles: true });
+    const titleOf = (agent: (typeof named.agents)[number]) => agent.agent?.monitor?.session.title;
+    expect(plain.agents.every((agent) => titleOf(agent) === undefined)).toBe(true);
+    const titles = named.agents.map(titleOf);
+    // Some sessions have said a title and some have not yet; a row with no run has none to say.
+    expect(titles.filter((title) => title !== undefined).length).toBeGreaterThan(5);
+    expect(named.agents.some((agent) => agent.agent?.monitor && titleOf(agent) === undefined)).toBe(true);
+    expect(named.agents.filter((agent) => !agent.agent?.monitor).every((agent) => titleOf(agent) === undefined)).toBe(
+      true,
+    );
+    const untitled = JSON.parse(JSON.stringify(named), (key: string, value: unknown) =>
+      key === 'title' && typeof value === 'string' && titles.includes(value) ? undefined : value,
+    ) as unknown;
+    expect(untitled).toEqual(JSON.parse(JSON.stringify(plain)));
+    expect(serialise(labWorld({ n: 20, titles: true }))).toBe(serialise(named));
+  });
+
   it('holds exactly n rows with unique ids, one of them the active pane', () => {
     for (const n of LAB_AGENT_COUNTS) {
       const { agents } = labWorld({ n });

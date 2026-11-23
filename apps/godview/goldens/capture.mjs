@@ -53,6 +53,9 @@ const VIEWS = [
 // turns (worked, quiet, unrecorded, the seam, ended runs faint) and the floor (T5: one band per ended run). Default
 // stage, n = 20, both themes, still. Absent history is the twelve above, which stay as they were.
 const HISTORY_CASES = ['turns', 'bounds'];
+// Sessions that have named themselves (`?titles=1`, the lab world's own titles): the views that print a row's name,
+// at the default stage, n = 20, both themes. Absent titles is every image above, which stay as they were.
+const TITLED_VIEWS = ['list', 'swarm', 'timeline'];
 
 const flag = (name) => process.argv.includes(`--${name}`);
 const option = (name) => {
@@ -112,6 +115,26 @@ for (const theme of THEMES) {
       width,
       height,
       url: `${pathToFileURL(join(dist, 'timeline-lab.html')).href}?${query}`,
+    });
+  }
+}
+for (const { view, page, animations } of VIEWS.filter((entry) => TITLED_VIEWS.includes(entry.view))) {
+  for (const theme of THEMES) {
+    const [width, height] = SIZES.default;
+    const file = `${view}/${theme}-default-n20-titles.png`;
+    if (only && !file.includes(only)) continue;
+    const query = new URLSearchParams({ capture: '1', theme, size: 'default', n: '20', animations, titles: '1' });
+    images.push({
+      file,
+      view,
+      theme,
+      size: 'default',
+      n: 20,
+      titles: true,
+      animations: animations === '1' ? 'on' : 'off',
+      width,
+      height,
+      url: `${pathToFileURL(join(dist, page)).href}?${query}`,
     });
   }
 }

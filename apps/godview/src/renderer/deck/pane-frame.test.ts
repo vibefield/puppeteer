@@ -94,6 +94,16 @@ describe('paneFrameAgent', () => {
     });
   });
 
+  it("hands over the session's own title, which names the badge, and none for a session that says none", () => {
+    const titled = paneFrameAgent(agent({ monitor: monitor({ session: { title: 'Mend the invoice writer' } }) }));
+    expect(titled?.title).toBe('Mend the invoice writer');
+    expect(paneFrameModel({ session: session(), agent: titled, nowMs: NOW })).toMatchObject({
+      name: 'Mend the invoice writer',
+      folder: 'rosetta',
+    });
+    expect(paneFrameAgent(agent())).not.toHaveProperty('title');
+  });
+
   it('hands over the context share only when the provider could say', () => {
     const asOf = new Date(NOW).toISOString();
     expect(

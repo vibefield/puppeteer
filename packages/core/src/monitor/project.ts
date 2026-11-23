@@ -87,6 +87,13 @@ function projectAssistantMessage(entries: readonly MonitorStoredEntry[]): Monito
   };
 }
 
+/** The session's title: the latest word for it, whichever rail said it. */
+function projectSessionTitle(entries: readonly MonitorStoredEntry[]): string | undefined {
+  return rootEntries(entries, 'title').sort(
+    (a, b) => time(b.effectiveAt ?? b.observedAt) - time(a.effectiveAt ?? a.observedAt) || compareEntryPreference(a, b),
+  )[0]?.value.title;
+}
+
 function projectContext(entries: readonly MonitorStoredEntry[]): MonitorContextState | undefined {
   const candidates = rootEntries(entries, 'context').sort((a, b) => {
     const sourcePriority = (value: MonitorContextFamilyValue) =>
@@ -353,6 +360,7 @@ export function projectAgentMonitorState(
 
   const context = projectContext(entries);
   const lastAssistantMessage = projectAssistantMessage(entries);
+  const sessionTitle = projectSessionTitle(entries);
   const model = projectModel(entries);
   const effort = projectEffort(entries);
   const subagentActors = withUsageActors(actors, usageIndex.childActors);
@@ -390,7 +398,12 @@ export function projectAgentMonitorState(
     'conversation',
   ];
   for (const family of familyNames) {
-    const evidence = family === 'usage' ? usageIndex.evidence : summarizeFamilyEvidence(familyEntries(entries, family));
+    // A title rides the conversation family and is no evidence of its rail: a provider that names its session
+    // need not report its replies.
+    const evidence =
+      family === 'usage'
+        ? usageIndex.evidence
+        : summarizeFamilyEvidence(familyEntries(entries, family).filter((entry) => entry.value.kind !== 'title'));
     const freshness = familySupport(accumulator, evidence, family);
     if (freshness) families[family] = freshness;
   }
@@ -442,6 +455,7 @@ export function projectAgentMonitorState(
     session: {
       ...(basis.nativeSessionId !== undefined ? { nativeSessionId: basis.nativeSessionId } : {}),
       ...(startedAt ? { startedAt } : {}),
+      ...(sessionTitle !== undefined ? { title: sessionTitle } : {}),
     },
     freshness: {
       ...(evidenceAsOf ? { lastEvidenceAt: evidenceAsOf } : {}),

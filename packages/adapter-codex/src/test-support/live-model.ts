@@ -4,6 +4,8 @@ import { join } from 'node:path';
 
 export const CODEX_LIVE_MODEL = 'puppeteer-codex-live';
 export const CODEX_LIVE_RESPONSE_MARKER = 'SURFACE_CODEX_TUI_OK';
+/** The title the loopback provider answers when Codex asks it to name a thread. */
+export const CODEX_LIVE_THREAD_TITLE = 'Verify Codex native TUI';
 export const CODEX_LIVE_API_KEY = 'sk-puppeteer-not-a-real-key';
 
 export interface CodexLiveModelRequest {
@@ -114,7 +116,7 @@ export async function startCodexLoopbackProvider(): Promise<CodexLiveModelProvid
 
       turn += 1;
       const text =
-        kind === 'thread-title' ? JSON.stringify({ title: 'Verify Codex native TUI' }) : CODEX_LIVE_RESPONSE_MARKER;
+        kind === 'thread-title' ? JSON.stringify({ title: CODEX_LIVE_THREAD_TITLE }) : CODEX_LIVE_RESPONSE_MARKER;
       const item = {
         type: 'message',
         role: 'assistant',

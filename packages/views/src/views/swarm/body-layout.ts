@@ -129,7 +129,8 @@ export function bodyLayout(model: SwarmBubbleModel, options: BodyLayoutOptions):
 
   if (rung === 'full') {
     // Exactly what a body drew before the ladder: every line, both figures, the burn row.
-    const copy = layoutCopy(model.copy, { radius: drawn, measure, maxWidthRatio });
+    // A line that asks for a second row (a title in the name's place) takes it, here and on the rungs below.
+    const copy = layoutCopy(model.copy, { radius: drawn, measure, maxWidthRatio, wrap: true });
     const layout: BodyLayout = {
       rung,
       copy,
@@ -144,8 +145,8 @@ export function bodyLayout(model: SwarmBubbleModel, options: BodyLayoutOptions):
   // Stepped down: the rung's lines, any of them cut below a legible stub dropped (the name never), decided at
   // the eased radius and fitted at the drawn one.
   const lines = rungLines(model.copy, rung);
-  const decided = ladderCopy(lines, { radius, measure, maxWidthRatio, order: COPY_ONE_LINE });
+  const decided = ladderCopy(lines, { radius, measure, maxWidthRatio, order: COPY_ONE_LINE, wrap: true });
   const kept = lines.filter((line) => decided.lines.some((placed) => placed.key === line.key));
-  const copy = scale === 1 ? decided : layoutCopy(kept, { radius: drawn, measure, maxWidthRatio });
+  const copy = scale === 1 ? decided : layoutCopy(kept, { radius: drawn, measure, maxWidthRatio, wrap: true });
   return { rung, copy, watermark: WATERMARK_SMALL };
 }
