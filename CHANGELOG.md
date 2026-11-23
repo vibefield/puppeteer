@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.12](https://github.com/vibefield/puppeteer/compare/v0.4.11...v0.4.12) (2026-11-23)
+
+
+### Features
+
+* a pane says its session's running time and its context as a ring, and a host can carry a session's usage ([#117](https://github.com/vibefield/puppeteer/issues/117)) ([cda0a5a](https://github.com/vibefield/puppeteer/commit/cda0a5a9b4f9b4c591db5952615385c1bd4f59ad))
+
+
+### Bug Fixes
+
+* **adapter-grok:** a Grok session's title, and its rename, name its row ([#116](https://github.com/vibefield/puppeteer/issues/116)) ([9a43abf](https://github.com/vibefield/puppeteer/commit/9a43abfef084e5373cbe05823db98ee509cd6b5f))
+
 ## [0.4.11](https://github.com/vibefield/puppeteer/compare/v0.4.10...v0.4.11) (2026-11-23)
 
 
