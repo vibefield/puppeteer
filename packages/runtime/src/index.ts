@@ -26,3 +26,4 @@ export * from './monitor/clock.js';
 export { MonitorNotificationGapError } from './monitor/handle.js';
 export { AgentMonitorService } from './services/monitor-service.js';
 export * from './services/account-usage-monitor.js';
+export * from './services/profile-identity-monitor.js';

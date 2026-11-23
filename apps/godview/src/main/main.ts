@@ -70,7 +70,11 @@ import type {
   AgentInterruptResult,
   UpdateInstallationRequest,
 } from '../protocol.js';
-import { createAccountUsageMonitor, type AccountUsageProfileRef } from '@vibefield/puppeteer-runtime';
+import {
+  createAccountUsageMonitor,
+  createProfileIdentityMonitor,
+  type AccountUsageProfileRef,
+} from '@vibefield/puppeteer-runtime';
 import { createProfileDefaultsStore, profileDefaultIds, retainKnownProfileDefaults } from './agent-profile-defaults.js';
 import { createProjectRegistry, projectIdentityStore } from './project-registry.js';
 import {
@@ -813,6 +817,23 @@ const accountUsageMonitor = createAccountUsageMonitor({
 agentRuntime.onAccountUsage((provider, result) => {
   if (quitting) return;
   accountUsageMonitor.ingest(provider.id, result);
+});
+/**
+ * Who is signed in, and on what plan, read again as each reading ages (RFC 006, "Identity freshness"). A reading is
+ * recorded by the runtime, whose registry then says the profiles changed, so nothing is broadcast from here.
+ */
+const profileIdentityMonitor = createProfileIdentityMonitor({
+  listProfiles: async () => {
+    const readable = new Set(
+      agentRuntime
+        .profileProviders()
+        .filter((provider) => provider.support.supported && provider.support.identity !== 'none')
+        .map((provider) => provider.id),
+    );
+    return (await agentRuntime.profiles()).filter((profile) => readable.has(profile.provider));
+  },
+  verify: (profileId) => agentRuntime.verifyProfile(profileId),
+  onError: (error) => process.stderr.write(`[main] profile identity: ${error.message}\n`),
 });
 agentRuntime.onProfilesChanged((profiles) => {
   if (quitting) return;
@@ -3116,6 +3137,7 @@ function shutdown(): Promise<void> {
     restoreCheckpointTimer = undefined;
     commitRestoreCheckpoint();
     accountUsageMonitor.stop();
+    profileIdentityMonitor.stop();
     for (const runtimeSessionId of adoptedProcessMonitors.keys()) stopAdoptedProcessMonitor(runtimeSessionId);
     const client = backend?.automation;
     if (client) {
@@ -3174,6 +3196,7 @@ function checkpointAndExitForSystemShutdown(event?: { preventDefault?: () => voi
   restoreCheckpointTimer = undefined;
   commitRestoreCheckpoint();
   accountUsageMonitor.stop();
+  profileIdentityMonitor.stop();
   backend?.stop();
   quitReady = true;
   app.quit();
@@ -3227,6 +3250,7 @@ app
       return;
     }
     accountUsageMonitor.start();
+    profileIdentityMonitor.start();
     // A row names its run's account by the registry's label; later changes arrive with onProfilesChanged.
     void agentRuntime
       .profiles()
