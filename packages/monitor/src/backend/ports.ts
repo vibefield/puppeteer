@@ -31,6 +31,11 @@ export interface MonitorHostRun {
   /** When the run was born as the host knows it, epoch ms. */
   readonly createdAt: number;
   readonly provider: { readonly id: string; readonly label: string };
+  /**
+   * The host's own title for the run, when it keeps one (a launch's, or the record's at a resume). The row's title
+   * until the provider says the session's own, which outranks it.
+   */
+  readonly title?: string | undefined;
   /** The PTY on this desktop the run is in, when the host holds one. */
   readonly terminalSessionId?: string | undefined;
   /** AR-4: the PTY this run replaced at a resume-when-idle; a pane may still be showing it. */

@@ -10,6 +10,7 @@ import {
   rowName,
   rowSpoken,
   THIS_DESKTOP,
+  titledProject,
   waitBodyLine,
 } from './words.js';
 
@@ -163,5 +164,41 @@ describe("a row's name under the host's mark", () => {
     // an empty name is no name: the project's stands
     expect(rowName({ ...plain, mark: { name: '' } })).toBe('vibe-field');
     expect(toolkit.rowName).toBe(rowName);
+  });
+});
+
+describe("a row's name under its session's title", () => {
+  const plain = agentViewFixture({ id: 'a', project: { name: 'vibe-field', seq: 1 } });
+  const titled = { ...plain, title: 'Mend the invoice writer' };
+
+  it('prints the title where the project stood, and keeps the project for the line beside it', () => {
+    expect(rowName(titled)).toBe('Mend the invoice writer');
+    expect(titledProject(titled)).toBe('vibe-field');
+    // A screen reader hears both: what the session is about, then where it works.
+    expect(rowSpoken(titled)).toBe('Mend the invoice writer, vibe-field');
+    // No title, or an empty one: the project names the row, and no second word repeats it.
+    for (const row of [plain, { ...plain, title: '' }]) {
+      expect(rowName(row)).toBe('vibe-field');
+      expect(titledProject(row)).toBeUndefined();
+      expect(rowSpoken(row)).toBe('vibe-field');
+    }
+    expect(toolkit.titledProject).toBe(titledProject);
+  });
+
+  it("gives way to the host's mark, which takes the name's place whole", () => {
+    const marked = { ...titled, mark: { name: 'Ada' } };
+    expect(rowName(marked)).toBe('Ada');
+    expect(titledProject(marked)).toBeUndefined();
+    expect(rowSpoken(marked)).toBe('Ada');
+    expect(rowSpoken({ ...titled, mark: { spoken: 'Ada, a helper' } })).toBe('Ada, a helper');
+    // A mark that names nothing leaves the title standing.
+    expect(rowName({ ...titled, mark: { name: '' } })).toBe('Mend the invoice writer');
+  });
+
+  it('names no project for a titled session in no folder: its provider is not where it works', () => {
+    const nowhere = { ...titled, project: { name: '' }, provider: { id: 'codex', label: 'Codex' } };
+    expect(rowName(nowhere)).toBe('Mend the invoice writer');
+    expect(titledProject(nowhere)).toBeUndefined();
+    expect(rowSpoken(nowhere)).toBe('Mend the invoice writer');
   });
 });

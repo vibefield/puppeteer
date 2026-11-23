@@ -200,6 +200,14 @@ describe('PaneFrameChrome', () => {
     expect(html).toContain('class="vf-pane-name">Ada<');
   });
 
+  it("names the badge by the session's title, and says the folder to a pointer", () => {
+    const html = markup({ session: session(), agent: agent({ title: 'Mend the invoice writer' }) });
+    expect(html).toContain('class="vf-pane-name">Mend the invoice writer<');
+    expect(html).toContain('title="Mend the invoice writer · rosetta"');
+    const remote = markup({ session: session(), agent: agent({ title: 'Mend the invoice writer' }), remote: 'studio' });
+    expect(remote).toContain('title="Mend the invoice writer · rosetta on studio"');
+  });
+
   it('marks a remote session with the tether and names its device', () => {
     const html = markup({ session: session(), remote: 'studio' });
     expect(html).toContain('class="vf-pane-os"');

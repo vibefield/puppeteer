@@ -81,4 +81,12 @@ describe('the lab model', () => {
       true,
     );
   });
+
+  it("carries a session's own title onto its row, and names no row without one", () => {
+    const named = labModel({ n: 20, titles: true });
+    const titled = named.agents.filter((agent) => agent.title !== undefined);
+    expect(titled.length).toBeGreaterThan(5);
+    expect(titled.every((agent) => agent.kind === 'agent')).toBe(true);
+    expect(labModel({ n: 20 }).agents.every((agent) => agent.title === undefined)).toBe(true);
+  });
 });

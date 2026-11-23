@@ -35,7 +35,10 @@ export function compareEntryPreference(a: MonitorStoredEntry, b: MonitorStoredEn
   // of allowing an older plane to mask a newer transition.
   if (
     a.family === b.family &&
-    (['model', 'effort', 'context'].includes(a.family) || (a.value.kind === 'actor' && b.value.kind === 'actor'))
+    (['model', 'effort', 'context'].includes(a.family) ||
+      (a.value.kind === 'actor' && b.value.kind === 'actor') ||
+      // A title has two rails too (a hook and the durable record), and the later word is the session's title.
+      (a.value.kind === 'title' && b.value.kind === 'title'))
   ) {
     return (
       QUALITY_PRIORITY[b.quality] - QUALITY_PRIORITY[a.quality] ||
@@ -69,6 +72,7 @@ export function actorOf(value: MonitorFamilyValue): ActorRunRef | undefined {
     case 'actor':
       return value.actor;
     case 'run':
+    case 'title':
       return undefined;
   }
 }
@@ -120,6 +124,8 @@ export function logicalEntryKey(entry: MonitorStoredEntry): string {
       return JSON.stringify([entry.family, actor || 'root']);
     case 'message':
       return JSON.stringify([entry.family, 'message', actor || 'root']);
+    case 'title':
+      return JSON.stringify([entry.family, 'title']);
   }
 }
 

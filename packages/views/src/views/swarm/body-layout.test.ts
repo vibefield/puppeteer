@@ -208,6 +208,38 @@ describe('the rungs', () => {
     expect(layout.burn).toBeDefined();
   });
 
+  it("give a session's title two rows on every rung, broken between words, beside what the rung keeps", () => {
+    const titled = (radius: number, title = 'Mend the invoice writer for the ledger') => {
+      const row = agent({ status: 'idle', title });
+      const model = bubbleModel({
+        agent: row,
+        parameters,
+        nowMs: NOW,
+        unread: false,
+        scale: radius / baseRadius(row, parameters),
+      });
+      return bodyLayout(model, { radius, measure }).copy.lines.map((line) => [line.key, line.text]);
+    };
+    const full = titled(50);
+    expect(full.map(([key]) => key)).toEqual(['name', 'name:2', 'model']);
+    // Whole words on the first row; the rest on the second, cut where it still runs over.
+    expect(full[0]![1]).toBe('Mend the');
+    expect(full[1]![1]!.startsWith('invoice')).toBe(true);
+    expect(full[1]![1]!.endsWith('…')).toBe(true);
+    // A stepped-down body keeps the title's two rows and its one line, then the title alone.
+    expect(titled(44).map(([key]) => key)).toEqual(['name', 'name:2', 'model']);
+    expect(titled(44)[0]![1]).toBe('Mend the');
+    expect(titled(30).map(([key]) => key)).toEqual(['name', 'name:2']);
+    // A title that fits one row takes one, on any rung.
+    expect(titled(50, 'invoices').map(([key]) => key)).toEqual(['name', 'model']);
+    expect(titled(30, 'notes').map(([key]) => key)).toEqual(['name']);
+    // An untitled body's name is the one row it was.
+    expect(bodyLayout(at('idle', 50), { radius: 50, measure }).copy.lines.map((line) => line.key)).toEqual([
+      'name',
+      'model',
+    ]);
+  });
+
   it('keep beside the name the state line, else the model, else a terminal’s word', () => {
     expect(words('blocked', 40)).toEqual(['puppeteer', 'Bash']);
     expect(draws('idle', 40)).toBe('name+model · mark 46');

@@ -94,6 +94,22 @@ export function projectName(host: MonitorHostRun, state: AgentMonitorState | und
   return folderName(path, host.provider.label.trim() || host.provider.id);
 }
 
+/** A title is one line a view prints as a name: as long as core lets a provider's run (`MAX_SESSION_TITLE_CHARS`). */
+export const TITLE_MAX_LENGTH = 120;
+
+/**
+ * The session's title: the provider's own word for it (core's `session.title`), else the host's for the run. One
+ * line, bounded; absent when neither says one.
+ */
+export function agentTitle(host: MonitorHostRun, state: AgentMonitorState | undefined): string | undefined {
+  const line = (state?.session.title || host.title || '').replace(/\s+/g, ' ').trim();
+  if (line === '') return undefined;
+  if (line.length <= TITLE_MAX_LENGTH) return line;
+  // By code points, so the cut never splits a surrogate pair.
+  const points = Array.from(line);
+  return points.length > TITLE_MAX_LENGTH ? `${points.slice(0, TITLE_MAX_LENGTH - 1).join('')}…` : line;
+}
+
 /**
  * The observed branch when the observation names one; else the branch the host supplies for that case (M26); else
  * the observation's answer — null for "looked: no repository, or no branch" — and when nothing looked, the workspace's.
@@ -241,6 +257,7 @@ export function deriveAgentRow(input: DeriveAgentRowInput): MonitorAgentRow {
   const { host, state } = input;
   const statusSince = agentStatusSince(host, state);
   const branch = projectBranch(host, state);
+  const title = agentTitle(host, state);
   const model = state?.model ? state.model.displayName || state.model.id : undefined;
   const effort = agentEffort(state);
   const activity = agentActivity(state, input.replyMaxLength);
@@ -267,6 +284,7 @@ export function deriveAgentRow(input: DeriveAgentRowInput): MonitorAgentRow {
       ...(branch === undefined ? {} : { branch }),
       ...(input.seq === undefined ? {} : { seq: input.seq }),
     },
+    ...(title === undefined ? {} : { title }),
     provider: { id: host.provider.id, label: host.provider.label },
     ...(model === undefined ? {} : { model }),
     ...(effort === undefined ? {} : { effort }),

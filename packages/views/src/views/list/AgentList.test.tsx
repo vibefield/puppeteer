@@ -170,6 +170,37 @@ describe('a row', () => {
     expect(row!.getAttribute('aria-label')).toBe('puppeteer, Opus 5.5, work, idle: idle');
   });
 
+  it("names a row by its session's title, with its project before its branch on the small line", async () => {
+    const { root } = await mount({
+      agents: [
+        agentViewFixture({
+          id: 'a',
+          title: 'Mend the invoice writer',
+          project: { name: 'puppeteer', branch: 'mv/land', seq: 1 },
+          provider: { id: 'claude', label: 'Claude' },
+          model: 'Opus 5.5',
+        }),
+        agentViewFixture({
+          id: 'b',
+          title: 'Split the invoice writer',
+          project: { name: 'puppeteer', seq: 1 },
+          provider: { id: 'claude', label: 'Claude' },
+          model: 'Opus 5.5',
+        }),
+        agentViewFixture({ id: 'c', project: { name: 'puppeteer', branch: 'main', seq: 1 }, model: 'Opus 5.5' }),
+      ],
+    });
+    const cell = (row: Element, selector: string) => row.querySelector(`.vf-monitor-list-project ${selector}`);
+    const [titled, branchless, untitled] = rows(root);
+    expect(cell(titled!, 'strong')?.textContent).toBe('Mend the invoice writer');
+    expect(cell(titled!, 'small')?.textContent).toBe('puppeteer · mv/land');
+    expect(titled!.getAttribute('aria-label')).toBe('Mend the invoice writer, puppeteer, Opus 5.5, idle: idle');
+    expect(cell(branchless!, 'small')?.textContent).toBe('puppeteer');
+    // An untitled row reads as it did: its project, and its branch alone beside it.
+    expect(cell(untitled!, 'strong')?.textContent).toBe('puppeteer');
+    expect(cell(untitled!, 'small')?.textContent).toBe('main');
+  });
+
   it("draws the host's mark: its name and words, its pictures around the name, and its attention's tint", async () => {
     const lead = { kind: 'stencil', key: 'dot', path: 'M0 0h24v24H0z' } as const;
     const trail = { kind: 'colour', key: 'ada-face', image: 'data:image/png;base64,iVBORw0KGgo=' } as const;

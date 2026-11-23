@@ -59,6 +59,12 @@ function stopTitle(verb: { elapsed?: string; key?: string }, label = 'Stop the t
   return verb.key ? `${turn} ${verb.key}` : turn;
 }
 
+/** What a pointer reads on the badge: its name, the folder a title leaves unsaid, and a remote session's device. */
+function badgeTitle(model: PaneFrameModel): string {
+  const named = model.folder ? `${model.name} · ${model.folder}` : model.name;
+  return model.remote ? `${named} on ${model.remote}` : named;
+}
+
 function ZoomMark({ zoomed }: { zoomed: boolean }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -206,7 +212,7 @@ export function PaneFrameChrome({
           </span>
         ) : null}
         <span className="vf-pane-badge">
-          <span className="vf-pane-badge-name" title={model.remote ? `${model.name} on ${model.remote}` : model.name}>
+          <span className="vf-pane-badge-name" title={badgeTitle(model)}>
             {model.remote ? <TetherMark /> : null}
             {model.providerId ? (
               <span className="vf-pane-mark">

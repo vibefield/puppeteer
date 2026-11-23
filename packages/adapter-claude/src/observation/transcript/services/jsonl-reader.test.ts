@@ -235,4 +235,52 @@ describe('createClaudeTranscriptReader', () => {
     expect(first.map(({ uuid }) => uuid)).toEqual(['final']);
     expect(await reader.read()).toBe(first);
   });
+
+  it("reads the session's title from its title rows: the person's name over Claude's, and never another session's", async () => {
+    const root = mkdtempSync(join(tmpdir(), 'claude-jsonl-title-'));
+    roots.push(root);
+    const path = join(root, 'transcript.jsonl');
+    const line = (value: Record<string, unknown>) => `${JSON.stringify(value)}\n`;
+    writeFileSync(path, row('one') + line({ type: 'ai-title', aiTitle: 'Mend the invoice writer', sessionId: 'mine' }));
+    const reader = createClaudeTranscriptReader(path);
+
+    expect(reader.title('mine')).toBeUndefined();
+    const first = await reader.read();
+    expect(reader.title('mine')).toBe('Mend the invoice writer');
+    // A title row joins no window: it moves the title and not the snapshot.
+    expect(first.map(({ uuid }) => uuid)).toEqual(['one']);
+    appendFileSync(path, line({ type: 'ai-title', aiTitle: 'Split the invoice writer', sessionId: 'mine' }));
+    expect(await reader.read()).toBe(first);
+    expect(reader.title('mine')).toBe('Split the invoice writer');
+
+    // The name a person gave outranks the one Claude wrote, whichever row is later.
+    appendFileSync(
+      path,
+      line({ type: 'custom-title', customTitle: 'invoices', sessionId: 'mine' }) +
+        line({ type: 'ai-title', aiTitle: 'Rework the invoice writer', sessionId: 'mine' }),
+    );
+    await reader.read();
+    expect(reader.title('mine')).toBe('invoices');
+
+    // A row that names another session is that session's; a blank title is none.
+    appendFileSync(
+      path,
+      line({ type: 'custom-title', customTitle: 'the fork', sessionId: 'theirs' }) +
+        line({ type: 'custom-title', customTitle: '   ', sessionId: 'mine' }),
+    );
+    await reader.read();
+    expect(reader.title('mine')).toBe('invoices');
+    expect(reader.title('theirs')).toBe('the fork');
+    expect(reader.title('unknown')).toBeUndefined();
+  });
+
+  it("takes a title row that repeats no session id as the session's own", async () => {
+    const root = mkdtempSync(join(tmpdir(), 'claude-jsonl-title-bare-'));
+    roots.push(root);
+    const path = join(root, 'transcript.jsonl');
+    writeFileSync(path, `${JSON.stringify({ type: 'custom-title', customTitle: 'bare' })}\n`);
+    const reader = createClaudeTranscriptReader(path);
+    await reader.read();
+    expect(reader.title('mine')).toBe('bare');
+  });
 });

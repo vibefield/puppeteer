@@ -171,6 +171,12 @@ export interface MonitorAgentRow {
    * terminal: its session's activity kind, and no line. */
   readonly activity?: MonitorActivity | undefined;
   readonly project: MonitorProject;
+  /**
+   * The session's own title, one bounded line: the name a person gave it, else the one its provider wrote for it,
+   * else the host's (a launch's or a resume's). An agent's only. Absent while it has none, and a view then names the
+   * row by its project (the toolkit's `rowName`). It is the person's content: a cut that carries no content omits it.
+   */
+  readonly title?: string | undefined;
   readonly provider?: { readonly id: string; readonly label: string } | undefined;
   readonly model?: string | undefined;
   readonly effort?: MonitorEffort | undefined;

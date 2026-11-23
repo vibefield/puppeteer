@@ -102,6 +102,8 @@ export function labAgentView(agent: LabAgent, nowMs: number): AgentView {
         }
       : {}),
     project: { name: agent.project, ...(facet?.branch ? { branch: facet.branch } : {}) },
+    // The session's own title, as the backend reads it off core's state.
+    ...(facet && monitor?.session.title ? { title: monitor.session.title } : {}),
     ...(facet ? { provider: { id: facet.provider.id, label: facet.provider.label } } : {}),
     ...(facet?.model ? { model: facet.model } : {}),
     ...(monitor?.effort

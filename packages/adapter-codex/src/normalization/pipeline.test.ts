@@ -158,6 +158,29 @@ describe('CodexNotificationNormalizer', () => {
     ]);
   });
 
+  it("takes a thread's name as the session's title, and never its preview", () => {
+    const n = new CodexNotificationNormalizer();
+    const started = (thread: Record<string, unknown>) =>
+      n.normalize({ method: 'thread/started', params: { thread: { id: THREAD, ...thread } } }).events[0];
+    expect(started({ name: ' invoices ', preview: 'please mend the invoice writer' })).toEqual({
+      type: 'session:started',
+      nativeSessionId: THREAD,
+      title: 'invoices',
+    });
+    // An unnamed thread starts with no title: its preview is its first words.
+    expect(started({ name: null, preview: 'please mend the invoice writer' })).toEqual({
+      type: 'session:started',
+      nativeSessionId: THREAD,
+    });
+    const renamed = (threadName: unknown) =>
+      n.normalize({ method: 'thread/name/updated', params: { threadId: THREAD, threadName } }).events;
+    expect(renamed('Split the invoice writer')).toEqual([
+      { type: 'session:title-updated', title: 'Split the invoice writer' },
+    ]);
+    expect(renamed(null)).toEqual([{ type: 'session:title-updated', title: null }]);
+    expect(renamed('   ')).toEqual([{ type: 'session:title-updated', title: null }]);
+  });
+
   it('maps thread cwd/settings and resolves model card display names', () => {
     const n = new CodexNotificationNormalizer((id) => (id === 'gpt-5.6-sol' ? 'GPT-5.6-Codex' : undefined));
     expect(

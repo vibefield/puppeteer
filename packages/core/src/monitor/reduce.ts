@@ -754,6 +754,25 @@ function boundAssistantMessage(text: string): string | undefined {
   return trimmed.length > MAX_ASSISTANT_MESSAGE_CHARS ? `${trimmed.slice(0, MAX_ASSISTANT_MESSAGE_CHARS)}…` : trimmed;
 }
 
+/** A title is one line a view prints as a name: its whitespace runs are one space, and it is cut where no name runs. */
+export const MAX_SESSION_TITLE_CHARS = 120;
+
+function boundSessionTitle(title: string | null | undefined): string | undefined {
+  const line = title?.replace(/\s+/g, ' ').trim() ?? '';
+  if (line.length === 0) return undefined;
+  if (line.length <= MAX_SESSION_TITLE_CHARS) return line;
+  // By code points, so the cut never splits a surrogate pair.
+  const points = Array.from(line);
+  return points.length > MAX_SESSION_TITLE_CHARS ? `${points.slice(0, MAX_SESSION_TITLE_CHARS - 1).join('')}…` : line;
+}
+
+/** The session's title as the provider says it now. `clear` retracts it where the provider says none. */
+function titleUpdates(title: string | null | undefined, clear: boolean): MonitorFamilyUpdate[] {
+  const bounded = boundSessionTitle(title);
+  if (bounded !== undefined) return [upsert('conversation', 'title', { kind: 'title', title: bounded })];
+  return clear ? [retract('conversation', 'title')] : [];
+}
+
 function unexpectedExit(reason: ProcessExitReason): boolean {
   return reason === 'crash' || reason === 'signal' || reason === 'spawn-failed' || reason === 'workspace-failed';
 }
@@ -850,6 +869,12 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
             : {}),
         }),
       );
+      // A start that names no title leaves the one the session has, except a rebind: that is another session.
+      updates.push(...titleUpdates(event.title, event.rebind === true));
+      break;
+    case 'session:title-updated':
+      if (actor) break;
+      updates.push(...titleUpdates(event.title, true));
       break;
     case 'session:ready':
       if (actor) break;

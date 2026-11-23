@@ -25,6 +25,7 @@
     "skills/changed",
     "thread/closed",
     "thread/compacted",
+    "thread/name/updated",
     "thread/settings/updated",
     "thread/started",
     "thread/status/changed",
@@ -64,13 +65,13 @@
     "turn/start"
   ],
   "unmapped": {
-    "count": 221,
-    "sha256": "7444e978761df9943849c605efe4f9673951ca41d79fe0a3c3638f1298434b20",
+    "count": 220,
+    "sha256": "a99913d42c6c0fc4d25fe7c0756722780991783bb3a39bf72530992feb80e0a5",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 276,
-    "semantic": 26,
+    "semantic": 27,
     "observedOrControlled": 29
   }
 }

@@ -29,6 +29,13 @@ afterEach(async () => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
+/** The conversation's events alone: a fixture's title rows are read by the title tests. */
+function untitled(listener: (event: SemanticObservationEvent) => void): (event: SemanticObservationEvent) => void {
+  return (event) => {
+    if (event.event.type !== 'session:title-updated') listener(event);
+  };
+}
+
 function assistantRow(
   sequence: number,
   options: {
@@ -72,11 +79,70 @@ async function fixture(contents: string) {
   });
   handles.push(handle);
   const events: SemanticObservationEvent[] = [];
-  handle.onEvent((event) => events.push(event));
+  handle.onEvent(untitled((event) => events.push(event)));
   return { root, path, handle, events };
 }
 
 describe('ClaudeTranscriptObservationProvider', () => {
+  it("says the session's title at the first read and again when it changes, and nothing while it stands", async () => {
+    const root = mkdtempSync(join(tmpdir(), 'claude-transcript-title-'));
+    roots.push(root);
+    const path = join(root, 'session-1.jsonl');
+    const line = (value: Record<string, unknown>) => `${JSON.stringify(value)}\n`;
+    writeFileSync(
+      path,
+      assistantRow(1, { text: 'An earlier reply' }) +
+        line({ type: 'ai-title', aiTitle: 'Mend the invoice writer', sessionId: 'session-1' }),
+    );
+    const handle = await new ClaudeTranscriptObservationProvider().attach({
+      nativeSessionId: 'session-1',
+      transcriptPath: path,
+      pollIntervalMs: 0,
+    });
+    handles.push(handle);
+    const events: SemanticObservationEvent[] = [];
+    handle.onEvent((event) => events.push(event));
+    const said = () => events.map(({ event }) => (event.type === 'session:title-updated' ? event.title : event.type));
+
+    // The reply already there is the silent baseline; the title is the session's state, and is said.
+    await handle.poll();
+    expect(said()).toEqual(['Mend the invoice writer']);
+    expect(Number.isFinite(Date.parse(events[0]!.timestamp))).toBe(true);
+    expect(events[0]).not.toHaveProperty('replay');
+
+    // Claude writes the row again beside each turn: the same words are no news.
+    appendFileSync(path, line({ type: 'ai-title', aiTitle: 'Mend the invoice writer', sessionId: 'session-1' }));
+    await handle.poll();
+    expect(said()).toEqual(['Mend the invoice writer']);
+
+    // A rename moves no conversation row, and is still heard.
+    appendFileSync(path, line({ type: 'custom-title', customTitle: 'invoices', sessionId: 'session-1' }));
+    await handle.poll();
+    expect(said()).toEqual(['Mend the invoice writer', 'invoices']);
+
+    // A new reply with the title's row beside it: the reply, and no second word for the same title.
+    appendFileSync(
+      path,
+      assistantRow(2, { requestId: 'request-2', text: 'A later reply' }) +
+        line({ type: 'custom-title', customTitle: 'invoices', sessionId: 'session-1' }),
+    );
+    await handle.poll();
+    expect(said()).toEqual(['Mend the invoice writer', 'invoices', 'conversation:assistant-message']);
+  });
+
+  it('says no title for a session whose transcript names none', async () => {
+    const { handle, events } = await fixture(assistantRow(1, { text: 'An earlier reply' }));
+    const all: SemanticObservationEvent[] = [];
+    handle.onEvent((event) => all.push(event));
+    appendFileSync(
+      join(roots.at(-1)!, 'session-1.jsonl'),
+      `${JSON.stringify({ type: 'custom-title', customTitle: 'the fork', sessionId: 'another-session' })}\n`,
+    );
+    await handle.poll();
+    expect(all).toEqual([]);
+    expect(events).toEqual([]);
+  });
+
   it.each(['\n', ''])('baselines existing messages with EOF=%j and publishes only later changes', async (ending) => {
     const row = (type: 'user' | 'assistant', id: string, text: string) =>
       JSON.stringify({
@@ -181,7 +247,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
       });
       handles.push(handle);
       const events: SemanticObservationEvent[] = [];
-      handle.onEvent((event) => events.push(event));
+      handle.onEvent(untitled((event) => events.push(event)));
       await handle.poll();
       return { handle, events };
     };
@@ -267,7 +333,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
       });
       handles.push(handle);
       const events: SemanticObservationEvent[] = [];
-      handle.onEvent((event) => events.push(event));
+      handle.onEvent(untitled((event) => events.push(event)));
       await handle.poll();
       return { handle, events };
     };
@@ -972,7 +1038,7 @@ describe('ClaudeTranscriptObservationProvider', () => {
           }),
       )
       .mockResolvedValue(updated);
-    vi.spyOn(jsonlReader, 'createClaudeTranscriptReader').mockReturnValue({ read });
+    vi.spyOn(jsonlReader, 'createClaudeTranscriptReader').mockReturnValue({ read, title: () => undefined });
     const { handle, events } = await fixture('');
     const first = handle.poll();
     await Promise.resolve();

@@ -181,6 +181,18 @@ describe('buildFindRows', () => {
     expect(rows[0]?.title).toBe('Live surface structure exploration');
   });
 
+  it("takes the row's own title while the record names none, and the record's once it does", () => {
+    const untitledByRecord = { ...c, title: 'Mend the invoice writer' };
+    const listed = buildFindRows({ agents: [untitledByRecord], facts: known, hits: [], query: '', nowMs: NOW });
+    expect(listed[0]?.title).toBe('Mend the invoice writer');
+    const found = buildFindRows({ agents: [untitledByRecord], facts: known, hits: [], query: 'invoice', nowMs: NOW });
+    expect(found[0]?.matched).toEqual(['title']);
+    const both = { ...a, title: 'the monitor’s word' };
+    expect(buildFindRows({ agents: [both], facts: known, hits: [], query: '', nowMs: NOW })[0]?.title).toBe(
+      'Live surface structure exploration',
+    );
+  });
+
   it('keeps only agents the facts or the words reach, and ranks words above a loose fact', () => {
     const hits = [hit('n-b', 't1', 'the [widget] card'), hit('n-b', 't2', 'a [widget] again', NOW - 5_000, 'agent')];
     const rows = buildFindRows({ agents: [a, b, c, shell], facts: known, hits, query: 'widget', nowMs: NOW });

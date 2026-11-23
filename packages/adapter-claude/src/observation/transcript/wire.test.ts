@@ -110,4 +110,27 @@ describe('Claude transcript wire decoding', () => {
     expect(attachment).not.toHaveProperty('content');
     expect(attachment?.keptBytes).toBeGreaterThan(0);
   });
+
+  it("reads a title row's word, by who wrote it, and no title from any other row", () => {
+    const [custom, written, blank, reply] = decodeClaudeTranscript(
+      [
+        { type: 'custom-title', customTitle: ' invoices ', sessionId: 'session-1' },
+        { type: 'ai-title', aiTitle: 'Mend the invoice writer', sessionId: 'session-1' },
+        { type: 'custom-title', customTitle: '', sessionId: 'session-1' },
+        {
+          type: 'assistant',
+          uuid: 'reply',
+          customTitle: 'not a title row',
+          message: { role: 'assistant', content: 'x' },
+        },
+      ]
+        .map((row) => JSON.stringify(row))
+        .join('\n'),
+    );
+
+    expect(custom?.title).toEqual({ by: 'person', text: 'invoices' });
+    expect(written?.title).toEqual({ by: 'provider', text: 'Mend the invoice writer' });
+    expect(blank).not.toHaveProperty('title');
+    expect(reply).not.toHaveProperty('title');
+  });
 });

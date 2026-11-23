@@ -7,7 +7,12 @@ import type {
   RuntimeMonitorObservationBatch,
   WorkspaceMonitorObservation,
 } from './internal-types.js';
-import { createMonitorAccumulatorState, reduceMonitorAccumulator, translateAgentEventEnvelope } from './reduce.js';
+import {
+  createMonitorAccumulatorState,
+  MAX_SESSION_TITLE_CHARS,
+  reduceMonitorAccumulator,
+  translateAgentEventEnvelope,
+} from './reduce.js';
 import { projectAgentMonitorState } from './project.js';
 
 const T0 = '2026-08-16T12:00:00.000Z';
@@ -870,6 +875,63 @@ describe('assistant message', () => {
     expect(
       projectAgentMonitorState(apply(initial(), [runtime({ type: 'session:ready' }, 1)])).lastAssistantMessage,
     ).toBeUndefined();
+  });
+});
+
+describe('session title', () => {
+  const title = (state: MonitorAccumulatorState) => projectAgentMonitorState(state).session.title;
+
+  it('carries the title a start names, and the one a later update says', () => {
+    const started = apply(initial(), [runtime({ type: 'session:started', title: 'Mend the invoice writer' }, 1)]);
+    expect(title(started)).toBe('Mend the invoice writer');
+    const renamed = apply(started, [runtime({ type: 'session:title-updated', title: 'Split the invoice writer' }, 2)]);
+    expect(title(renamed)).toBe('Split the invoice writer');
+    // A session that says no title has none: the views name it by its folder.
+    expect(title(apply(initial(), [runtime({ type: 'session:started' }, 1)]))).toBeUndefined();
+  });
+
+  it('keeps its title through a start that names none, and loses it at a rebind or a null', () => {
+    const titled = apply(initial(), [runtime({ type: 'session:started', title: 'Mend the invoice writer' }, 1)]);
+    // Claude announces a compacted context as another start of the same session.
+    expect(title(apply(titled, [runtime({ type: 'session:started', startSource: 'compact' }, 2)]))).toBe(
+      'Mend the invoice writer',
+    );
+    expect(title(apply(titled, [runtime({ type: 'session:started', rebind: true }, 2)]))).toBeUndefined();
+    expect(title(apply(titled, [runtime({ type: 'session:started', rebind: true, title: 'Another' }, 2)]))).toBe(
+      'Another',
+    );
+    expect(title(apply(titled, [runtime({ type: 'session:title-updated', title: null }, 2)]))).toBeUndefined();
+  });
+
+  it("is one bounded line, and never a child's", () => {
+    const child = { agentId: 'worker', actorRole: 'child' as const, agentType: 'worker' };
+    const state = apply(initial(), [
+      runtime({ type: 'session:started', title: '  Mend the\n  invoice   writer ' }, 1),
+      runtime({ type: 'session:title-updated', title: 'the worker names itself' }, 2, child),
+      runtime({ type: 'session:started', title: 'a child session starts' }, 3, child),
+    ]);
+    expect(title(state)).toBe('Mend the invoice writer');
+    const long = apply(state, [runtime({ type: 'session:title-updated', title: 'x'.repeat(500) }, 4)]);
+    expect(title(long)).toHaveLength(MAX_SESSION_TITLE_CHARS);
+    expect(title(long)?.endsWith('…')).toBe(true);
+    // Blank is no title: the update is the provider saying it has none.
+    expect(title(apply(state, [runtime({ type: 'session:started', title: '   ' }, 4)]))).toBe(
+      'Mend the invoice writer',
+    );
+  });
+
+  it('is no evidence of the conversation rail, and moves nothing else', () => {
+    const before = projectAgentMonitorState(apply(initial(), [runtime({ type: 'session:ready' }, 1)]));
+    const after = projectAgentMonitorState(
+      apply(initial(), [
+        runtime({ type: 'session:ready' }, 1),
+        runtime({ type: 'session:title-updated', title: 'Mend the invoice writer' }, 2),
+      ]),
+    );
+    expect(after.freshness.families.conversation).toEqual(before.freshness.families.conversation);
+    expect(after.status).toBe(before.status);
+    expect(after.lastAssistantMessage).toBeUndefined();
+    expect(after.alive).toBe(before.alive);
   });
 });
 

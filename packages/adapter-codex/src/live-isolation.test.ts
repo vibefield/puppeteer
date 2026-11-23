@@ -254,6 +254,7 @@ describe('the opt-in live tests', () => {
       'native-tui.live.test.ts',
       'observation/observer.live.test.ts',
       'services/account-usage.live.test.ts',
+      'session-title.live.test.ts',
       'transport/ws-transport.live.test.ts',
     ]);
   });

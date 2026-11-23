@@ -17,6 +17,16 @@ export type ClaudeTranscriptBlock =
  */
 const RECORD_OVERHEAD_BYTES = 512;
 
+/**
+ * A title row's word for the session: the name a person gave it (`custom-title`, written by `-n` and `/rename`), or the
+ * one Claude wrote for it (`ai-title`). Claude writes the row again beside later turns, with neither `uuid` nor
+ * timestamp.
+ */
+export interface ClaudeTranscriptTitle {
+  readonly by: 'person' | 'provider';
+  readonly text: string;
+}
+
 export interface ClaudeTranscriptRecord {
   /** Stable local identity used only when the provider row has no native id. */
   sourceId: string;
@@ -47,6 +57,8 @@ export interface ClaudeTranscriptRecord {
    */
   stopReason?: string | undefined;
   isSidechain: boolean;
+  /** A title row's word ({@link ClaudeTranscriptTitle}); absent on every other row. */
+  title?: ClaudeTranscriptTitle | undefined;
   /** The row's message content, slimmed at decode ({@link ClaudeTranscriptBlock}); absent when nothing is kept. */
   content?: readonly ClaudeTranscriptBlock[] | undefined;
   /**
@@ -103,6 +115,13 @@ function estimateKeptBytes(content: readonly ClaudeTranscriptBlock[]): number {
   return bytes;
 }
 
+function transcriptTitle(body: Record<string, unknown>): ClaudeTranscriptTitle | undefined {
+  const by = body.type === 'custom-title' ? 'person' : body.type === 'ai-title' ? 'provider' : undefined;
+  if (by === undefined) return undefined;
+  const text = by === 'person' ? body.customTitle : body.aiTitle;
+  return typeof text === 'string' && text.trim().length > 0 ? { by, text: text.trim() } : undefined;
+}
+
 /** A decoded JSON value's length re-serialized; `undefined` (an absent input) has none. */
 function jsonLength(value: unknown): number {
   return value === undefined ? 0 : JSON.stringify(value).length;
@@ -124,6 +143,7 @@ export function decodeClaudeTranscript(text: string, startIndex = 0, sourceId = 
     const message = transcriptObject(body.message);
     const content = transcriptBlocks(message);
     const stopReason = transcriptString(message?.stop_reason);
+    const title = transcriptTitle(body);
     rows.push({
       sourceId,
       index: startIndex + index,
@@ -150,6 +170,7 @@ export function decodeClaudeTranscript(text: string, startIndex = 0, sourceId = 
       ...(body.isCompactSummary === true ? { isCompactSummary: true as const } : {}),
       ...(stopReason ? { stopReason } : {}),
       isSidechain: body.isSidechain === true,
+      ...(title ? { title } : {}),
       ...(content.length > 0 ? { content } : {}),
       keptBytes: estimateKeptBytes(content),
     });

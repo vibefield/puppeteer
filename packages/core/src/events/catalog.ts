@@ -34,6 +34,7 @@ import {
   SessionExitedEventSchema,
   SessionReadyEventSchema,
   SessionStartedEventSchema,
+  SessionTitleUpdatedEventSchema,
   type SessionEvent,
 } from './session.js';
 import {
@@ -127,6 +128,12 @@ export const agentEventCatalog = {
     'session:exited',
     SessionExitedEventSchema,
     'The semantic provider session exited.',
+  ),
+  'session:title-updated': defineAgentEvent(
+    'session',
+    'session:title-updated',
+    SessionTitleUpdatedEventSchema,
+    "The provider's own title for the session changed, or it has none now.",
   ),
   'turn:started': defineAgentEvent('turn', 'turn:started', TurnStartedEventSchema, 'A user turn started.'),
   'turn:completed': defineAgentEvent(

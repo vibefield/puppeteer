@@ -8,6 +8,7 @@ import {
   agentReply,
   agentStatus,
   agentStatusSince,
+  agentTitle,
   agentTokens,
   agentWait,
   boundText,
@@ -21,6 +22,7 @@ import {
   projectKey,
   projectName,
   resolveProfileSet,
+  TITLE_MAX_LENGTH,
 } from './derive.js';
 import { DEVICE, T0, hostRun, hostTerminal, iso, monitorState } from './testing/fixtures.js';
 
@@ -151,6 +153,31 @@ describe('project', () => {
     expect(folderName('C:\\work\\repo\\', 'x')).toBe('repo');
     expect(folderName(undefined, 'x')).toBe('x');
     expect(folderName('  ', 'x')).toBe('x');
+  });
+});
+
+describe('title', () => {
+  it("is the provider's own word for the session, else the host's for the run, else absent", () => {
+    const titled = monitorState({ session: { nativeSessionId: 'native-1', title: 'Mend the invoice writer' } });
+    expect(agentTitle(hostRun({ title: 'resumed as' }), titled)).toBe('Mend the invoice writer');
+    expect(agentTitle(hostRun({ title: 'resumed as' }), monitorState())).toBe('resumed as');
+    expect(agentTitle(hostRun({ title: 'resumed as' }), undefined)).toBe('resumed as');
+    expect(agentTitle(hostRun(), monitorState())).toBeUndefined();
+    expect(agentTitle(hostRun({ title: '   ' }), monitorState())).toBeUndefined();
+    expect(derive(hostRun(), titled).title).toBe('Mend the invoice writer');
+    expect(derive()).not.toHaveProperty('title');
+    // The project still says where the run works: the title names it beside that, never in its place.
+    expect(derive(hostRun(), titled).project.name).toBe(derive().project.name);
+  });
+
+  it('is one line, cut by code points where no name runs', () => {
+    expect(agentTitle(hostRun({ title: ' Mend the\n invoice   writer ' }), undefined)).toBe('Mend the invoice writer');
+    const long = agentTitle(hostRun({ title: '🙂'.repeat(TITLE_MAX_LENGTH + 40) }), undefined)!;
+    expect(Array.from(long)).toHaveLength(TITLE_MAX_LENGTH);
+    expect(long.endsWith('…')).toBe(true);
+    expect(long.startsWith('🙂'.repeat(TITLE_MAX_LENGTH - 1))).toBe(true);
+    const exact = 'x'.repeat(TITLE_MAX_LENGTH);
+    expect(agentTitle(hostRun({ title: exact }), undefined)).toBe(exact);
   });
 });
 

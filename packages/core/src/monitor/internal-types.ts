@@ -159,6 +159,12 @@ export interface MonitorMessageFamilyValue {
   messageId?: string | undefined;
 }
 
+/** The provider's own title for the session, bounded at the reducer. Never a child's: a title names the run. */
+export interface MonitorTitleFamilyValue {
+  kind: 'title';
+  title: string;
+}
+
 export interface MonitorContextFamilyValue {
   kind: 'context';
   actor?: ActorRunRef | undefined;
@@ -230,7 +236,7 @@ export interface MonitorFamilyValueMap {
   delegation: MonitorDelegationFamilyValue;
   compaction: MonitorCompactionFamilyValue;
   environment: MonitorEnvironmentFamilyValue;
-  conversation: MonitorMessageFamilyValue;
+  conversation: MonitorMessageFamilyValue | MonitorTitleFamilyValue;
 }
 
 export type MonitorFamilyValue = MonitorFamilyValueMap[MonitorMetricFamily];

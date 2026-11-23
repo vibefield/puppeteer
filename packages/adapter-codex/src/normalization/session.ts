@@ -8,11 +8,20 @@ export class CodexSessionNormalizer {
     switch (input.method) {
       case 'thread/started': {
         const thread = rec(input.params.thread);
+        // The thread's name is its title. Its preview is its first words, which the thread's own lists show beside a
+        // name and never as one, so an unnamed thread starts with no title.
+        const name = str(thread?.name)?.trim();
         events.push({
           type: 'session:started',
           nativeSessionId: str(thread?.id) ?? input.threadId,
-          title: str(thread?.name) ?? (str(thread?.preview) || undefined),
+          ...(name ? { title: name } : {}),
         });
+        return { handled: true, events };
+      }
+      case 'thread/name/updated': {
+        // A rename by the person, by any client of the app-server, or by Codex; null says the thread has none now.
+        const name = str(input.params.threadName)?.trim();
+        events.push({ type: 'session:title-updated', title: name ? name : null });
         return { handled: true, events };
       }
       case 'thread/closed':

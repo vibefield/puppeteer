@@ -66,6 +66,7 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
     const errorListeners = new Set<(error: Error) => void>();
     const projection = new ClaudeTranscriptProjection(request.nativeSessionId);
     let lastTranscript: readonly ClaudeTranscriptRecord[] | undefined;
+    let lastTitle: string | undefined;
     let firstTranscriptPoll = true;
     let disposed = false;
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -83,9 +84,25 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
 
     const emitEvent = (value: SemanticObservationEvent): void => notify(eventListeners, value);
 
+    /**
+     * The session's title is its state, not a happening: the first read says the one it has, after what it replays,
+     * and a later read says a new one. Its rows carry no time of their own, so the title is as of the read.
+     */
+    const sayTitle = (): void => {
+      const title = transcriptReader.title(request.nativeSessionId);
+      if (title === undefined || title === lastTitle) return;
+      lastTitle = title;
+      emitEvent({ event: { type: 'session:title-updated', title }, timestamp: new Date().toISOString() });
+    };
+
     const projectTranscript = async (): Promise<void> => {
       const records = await transcriptReader.read();
-      if (disposed || records === lastTranscript) return;
+      if (disposed) return;
+      if (records === lastTranscript) {
+        // A title row joins no window: a read that moved no record may still have read a new title.
+        sayTitle();
+        return;
+      }
       const changed = projection.apply(records, transcriptDelta(lastTranscript, records));
       lastTranscript = records;
       // Existing messages form a silent baseline on every attachment,
@@ -130,6 +147,7 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
         const pause = yieldIfNeeded();
         if (pause) await pause;
       }
+      sayTitle();
       // Settled after the replay is out, so a host told `true` has been handed all of it.
       if (replayFound !== undefined) settleReplay?.(replayFound);
     };

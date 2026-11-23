@@ -573,6 +573,7 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
+    case 'session:title-updated':
     case 'delegation:subagent-started':
     case 'delegation:subagent-stopped':
     case 'workspace:file-operation':

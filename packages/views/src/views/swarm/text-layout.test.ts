@@ -116,6 +116,78 @@ describe('layoutCopy', () => {
   });
 });
 
+describe('layoutCopy: a line that asks for two rows', () => {
+  // 10px at 6px a glyph. At radius 40 with nothing else the row's room is 0.84 × 80 = 67.2px: eleven glyphs.
+  const title = (text: string, extra: Partial<CopyLine> = {}): CopyLine => ({
+    key: 'name',
+    text,
+    style: name,
+    opacity: 1,
+    tone: 'ink',
+    maxLines: 2,
+    ...extra,
+  });
+  const model: CopyLine = { key: 'model', text: 'k2', style: name, opacity: 0.58, tone: 'ink', gapBefore: 3 };
+  const options = { radius: 40, measure, maxWidthRatio: 0.84 };
+  const rows = (lines: CopyLine[], wrap = true) =>
+    layoutCopy(lines, { ...options, wrap }).lines.map((line) => [line.key, line.text]);
+
+  it('breaks between words where its words do not fit one, and keeps whole words on the first row', () => {
+    expect(rows([title('Mend the invoice writer'), model])).toEqual([
+      ['name', 'Mend the'],
+      ['name:2', 'invoice wr…'],
+      ['model', 'k2'],
+    ]);
+    expect(rows([title('Mend invoices on'), model])).toEqual([
+      ['name', 'Mend'],
+      ['name:2', 'invoices on'],
+      ['model', 'k2'],
+    ]);
+  });
+
+  it('stays one row where the words fit, where the layout does not wrap, and where the line asks for one', () => {
+    expect(rows([title('invoices'), model])).toEqual([
+      ['name', 'invoices'],
+      ['model', 'k2'],
+    ]);
+    const cut = [
+      ['name', 'Mend the i…'],
+      ['model', 'k2'],
+    ];
+    expect(rows([title('Mend the invoice writer'), model], false)).toEqual(cut);
+    expect(rows([{ ...title('Mend the invoice writer'), maxLines: 1 }, model])).toEqual(cut);
+    const { maxLines: _maxLines, ...plain } = title('Mend the invoice writer');
+    expect(rows([plain, model])).toEqual(cut);
+  });
+
+  it('is cut as one row where it has no second word, or its first word alone does not fit', () => {
+    expect(rows([title('Antidisestablishmentarianism'), model])).toEqual([
+      ['name', 'Antidisest…'],
+      ['model', 'k2'],
+    ]);
+    expect(rows([title('Antidisestablishmentarianism now'), model])).toEqual([
+      ['name', 'Antidisest…'],
+      ['model', 'k2'],
+    ]);
+  });
+
+  it('gives the second row no lead and no gap, and the stack its height, centred', () => {
+    const lead = { kind: 'icon', icon: 'folder', size: 12, width: 9, gap: 4 } as const;
+    const layout = layoutCopy([title('Mend the invoice writer', { lead }), model], { ...options, wrap: true });
+    const [first, second, last] = layout.lines;
+    // The lead takes 13px of the first row's 67.2: nine glyphs, so "Mend the" and no more.
+    expect(first).toMatchObject({ key: 'name', text: 'Mend the', lead });
+    expect(second).not.toHaveProperty('lead');
+    expect(second).not.toHaveProperty('gapBefore');
+    expect(second).not.toHaveProperty('maxLines');
+    expect(second!.y - first!.y).toBeCloseTo(10.5, 6);
+    // 10.5 + 10.5 + 3 + 10.5 = 34.5px, centred.
+    expect(layout.top).toBeCloseTo(-17.25, 6);
+    expect(layout.bottom).toBeCloseTo(17.25, 6);
+    expect(last!.y).toBeCloseTo(17.25 - 5.25, 6);
+  });
+});
+
 describe('legible', () => {
   const line: CopyLine = { key: 'name', text: 'puppeteer', style: name, opacity: 1, tone: 'ink' };
   const placed = (text: string): PlacedLine => ({ ...line, text, width: 0, textWidth: 0, y: 0, height: 0 });
