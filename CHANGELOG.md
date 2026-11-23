@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.9](https://github.com/vibefield/puppeteer/compare/v0.4.8...v0.4.9) (2026-11-23)
+
+
+### Features
+
+* **adapter-codex:** a running Codex thread's model and effort can be changed through its app-server ([#110](https://github.com/vibefield/puppeteer/issues/110)) ([09072d0](https://github.com/vibefield/puppeteer/commit/09072d0312bdc9e504ff53a596a2183efbe6001c))
+
 ## [0.4.8](https://github.com/vibefield/puppeteer/compare/v0.4.7...v0.4.8) (2026-11-21)
 
 
