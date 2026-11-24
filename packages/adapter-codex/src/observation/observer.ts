@@ -389,7 +389,12 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         // A thread this connection just created has no prior turns or usage.
         // Existing and externally discovered threads retain the replay barrier.
         const contextWindow = !fresh && threadPath ? await readLastCodexContextWindow(threadPath) : undefined;
-        apply({ type: 'session:started', nativeSessionId: threadId }, 'native-hook');
+        // The thread's name is its title (`normalization/session.ts`). A thread that is resumed already has the name
+        // Codex or a person gave it, and nothing says it again: `thread/started` is for a thread that begins, and
+        // `thread/name/updated` for a rename. So the resume's own answer is where a resumed session's title is read,
+        // else the thread this attach was handed. An unnamed thread starts with no title, as before.
+        const name = (str(rec(resumed?.thread)?.name) ?? str(thread?.name))?.trim();
+        apply({ type: 'session:started', nativeSessionId: threadId, ...(name ? { title: name } : {}) }, 'native-hook');
         // A resumed history can exceed the event source's 256-event startup
         // buffer and evict session:started (leaving the monitor "Starting").
         // Replay only once the runtime has subscribed, so history streams

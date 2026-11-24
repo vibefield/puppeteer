@@ -786,6 +786,31 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     await obs.dispose();
   });
 
+  it('threadId: a resumed thread that has a name starts with it as its title, and an unnamed one with none', async () => {
+    const started = async (thread: Record<string, unknown>) => {
+      const t = controllable(0, { thread });
+      const obs = await createCodexObserver({ transport: t.transport, threadId: String(thread.id) });
+      const projection = projectAgentEvents(obs);
+      const event = projection.envelopes
+        .map((envelope) => envelope.event)
+        .find(({ type }) => type === 'session:started');
+      projection.dispose();
+      await obs.dispose();
+      return event;
+    };
+    // Nothing says a resumed thread's name again (`thread/started` is a thread that begins, `thread/name/updated` a
+    // rename), so the resume's own answer is where its title is read.
+    expect(await started({ id: 'th-named', name: '  Port the History view ', turns: [] })).toEqual({
+      type: 'session:started',
+      nativeSessionId: 'th-named',
+      title: 'Port the History view',
+    });
+    // A thread nobody named, and one whose name is blank, start with no title: its preview is never one.
+    const unnamed = { type: 'session:started', nativeSessionId: 'th-unnamed' };
+    expect(await started({ id: 'th-unnamed', name: null, preview: 'first words', turns: [] })).toEqual(unnamed);
+    expect(await started({ id: 'th-unnamed', name: '   ', preview: 'first words', turns: [] })).toEqual(unnamed);
+  });
+
   it('threadId: a resume at a chosen model and effort asks every thread/resume attempt for them', async () => {
     const t = controllable(1);
     const obs = await createCodexObserver({

@@ -1,7 +1,8 @@
 /**
  * Opt-in proof that a Codex thread's name reaches the session's event stream as its title, beside the exact native
  * TUI: the name Codex writes for the thread after its first turn is heard, and so is a name another client of the
- * same app-server sets, as the TUI's own `/rename` is one. Model traffic and user state stay isolated, as in
+ * same app-server sets, as the TUI's own `/rename` is one; and a resume of the thread starts with the name it has.
+ * Model traffic and user state stay isolated, as in
  * `native-tui.live.test.ts`, so the lane needs no credentials.
  *
  *   CODEX_NATIVE_TUI_LIVE=1 PUPPETEER_CODEX_BIN=/absolute/path/to/codex pnpm test
@@ -39,13 +40,15 @@ function endpointOf(args: readonly string[]): AppServerEndpoint {
 }
 
 describe.runIf(live)("a Codex thread's name through the real app-server and native TUI (live)", () => {
-  it('is heard as the title when Codex names the thread, and when a client renames it', async () => {
+  it('is heard as the title when Codex names the thread, when a client renames it, and when the thread is resumed', async () => {
     const executable = requireCodexLiveExecutable('CODEX_NATIVE_TUI_LIVE');
     const profile = await createCodexLiveProfile('puppeteer-codex-title-');
     const host = new CodexLivePtyHost();
     let session: Awaited<ReturnType<typeof createCodexTuiSession>> | undefined;
     let projection: ReturnType<typeof projectAgentEvents> | undefined;
     let other: AppServerClient | undefined;
+    let resumed: Awaited<ReturnType<typeof createCodexTuiSession>> | undefined;
+    let resumedProjection: ReturnType<typeof projectAgentEvents> | undefined;
     try {
       session = await createCodexTuiSession({
         cwd: profile.cwd,
@@ -85,8 +88,34 @@ describe.runIf(live)("a Codex thread's name through the real app-server and nati
       await other.request('thread/name/set', { threadId: session.sessionId, name: 'invoices' });
       await waitFor(() => titles(envelopes).at(-1) === 'invoices', "Codex's own word that the thread was renamed");
       expect(titles(envelopes)).toEqual([CODEX_LIVE_THREAD_TITLE, 'invoices']);
+
+      // A resume of the thread: nothing says its name again, so the session reads it from the resume's own answer
+      // and starts with its title.
+      const threadId = session.sessionId;
+      const firstRuntimeSessionId = session.runtimeSessionId;
+      await other.close();
+      other = undefined;
+      projection.dispose();
+      projection = undefined;
+      await session.dispose();
+      session = undefined;
+      await host.disposeTerminal(firstRuntimeSessionId);
+      resumed = await createCodexTuiSession({
+        cwd: profile.cwd,
+        resume: threadId,
+        executable,
+        host,
+        env: profile.environment,
+        appServerEnv: profile.environment,
+      });
+      resumedProjection = projectAgentEvents(resumed);
+      expect(resumed.sessionId).toBe(threadId);
+      await waitFor(() => titles(resumedProjection!.envelopes).length > 0, "the resumed session's title");
+      expect(titles(resumedProjection.envelopes)).toEqual(['invoices']);
     } finally {
       await other?.close();
+      resumedProjection?.dispose();
+      await resumed?.dispose();
       projection?.dispose();
       await session?.dispose();
       await host.dispose();
