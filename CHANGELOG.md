@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.13](https://github.com/vibefield/puppeteer/compare/v0.4.12...v0.4.13) (2026-11-24)
+
+
+### Bug Fixes
+
+* **adapter-codex:** a resumed Codex thread starts with the name it has, as its title ([#120](https://github.com/vibefield/puppeteer/issues/120)) ([eed7794](https://github.com/vibefield/puppeteer/commit/eed7794ef967fc4e0708baf40e5d4a771dab7333))
+* **views:** the spend view names a row by its session's title, as every other view does ([#119](https://github.com/vibefield/puppeteer/issues/119)) ([cd3dc45](https://github.com/vibefield/puppeteer/commit/cd3dc45b5663b19b1cbb1d5458ffc276bd3f4ff9))
+
 ## [0.4.12](https://github.com/vibefield/puppeteer/compare/v0.4.11...v0.4.12) (2026-11-23)
 
 
