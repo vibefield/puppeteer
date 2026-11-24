@@ -417,6 +417,23 @@ describe('the spend view', () => {
     expect(view.root.textContent).not.toMatch(/ended \d/);
   });
 
+  it('names a row by its session’s own title once it says one, with its project beside the model (the toolkit’s `rowName`)', async () => {
+    const agents = afternoon().map((agent) =>
+      agent.id === 'refactor-auth' ? { ...agent, title: 'Split the token store' } : agent,
+    );
+    const view = await mount({ agents });
+    const name = (id: string) => rowOf(view.root, id).querySelector('.vf-monitor-spend-name')?.textContent;
+    const titled = rowOf(view.root, 'refactor-auth');
+    expect(name('refactor-auth')).toBe('Split the token store');
+    // The project the title replaced stands after the model, in the line under the name and in the tooltip, and a
+    // screen reader hears it after the name.
+    expect(titled.querySelector('.vf-monitor-spend-task')?.textContent).toMatch(/^opus · refactor-auth/);
+    expect(titled.getAttribute('title')).toBe('Split the token store · opus · refactor-auth · refactor-auth');
+    expect(titled.getAttribute('aria-label')).toMatch(/^Split the token store, refactor-auth, opus · refactor-auth, /);
+    // A session that has said no title is named by where it works, as before.
+    expect(name('billing-api')).toBe('billing-api');
+  });
+
   it('docks waiting rows the scroll leaves out, when twenty do not fit (SV-D19)', async () => {
     const view = await mount({ agents: afternoon({ crowd: true }) }, { width: 1178, height: 518 });
     expect(view.root.textContent).toMatch(/more below · scroll/);
