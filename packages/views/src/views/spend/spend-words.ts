@@ -1,5 +1,14 @@
 import type { AgentView } from '@vibefield/puppeteer-view-sdk';
-import { detailLine, formatClock, formatShort, formatUsd, projectName } from '@vibefield/puppeteer-view-sdk/toolkit';
+import {
+  detailLine,
+  formatClock,
+  formatShort,
+  formatUsd,
+  projectName,
+  rowName,
+  rowSpoken,
+  titledProject,
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 
 // What the spend view says in words: money as the swarm prints it (`~$1.84`,
 // `+` when partial, `—` unpriced), the burn by the hour, the hero's caption, each
@@ -45,7 +54,7 @@ const BURN_FLOOR_PER_MIN = 0.0005;
  * What a row says where the held view printed its task: the line under its
  * name, by the toolkit's one rule (M4's `detailLine`: the wait when blocked,
  * else the reply, else the status; a peer leads with its desktop), its first
- * line, unless it only repeats the project or the bare status the row's state
+ * line, unless it only repeats the row's name, its project or the bare status the row's state
  * words already print: then nothing, and the row falls back to its model, as
  * the held view's did. The task itself is no model fact: the held view read
  * the terminal's title, and a title crossing devices is a sync-plane change
@@ -56,42 +65,66 @@ export function taskOf(agent: AgentView): string {
     .split('\n')[0]!
     .replace(/^[^\p{L}\p{N}~/.]+/u, '')
     .trim();
-  return line && line !== projectName(agent) && line !== agent.status ? line : '';
+  return line && line !== rowName(agent) && line !== projectName(agent) && line !== agent.status ? line : '';
 }
 
-/** The model the tooltip names: the run's model (or its provider), then its branch. */
-export function modelOf(agent: AgentView): string {
+/** The run in words: its model (or its provider), then its branch. */
+export function runOf(agent: AgentView): string {
   return [agent.model ?? agent.provider?.label, agent.project.branch].filter(Boolean).join(' · ');
 }
 
+/**
+ * The model the tooltip names and a row with no task falls back to: the run's model (or its provider), then, where
+ * the session's title is the row's name, the project it works in (`titledProject`), then its branch.
+ */
+export function modelOf(agent: AgentView): string {
+  return [agent.model ?? agent.provider?.label, titledProject(agent), agent.project.branch].filter(Boolean).join(' · ');
+}
+
 export interface SpendName {
-  /** Its project, as the swarm names a body. */
+  /** Its name, as the swarm names a body (`rowName`): a host's mark, else the session's own title, else its project. */
   readonly name: string;
-  /** The one-line form: the project, and what tells siblings apart. */
+  /** The one-line form: the name, and what tells rows of one name apart. */
   readonly one: string;
+  /** The one-line form as a screen reader hears it: a host's spoken words, and after a title the project it works in. */
+  readonly spoken: string;
+  /** The project a titled row works in (`titledProject`), where the name does not already say it; else empty. */
+  readonly place: string;
   readonly task: string;
   readonly model: string;
+  /** The run alone, for a screen reader after `spoken`: the model (or the provider) and the branch. */
+  readonly run: string;
 }
 
 const firstWords = (text: string, count: number): string => text.split(/\s+/).slice(0, count).join(' ');
 
 /**
- * The names rows go by. Where two share a project the one-line form adds what
- * tells them apart: their agent when it differs, else the first words of their
- * task; the two-line form puts the task on the second line (review must-fix 1).
+ * The names rows go by, by the toolkit's one rule (`rowName`): a session is named by what it is about once it says
+ * so, and by where it works until then. Where two share a name the one-line form adds what tells them apart: their
+ * agent when it differs, else the first words of their task; the two-line form puts the task on the second line
+ * (review must-fix 1).
  */
 export function spendNames(agents: readonly AgentView[]): Map<string, SpendName> {
   const out = new Map<string, SpendName>();
   for (const agent of agents) {
     const task = taskOf(agent);
-    const project = projectName(agent);
-    const siblings = agents.filter((other) => other !== agent && projectName(other) === project);
+    const name = rowName(agent);
+    const siblings = agents.filter((other) => other !== agent && rowName(other) === name);
     const provider = agent.provider?.id ?? '';
     const sameProvider = siblings.some((other) => (other.provider?.id ?? '') === provider);
-    const one = siblings.length
-      ? `${project} · ${sameProvider || !provider ? firstWords(task, 2) || agent.id : provider}`
-      : project;
-    out.set(agent.id, { name: project, one, task, model: modelOf(agent) });
+    const apart = siblings.length ? (sameProvider || !provider ? firstWords(task, 2) || agent.id : provider) : '';
+    const one = apart ? `${name} · ${apart}` : name;
+    const heard = rowSpoken(agent);
+    const spoken = apart ? `${heard} · ${apart}` : heard;
+    out.set(agent.id, {
+      name,
+      one,
+      spoken,
+      place: titledProject(agent) ?? '',
+      task,
+      model: modelOf(agent),
+      run: runOf(agent),
+    });
   }
   return out;
 }

@@ -12,6 +12,7 @@ import {
   NOT_RECORDED,
   perHour,
   printedBurn,
+  runOf,
   spendNames,
   spendStateAt,
   stateWords,
@@ -67,6 +68,56 @@ describe('the spend words', () => {
     expect(names.get('c')!.task).toBe('Tidied the timeline route docs.');
   });
 
+  it('names a row by the toolkit’s one rule: a host’s mark, else the session’s own title, else its project', () => {
+    const said = (text: string) => ({ reply: { text, final: true } });
+    const place = { name: 'rosetta', branch: 'main' };
+    const titled = row('a', 'rosetta', { title: 'Port the History view', model: 'opus', project: place });
+    const plain = row('b', 'rosetta', { model: 'opus', project: place });
+    const marked = row('c', 'rosetta', {
+      title: 'Never printed under a mark',
+      mark: { name: 'Review desk', spoken: 'the review desk' },
+    });
+    const names = spendNames([titled, plain, marked]);
+    // The title is the name; its project moves to the tooltip's line and to what a screen reader hears.
+    expect(names.get('a')).toEqual({
+      name: 'Port the History view',
+      one: 'Port the History view',
+      spoken: 'Port the History view, rosetta',
+      place: 'rosetta',
+      task: '',
+      model: 'opus · rosetta · main',
+      run: 'opus · main',
+    });
+    // A session that has not said its title is named by where it works, word for word as before; the three share a
+    // project and no name, so none is a sibling.
+    expect(names.get('b')).toEqual({
+      name: 'rosetta',
+      one: 'rosetta',
+      spoken: 'rosetta',
+      place: '',
+      task: '',
+      model: 'opus · main',
+      run: 'opus · main',
+    });
+    // A host's mark takes the name's place whole, and says its own spoken words.
+    expect(names.get('c')).toMatchObject({
+      name: 'Review desk',
+      one: 'Review desk',
+      spoken: 'the review desk',
+      place: '',
+    });
+    // Two sessions of one title are told apart as two of one project are.
+    const twins = spendNames([
+      row('d', 'rosetta', { title: 'Port the History view', ...said('Rebuilt the session index.') }),
+      row('e', 'notes', { title: 'Port the History view', ...said('Tidied the timeline route docs.') }),
+    ]);
+    expect(twins.get('d')!.one).toBe('Port the History view · Rebuilt the');
+    expect(twins.get('d')!.spoken).toBe('Port the History view, rosetta · Rebuilt the');
+    expect(twins.get('e')!.one).toBe('Port the History view · Tidied the');
+    // A line that only repeats the title is no task.
+    expect(taskOf(row('f', 'p', { title: 'Port the History view', ...said('Port the History view') }))).toBe('');
+  });
+
   it('says the line under the name where the held row printed its task: M4’s rule, the wait, else the reply (M178)', () => {
     // The model carries no task (the held view read the terminal's title): the toolkit's `detailLine` says the row.
     expect(taskOf(row('a', 'p', { status: 'working', reply: { text: 'Tightened the ledger reader.' } }))).toBe(
@@ -94,6 +145,10 @@ describe('the spend words', () => {
   it('names the model the tooltip says: the run’s model, else its provider, then its branch', () => {
     expect(modelOf(row('a', 'p', { model: 'opus', project: { name: 'p', branch: 'main' } }))).toBe('opus · main');
     expect(modelOf(row('a', 'p', { project: { name: 'p', branch: null } }))).toBe('Claude');
+    // Under a title the project stands between them, since the name no longer says it; the run alone leaves it out.
+    const titled = row('a', 'p', { title: 'Mend the ledger', model: 'opus', project: { name: 'p', branch: 'main' } });
+    expect(modelOf(titled)).toBe('opus · p · main');
+    expect(runOf(titled)).toBe('opus · main');
   });
 
   it('fits a task at a word, never mid-word', () => {

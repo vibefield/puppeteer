@@ -792,18 +792,19 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
       ? fitWords(row.name.task || row.name.model, l2w - stateWidth - 12, (text) => measure(text, rowFont))
       : '';
     const mounted = row.agent.attachment !== undefined;
-    const what = row.name.task || row.name.model;
+    // Heard: the row's spoken name says the project after a title, so the run follows it bare.
+    const what = row.name.task || row.name.run;
     const provider = row.agent.provider?.label ?? 'its provider';
     const label = before
-      ? `${row.name.one}, ${what}, had not started then; ${row.status.text}.`
+      ? `${row.name.spoken}, ${what}, had not started then; ${row.status.text}.`
       : row.unrecorded
-        ? `${row.name.one}, ${what}: what it had spent then was not recorded (its row carries only its total). Open in your pane.`
+        ? `${row.name.spoken}, ${what}: what it had spent then was not recorded (its row carries only its total). Open in your pane.`
         : row.priced
-          ? `${row.name.one}, ${what}, ${est(row.value, row.partial)}${row.status.text ? `, ${row.status.text}` : ''}${mounted ? ', in a pane' : ''}. Open in your pane.`
-          : `${row.name.one}: ${provider} reports no cost, so it isn't drawn${row.status.text ? `; ${row.status.text}` : ''}. Open in your pane.`;
+          ? `${row.name.spoken}, ${what}, ${est(row.value, row.partial)}${row.status.text ? `, ${row.status.text}` : ''}${mounted ? ', in a pane' : ''}. Open in your pane.`
+          : `${row.name.spoken}: ${provider} reports no cost, so it isn't drawn${row.status.text ? `; ${row.status.text}` : ''}. Open in your pane.`;
     const title = row.priced
       ? `${row.name.one} · ${row.name.model}${row.name.task ? ` · ${row.name.task}` : ''}`
-      : `${row.name.one} · ${provider} reports no cost, so it isn't drawn${row.name.task ? ` · ${row.name.task}` : ''}`;
+      : `${row.name.one}${row.name.place ? ` · ${row.name.place}` : ''} · ${provider} reports no cost, so it isn't drawn${row.name.task ? ` · ${row.name.task}` : ''}`;
     const classes = [
       'vf-monitor-spend-row',
       one ? 'is-one' : '',
