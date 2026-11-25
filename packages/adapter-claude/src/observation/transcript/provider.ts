@@ -9,6 +9,7 @@ import type {
 } from '../semantic-provider.js';
 import {
   ClaudeTranscriptProjection,
+  projectClaudeTranscriptInterruptions,
   projectClaudeTranscriptOpenWork,
   projectClaudeTranscriptReplayAfter,
   type ClaudeTranscriptDelta,
@@ -103,11 +104,22 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
         sayTitle();
         return;
       }
-      const changed = projection.apply(records, transcriptDelta(lastTranscript, records));
+      const delta = transcriptDelta(lastTranscript, records);
+      const changed = projection.apply(records, delta);
       lastTranscript = records;
       // Existing messages form a silent baseline on every attachment,
       // including picker rebinds. Only later changes are live observations.
       const pending: SemanticObservationEvent[] = firstTranscriptPoll ? [] : changed;
+      // An interruption is read only from rows a live read appended, after the messages they changed: a first read, or
+      // a read that walked the window whole (a reset reader), holds markers of turns that ended before it.
+      if (!firstTranscriptPoll && delta !== undefined) {
+        pending.push(
+          ...projectClaudeTranscriptInterruptions(
+            projection.sessionRows(delta.appended),
+            projection.sessionRows(records),
+          ),
+        );
+      }
       let replayFound: boolean | undefined;
       // An attached session's first read: what the transcript shows still open is where the agent stands now. It
       // happened before this observer, so it is replay, except a question the agent waits on, which is announced

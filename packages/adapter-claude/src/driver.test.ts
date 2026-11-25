@@ -40,6 +40,7 @@ import { cleanupClaudeSession } from './launch/prepare.js';
 import type { ClaudeHookDiagnostic } from './normalization/index.js';
 import { createHookBridge, type HookBridge, type NativeHookEnvelope } from './observation/hook-bridge.js';
 import type { SemanticObservationEvent, SemanticObservationProvider } from './observation/semantic-provider.js';
+import { claude2332InterruptedReplyRows } from './test-support/claude-transcript-fixtures.js';
 
 let sessions: ClaudeSession[] = [];
 const roots: string[] = [];
@@ -413,6 +414,53 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     const started = events.find((envelope) => envelope.event.type === 'turn:started');
     expect(started?.event).toEqual({ type: 'turn:started', turnId: 'p-long', prompt: text });
     expect((started?.nativeEvent as { prompt?: unknown } | undefined)?.prompt).toBe(prompt);
+  });
+
+  it('ends a reply stopped with Esc at the marker the transcript writes, as no Stop hook follows', async () => {
+    const { session, projection, events, hook, transcriptOf } = await startSession();
+    const transcript = transcriptOf();
+    const { prompt, reply, marker } = claude2332InterruptedReplyRows({
+      sessionId: session.sessionId,
+      promptId: 'p-esc',
+    });
+    const line = (row: Record<string, unknown>) => `${JSON.stringify(row)}\n`;
+    // An earlier turn Esc ended before this observer: its marker is history, never a live end.
+    const earlier = claude2332InterruptedReplyRows({
+      sessionId: session.sessionId,
+      promptId: 'p-old',
+      uuidPrefix: 'old',
+    });
+    writeFileSync(transcript, line(earlier.prompt) + line(earlier.reply) + line(earlier.marker));
+    await hook('SessionStart', { transcript_path: transcript });
+    await session.pollTranscript();
+
+    await hook('UserPromptSubmit', { prompt: 'Write a long explanation of the event bus.', prompt_id: 'p-esc' });
+    appendFileSync(transcript, line({ ...prompt, parentUuid: 'old-marker' }));
+    await session.pollTranscript();
+    expect(projection.state.lifecycle).toBe('running');
+
+    // The partial reply's row, then the marker 7 ms later; no Stop.
+    appendFileSync(transcript, line(reply) + line(marker));
+    await session.pollTranscript();
+    const ends = events.filter(({ event }) => event.type === 'turn:completed');
+    expect(ends).toEqual([
+      expect.objectContaining({
+        source: 'native-transcript',
+        confidence: 'derived',
+        promptId: 'p-esc',
+        timestamp: '2026-11-25T13:08:51.916Z',
+        event: { type: 'turn:completed', turnId: 'p-esc', outcome: 'interrupted' },
+      }),
+    ]);
+    expect(projection.state.lifecycle).toBe('ready');
+    expect(projection.state.activeTurn).toBeUndefined();
+
+    // Read again: the marker ends nothing twice. The next prompt opens a fresh turn, overlapping none.
+    await session.pollTranscript();
+    await hook('UserPromptSubmit', { prompt: 'Shorter, please.', prompt_id: 'p-next' });
+    expect(events.filter(({ event }) => event.type === 'turn:completed')).toHaveLength(1);
+    expect(projection.state.activeTurn?.id).toBe('p-next');
+    expect(projection.state.diagnostics.map(({ code }) => code)).not.toContain('turn-overlap');
   });
 
   it('gates injection for the current PreToolUse → PermissionRequest path, releasing after execution', async () => {

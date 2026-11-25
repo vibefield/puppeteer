@@ -10,9 +10,10 @@ import {
  * or close a dialog": https://code.claude.com/docs/en/interactive-mode). Ctrl-C
  * is not: on an idle Claude the first press clears the input and a second
  * exits. Two presses of Esc on an empty input open the rewind menu, never an
- * exit. Esc has been witnessed stopping a turn at a permission prompt only
- * (2.1.308, where it fires no Stop hook: `normalization/pipeline.ts`); a stop
- * mid-reply, and Esc under vim mode's INSERT, are VibeField's QA wave 1 census.
+ * exit. Esc stops a turn at a permission prompt (2.1.308) and in the middle of
+ * a reply (2.1.332), and fires no Stop hook either way: the turn ends at the
+ * marker row the transcript writes (`projectClaudeTranscriptInterruptions`).
+ * Esc under vim mode's INSERT is unmeasured.
  */
 export function createClaudeTurnStop(options: {
   automate(operation: TerminalAutomationOperation): Promise<TerminalAutomationResult>;
