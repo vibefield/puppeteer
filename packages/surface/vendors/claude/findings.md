@@ -611,8 +611,14 @@ above:
     read as system-injected, as the binary's own test reads it. Every observed 2.1.308 typed TUI
     prompt carries `origin.kind: human` → `human`; whether a typed prompt can land on `unknown` is
     unverified.
-  - `<pasted_content id=…>` wrapper lines in `UserPromptSubmit.prompt` (feature-flag gated, strings
-    only, not reproduced): prompt confirmation compares exactly and would answer `uncertain`.
+  - `<pasted_content id=…>` wrapper lines in `UserPromptSubmit.prompt` (feature-flag gated): seen by a
+    host on 2.1.332, not captured here. A long paste into an empty input arrived as
+    `\n\n<pasted_content id="d2c1">\n<the text>\n</pasted_content id="d2c1">\n` (a 4-hex id, repeated
+    on the close); short pastes arrived bare; a paste joined to a draft arrived as the draft, a blank
+    line, then the wrapper. The adapter confirms a programmatic paste and publishes the pasted words
+    as `turn:started.prompt` only when one wrapper is the whole prompt (`normalization/turn.ts`); the
+    draft-joined form stays as it came and its confirmation answers `uncertain`. Capturing the shape
+    (and the size or flag that turns it on) is still owed.
   - Closing an open turn at `SessionEnd`: every observed failing print turn reached StopFailure
     over HTTP before SessionEnd (the census table above); only a process that exits before the
     StopFailure delivery would leave a turn open; Core's `session:exited` then clears it and

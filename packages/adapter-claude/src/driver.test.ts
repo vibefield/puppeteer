@@ -397,6 +397,24 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(await receiptPromise).toEqual({ status: 'confirmed', turnId: 'p-9' });
   });
 
+  it('confirms a long paste Claude Code wrapped, and publishes its words with the wrapper kept native', async () => {
+    const { session, events, hook } = await startSession();
+    await hook('SessionStart', {});
+    const text = Array.from({ length: 10 }, (_, index) => `Step ${index + 1}: fix the cause and run the suite.`).join(
+      '\n',
+    );
+    // The UserPromptSubmit prompt Claude Code 2.1.332 sent for a long paste.
+    const prompt = `\n\n<pasted_content id="d2c1">\n${text}\n</pasted_content id="d2c1">\n`;
+
+    const receiptPromise = session.services.prompt.submit({ text });
+    await hook('UserPromptSubmit', { prompt, prompt_id: 'p-long' });
+    expect(await receiptPromise).toEqual({ status: 'confirmed', turnId: 'p-long' });
+
+    const started = events.find((envelope) => envelope.event.type === 'turn:started');
+    expect(started?.event).toEqual({ type: 'turn:started', turnId: 'p-long', prompt: text });
+    expect((started?.nativeEvent as { prompt?: unknown } | undefined)?.prompt).toBe(prompt);
+  });
+
   it('gates injection for the current PreToolUse → PermissionRequest path, releasing after execution', async () => {
     const { session, projection, hook } = await startSession();
     await hook('SessionStart', {});

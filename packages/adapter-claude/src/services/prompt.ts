@@ -4,9 +4,10 @@
  * Injection is terminal automation, not a protocol request, so honesty about
  * outcomes is the core design: `uncertain` is a first-class receipt, and the
  * confirmation REQUIRES the native UserPromptSubmit whose `prompt` payload
- * exactly matches the injected text (verbatim per the Phase 0 census). An
- * unmatched wait would misattribute a human's concurrent submission as ours —
- * the race documented in DESIGN §17.2.
+ * exactly matches the injected text (verbatim per the Phase 0 census), or is
+ * that text and nothing else inside the paste wrapper Claude Code puts around a
+ * long paste (2.1.332). An unmatched wait would misattribute a human's
+ * concurrent submission as ours — the race documented in DESIGN §17.2.
  *
  * Gates before any operation is accepted (§17.2 algorithm):
  * - no injection while another injection is active (queuePolicy 'queue' is
@@ -28,6 +29,7 @@ import type {
   TerminalAutomationOperation,
   TerminalAutomationResult,
 } from '@vibefield/puppeteer-core';
+import { unwrapClaudePastedPrompt } from '../normalization/turn.js';
 export type { PromptSubmission, PromptReceipt };
 
 export interface PromptInjectorOptions {
@@ -49,6 +51,16 @@ export interface PromptInjector {
 /** Claude receives what we paste verbatim; only line endings are normalized. */
 function normalizeText(text: string): string {
   return text.replace(/\r\n/g, '\n').replace(/\n$/, '');
+}
+
+/**
+ * Our paste, bare or as the whole of one paste wrapper. A wrapper that covers only part of the prompt holds someone
+ * else's text too (a draft the paste joined), so it never matches.
+ */
+function isOurPrompt(prompt: string, expected: string): boolean {
+  if (normalizeText(prompt) === expected) return true;
+  const pasted = unwrapClaudePastedPrompt(prompt);
+  return pasted !== undefined && normalizeText(pasted) === expected;
 }
 
 interface ActiveInjection {
@@ -123,7 +135,7 @@ export function createPromptInjector(options: PromptInjectorOptions): PromptInje
 
     handleTurnStarted(turnId, prompt): void {
       if (!active || !active.submitted) return;
-      if (prompt !== undefined && normalizeText(prompt) === active.expectedPrompt) {
+      if (prompt !== undefined && isOurPrompt(prompt, active.expectedPrompt)) {
         settle({ status: 'confirmed', turnId });
       }
       // A non-matching turn:started is someone else's prompt: keep waiting —

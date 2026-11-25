@@ -45,6 +45,65 @@ describe('createPromptInjector', () => {
     expect((await receiptPromise).status).toBe('confirmed');
   });
 
+  describe('a long paste Claude Code wraps before UserPromptSubmit (2.1.332)', () => {
+    const LONG = Array.from(
+      { length: 10 },
+      (_, index) =>
+        `Step ${index + 1}: read the failing test, find the cause, fix it, and run the package suite again.`,
+    ).join('\n');
+    const wrapped = (text: string, id = 'd2c1') =>
+      `\n\n<pasted_content id="${id}">\n${text}\n</pasted_content id="${id}">\n`;
+
+    it('confirms when the whole prompt is our text in one wrapper', async () => {
+      const { injector } = harness();
+      const receipt = injector.submit({ text: LONG });
+      injector.handleTurnStarted('p-long', wrapped(LONG));
+      expect(await receipt).toEqual({ status: 'confirmed', turnId: 'p-long' });
+    });
+
+    it('confirms across CRLF line endings inside and around the wrapper', async () => {
+      const { injector } = harness();
+      const receipt = injector.submit({ text: `${LONG}\n` });
+      const crlf = LONG.replace(/\n/g, '\r\n');
+      injector.handleTurnStarted(
+        'p-crlf',
+        `\r\n<pasted_content id="7e0b">\r\n${crlf}\r\n</pasted_content id="7e0b">\r\n`,
+      );
+      expect(await receipt).toEqual({ status: 'confirmed', turnId: 'p-crlf' });
+    });
+
+    it('confirms a paste whose own text carries the tag', async () => {
+      const { injector } = harness();
+      const text = `${LONG}\nThe hook showed </pasted_content id="d2c1"> and <pasted_content id="ab12"> in it.`;
+      const receipt = injector.submit({ text });
+      injector.handleTurnStarted('p-tags', wrapped(text));
+      expect(await receipt).toEqual({ status: 'confirmed', turnId: 'p-tags' });
+    });
+
+    it('does not confirm a wrapper around different text', async () => {
+      const { injector } = harness({ defaultConfirmationTimeoutMs: 60 });
+      const receipt = injector.submit({ text: LONG });
+      injector.handleTurnStarted('p-other', wrapped(`${LONG}\nand one more line`));
+      expect(injector.isActive()).toBe(true);
+      expect((await receipt).status).toBe('uncertain');
+    });
+
+    it('does not confirm tags that name two pastes', async () => {
+      const { injector } = harness({ defaultConfirmationTimeoutMs: 60 });
+      const receipt = injector.submit({ text: LONG });
+      injector.handleTurnStarted('p-ids', `\n\n<pasted_content id="d2c1">\n${LONG}\n</pasted_content id="a64d">\n`);
+      expect((await receipt).status).toBe('uncertain');
+    });
+
+    it('does not confirm our paste joined to a draft: the prompt holds someone else’s text', async () => {
+      const { injector } = harness({ defaultConfirmationTimeoutMs: 60 });
+      const receipt = injector.submit({ text: LONG });
+      injector.handleTurnStarted('p-draft', `a draft already typed\n\n${wrapped(LONG, 'a64d').trimStart()}`);
+      expect(injector.isActive()).toBe(true);
+      expect((await receipt).status).toBe('uncertain');
+    });
+  });
+
   it('rejects concurrent injections instead of interleaving', async () => {
     const { injector } = harness({ defaultConfirmationTimeoutMs: 60 });
     const first = injector.submit({ text: 'first' });
