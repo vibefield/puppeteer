@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.15](https://github.com/vibefield/puppeteer/compare/v0.4.14...v0.4.15) (2026-11-25)
+
+
+### Bug Fixes
+
+* **adapter-claude:** a long paste Claude Code wraps is confirmed, and its turn says the pasted words ([#124](https://github.com/vibefield/puppeteer/issues/124)) ([19965fc](https://github.com/vibefield/puppeteer/commit/19965fc3ca5a10e35ab1231bd938fec6813d91f8))
+* **adapter-claude:** a reply stopped with Esc ends its turn at the marker the transcript writes ([#126](https://github.com/vibefield/puppeteer/issues/126)) ([c566e5b](https://github.com/vibefield/puppeteer/commit/c566e5b262869a48b7239b073caa4284f12593dd))
+
 ## [0.4.14](https://github.com/vibefield/puppeteer/compare/v0.4.13...v0.4.14) (2026-11-25)
 
 
