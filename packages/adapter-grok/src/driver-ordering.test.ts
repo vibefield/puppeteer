@@ -117,6 +117,87 @@ describe('Grok leader session materialization ordering', () => {
     }
     const leaderArgs = (call: number): string[] => mocks.spawn.mock.calls[call]![1] as string[];
     const socketOf = (args: string[]): string => args[args.indexOf('--leader-socket') + 1]!;
+    type Observed = { onExtensionNotification: (method: string, params: Record<string, unknown>) => unknown };
+    const removed = (name: string, sessionId = 'materialized-session') => ({
+      sessionId,
+      name,
+      source: 'local',
+      status: 'unavailable',
+      reason: 'config_removed',
+      tools: null,
+    });
+
+    it('puts a briefed server back when a later load of its session ends it, by a load of its own that leaves', async () => {
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        const prepared = await backend.prepareSession({ cwd: '/a', mcpServers });
+        expect(mocks.createAcpSession).toHaveBeenCalledTimes(1);
+        const control = mocks.createAcpSession.mock.calls[0]![0] as Observed;
+        // Another session's, a server the run did not declare, and a status that is no removal: nothing to do.
+        control.onExtensionNotification('_x.ai/mcp/server_status', removed('field', 'another-session'));
+        control.onExtensionNotification('_x.ai/mcp/server_status', removed('github'));
+        control.onExtensionNotification('_x.ai/mcp/server_status', {
+          ...removed('field'),
+          status: 'ready',
+          reason: 'initialized',
+        });
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(mocks.createAcpSession).toHaveBeenCalledTimes(1);
+        // The viewer's own load (1.0.92) ended it: a short-lived client of the run's leader loads the session with it.
+        control.onExtensionNotification('_x.ai/mcp/server_status', removed('field'));
+        await vi.waitFor(() => expect(mocks.createAcpSession).toHaveBeenCalledTimes(2));
+        expect(mocks.createAcpSession.mock.calls[1]![0]).toMatchObject({
+          cwd: '/a',
+          resume: 'materialized-session',
+          mcpServers,
+        });
+        expect(mocks.createStdioAcpConnector).toHaveBeenLastCalledWith(
+          expect.objectContaining({ args: ['agent', '--leader', '--leader-socket', socketOf(leaderArgs(0)), 'stdio'] }),
+        );
+        const reasserter = (await mocks.createAcpSession.mock.results[1]!.value) as AgentAdapterBinding;
+        await vi.waitFor(() => expect(reasserter.dispose).toHaveBeenCalledOnce());
+        await prepared.dispose();
+        // A run that has stopped puts nothing back.
+        control.onExtensionNotification('_x.ai/mcp/server_status', removed('field'));
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(mocks.createAcpSession).toHaveBeenCalledTimes(2);
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    it('bounds the putting back: a client that keeps ending the server wins after five a minute', async () => {
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        const prepared = await backend.prepareSession({ cwd: '/a', mcpServers });
+        const control = mocks.createAcpSession.mock.calls[0]![0] as Observed;
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          control.onExtensionNotification('_x.ai/mcp/server_status', removed('field'));
+          await vi.waitFor(() =>
+            expect(mocks.createAcpSession.mock.calls.length).toBe(1 + Math.min(attempt + 1, 5)),
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(mocks.createAcpSession).toHaveBeenCalledTimes(6);
+        await prepared.dispose();
+      } finally {
+        await backend.dispose();
+      }
+    });
+
+    it('keeps a removal of a run with no servers to itself: the shared leader is never loaded again', async () => {
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      try {
+        const prepared = await backend.prepareSession({ cwd: '/a' });
+        const control = mocks.createAcpSession.mock.calls[0]![0] as Observed;
+        control.onExtensionNotification('_x.ai/mcp/server_status', removed('field'));
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(mocks.createAcpSession).toHaveBeenCalledTimes(1);
+        await prepared.dispose();
+      } finally {
+        await backend.dispose();
+      }
+    });
 
     it('gives each briefed run a leader of its own, and leaves no briefing on the shared one', async () => {
       const backend = createGrokBackend({ executable: '/real/grok', host: host() });
