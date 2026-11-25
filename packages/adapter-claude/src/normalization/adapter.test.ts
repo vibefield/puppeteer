@@ -1339,3 +1339,163 @@ describe('malformed known hooks', () => {
     expect(result.events[0]).toMatchObject({ type: 'tool:completed', toolCallId: 'tool-1' });
   });
 });
+
+describe('an interruption the transcript records (Esc, no Stop hook)', () => {
+  /** A monitor fed as the driver publishes: settled closures first, each under its own actor. */
+  function monitorOf() {
+    const run = { runtimeRunId: 'esc', runtimeEpoch: 1 };
+    const stamper = createEnvelopeStamper();
+    let seq = 0;
+    let monitor = createMonitorAccumulatorState({
+      ...run,
+      executionMode: 'native-tui',
+      observationLevel: 'native-hooks',
+      allocatedAt: new Date(Date.UTC(2026, 10, 25, 13, 8, 0)).toISOString(),
+    });
+    const publish = (actor: NormalizedHook): NormalizedHook => {
+      for (const closures of actor.settled ?? []) publish(closures);
+      for (const event of actor.events) {
+        seq += 1;
+        const envelope = stamper.next({
+          sessionId: 'esc',
+          ...(actor.promptId ? { promptId: actor.promptId } : {}),
+          ...(actor.agentId ? { agentId: actor.agentId } : {}),
+          timestamp: new Date(Date.UTC(2026, 10, 25, 13, 8, 0) + seq * 100).toISOString(),
+          monotonicTime: seq,
+          source: 'native-hook',
+          confidence: 'authoritative',
+          event,
+        });
+        monitor = reduceMonitorAccumulator(monitor, translateAgentEventEnvelope({ ...run, envelope })).state;
+      }
+      return actor;
+    };
+    return { publish, status: () => projectAgentMonitorState(monitor).status };
+  }
+
+  it('ends the running turn as interrupted, once, and the monitor goes idle', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const { publish, status } = monitorOf();
+    publish(normalizer.normalize(fakeClaudeHookPayload('SessionStart', { source: 'startup' })));
+    publish(normalizer.normalize(fakeClaudeHookPayload('UserPromptSubmit', { prompt: 'explain', prompt_id: 'p-esc' })));
+    publish(
+      normalizer.normalize(
+        fakeClaudeHookPayload('MessageDisplay', { message_id: 'm-1', delta: 'The event bus is', final: false }),
+      ),
+    );
+    expect(status()).toBe('working');
+
+    const interrupted = publish(normalizer.interruptTurn('p-esc'));
+    expect(interrupted.events).toEqual([{ type: 'turn:completed', turnId: 'p-esc', outcome: 'interrupted' }]);
+    expect(status()).toBe('idle');
+
+    // The marker read again, or a late Stop's turn already ended: nothing more.
+    expect(normalizer.interruptTurn('p-esc').events).toEqual([]);
+  });
+
+  it('closes what the turn left open: its tool call, its permission request and its question', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const { publish, status } = monitorOf();
+    publish(normalizer.normalize(fakeClaudeHookPayload('SessionStart', { source: 'startup' })));
+    publish(
+      normalizer.normalize(fakeClaudeHookPayload('UserPromptSubmit', { prompt: 'clean up', prompt_id: 'p-esc' })),
+    );
+    publish(
+      normalizer.normalize(
+        fakeClaudeHookPayload('PreToolUse', {
+          prompt_id: 'p-esc',
+          tool_name: 'Bash',
+          tool_input: { command: 'rm -r build' },
+          tool_use_id: 'toolu_rm',
+        }),
+      ),
+    );
+    publish(
+      normalizer.normalize(
+        fakeClaudeHookPayload('PermissionRequest', {
+          prompt_id: 'p-esc',
+          tool_name: 'Bash',
+          tool_input: { command: 'rm -r build' },
+        }),
+      ),
+    );
+    // A subagent's call is its own boundary's.
+    publish(
+      normalizer.normalize(
+        fakeClaudeHookPayload('PreToolUse', {
+          prompt_id: 'p-esc',
+          agent_id: 'worker-1',
+          agent_type: 'Explore',
+          tool_name: 'Read',
+          tool_input: { file_path: 'a.ts' },
+          tool_use_id: 'toolu_child',
+        }),
+      ),
+    );
+    expect(status()).toBe('working');
+    const requestId = normalizer.pendingPermissionRequests()[0]!.requestId;
+
+    const interrupted = publish(normalizer.interruptTurn('p-esc'));
+    expect(interrupted.events).toEqual([
+      { type: 'interaction:permission-resolved', requestId, outcome: 'unknown' },
+      expect.objectContaining({ type: 'tool:failed', toolCallId: 'toolu_rm', error: 'turn interrupted' }),
+      { type: 'turn:completed', turnId: 'p-esc', outcome: 'interrupted' },
+    ]);
+    expect(interrupted.settled ?? []).toEqual([]);
+    expect(normalizer.pendingPermissionRequests()).toEqual([]);
+    // The subagent's call stays open, so its PostToolUse still closes it; then nothing is left working.
+    const child = publish(
+      normalizer.normalize(
+        fakeClaudeHookPayload('PostToolUse', {
+          prompt_id: 'p-esc',
+          agent_id: 'worker-1',
+          agent_type: 'Explore',
+          tool_name: 'Read',
+          tool_input: { file_path: 'a.ts' },
+          tool_use_id: 'toolu_child',
+        }),
+      ),
+    );
+    expect(child.events).toContainEqual(expect.objectContaining({ type: 'tool:completed', toolCallId: 'toolu_child' }));
+    expect(status()).toBe('idle');
+  });
+
+  it('ends nothing for a turn that is not the running one', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    // No turn has started.
+    expect(normalizer.interruptTurn('p-1').events).toEqual([]);
+    normalizer.normalize(fakeClaudeHookPayload('UserPromptSubmit', { prompt: 'first', prompt_id: 'p-1' }));
+    normalizer.normalize(fakeClaudeHookPayload('Stop', { prompt_id: 'p-1', stop_hook_active: false }));
+    // A turn its Stop ended.
+    expect(normalizer.interruptTurn('p-1').events).toEqual([]);
+    // A marker read after the next prompt started names the earlier turn: the running one goes on.
+    normalizer.normalize(fakeClaudeHookPayload('UserPromptSubmit', { prompt: 'second', prompt_id: 'p-2' }));
+    expect(normalizer.interruptTurn('p-1').events).toEqual([]);
+    expect(normalizer.interruptTurn('p-2').events).toEqual([
+      { type: 'turn:completed', turnId: 'p-2', outcome: 'interrupted' },
+    ]);
+    // A subagent's prompt is not the main thread's turn.
+    normalizer.normalize(
+      fakeClaudeHookPayload('UserPromptSubmit', { prompt: 'sub', prompt_id: 'p-sub', agent_id: 'worker-1' }),
+    );
+    expect(normalizer.interruptTurn('p-sub').events).toEqual([]);
+    // A session that ended, or a new one, has no running turn.
+    normalizer.normalize(fakeClaudeHookPayload('UserPromptSubmit', { prompt: 'third', prompt_id: 'p-3' }));
+    normalizer.normalize(fakeClaudeHookPayload('SessionEnd', { reason: 'exit' }));
+    expect(normalizer.interruptTurn('p-3').events).toEqual([]);
+  });
+
+  it('lets the next prompt open a fresh turn', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    normalizer.normalize(fakeClaudeHookPayload('UserPromptSubmit', { prompt: 'first', prompt_id: 'p-1' }));
+    normalizer.interruptTurn('p-1');
+    const next = normalizer.normalize(
+      fakeClaudeHookPayload('UserPromptSubmit', { prompt: 'do this instead', prompt_id: 'p-2' }),
+    );
+    expect(next.events).toEqual([{ type: 'turn:started', turnId: 'p-2', prompt: 'do this instead' }]);
+    expect(next.diagnostics).toEqual([]);
+    expect(normalizer.interruptTurn('p-2').events).toEqual([
+      { type: 'turn:completed', turnId: 'p-2', outcome: 'interrupted' },
+    ]);
+  });
+});

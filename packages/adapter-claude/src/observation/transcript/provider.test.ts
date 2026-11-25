@@ -8,7 +8,11 @@ import { ClaudeTranscriptProjection, projectClaudeTranscriptAssistants } from '.
 import { ClaudeTranscriptObservationProvider } from './provider.js';
 import * as jsonlReader from './services/jsonl-reader.js';
 import { decodeClaudeTranscript, type ClaudeTranscriptRecord } from './wire.js';
-import { claude2308TranscriptRows, claude2308TranscriptText } from '../../test-support/claude-transcript-fixtures.js';
+import {
+  claude2308TranscriptRows,
+  claude2308TranscriptText,
+  claude2332InterruptedReplyRows,
+} from '../../test-support/claude-transcript-fixtures.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();
@@ -1145,5 +1149,90 @@ describe('ClaudeTranscriptObservationProvider', () => {
     expect(events.map(({ event }) => event)).toEqual([
       expect.objectContaining({ type: 'conversation:assistant-message', text: 'New reply' }),
     ]);
+  });
+});
+
+describe('ClaudeTranscriptObservationProvider: an interrupted turn', () => {
+  const line = (row: Record<string, unknown>) => `${JSON.stringify(row)}\n`;
+  const said = (events: readonly SemanticObservationEvent[]) =>
+    events.map(({ event, timestamp }) =>
+      event.type === 'turn:completed' ? `${event.type}:${event.turnId}:${event.outcome}@${timestamp}` : event.type,
+    );
+
+  it('reads a live marker after the partial reply it follows, in their order', async () => {
+    const { prompt, reply, marker } = claude2332InterruptedReplyRows({
+      sessionId: 'session-1',
+      promptId: 'prompt-esc',
+    });
+    const { path, handle, events } = await fixture(line(prompt));
+    await handle.poll();
+    expect(events).toEqual([]);
+
+    appendFileSync(path, line(reply) + line(marker));
+    await handle.poll();
+    expect(said(events)).toEqual([
+      'conversation:assistant-message',
+      'turn:completed:prompt-esc:interrupted@2026-11-25T13:08:51.916Z',
+    ]);
+    expect(events[1]).not.toHaveProperty('replay');
+
+    // Read again with nothing new: the marker is not read twice.
+    await handle.poll();
+    expect(events).toHaveLength(2);
+  });
+
+  it('reads a marker that arrives in a read of its own', async () => {
+    const { prompt, reply, marker } = claude2332InterruptedReplyRows({
+      sessionId: 'session-1',
+      promptId: 'prompt-esc',
+    });
+    const { path, handle, events } = await fixture(line(prompt));
+    await handle.poll();
+    appendFileSync(path, line(reply));
+    await handle.poll();
+    appendFileSync(path, line(marker));
+    await handle.poll();
+    expect(said(events)).toEqual([
+      'conversation:assistant-message',
+      'turn:completed:prompt-esc:interrupted@2026-11-25T13:08:51.916Z',
+    ]);
+  });
+
+  it('says nothing of a marker the first read finds, launched or attached', async () => {
+    const { prompt, reply, marker } = claude2332InterruptedReplyRows({
+      sessionId: 'session-1',
+      promptId: 'prompt-esc',
+    });
+    const launched = await fixture(line(prompt) + line(reply) + line(marker));
+    await launched.handle.poll();
+    expect(launched.events).toEqual([]);
+
+    const attached = await new ClaudeTranscriptObservationProvider().attach({
+      nativeSessionId: 'session-1',
+      transcriptPath: launched.path,
+      pollIntervalMs: 0,
+      attached: true,
+    });
+    handles.push(attached);
+    const found: SemanticObservationEvent[] = [];
+    attached.onEvent(untitled((event) => found.push(event)));
+    await attached.poll();
+    expect(found.filter(({ event }) => event.type === 'turn:completed')).toEqual([]);
+  });
+
+  it("says nothing of a subagent's marker or another session's", async () => {
+    const { prompt, reply, marker } = claude2332InterruptedReplyRows({
+      sessionId: 'session-1',
+      promptId: 'prompt-esc',
+    });
+    const { path, handle, events } = await fixture(line(prompt) + line(reply));
+    await handle.poll();
+    appendFileSync(
+      path,
+      line({ ...marker, uuid: 'child-marker', isSidechain: true, agentId: 'worker-1' }) +
+        line({ ...marker, uuid: 'other-marker', sessionId: 'another-session', promptId: 'prompt-esc' }),
+    );
+    await handle.poll();
+    expect(events.filter(({ event }) => event.type === 'turn:completed')).toEqual([]);
   });
 });

@@ -14,8 +14,10 @@
  *   decision closes a request when Claude's OTLP `tool_decision` names its tool
  *   call (`resolvePermissionDecision`); otherwise execution completion proves
  *   allow, and PermissionDenied or a boundary closes denial.
- *   An Esc-interrupted turn has no boundary hook: the next accepted prompt
- *   closes its main-thread request with an unknown outcome.
+ *   An Esc-interrupted turn has no boundary hook. The transcript's marker of
+ *   the interruption ends it (`interruptTurn`); a marker the transcript never
+ *   shows leaves the next accepted prompt to close its main-thread request with
+ *   an unknown outcome.
  * - A call that will never run is closed where its fate is decided, never left
  *   open (Core closes a tool only on its own terminal event): a request settled
  *   other than allowed closes its call as tool:failed; the main thread's
@@ -111,6 +113,8 @@ export class ClaudeHookNormalizer {
   private lastClosedCompaction: { id: string; promptId?: string | undefined } | undefined;
   /** The title the session's hooks last said, so a prompt that repeats it says nothing. */
   private sessionTitle: string | undefined;
+  /** The main thread's turn that started and has not ended, by its prompt id: what an interruption may end. */
+  private runningPromptId: string | undefined;
   private readonly effort = new ClaudeEffortNormalizer();
   private readonly mode = new ClaudeModeNormalizer();
 
@@ -377,6 +381,29 @@ export class ClaudeHookNormalizer {
     this.pendingPermissions = remaining;
   }
 
+  /**
+   * The transcript's marker that the person interrupted the main thread's turn `promptId` (Esc), which no hook
+   * announces (`projectClaudeTranscriptInterruptions`). It ends that turn only while it is the running one: a marker
+   * for a turn a Stop already ended, read twice, or read after the next prompt started, ends nothing. The turn ends as
+   * `turn:completed` with outcome `interrupted`, and what it left open closes as its Stop would close it, except that
+   * a permission request closes `unknown`: the marker does not say which answer, if any, closed the dialog. A
+   * subagent's work is left to its own boundary.
+   */
+  interruptTurn(promptId: string): NormalizedHook {
+    const result: NormalizedHook = { events: [], diagnostics: [], promptId };
+    if (this.runningPromptId === undefined || this.runningPromptId !== promptId) return result;
+    this.runningPromptId = undefined;
+    const ownedByTurn = mainThreadWorkOf(promptId);
+    this.resolvePermission(result, 'unknown', ownedByTurn, 'turn interrupted');
+    this.resolveQuestions(result, 'cancelled', ownedByTurn);
+    this.closeUnrunTools(result, ownedByTurn, 'turn interrupted');
+    if (this.activeCompaction && (!this.activeCompaction.promptId || this.activeCompaction.promptId === promptId)) {
+      this.closeActiveCompaction(result, 'cancelled');
+    }
+    result.events.push({ type: 'turn:completed', turnId: promptId, outcome: 'interrupted' });
+    return result;
+  }
+
   normalize(body: ClaudeHookPayload, context: ClaudeHookContext = {}): NormalizedHook {
     const name = claudeString(body.hook_event_name) ?? 'unknown';
     const promptId = claudeString(body.prompt_id);
@@ -414,6 +441,7 @@ export class ClaudeHookNormalizer {
         if (claudeString(body.source) !== 'compact') {
           this.closeActiveCompaction(result, 'unknown');
           this.lastClosedCompaction = undefined;
+          if (!result.agentId) this.runningPromptId = undefined;
         }
         result.events.push(normalizeClaudeSessionStarted(body, isRebind));
         // The start says the title the session has; a rebind is another session, which may have none.
@@ -456,7 +484,10 @@ export class ClaudeHookNormalizer {
           'superseded',
           (question) => question.promptId === undefined || question.promptId !== promptId,
         );
-        if (!result.agentId) this.resolveInterruptedPermissions(result, name, promptId);
+        if (!result.agentId) {
+          this.resolveInterruptedPermissions(result, name, promptId);
+          this.runningPromptId = promptId;
+        }
         result.events.push(normalizeClaudeTurnStarted(body, promptId));
         // The main thread's prompt carries the title the session goes by now (2.1.207+), which a `/rename` or Claude's
         // own naming moved since the start: said once per change.
@@ -660,6 +691,7 @@ export class ClaudeHookNormalizer {
         if (this.activeCompaction && (!this.activeCompaction.promptId || this.activeCompaction.promptId === promptId)) {
           this.closeActiveCompaction(result, 'cancelled');
         }
+        if (!result.agentId) this.runningPromptId = undefined;
         result.events.push(normalizeClaudeTurnCompleted(body, promptId));
         break;
       }
@@ -673,6 +705,7 @@ export class ClaudeHookNormalizer {
         if (this.activeCompaction && (!this.activeCompaction.promptId || this.activeCompaction.promptId === promptId)) {
           this.closeActiveCompaction(result, 'failed');
         }
+        if (!result.agentId) this.runningPromptId = undefined;
         result.events.push(normalizeClaudeTurnFailed(body, promptId));
         break;
       }
@@ -683,6 +716,7 @@ export class ClaudeHookNormalizer {
         // Every call still remembered ends with the session; closing each forgets it.
         this.closeUnrunTools(result, () => true, 'no result before the session ended');
         this.closeActiveCompaction(result, 'cancelled');
+        this.runningPromptId = undefined;
         this.messageBuffers.clear();
         this.stoppedSubagents.clear();
         this.startedSubagents.clear();

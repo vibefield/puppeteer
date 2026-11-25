@@ -636,6 +636,17 @@ above:
     not closed by the adapter: nothing native reports the interruption, and Core has no interrupted
     outcome for either (`turn:failed`/`tool:failed` would assert a failure). Core diagnoses the
     overlap (`turn-overlap`) when the next turn starts; only the pending permission is resolved.
+    *Correction (2026-11-25):* Core's `turn:completed` has carried `outcome: 'interrupted'` since
+    #65, and the transcript does record the interruption. Measured by a host on 2.1.332, not
+    captured here: Esc in the middle of a reply fires no Stop hook, and Claude writes the partial
+    reply's row and then, 7 ms later, a root user row `[Request interrupted by user]` (no
+    `turnOrigin`). The live transcript read now ends the hook rail's running turn at that marker
+    as `turn:completed` with outcome `interrupted`, and closes what the turn left open (its
+    permission request `unknown`, its calls `tool:failed` "turn interrupted"). A marker for a turn
+    already ended, a first read's, or a subagent's ends nothing. The next prompt still closes a
+    request whose marker the transcript never shows. Whether the marker row repeats the turn's
+    `promptId` is unmeasured; the adapter also finds the turn through the marker's `parentUuid`
+    chain.
   - The root model rail can still show a stale card for one refresh: a status line rendered before
     a switch but delivered after its PostModelSwitch is published (it differs from the hook's
     card) until the next refresh (in the TUI lane the status line refreshed right after the switch).

@@ -861,6 +861,22 @@ function createClaudeObservation(
       if (observation === 'terminal-only') observation = 'native-log';
       handle.onEvent((semantic) => {
         if (disposed || generation !== semanticGeneration) return;
+        // An interruption's marker is evidence for the hook rail, never published as it came: the rail ends its running
+        // turn on it, and closes what that turn left open, only when the marker names that turn.
+        if (semantic.event.type === 'turn:completed' && semantic.event.outcome === 'interrupted' && !semantic.replay) {
+          if (semantic.event.turnId === undefined || semantic.agentId !== undefined) return;
+          const interrupted = normalizer.interruptTurn(semantic.event.turnId);
+          const publication = (): ClaudeEventPublication => ({
+            source: 'native-transcript',
+            timestamp: semantic.timestamp,
+            providerVersion: options.providerVersion,
+            confidence: 'derived',
+            native: semantic.nativeEvent,
+          });
+          applySettled(interrupted.settled, publication);
+          for (const event of interrupted.events) apply(event, { ...publication(), promptId: interrupted.promptId });
+          return;
+        }
         // a tool the attach found open was announced by no hook: the hook rail adopts it, so its PostToolUse (and
         // the answer to its question) closes what the bootstrap opened
         if (semantic.openAtAttach && semantic.event.type === 'tool:requested') {

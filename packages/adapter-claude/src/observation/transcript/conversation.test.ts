@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   claude2308TranscriptRows,
   claude2308TranscriptText,
+  claude2332InterruptedReplyRows,
   type Claude2308Turn,
 } from '../../test-support/claude-transcript-fixtures.js';
 import type { SemanticObservationEvent } from '../semantic-provider.js';
 import {
   ClaudeTranscriptProjection,
   projectClaudeTranscriptAssistants,
+  projectClaudeTranscriptInterruptions,
   projectClaudeTranscriptOpenWork,
   projectClaudeTranscriptReplayAfter,
 } from './conversation.js';
@@ -809,5 +811,111 @@ describe('Claude transcript replay after a cursor (an attach given one)', () => 
       expect.objectContaining({ type: 'conversation:assistant-message', messageId: 'a-2', turnId: 'prompt-of-p-2' }),
       { type: 'turn:completed', turnId: 'prompt-of-p-2', stopReason: 'end_turn', lastAssistantMessage: 'two' },
     ]);
+  });
+});
+
+describe('Claude transcript interruptions (a live read of the marker Esc leaves)', () => {
+  const rows = (options: { markerCarriesPromptId?: boolean } = {}) =>
+    claude2332InterruptedReplyRows({ sessionId: 'session-1', promptId: 'prompt-esc', ...options });
+  const decode = (records: readonly Record<string, unknown>[]) => decodeClaudeTranscript(jsonl(records));
+  const ended = (turnId: string, timestamp: string) => ({
+    event: { type: 'turn:completed', turnId, outcome: 'interrupted' },
+    timestamp,
+    promptId: turnId,
+    turnId,
+  });
+
+  it('ends the turn the marker descends from, at the marker written after the partial reply', () => {
+    const { prompt, reply, marker } = rows();
+    const window = decode([prompt, reply, marker]);
+    // The measured order: the partial reply's row first, the marker 7 ms after it.
+    expect(window.map((record) => record.timestamp)).toEqual([
+      '2026-11-25T13:08:49.402Z',
+      '2026-11-25T13:08:51.909Z',
+      '2026-11-25T13:08:51.916Z',
+    ]);
+    const [event] = projectClaudeTranscriptInterruptions(window.slice(1), window);
+    expect(event).toMatchObject(ended('prompt-esc', '2026-11-25T13:08:51.916Z'));
+    expect(event?.nativeEvent).toMatchObject({ type: 'user', uuid: 'esc-marker', parentUuid: 'esc-reply' });
+  });
+
+  it("takes the marker's own prompt id when it carries one", () => {
+    const { reply, marker } = rows({ markerCarriesPromptId: true });
+    // The prompt row has left the window; the marker still names its turn.
+    const window = decode([reply, marker]);
+    expect(projectClaudeTranscriptInterruptions(window.slice(1), window)).toMatchObject([
+      ended('prompt-esc', '2026-11-25T13:08:51.916Z'),
+    ]);
+  });
+
+  it('reads the marker Esc leaves at a tool call, and a marker after a tool result', () => {
+    const { prompt } = rows();
+    const window = decode([
+      prompt,
+      {
+        type: 'assistant',
+        uuid: 'call',
+        parentUuid: 'esc-prompt',
+        timestamp: '2026-11-25T13:08:50.000Z',
+        message: { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_1', name: 'Bash', input: {} }] },
+      },
+      {
+        type: 'user',
+        uuid: 'result',
+        parentUuid: 'call',
+        promptId: 'prompt-esc',
+        timestamp: '2026-11-25T13:08:51.000Z',
+        message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: 'refused' }] },
+      },
+      {
+        type: 'user',
+        uuid: 'tool-marker',
+        parentUuid: 'result',
+        timestamp: '2026-11-25T13:08:51.010Z',
+        message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user for tool use]' }] },
+      },
+    ]);
+    expect(projectClaudeTranscriptInterruptions(window.slice(3), window)).toMatchObject([
+      ended('prompt-esc', '2026-11-25T13:08:51.010Z'),
+    ]);
+  });
+
+  it('reads only the rows given as appended: a marker the window already held is an earlier read', () => {
+    const { prompt, reply, marker } = rows();
+    const window = decode([prompt, reply, marker]);
+    expect(projectClaudeTranscriptInterruptions([], window)).toEqual([]);
+    expect(projectClaudeTranscriptInterruptions(window.slice(0, 2), window)).toEqual([]);
+  });
+
+  it("gives nothing for a subagent's marker, a typed prompt with the marker's words, or a marker that names no turn", () => {
+    const { prompt, reply, marker } = rows();
+    const sidechain = decode([prompt, reply, { ...marker, isSidechain: true, agentId: 'worker-1' }]);
+    expect(projectClaudeTranscriptInterruptions(sidechain.slice(2), sidechain)).toEqual([]);
+    const typed = decode([prompt, reply, { ...marker, turnOrigin: 'human', promptId: 'prompt-next' }]);
+    expect(projectClaudeTranscriptInterruptions(typed.slice(2), typed)).toEqual([]);
+    // Its ancestry leaves the window, and it carries no prompt id of its own.
+    const orphan = decode([reply, marker]);
+    expect(projectClaudeTranscriptInterruptions(orphan.slice(1), orphan)).toEqual([]);
+    // Its ancestry reaches a prompt that carries no prompt id (a transcript older than the field).
+    const { promptId: _promptId, ...unkeyed } = prompt;
+    const old = decode([unkeyed, reply, marker]);
+    expect(projectClaudeTranscriptInterruptions(old.slice(2), old)).toEqual([]);
+  });
+
+  it('never walks past the prompt into an earlier turn, and survives a cycle', () => {
+    const earlier = claude2332InterruptedReplyRows({ sessionId: 'session-1', promptId: 'prompt-1', uuidPrefix: 'one' });
+    const { reply, marker } = rows();
+    // The later turn's prompt carries no prompt id: the walk stops there, never reaching the earlier turn's rows.
+    const later = {
+      type: 'user',
+      uuid: 'esc-prompt',
+      parentUuid: 'one-marker',
+      timestamp: '2026-11-25T13:09:00.000Z',
+      message: { role: 'user', content: 'next' },
+    };
+    const window = decode([earlier.prompt, earlier.reply, earlier.marker, later, reply, marker]);
+    expect(projectClaudeTranscriptInterruptions(window.slice(5), window)).toEqual([]);
+    const cyclic = decode([{ ...reply, parentUuid: 'esc-marker' }, marker]);
+    expect(projectClaudeTranscriptInterruptions(cyclic.slice(1), cyclic)).toEqual([]);
   });
 });
