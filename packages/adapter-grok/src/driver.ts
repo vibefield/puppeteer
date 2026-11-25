@@ -18,7 +18,8 @@ import {
   measureGrokReplayBoundary,
 } from './observation/session-discovery.js';
 import { createGrokSessionObserver } from './observation/session-observer.js';
-import { openGrokControl } from './services/acp-control.js';
+import { openGrokControl, reassertGrokServers } from './services/acp-control.js';
+import { createBriefedServerKeeper, type BriefedServerKeeper } from './services/briefed-servers.js';
 import { createGrokLeaderService, type GrokLeaderService } from './services/leader.js';
 import { createPreparedGrokSession } from './services/prepared-session.js';
 import { buildGrokTuiArgs } from './launch/tui.js';
@@ -74,13 +75,29 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
     const { cwd } = opts;
     // A shared leader cannot name a run: the door names a caller by ancestry, and every run's MCP children would share
     // one parent. A run that declares servers gets a leader of its own (`--leader-socket`), named to the host before
-    // ACP's session/new can start them. That the leader spawns them directly and per session is this adapter's earlier
-    // reading; it has NOT been observed against a live Grok.
+    // ACP's session/new can start them. The leader starts them itself (its children: briefing.live.test.ts, 1.0.92).
     const runLeader =
       Object.keys(opts.mcpServers ?? {}).length > 0
         ? createGrokLeaderService({ executable, env: childEnv })
         : undefined;
     if (runLeader) runLeaders.add(runLeader);
+    let opened: AgentAdapterBinding | undefined;
+    let socketPath: string | undefined;
+    // The viewer's own load of the session ends the run's servers (1.0.92); the keeper puts them back on the run's
+    // leader (services/briefed-servers.ts).
+    const briefed = opts.mcpServers;
+    const keeper: BriefedServerKeeper | undefined =
+      runLeader && briefed
+        ? createBriefedServerKeeper({
+            names: new Set(Object.keys(briefed)),
+            sessionId: () => opened?.sessionId,
+            // Only to a leader still running: a leader client that finds none may start one of its own.
+            reassert: () =>
+              opened && socketPath && !disposed && runLeader.helper() !== undefined
+                ? reassertGrokServers(executable, cwd, socketPath, opened.sessionId, briefed, childEnv)
+                : Promise.resolve(),
+          })
+        : undefined;
     let stopping: Promise<void> | undefined;
     // Registered synchronously, as the run begins to stop: a run's exit is recorded before its leader's ~2 s drain, and
     // its control is still closing before that. `closing` goes first, so the leader drains with nobody talking to it.
@@ -89,6 +106,7 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
       if (stopping) return stopping;
       const stopped: Promise<void> = closing
         .catch(() => undefined)
+        .then(() => keeper?.dispose())
         .then(() => runLeader.dispose())
         .finally(() => {
           stoppingRunLeaders.delete(stopped);
@@ -102,7 +120,7 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
     try {
       // A resume must not open a session its previous run's leader is still draining. A fresh session has no such past.
       if (opts.resume !== undefined || opts.resumeLatest) await Promise.allSettled([...stoppingRunLeaders]);
-      const socketPath = await (runLeader ?? leader).ensure();
+      socketPath = await (runLeader ?? leader).ensure();
       if (runLeader) await announceRunHelper(opts.ingress, runLeader.helper() ?? { startedAtMs: Date.now() }, 'Grok');
       // Materialize the leader-owned session before returning the launch recipe.
       // A fresh TUI does not persist its --session-id until the first prompt, so
@@ -115,9 +133,13 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
       // on the same leader session (the recipe below), so the person answers
       // permission requests there unless the host supplied a handler. A viewer
       // that joins after a request was issued is still shown it (1.0.70 probe).
-      const opened = await openGrokControl(executable, cwd, socketPath, resume, opts, childEnv, { viewer: 'attached' });
-      control = opened;
-      const sessionId = opened.sessionId;
+      const binding = await openGrokControl(executable, cwd, socketPath, resume, opts, childEnv, {
+        viewer: 'attached',
+        observeExtension: keeper?.observe,
+      });
+      opened = binding;
+      control = binding;
+      const sessionId = binding.sessionId;
       const updatesPath = grokUpdatesPath(cwd, sessionId, grokHome);
       // The replay boundary is drawn here, once control holds the session and before the terminal spawns and adopt
       // hands the binding back, so no prompt through this binding reaches the leader first. A session ACP's session/new
@@ -133,8 +155,8 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
       const session = createPreparedGrokSession(
         sessionId,
         launch,
-        () => opened,
-        () => opened.dispose(),
+        () => binding,
+        () => binding.dispose(),
         () => createGrokSessionObserver(updatesPath, { replayBoundary }),
         {
           cwd,

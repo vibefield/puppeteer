@@ -173,9 +173,7 @@ describe('Grok leader session materialization ordering', () => {
         const control = mocks.createAcpSession.mock.calls[0]![0] as Observed;
         for (let attempt = 0; attempt < 8; attempt += 1) {
           control.onExtensionNotification('_x.ai/mcp/server_status', removed('field'));
-          await vi.waitFor(() =>
-            expect(mocks.createAcpSession.mock.calls.length).toBe(1 + Math.min(attempt + 1, 5)),
-          );
+          await vi.waitFor(() => expect(mocks.createAcpSession.mock.calls.length).toBe(1 + Math.min(attempt + 1, 5)));
         }
         await new Promise((resolve) => setTimeout(resolve, 20));
         expect(mocks.createAcpSession).toHaveBeenCalledTimes(6);

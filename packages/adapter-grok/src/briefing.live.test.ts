@@ -10,7 +10,17 @@
  *   GROK_LIVE=1 PUPPETEER_GROK_BIN=/absolute/path/to/grok pnpm test briefing.live
  */
 
-import { appendFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AgentHelperProcess } from '@vibefield/puppeteer-core';
@@ -174,7 +184,10 @@ describe.runIf(live)('Grok briefed servers through the real native TUI (live)', 
         detail,
       ).toBe(true);
       // The person's own server: started once, still running.
-      expect(userEntries.filter((entry) => entry.event === 'start'), detail).toHaveLength(1);
+      expect(
+        userEntries.filter((entry) => entry.event === 'start'),
+        detail,
+      ).toHaveLength(1);
       expect(liveProbes(userEntries), detail).toHaveLength(1);
     } finally {
       projection?.dispose();

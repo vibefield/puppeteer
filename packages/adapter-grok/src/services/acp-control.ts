@@ -24,6 +24,8 @@ import type { CreateGrokSessionOptions } from '../types.js';
  */
 export interface GrokControlComposition {
   viewer: 'attached' | 'none';
+  /** Hears every extension notification before normalization (services/briefed-servers.ts). */
+  observeExtension?: ((method: string, params: Record<string, unknown>) => void) | undefined;
 }
 
 /** The Grok-specific ACP session options, apart from the transport and the session to load. */
@@ -41,7 +43,12 @@ export function grokControlOptions(
     unhandledApproval: composition.viewer === 'attached' ? 'defer' : 'deny',
     deferredApprovalEvidence: grokDeferredApprovalEvidence,
     onElicitation: options.onElicitation,
-    onExtensionNotification: grokExtensionEvents,
+    onExtensionNotification: composition.observeExtension
+      ? (method, params) => {
+          composition.observeExtension?.(method, params);
+          return grokExtensionEvents(method, params);
+        }
+      : grokExtensionEvents,
   };
 }
 
@@ -65,4 +72,30 @@ export function openGrokControl(
     ...(sessionId ? { resume: sessionId } : {}),
     ...grokControlOptions(options, composition),
   });
+}
+
+/**
+ * One load of a running session that names a briefed run's servers, by a client of the run's own leader that leaves at
+ * once (services/briefed-servers.ts). It sends no `_meta`, so it changes no mode; its replay of the session is
+ * nobody's to read.
+ */
+export async function reassertGrokServers(
+  executable: string,
+  cwd: string,
+  socketPath: string,
+  sessionId: string,
+  mcpServers: NonNullable<CreateGrokSessionOptions['mcpServers']>,
+  env?: NodeJS.ProcessEnv,
+): Promise<void> {
+  const args = ['agent', '--leader', '--leader-socket', socketPath, 'stdio'];
+  const loaded = await createAcpSession({
+    cwd,
+    connector: createStdioAcpConnector({ executable, args, cwd, env }),
+    resume: sessionId,
+    mcpServers,
+    // A request the session raises meanwhile is the viewer's to answer.
+    unhandledApproval: 'defer',
+    deferredApprovalEvidence: grokDeferredApprovalEvidence,
+  });
+  await loaded.dispose();
 }
