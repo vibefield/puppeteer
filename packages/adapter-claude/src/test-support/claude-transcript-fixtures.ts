@@ -180,3 +180,64 @@ export function claude2308TranscriptText(
     .join('\n')
     .concat('\n');
 }
+
+export interface Claude2332InterruptedReplyOptions {
+  sessionId: string;
+  /** The turn's prompt id, as its UserPromptSubmit hook carries it. */
+  promptId: string;
+  /** Whether the marker row repeats the turn's prompt id (unmeasured, so both shapes are pinned). */
+  markerCarriesPromptId?: boolean | undefined;
+  /** A prefix for the rows' uuids, so one transcript can hold several turns. */
+  uuidPrefix?: string | undefined;
+}
+
+/**
+ * A reply a host stopped with Esc while Claude Code 2.1.332 was still writing it: the typed prompt, the partial reply's
+ * row (13:08:51.909) and, 7 ms later, the interruption's marker row (13:08:51.916). No Stop hook follows. The order
+ * and the 7 ms are the measured ones; every value is synthetic.
+ */
+export function claude2332InterruptedReplyRows(options: Claude2332InterruptedReplyOptions): {
+  prompt: Record<string, unknown>;
+  reply: Record<string, unknown>;
+  marker: Record<string, unknown>;
+} {
+  const { sessionId, promptId } = options;
+  const id = (name: string) => `${options.uuidPrefix ?? 'esc'}-${name}`;
+  return {
+    prompt: {
+      type: 'user',
+      uuid: id('prompt'),
+      parentUuid: null,
+      isSidechain: false,
+      sessionId,
+      promptId,
+      turnOrigin: 'human',
+      timestamp: '2026-11-25T13:08:49.402Z',
+      message: { role: 'user', content: 'Write a long explanation of the event bus.' },
+    },
+    reply: {
+      type: 'assistant',
+      uuid: id('reply'),
+      parentUuid: id('prompt'),
+      isSidechain: false,
+      sessionId,
+      requestId: `req-${id('reply')}`,
+      timestamp: '2026-11-25T13:08:51.909Z',
+      message: {
+        role: 'assistant',
+        model: 'claude-sonnet-4-5-20250929',
+        content: [{ type: 'text', text: 'The event bus is private to each Agent. It' }],
+      },
+    },
+    marker: {
+      type: 'user',
+      uuid: id('marker'),
+      parentUuid: id('reply'),
+      isSidechain: false,
+      sessionId,
+      ...(options.markerCarriesPromptId ? { promptId } : {}),
+      timestamp: '2026-11-25T13:08:51.916Z',
+      message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] },
+    },
+  };
+}

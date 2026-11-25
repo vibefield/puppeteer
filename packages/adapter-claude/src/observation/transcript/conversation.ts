@@ -672,10 +672,74 @@ const INTERRUPTION_MARKER_PREFIX = '[Request interrupted by user';
  */
 const TERMINAL_STOP_REASONS: ReadonlySet<string> = new Set(['end_turn', 'max_tokens', 'stop_sequence', 'refusal']);
 
+/** Whether a row is an interruption's marker: a user row with no `turnOrigin`, no tool result and the marker's text. */
+function isInterruptionMarker(record: ClaudeTranscriptRecord): boolean {
+  return (
+    record.type === 'user' &&
+    record.turnOrigin === undefined &&
+    answeredToolIds(record).length === 0 &&
+    transcriptText(record).trimStart().startsWith(INTERRUPTION_MARKER_PREFIX)
+  );
+}
+
 /** Whether a replay opens a turn at a row: a prompt the hooks announce, never an interruption's marker. */
 function opensReplayTurn(record: ClaudeTranscriptRecord): boolean {
   if (answeredToolIds(record).length > 0 || !opensUserTurn(record)) return false;
-  return record.turnOrigin !== undefined || !transcriptText(record).trimStart().startsWith(INTERRUPTION_MARKER_PREFIX);
+  return !isInterruptionMarker(record);
+}
+
+/**
+ * The turn an interruption's marker ends, keyed as the hooks key it (the prompt's `promptId`): the marker's own
+ * `promptId`, or else the nearest user row it descends from that carries one, never past the turn's prompt. A marker
+ * whose ancestry leaves the window, or reaches a prompt without one, names no turn.
+ */
+function interruptedPromptId(
+  marker: ClaudeTranscriptRecord,
+  byUuid: ReadonlyMap<string, ClaudeTranscriptRecord>,
+): string | undefined {
+  if (marker.promptId !== undefined) return marker.promptId;
+  const passed = new Set<string>();
+  let parent = marker.parentUuid;
+  while (parent !== undefined && !passed.has(parent)) {
+    passed.add(parent);
+    const row = byUuid.get(parent);
+    if (row === undefined || row.isSidechain) return undefined;
+    if (row.type === 'user') {
+      if (row.promptId !== undefined) return row.promptId;
+      if (opensReplayTurn(row)) return undefined;
+    }
+    parent = row.parentUuid;
+  }
+  return undefined;
+}
+
+/**
+ * The live end of a turn a person interrupted. Esc in the middle of a reply ends the turn with no Stop hook (2.1.332),
+ * as Esc at a permission prompt does (2.1.308), and the only native record of it is the marker row Claude writes next
+ * (2.1.332: the partial reply's row, then the marker 7 ms later). Each root marker among `appended` (rows a live read
+ * added, never a first read's) is read as `turn:completed` with outcome `interrupted` for the turn it names
+ * ({@link interruptedPromptId}), looked up among `window`, the rows the read holds. A subagent's marker, and a marker
+ * that names no turn, give nothing.
+ *
+ * It is evidence, not a boundary: the hook rail ends its running turn on it only when that turn is the one named
+ * (`ClaudeHookNormalizer.interruptTurn`), so a marker read after the next prompt started, or for a turn already
+ * ended, ends nothing.
+ */
+export function projectClaudeTranscriptInterruptions(
+  appended: readonly ClaudeTranscriptRecord[],
+  window: readonly ClaudeTranscriptRecord[],
+): SemanticObservationEvent[] {
+  const markers = appended.filter((record) => !record.isSidechain && !record.agentId && isInterruptionMarker(record));
+  if (markers.length === 0) return [];
+  const byUuid = new Map<string, ClaudeTranscriptRecord>();
+  for (const record of window) {
+    if (record.uuid !== undefined && !byUuid.has(record.uuid)) byUuid.set(record.uuid, record);
+  }
+  return markers.flatMap((marker) => {
+    const turnId = interruptedPromptId(marker, byUuid);
+    if (turnId === undefined) return [];
+    return [observation({ type: 'turn:completed', turnId, outcome: 'interrupted' }, marker, { turnId })];
+  });
 }
 
 /** One root turn of the transcript, as an attach's replay reads it. */
