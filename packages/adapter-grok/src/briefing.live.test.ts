@@ -111,7 +111,10 @@ function personSources(
     join(grokHome, 'config.toml'),
     `\n[mcp_servers.userprobe]\ncommand = ${JSON.stringify(user.command)}\n` +
       `args = [${user.args.map((arg) => JSON.stringify(arg)).join(', ')}]\n` +
-      `\n[plugins]\nenabled = ["grokplugin", "claudeplugin"]\n`,
+      `\n[plugins]\nenabled = ["grokplugin", "claudeplugin"]\n` +
+      // A project's .mcp.json loads only in a trusted folder, and the viewer would wait at the trust prompt instead of
+      // joining: the rig's workspace counts as trusted, as a person's own project does.
+      `\n[folder_trust]\nenabled = false\n`,
   );
   writeFileSync(join(root, '.claude.json'), mcpJson('claudeprobe'), 'utf8');
   mkdirSync(join(root, '.cursor'), { recursive: true });
@@ -198,6 +201,8 @@ describe.runIf(live)('Grok briefed servers through the real native TUI (live)', 
         );
       const detail = JSON.stringify({ ...evidence, tui: undefined });
 
+      // The viewer joined the session and shows it (the turn's words), rather than waiting at a prompt of its own.
+      expect(host.output(session.runtimeSessionId).includes(GROK_LIVE_RESPONSE_MARKER), detail).toBe(true);
       // Started and listed: Grok connected the server.
       expect(
         entries.some((entry) => entry.event === 'request' && entry.method === 'tools/list'),
