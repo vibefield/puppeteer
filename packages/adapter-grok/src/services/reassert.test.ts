@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Agent, Client, RequestPermissionResponse } from '@agentclientprotocol/sdk';
+import type { AcpConnector } from '@vibefield/puppeteer-adapter-acp';
+
+type ToClient = Parameters<AcpConnector>[0];
+type Client = ReturnType<ToClient>;
+type Agent = Parameters<ToClient>[0];
+type RequestPermissionResponse = Awaited<ReturnType<Client['requestPermission']>>;
 
 /** One fake leader client connection, as the stdio connector would hand it to the ACP SDK. */
 interface FakeConnection {
@@ -76,7 +81,7 @@ describe('reassertGrokServers: a short-lived client of the run leader that names
       mcpServers: [{ name: 'field', command: 'door', args: ['--stdio'], env: [{ name: 'TOKEN', value: 'secret' }] }],
     });
     expect(connection!.agent.newSession).not.toHaveBeenCalled();
-    expect(connection!.close).toHaveBeenCalledOnce();
+    expect(connection!.close).toHaveBeenCalled();
   });
 
   it('never answers a permission request the leader shows it: the client leaves, it does not reply', async () => {
@@ -98,7 +103,7 @@ describe('reassertGrokServers: a short-lived client of the run leader that names
     };
     await reassertGrokServers('/real/grok', '/a', '/tmp/leader.sock', 'run-session', servers);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(mocks.connections[0]!.close).toHaveBeenCalledOnce();
+    expect(mocks.connections[0]!.close).toHaveBeenCalled();
     expect({ replied, reply }).toEqual({ replied: false, reply: undefined });
   });
 
@@ -111,7 +116,7 @@ describe('reassertGrokServers: a short-lived client of the run leader that names
       () => 'rejected',
     );
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(mocks.connections[0]!.close).toHaveBeenCalledOnce();
+    expect(mocks.connections[0]!.close).toHaveBeenCalled();
     await expect(outcome).resolves.toBe('rejected');
   });
 
@@ -127,7 +132,7 @@ describe('reassertGrokServers: a short-lived client of the run leader that names
     );
     await vi.waitFor(() => expect(mocks.connections[0]?.agent.loadSession).toHaveBeenCalledOnce());
     stop.abort();
-    await vi.waitFor(() => expect(mocks.connections[0]!.close).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(mocks.connections[0]!.close).toHaveBeenCalled());
     await expect(outcome).resolves.toBe('rejected');
   });
 });

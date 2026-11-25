@@ -1,17 +1,18 @@
 /**
  * Keeps a briefed run's MCP servers on its session (2026-11-24, Grok Build 1.0.92).
  *
- * Under a leader, a session's MCP servers are the servers the leader merges from the person's own configuration plus
- * the servers the LAST client to load the session named. The controller names the run's servers on ACP session/new,
- * and the run's leader starts them; then the native viewer joins by `--resume`, its own ACP session/load names the
- * servers the viewer discovers itself, and the leader ends the run's ("Updating MCP servers", and on the controller
- * `_x.ai/mcp/server_status {status: unavailable, reason: config_removed}`). Neither a session plugin folder
- * (`_meta.pluginDirs`: discovered, attaches no server) nor a config overlay on the viewer (`GROK_CONFIG`: its MCP table
- * is dropped) gives the viewer's load the run's servers.
+ * Under a leader, as read in the isolated live rig, a session's MCP servers are the servers the leader merges itself
+ * (there: the user config.toml's and ~/.claude.json's) plus the servers the LAST client to load the session named.
+ * The controller names the run's servers on ACP session/new, and the run's leader starts them; then the native viewer
+ * joins by `--resume`, its own ACP session/load names the servers the viewer discovers itself, and the leader ends the
+ * run's ("Updating MCP servers", and on the controller `_x.ai/mcp/server_status {status: unavailable, reason:
+ * config_removed}`). Neither a session plugin folder (`_meta.pluginDirs`: discovered, attaches no server) nor a config
+ * overlay on the viewer (`GROK_CONFIG`: its MCP table is dropped) gives the viewer's load the run's servers.
  *
  * So the removal is answered: a short-lived client of the run's own leader loads the session with the run's servers and
- * leaves. The leader puts them back beside the merged ones, which it neither drops nor restarts, and they stay after
- * that client has gone. All of this is read in the isolated live rig (briefing.live.test.ts).
+ * leaves, answering nothing meanwhile (acp-control.ts `reassertGrokServers`). The leader puts them back beside the
+ * merged ones, which it neither drops nor restarts, and they stay after that client has gone. All of this is read in
+ * the isolated live rig (briefing.live.test.ts), for the discovery sources that row names.
  */
 
 /** The leader's per-server status notification, as adapter-acp hands an extension notification over. */
@@ -25,15 +26,15 @@ export interface BriefedServerKeeperOptions {
   readonly names: ReadonlySet<string>;
   /** The run's session, once control holds it. */
   sessionId(): string | undefined;
-  /** One load of the session that names the run's servers, by a client that then leaves. */
-  reassert(): Promise<void>;
+  /** One load of the session that names the run's servers, by a client that then leaves; `signal` is the run's stop. */
+  reassert(signal: AbortSignal): Promise<void>;
   readonly now?: () => number;
 }
 
 export interface BriefedServerKeeper {
   /** Every extension notification the controller hears, before normalization. */
   observe(method: string, params: Record<string, unknown>): void;
-  /** No put after this; waits for one in flight. */
+  /** No put after this; stops one in flight and waits for its client to close. */
   dispose(): Promise<void>;
 }
 
@@ -41,6 +42,7 @@ export function createBriefedServerKeeper(options: BriefedServerKeeperOptions): 
   const now = options.now ?? Date.now;
   const recent: number[] = [];
   let inFlight: Promise<void> | undefined;
+  let stop: AbortController | undefined;
   let again = false;
   let disposed = false;
 
@@ -54,11 +56,13 @@ export function createBriefedServerKeeper(options: BriefedServerKeeperOptions): 
     while (recent.length > 0 && at - recent[0]! >= 60_000) recent.shift();
     if (recent.length >= BRIEFED_SERVER_REASSERTS_PER_MINUTE) return;
     recent.push(at);
+    stop = new AbortController();
     inFlight = options
-      .reassert()
+      .reassert(stop.signal)
       .catch(() => undefined)
       .finally(() => {
         inFlight = undefined;
+        stop = undefined;
         if (!again) return;
         again = false;
         put();
@@ -77,6 +81,7 @@ export function createBriefedServerKeeper(options: BriefedServerKeeperOptions): 
     async dispose() {
       disposed = true;
       again = false;
+      stop?.abort();
       await inFlight;
     },
   };

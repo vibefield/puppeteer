@@ -62,6 +62,8 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
   const runLeaders = new Set<GrokLeaderService>();
   /** Run leaders on their way out: until one has exited it may still write the session it held. */
   const stoppingRunLeaders = new Set<Promise<void>>();
+  /** Briefed runs' server keepers while their runs stand: the backend's stop ends a re-assert in flight first. */
+  const keepers = new Set<BriefedServerKeeper>();
   let disposed = false;
   let disposal: Promise<void> | undefined;
 
@@ -92,12 +94,13 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
             names: new Set(Object.keys(briefed)),
             sessionId: () => opened?.sessionId,
             // Only to a leader still running: a leader client that finds none may start one of its own.
-            reassert: () =>
+            reassert: (signal) =>
               opened && socketPath && !disposed && runLeader.helper() !== undefined
-                ? reassertGrokServers(executable, cwd, socketPath, opened.sessionId, briefed, childEnv)
+                ? reassertGrokServers(executable, cwd, socketPath, opened.sessionId, briefed, childEnv, { signal })
                 : Promise.resolve(),
           })
         : undefined;
+    if (keeper) keepers.add(keeper);
     let stopping: Promise<void> | undefined;
     // Registered synchronously, as the run begins to stop: a run's exit is recorded before its leader's ~2 s drain, and
     // its control is still closing before that. `closing` goes first, so the leader drains with nobody talking to it.
@@ -111,6 +114,7 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
         .finally(() => {
           stoppingRunLeaders.delete(stopped);
           runLeaders.delete(runLeader);
+          if (keeper) keepers.delete(keeper);
         });
       stoppingRunLeaders.add(stopped);
       stopping = stopped;
@@ -193,8 +197,10 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
       disposed = true;
       // The leader may still be writing into an adapter-owned Imposter home
       // while it drains, so that home goes only after the leader has exited.
-      disposal = Promise.all([leader.dispose(), ...[...runLeaders].map((runLeader) => runLeader.dispose())]).then(
-        () => {
+      // A re-assert in flight is stopped before its leader goes: a leader client that finds none may start its own.
+      disposal = Promise.all([...keepers].map((keeper) => keeper.dispose()))
+        .then(() => Promise.all([leader.dispose(), ...[...runLeaders].map((runLeader) => runLeader.dispose())]))
+        .then(() => {
           const home = ownedImposterHome;
           ownedImposterHome = undefined;
           if (!home) return;
@@ -204,8 +210,7 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
             // Best-effort cleanup of an ephemeral root: disposal never rejects,
             // and builtin-providers disposes backends without awaiting them.
           }
-        },
-      );
+        });
       return disposal;
     },
   };
