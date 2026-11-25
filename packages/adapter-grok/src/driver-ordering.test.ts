@@ -183,6 +183,28 @@ describe('Grok leader session materialization ordering', () => {
       }
     });
 
+    it('stops a run without waiting on a re-assert that never answers, and the backend after it', async () => {
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      let backendStopped = false;
+      try {
+        const prepared = await backend.prepareSession({ cwd: '/a', mcpServers });
+        const control = mocks.createAcpSession.mock.calls[0]![0] as Observed;
+        // The re-assert's load never answers while the leader stays alive.
+        mocks.createAcpSession.mockImplementationOnce(() => new Promise(() => undefined));
+        control.onExtensionNotification('_x.ai/mcp/server_status', removed('field'));
+        await vi.waitFor(() => expect(mocks.createAcpSession).toHaveBeenCalledTimes(2));
+        const stopped = await Promise.race([
+          prepared.dispose().then(() => 'stopped'),
+          new Promise((resolve) => setTimeout(() => resolve('still waiting'), 500)),
+        ]);
+        expect(stopped).toBe('stopped');
+        await backend.dispose();
+        backendStopped = true;
+      } finally {
+        if (!backendStopped) void backend.dispose();
+      }
+    });
+
     it('keeps a removal of a run with no servers to itself: the shared leader is never loaded again', async () => {
       const backend = createGrokBackend({ executable: '/real/grok', host: host() });
       try {
