@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.14](https://github.com/vibefield/puppeteer/compare/v0.4.13...v0.4.14) (2026-11-25)
+
+
+### Bug Fixes
+
+* **adapter-grok:** a briefed run's MCP servers stay on the session the native viewer joins ([#122](https://github.com/vibefield/puppeteer/issues/122)) ([e9d8931](https://github.com/vibefield/puppeteer/commit/e9d8931a555801cca7cb85312f66414344429631))
+
 ## [0.4.13](https://github.com/vibefield/puppeteer/compare/v0.4.12...v0.4.13) (2026-11-24)
 
 
