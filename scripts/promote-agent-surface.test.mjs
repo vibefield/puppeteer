@@ -281,9 +281,10 @@ test('the promotion transaction moves the ledger, the README badge, and the even
   assert.equal(agent.blockers, undefined);
   assert.equal(agent.introducedInPuppeteer, '0.2.1');
   assert.equal(agent.verification.runId, '123');
+  assert.match(read('README.md'), /<b>Fake<\/b>/);
   assert.match(
     read('README.md'),
-    /\[!\[Fake: verified 1\.0\.0\]\(https:\/\/img\.shields\.io\/badge\/Fake-verified_1\.0\.0-blue\)\]/,
+    /<img src="https:\/\/img\.shields\.io\/badge\/verified-1\.0\.0-0a0a0a\?[^"]*" alt="Fake: verified 1\.0\.0">/,
   );
   assert.doesNotMatch(read('README.md'), /stale/);
   // The event-map path follows the ledger's adapter package, not the vendor id.

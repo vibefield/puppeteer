@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Validate the promotion ledger and deterministically render README badges. */
+/** Validate the promotion ledger and deterministically render the README's support grid. */
 import { acquiredArtifactForPlatform } from './lib/acquired-artifact.mjs';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -235,25 +235,48 @@ export function validateSupportLedger(repoRoot = root) {
   return { ledger, issues: issues.sort() };
 }
 
+/**
+ * How a status is drawn: the message colour on a light page and on a dark one. The label and the square style are
+ * the README's own (its header badges use the same pair), so the grid reads as part of the page in either theme.
+ */
+const SUPPORT_COLORS = {
+  verified: { light: '0a0a0a', dark: 'e6eafb' },
+  'legacy-verified': { light: 'b45309', dark: 'f59e0b' },
+  other: { light: '8a8a84', dark: '565b73' },
+};
+const SUPPORT_LABEL = { light: '6a6a64', dark: '212437' };
+const SUPPORT_COLUMNS = 3;
+
+function supportBadge(label, message, theme, status) {
+  const color = (SUPPORT_COLORS[status] ?? SUPPORT_COLORS.other)[theme];
+  return `https://img.shields.io/badge/${shield(label)}-${shield(message)}-${color}?style=flat-square&labelColor=${SUPPORT_LABEL[theme]}`;
+}
+
+/** One agent's cell: its name, and under it a badge of its status and version that links to its ground truth. */
+function supportCell(agent) {
+  const word = agent.status.replace(/-/g, ' ');
+  const supported = ['verified', 'legacy-verified'].includes(agent.status);
+  const version = supported ? agent.currentVersion : agent.candidateVersion;
+  const target = version ? agent.groundTruth : 'support/agents.json';
+  const [label, message] = version ? [word, version] : ['support', word];
+  const alt = `${agent.displayName}: ${[word, version].filter(Boolean).join(' ')}`;
+  const picture =
+    `<picture><source media="(prefers-color-scheme: dark)" srcset="${supportBadge(label, message, 'dark', agent.status)}">` +
+    `<img src="${supportBadge(label, message, 'light', agent.status)}" alt="${alt}"></picture>`;
+  return `<td align="center" width="33%"><b>${agent.displayName}</b><br><a href="${target}">${picture}</a></td>`;
+}
+
 export function renderSupportBlock(repoRoot = root) {
   const { ledger, issues } = validateSupportLedger(repoRoot);
   if (issues.length > 0) throw new Error(issues.join('\n'));
-  const badges = ledger.agents.map((agent) => {
-    let message = agent.status.replace(/-/g, ' ');
-    let target = 'support/agents.json';
-    let color = 'lightgrey';
-    if (['verified', 'legacy-verified'].includes(agent.status)) {
-      message = `${message} ${agent.currentVersion}`;
-      target = agent.groundTruth;
-      color = agent.status === 'verified' ? 'blue' : 'orange';
-    } else if (agent.candidateVersion) {
-      message = `${message} ${agent.candidateVersion}`;
-      target = agent.groundTruth;
-    }
-    const alt = `${agent.displayName}: ${message}`;
-    return `[![${alt}](https://img.shields.io/badge/${shield(agent.displayName)}-${shield(message)}-${color})](${target})`;
-  });
-  return [START, ...badges, END].join('\n');
+  const cells = ledger.agents.map(supportCell);
+  // A short last row is filled out, so every row has the same three columns.
+  while (cells.length % SUPPORT_COLUMNS !== 0) cells.push('<td width="33%"></td>');
+  const rows = [];
+  for (let index = 0; index < cells.length; index += SUPPORT_COLUMNS) {
+    rows.push(['  <tr>', ...cells.slice(index, index + SUPPORT_COLUMNS).map((cell) => `    ${cell}`), '  </tr>']);
+  }
+  return [START, '<table align="center">', ...rows.flat(), '</table>', END].join('\n');
 }
 
 export function updateReadme(readme, block) {
