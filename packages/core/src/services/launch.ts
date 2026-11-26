@@ -43,6 +43,12 @@ export const AgentContinuationSchema = z.strictObject({
    * for such a resume. Absent once it can, and on every continuation written before this field existed.
    */
   resumable: z.boolean().optional(),
+  /**
+   * True while `nativeSessionId` is a placeholder the adapter minted before the agent named its conversation. Only
+   * `true` is ever written: absent once the agent's own id is known, and on every continuation written before this
+   * field existed. A host that keeps a record of the sessions a run held skips a provisional id.
+   */
+  provisional: z.boolean().optional(),
 });
 export type AgentContinuation = z.infer<typeof AgentContinuationSchema>;
 

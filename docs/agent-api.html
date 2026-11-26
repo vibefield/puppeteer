@@ -967,7 +967,7 @@
         <div class="stats" aria-label="API summary">
           <div class="stat"><strong>1</strong><span>Agent object per runtime run</span></div>
           <div class="stat"><strong>19</strong><span>top-level event categories</span></div>
-          <div class="stat"><strong>38</strong><span>normalized event routes</span></div>
+          <div class="stat"><strong>39</strong><span>normalized event routes</span></div>
           <div class="stat"><strong>3</strong><span>selector forms</span></div>
         </div>
       </header>
@@ -1653,6 +1653,8 @@ offAll();</code></pre>
   nativeSessionId: string;
   implementation: 'native' | 'imposter';
   state?: string;
+  resumable?: boolean;   // false: a resume by nativeSessionId cannot succeed yet; absent once it can
+  provisional?: boolean; // true: nativeSessionId is a placeholder the adapter minted; absent once the agent names it
 }
 
 interface ResumeAgentOptions {
@@ -1827,7 +1829,7 @@ unsubscribe();</code></pre>
           <section id="catalog">
             <h2>Complete event catalog</h2>
             <p class="section-note">
-              All 38 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
+              All 39 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
               routes, native payload types, descriptions, and field names.
             </p>
 
@@ -1847,14 +1849,14 @@ unsubscribe();</code></pre>
               <button class="filter-button" type="button" data-filter="other">Other</button>
               <button class="small-button" id="expand-visible" type="button">Expand visible</button>
               <button class="small-button" id="collapse-all" type="button">Collapse</button>
-              <span class="result-count" id="event-count">38 / 38 routes</span>
+              <span class="result-count" id="event-count">39 / 39 routes</span>
             </div>
 
             <div id="event-sections">
               <section class="category-section" id="category-behavior" data-section-category="behavior">
                 <div class="category-header">
                   <h3>Behavior event domains</h3>
-                  <span class="badge category-session">23 routes</span>
+                  <span class="badge category-session">24 routes</span>
                   <p>
                     Seven independent categories for lifecycle, turns, reasoning, tools, interactions, delegation, and
                     compaction.
@@ -1883,6 +1885,29 @@ unsubscribe();</code></pre>
                       <div class="projection-row">
                         <span class="chip">lifecycle → ready</span><span class="chip">native identity</span>
                       </div>
+                    </div>
+                  </details>
+
+                  <details class="event-card" data-category="session">
+                    <summary>
+                      <span class="event-title"
+                        ><span class="route">session:forked</span
+                        ><span class="native-type">session:forked</span></span
+                      ><span class="badge category-session">session</span>
+                    </summary>
+                    <div class="event-body">
+                      <p>
+                        A session forked from this run started under its own native id; the run keeps observing its
+                        own. The payload names the fork's id, and the envelope's
+                        <span class="mono">nativeSessionId</span> stays the observed session's: nothing here moves
+                        the run's native identity, its lifecycle or its turn.
+                      </p>
+                      <pre><code>interface SessionForkedEvent {
+  type: 'session:forked';
+  nativeSessionId: string; // the fork's own id
+  startSource?: string;    // the provider's word, e.g. 'fork'
+}</code></pre>
+                      <div class="projection-row"><span class="chip">no state or monitor change</span></div>
                     </div>
                   </details>
 
@@ -3322,6 +3347,7 @@ type MonitorFamilyUpdate =
   readonly sessionId: string;
   readonly runtimeSessionId: string;
   observationLevel(): ObservationLevel;
+  nativeSessionProvisional?(): boolean; // true while sessionId is a placeholder this adapter minted; absent = never
   readonly events: {
     onCandidate(listener: (candidate: AdapterEventCandidate) =&gt; void): () =&gt; void;
   };

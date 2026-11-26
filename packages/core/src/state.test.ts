@@ -27,6 +27,7 @@ const id = fc.constantFrom('a', 'b', 'c', 'd');
 const arbitraryEvent: fc.Arbitrary<AgentEvent> = fc.oneof(
   fc.constant<AgentEvent>({ type: 'session:started' }),
   fc.constant<AgentEvent>({ type: 'session:ready' }),
+  fc.constant<AgentEvent>({ type: 'session:forked', nativeSessionId: 'fork-1', startSource: 'fork' }),
   id.map((turnId): AgentEvent => ({ type: 'turn:started', turnId, prompt: `p-${turnId}` })),
   id.map((turnId): AgentEvent => ({ type: 'turn:completed', turnId, lastAssistantMessage: `m-${turnId}` })),
   id.map((turnId): AgentEvent => ({ type: 'turn:failed', turnId })),
@@ -373,6 +374,39 @@ describe('reduceSessionState transitions', () => {
     expect(state.lifecycle).toBe('ready');
     expect(state.exit).toBeUndefined();
     expect(state.diagnostics.some((diagnostic) => diagnostic.code === 'session-start-after-exit')).toBe(false);
+  });
+
+  it('a fork that started under its own id moves nothing in the run it forked from', () => {
+    const before = replay(
+      stampAll([
+        { type: 'session:started', nativeSessionId: 'native-observed' },
+        { type: 'turn:started', turnId: 'p1' },
+        { type: 'tool:requested', toolCallId: 't1', tool: 'Bash' },
+      ]),
+    );
+    const [forked] = stampAll([
+      { type: 'session:started', nativeSessionId: 'native-observed' },
+      { type: 'turn:started', turnId: 'p1' },
+      { type: 'tool:requested', toolCallId: 't1', tool: 'Bash' },
+      { type: 'session:forked', nativeSessionId: 'native-fork', startSource: 'fork' },
+    ]).slice(-1);
+    const after = reduceSessionState(before, forked!);
+    expect(after.lifecycle).toBe('running');
+    expect(after.activeTurn).toEqual(before.activeTurn);
+    expect(after.tools).toEqual(before.tools);
+    expect(after.counters).toEqual(before.counters);
+    expect(after.diagnostics).toEqual(before.diagnostics);
+    expect(after).toEqual({ ...before, lastSequence: forked!.sequence });
+
+    // Nor after a turn: the run stays ready, and nothing is counted as unknown.
+    const idle = replay(
+      stampAll([
+        { type: 'session:started', nativeSessionId: 'native-observed' },
+        { type: 'session:forked', nativeSessionId: 'native-fork' },
+      ]),
+    );
+    expect(idle.lifecycle).toBe('ready');
+    expect(idle.counters.unknownEvents).toBe(0);
   });
 
   it('permission events cannot overwrite unrelated tool state', () => {

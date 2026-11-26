@@ -244,6 +244,11 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
+    case 'session:forked':
+      // Another session began from this one under its own id. This run keeps observing its own conversation,
+      // so its lifecycle, turn and resources stay exactly as they were.
+      break;
+
     case 'session:ready': {
       if (isTerminal(next.lifecycle)) {
         next = withDiagnostic(next, seq, 'session-start-after-exit', `${event.type} in ${next.lifecycle}`);

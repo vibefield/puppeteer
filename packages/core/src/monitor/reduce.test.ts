@@ -935,6 +935,45 @@ describe('session title', () => {
   });
 });
 
+describe('session forked', () => {
+  const forked = { type: 'session:forked', nativeSessionId: 'native-fork', startSource: 'fork' } as const;
+
+  it('moves nothing: the run keeps its status, its turn, its session and its title', () => {
+    const working = apply(initial(), [
+      runtime({ type: 'session:started', title: 'Mend the invoice writer' }, 1),
+      runtime({ type: 'turn:started', turnId: 'p1' }, 2),
+    ]);
+    const before = projectAgentMonitorState(working);
+    const translated = runtime(forked, 3);
+    expect(translated.updates).toEqual([]);
+    expect(translated.turnEnded).toBeUndefined();
+
+    const after = projectAgentMonitorState(apply(working, [translated]));
+    expect(after.status).toBe(before.status);
+    expect(after.status).toBe('working');
+    expect(after.alive).toBe(before.alive);
+    expect(after.session).toEqual(before.session);
+    expect(after.session.nativeSessionId).toBe('native-1');
+    expect(after.turnsEnded).toBe(before.turnsEnded);
+    expect(after.lastTurnEnded).toEqual(before.lastTurnEnded);
+    expect(after.freshness.families.conversation).toEqual(before.freshness.families.conversation);
+  });
+
+  it('moves nothing at rest either', () => {
+    const idle = apply(initial(), [
+      runtime({ type: 'session:ready' }, 1),
+      runtime({ type: 'turn:started', turnId: 'p1' }, 2),
+      runtime({ type: 'turn:completed', turnId: 'p1' }, 3),
+    ]);
+    const before = projectAgentMonitorState(idle);
+    const after = projectAgentMonitorState(apply(idle, [runtime(forked, 4)]));
+    expect(after.status).toBe(before.status);
+    expect(after.alive).toBe(before.alive);
+    expect(after.session).toEqual(before.session);
+    expect(after).toMatchObject({ turnsEnded: 1, lastTurnEnded: { turnId: 'p1' } });
+  });
+});
+
 describe('turn ends', () => {
   it("counts the run's own turn ends, completed and failed, and projects the last", () => {
     const before = apply(initial(), [
