@@ -259,6 +259,8 @@ interface ManagedRun {
   launchImplementation?: AgentContinuation['implementation'] | undefined;
   /** The bound adapter's word on whether it has seen the conversation's durable record; absent = seen. */
   durableRecordSeen?: (() => boolean) | undefined;
+  /** The bound adapter's word on whether its session id is still a placeholder it minted; absent = never. */
+  nativeSessionProvisional?: (() => boolean) | undefined;
   /** Account profile this run is bound to, either selected by the caller or attributed from the launch environment. */
   profileId?: string | undefined;
   /** The profile set that account belongs to. */
@@ -1116,6 +1118,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       // RA-D7: a resume of a conversation the agent has not written yet cannot succeed, and a
       // host must not end the live process for it
       ...(run.durableRecordSeen?.() === false ? { resumable: false } : {}),
+      // a placeholder the adapter minted names no conversation of the agent's yet: a host that keeps the sessions
+      // a run held skips it. Only true is written; the word goes once the binding names the agent's own id
+      ...(run.nativeSessionProvisional?.() === true ? { provisional: true } : {}),
     });
   }
 
@@ -2338,6 +2343,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     run.terminalSessionId = session.runtimeSessionId;
     run.status = 'active';
     run.durableRecordSeen = session.durableRecordSeen?.bind(session);
+    // an adopted or restored run reads the word of the binding it now holds, never an earlier one's
+    run.nativeSessionProvisional = session.nativeSessionProvisional?.bind(session);
     const info: AgentSessionInfo = {
       provider: cloneProviderDescriptor(provider.descriptor),
       agent: provider.descriptor.id,
@@ -2471,8 +2478,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         );
       }
       // RA-D7: the adapter says it has seen the durable record before it publishes what it read
-      // there, so the continuation turns resumable with the first such event, under the same id
-      if (info.continuation.resumable === false && run.durableRecordSeen?.() !== false) {
+      // there, so the continuation turns resumable with the first such event, under the same id.
+      // Likewise a provisional mark goes with the first event after the binding stops saying so,
+      // whether or not that event moved the claim (a payload id is read only from session:started,
+      // so a session:forked never moves it)
+      if (
+        (info.continuation.resumable === false && run.durableRecordSeen?.() !== false) ||
+        (info.continuation.provisional === true && run.nativeSessionProvisional?.() !== true)
+      ) {
         info.continuation = continuationFor(provider, run.nativeSessionClaim!.value.id, run);
       }
       // accept() hands back the uncopied states on either side of the event (the reducer never mutates in place);
@@ -3578,6 +3591,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           ...identityFields(run.identity),
           nativeSession: { ...nativeSessionClaim.value },
           nativeSessionRevision: nativeSessionClaim.revision,
+          // no binding is held yet, so nothing says this id is provisional: the adopted binding's word decides
           continuation: continuationFor(provider, nativeSessionClaim.value.id, run),
           sessionId: prepared.sessionId,
           launch: cloneLaunch(prepared.launch),
