@@ -1541,7 +1541,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
   });
 
   it('keeps the pane on its conversation when a fork announces itself, and says so once', async () => {
-    const { session, events, hook, endpoint, token } = await startSession();
+    const { session, events, hook, endpoint, token } = await startSession({ providerVersion: '2.1.311' });
     const before = session.sessionId;
     const copy = '64a61b19-f4d8-4f96-ba56-07024b4708ac';
     const post = (fields: Record<string, unknown>) =>
@@ -1551,18 +1551,120 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
         body: JSON.stringify({ session_id: copy, cwd: '/tmp', ...fields }),
       });
     await hook('SessionStart', { source: 'startup' });
-    // the /fork background copy: a fork start under a new id while the pane stays where it was
+    // the /fork background copy: a fork start under a new id while the pane stays where it was; the copy's own hooks
+    // after it, and a second start of it, add nothing
     expect((await post({ hook_event_name: 'SessionStart', source: 'fork' })).status).toBe(403);
     expect((await post({ hook_event_name: 'UserPromptSubmit', prompt: 'in the copy' })).status).toBe(403);
+    expect((await post({ hook_event_name: 'SessionStart', source: 'fork' })).status).toBe(403);
     expect(session.sessionId).toBe(before);
+    // the fork's own id reaches the host once, in the payload; the envelope names the session the pane observes
+    const forked = events.filter(({ event }) => event.type === 'session:forked');
     expect(
-      events.filter(
+      forked.map(({ type, category, nativeSessionId, source, confidence, providerVersion, event }) => ({
+        type,
+        category,
+        nativeSessionId,
+        source,
+        confidence,
+        providerVersion,
+        event,
+      })),
+    ).toEqual([
+      {
+        type: 'session:forked',
+        category: 'session',
+        nativeSessionId: before,
+        source: 'native-hook',
+        confidence: 'authoritative',
+        providerVersion: '2.1.311',
+        event: { type: 'session:forked', nativeSessionId: copy, startSource: 'fork' },
+      },
+    ]);
+    expect(safeParseAgentEvent('session:forked', forked[0]!.event).success).toBe(true);
+    // the fork is said as itself, never as a refused session
+    expect(
+      events.some(
         ({ event }) => event.type === 'adapter:native-event' && event.nativeType === 'hook-bridge.session-refused',
       ),
-    ).toEqual([
-      expect.objectContaining({ source: 'runtime', nativeEvent: { hookEventName: 'SessionStart', source: 'fork' } }),
-    ]);
+    ).toBe(false);
     await hook('UserPromptSubmit', { prompt: 'still here', prompt_id: 'p-here' });
+    expect(session.sessionId).toBe(before);
+  });
+
+  it('says a fork by its own start, even when that session was refused once before for another hook', async () => {
+    const { session, events, hook, endpoint, token } = await startSession();
+    const before = session.sessionId;
+    const copy = '64a61b19-f4d8-4f96-ba56-07024b4708b0';
+    const post = (fields: Record<string, unknown>) =>
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ session_id: copy, cwd: '/tmp', ...fields }),
+      });
+    await hook('SessionStart', { source: 'startup' });
+    expect((await post({ hook_event_name: 'UserPromptSubmit', prompt: 'first' })).status).toBe(403);
+    expect((await post({ hook_event_name: 'SessionStart', source: 'fork' })).status).toBe(403);
+    expect((await post({ hook_event_name: 'Stop' })).status).toBe(403);
+    expect(session.sessionId).toBe(before);
+    expect(
+      events
+        .filter(
+          ({ event }) => event.type === 'adapter:native-event' && event.nativeType === 'hook-bridge.session-refused',
+        )
+        .map(({ nativeEvent }) => nativeEvent),
+    ).toEqual([{ hookEventName: 'UserPromptSubmit' }]);
+    expect(
+      events
+        .filter(({ event }) => event.type === 'session:forked')
+        .map(({ nativeSessionId, event }) => ({ nativeSessionId, event })),
+    ).toEqual([
+      { nativeSessionId: before, event: { type: 'session:forked', nativeSessionId: copy, startSource: 'fork' } },
+    ]);
+  });
+
+  it('keeps today’s refusal for every refused hook that is not a fork’s start', async () => {
+    const { session, events, hook, endpoint, token } = await startSession();
+    const before = session.sessionId;
+    const post = (sessionId: string, fields: Record<string, unknown>) =>
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({ session_id: sessionId, cwd: '/tmp', ...fields }),
+      });
+    await hook('SessionStart', { source: 'startup' });
+    // a resume start no end announced, a stranger's Stop, and a fork start with no id to name
+    const resumed = '64a61b19-f4d8-4f96-ba56-07024b4708b1';
+    const stranger = '64a61b19-f4d8-4f96-ba56-07024b4708b2';
+    expect((await post(resumed, { hook_event_name: 'SessionStart', source: 'resume' })).status).toBe(403);
+    expect((await post(stranger, { hook_event_name: 'Stop' })).status).toBe(403);
+    expect((await post('  ', { hook_event_name: 'SessionStart', source: 'fork' })).status).toBe(403);
+    expect(session.sessionId).toBe(before);
+    expect(events.some(({ event }) => event.type === 'session:forked')).toBe(false);
+    expect(
+      events
+        .filter(
+          ({ event }) => event.type === 'adapter:native-event' && event.nativeType === 'hook-bridge.session-refused',
+        )
+        .map(({ nativeSessionId, source, confidence, event, nativeEvent }) => ({
+          nativeSessionId,
+          source,
+          confidence,
+          event,
+          nativeEvent,
+        })),
+    ).toEqual(
+      [
+        { hookEventName: 'SessionStart', source: 'resume' },
+        { hookEventName: 'Stop' },
+        { hookEventName: 'SessionStart', source: 'fork' },
+      ].map((nativeEvent) => ({
+        nativeSessionId: before,
+        source: 'runtime',
+        confidence: 'authoritative',
+        event: { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'hook-bridge.session-refused' },
+        nativeEvent,
+      })),
+    );
   });
 
   it('follows a resume start only straight after the pane’s own session ended for it', async () => {
