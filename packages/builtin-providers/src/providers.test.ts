@@ -1222,6 +1222,51 @@ describe('createBuiltinProviders launch options', () => {
     expect(kimi.accountUsage?.provider.id).toBe('kimi');
   });
 
+  it('tells Kimi and Antigravity a run owns its root only under a profile that binds one of its own', async () => {
+    const providers = createBuiltinProviders({ executables: { kimi: '/opt/kimi', antigravity: '/opt/agy' } });
+    const doors = [
+      ['kimi', adapters.createKimiTuiSession, adapters.prepareKimiTuiSession],
+      ['antigravity', adapters.createAntigravityTuiSession, adapters.prepareAntigravityTuiSession],
+    ] as const;
+    for (const [id, create, prepare] of doors) {
+      const provider = providers.find(({ descriptor }) => descriptor.id === id)!;
+      const nativeDefault: AgentProfile = {
+        id: `${id}:native-default`,
+        provider: id,
+        label: 'Default',
+        kind: 'native-default',
+        dataRoot: `/home/${id}`,
+        createdAt: '2026-11-27T00:00:00.000Z',
+      };
+      const managed: AgentProfile = {
+        ...nativeDefault,
+        id: 'p1',
+        label: 'Work',
+        kind: 'managed',
+        dataRoot: `/roots/${id}`,
+      };
+      const binding = vi.mocked(provider.profiles!.bindingEnvironment);
+      // the native default binds nothing: the person's own root, which other terminals write too
+      binding.mockReturnValue({});
+      await provider.createSession({ cwd: '/work/repo', host, profile: nativeDefault });
+      await provider.prepareSession!({ cwd: '/work/repo', host, profile: nativeDefault });
+      // no profile at all
+      await provider.createSession({ cwd: '/work/repo', host });
+      for (const call of [...create.mock.calls, ...prepare.mock.calls]) expect(call[0]).not.toHaveProperty('ownedRoot');
+      create.mockClear();
+      prepare.mockClear();
+      // a managed profile binds its own root
+      binding.mockReturnValue({ ROOT: `/roots/${id}` });
+      await provider.createSession({ cwd: '/work/repo', host, profile: managed });
+      await provider.prepareSession!({ cwd: '/work/repo', host, profile: managed });
+      expect(binding).toHaveBeenCalledWith(managed);
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ ownedRoot: true }));
+      expect(prepare).toHaveBeenCalledWith(expect.objectContaining({ ownedRoot: true }));
+      binding.mockReset();
+      binding.mockReturnValue({});
+    }
+  });
+
   it('forwards OpenCode private-backend, model, and permission options', async () => {
     const opencode = createBuiltinProviders({ executables: { opencode: '/opt/opencode' } }).find(
       (provider) => provider.descriptor.id === 'opencode',
@@ -1683,6 +1728,21 @@ describe('stable ingress (AR-4 / PU-1)', () => {
         model: 'claude-fable-5',
         automate: host.automateTerminal,
       }),
+    );
+    // no record kept: the attach is handed none
+    expect(adapters.attachClaudeTuiSession.mock.lastCall?.[0]).not.toHaveProperty('attachRecord');
+    // the record the launch reported reaches the adapter as it was kept
+    const attachRecord = { version: 1, state: JSON.stringify({ hookSpool: '/private/run/launch.hook-spool.jsonl' }) };
+    await claude.attachSession!({
+      sessionId: 'native-1',
+      runtimeSessionId: 'pane-1',
+      cwd: '/work/repo',
+      host,
+      ingress: { port: 4242, token: 'pinned' },
+      attachRecord,
+    });
+    expect(adapters.attachClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sessionId: 'native-1', attachRecord }),
     );
   });
 
