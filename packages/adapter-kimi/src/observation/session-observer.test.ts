@@ -184,6 +184,106 @@ describe('Kimi session observer', () => {
     await observer.stop();
   });
 
+  describe('fresh runs in one folder bind by elimination', () => {
+    /** A new Kimi session in the folder, as another process would start it: its state and a typed prompt. */
+    async function startSession(home: string, cwd: string, sessionId: string, prompt: string): Promise<void> {
+      const sessionDir = join(home, 'sessions', encodeKimiWorkDirKey(cwd), sessionId);
+      await mkdir(join(sessionDir, 'agents', 'main'), { recursive: true });
+      await writeFile(join(sessionDir, 'state.json'), JSON.stringify({ id: sessionId, cwd, createdAt: 1 }));
+      await writeFile(
+        kimiMainWirePath(sessionDir),
+        lines(
+          { type: 'metadata', protocol_version: '1.5', created_at: 1 },
+          { type: 'turn.prompt', input: [{ type: 'text', text: prompt }], origin: { kind: 'user' }, time: 2 },
+        ),
+      );
+    }
+    const ambiguities = (events: KimiObservedEvent[]) =>
+      events
+        .filter(
+          ({ event }) => event.type === 'adapter:native-event' && event.nativeType === 'session-discovery-ambiguous',
+        )
+        .map(({ nativeEvent }) =>
+          (nativeEvent as { candidates: { sessionId: string }[] }).candidates.map(({ sessionId }) => sessionId).sort(),
+        );
+
+    it('leaves two candidates ambiguous until a peer binds one, then binds the other; a third from outside stands', async () => {
+      const home = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-peers-'));
+      roots.push(home);
+      const cwd = join(home, 'repo');
+      const first = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      const second = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      const firstEvents: KimiObservedEvent[] = [];
+      const secondEvents: KimiObservedEvent[] = [];
+      first.onEvent((event) => firstEvents.push(event));
+      second.onEvent((event) => secondEvents.push(event));
+      first.onError(() => undefined);
+      second.onError(() => undefined);
+      await startSession(home, cwd, 'session-x', 'x');
+      await startSession(home, cwd, 'session-y', 'y');
+
+      await first.poll();
+      await second.poll();
+      expect([first.sessionId(), second.sessionId()]).toEqual([undefined, undefined]);
+      expect(ambiguities(firstEvents)).toEqual([['session-x', 'session-y']]);
+      // judged again at every poll, and said once per set
+      await first.poll();
+      expect(ambiguities(firstEvents)).toHaveLength(1);
+
+      // the first run's own prompt names its session
+      const echo = first.expectPrompt('x', 2_000);
+      await first.poll();
+      expect(first.sessionId()).toBe('session-x');
+      await expect(echo.promise).resolves.toMatchObject({ matched: true, sessionId: 'session-x' });
+      expect(firstEvents.find(({ event }) => event.type === 'session:started')?.event).toMatchObject({
+        nativeSessionId: 'session-x',
+        startSource: 'native-wire-bind',
+      });
+
+      // a session started from outside in the meantime keeps the second ambiguous
+      await startSession(home, cwd, 'session-z', 'z');
+      await second.poll();
+      expect(second.sessionId()).toBeUndefined();
+      expect(ambiguities(secondEvents)).toEqual([
+        ['session-x', 'session-y'],
+        ['session-y', 'session-z'],
+      ]);
+      // its own prompt picks among what is left; the peer's session is never one of them
+      const own = second.expectPrompt('y', 2_000);
+      await second.poll();
+      expect(second.sessionId()).toBe('session-y');
+      await expect(own.promise).resolves.toMatchObject({ matched: true, sessionId: 'session-y' });
+      await first.stop();
+      await second.stop();
+    });
+
+    it('binds the one session a peer left, and never a session a peer bound before it started', async () => {
+      const home = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-peers-'));
+      roots.push(home);
+      const cwd = join(home, 'repo');
+      const first = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      first.onError(() => undefined);
+      await startSession(home, cwd, 'session-a', 'a');
+      await startSession(home, cwd, 'session-b', 'b');
+      const echo = first.expectPrompt('a', 2_000);
+      await first.poll();
+      expect(first.sessionId()).toBe('session-a');
+      await echo.promise;
+      // a run launched later in the same folder: the peer's session is in its baseline from the start
+      const later = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      later.onError(() => undefined);
+      await later.poll();
+      expect(later.sessionId()).toBe('session-b');
+      // a third run finds nothing left to bind
+      const third = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      await third.poll();
+      expect(third.sessionId()).toBeUndefined();
+      await first.stop();
+      await later.stop();
+      await third.stop();
+    });
+  });
+
   it('performs a final bounded journal drain before stopping', async () => {
     const { home, cwd, location } = await fixture('session-drain');
     await writeFile(location.wirePath, lines({ type: 'metadata', protocol_version: '1.5', created_at: 1 }));

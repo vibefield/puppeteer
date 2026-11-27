@@ -1,7 +1,7 @@
 /** Append-safe observer for Kimi Code's session index and wire 1.5 journals. */
 
 import { open, readFile, stat } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibefield/puppeteer-core';
 import { KimiWireNormalizer } from '../normalization/pipeline.js';
 import {
@@ -62,6 +62,12 @@ export interface KimiSessionObserverOptions {
   baselineSessionIds?: ReadonlySet<string> | undefined;
   /** Per-journal sizes captured before a resumed TUI launch. */
   replayOffsets?: KimiJournalOffsets | undefined;
+  /**
+   * The run owns this Kimi home (a managed profile's): only its runs start sessions there. The provider sets it;
+   * a person's own home is never owned. With no host prompt waiting, a fresh run binds the one new candidate with a
+   * typed prompt, in an owned home as in any other (see `pollDiscovery`).
+   */
+  ownedRoot?: boolean | undefined;
   pollIntervalMs?: number | undefined;
   readChunkBytes?: number | undefined;
   maxRecordBytes?: number | undefined;
@@ -140,6 +146,17 @@ async function candidatePrompts(path: string, maxBytes: number): Promise<string[
   }
 }
 
+/** One observer's claim in a workspace it shares with the other observers of this process. */
+interface KimiDiscovery {
+  baseline: Set<string>;
+  boundSessionId?: string | undefined;
+}
+
+// Observers of one Kimi home and folder must not claim each other's sessions. A session a peer bound joins every
+// other observer's baseline, so it is never a candidate again; each remembers claims made during its lifetime, even
+// after the claiming observer stops, so a delayed launch cannot adopt an older peer's session.
+const discoveriesByWorkspace = new Map<string, Set<KimiDiscovery>>();
+
 function stateTimestamp(value: unknown): string | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
   const result = new Date(value);
@@ -154,6 +171,15 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
   const promptWaiters = new Map<number, PromptWaiter>();
   const journals = new Map<string, JournalState>();
   const baseline = new Set(options.baselineSessionIds ?? []);
+  const workspace = `${resolve(options.kimiHome)}\0${resolve(options.cwd)}`;
+  const discoveries = discoveriesByWorkspace.get(workspace) ?? new Set<KimiDiscovery>();
+  const discovery: KimiDiscovery = { baseline, boundSessionId: options.location?.sessionId };
+  for (const peer of discoveries) {
+    if (peer.boundSessionId) baseline.add(peer.boundSessionId);
+    if (discovery.boundSessionId) peer.baseline.add(discovery.boundSessionId);
+  }
+  discoveries.add(discovery);
+  discoveriesByWorkspace.set(workspace, discoveries);
   const replayOffsets = options.replayOffsets ?? new Map<string, number>();
   const readChunkBytes = Math.max(1, Math.floor(options.readChunkBytes ?? 64 * 1024));
   const maxRecordBytes = Math.max(readChunkBytes, Math.floor(options.maxRecordBytes ?? 1024 * 1024));
@@ -257,16 +283,35 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
   };
 
   const bind = async (location: KimiSessionLocation): Promise<void> => {
-    if (bound || stopped) return;
+    if (bound || stopped || baseline.has(location.sessionId)) return;
+    // Claimed before anything is said under it: the id is this run's from here (`sessionId()`), and no peer's.
     bound = location;
+    discovery.boundSessionId = location.sessionId;
+    for (const peer of discoveries) {
+      if (peer !== discovery) peer.baseline.add(location.sessionId);
+    }
     await bootstrap();
   };
 
+  /**
+   * Binds a fresh run to the one new session that is its own. Every candidate is new to this run and claimed by no
+   * peer (a peer's bind removes it), and holds a prompt the person typed. A prompt the host sent and waits for picks
+   * the candidate that echoes it. With none waiting, the one candidate binds; two or more stand ambiguous, said once
+   * per set of candidates and judged again at every poll, so one that a peer binds leaves the other to bind.
+   *
+   * The settled rule asks more of a home the run does not own: with no host prompt waiting, bind only once input has
+   * been written to this run's own terminal since its spawn, so a session started in another terminal in the same
+   * folder is not taken for the run's. No host surface reports that input to an adapter, so that half is not built:
+   * a run in any home binds as it did, and `ownedRoot` changes nothing yet.
+   */
   const pollDiscovery = async (): Promise<void> => {
     const candidates = (await listKimiSessionsForCwd(options.kimiHome, options.cwd)).filter(
       (candidate) => !baseline.has(candidate.sessionId),
     );
-    if (candidates.length === 0) return;
+    if (candidates.length === 0) {
+      ambiguityFingerprint = undefined;
+      return;
+    }
 
     const expected = new Set([...promptWaiters.values()].map((waiter) => waiter.text));
     const matches: KimiSessionLocation[] = [];
@@ -529,6 +574,8 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
       await poll().catch(() => undefined);
       stopped = true;
       settleAllUnmatched('Kimi observer disposed before native prompt echo');
+      discoveries.delete(discovery);
+      if (discoveries.size === 0) discoveriesByWorkspace.delete(workspace);
       eventListeners.clear();
       recordListeners.clear();
       errorListeners.clear();

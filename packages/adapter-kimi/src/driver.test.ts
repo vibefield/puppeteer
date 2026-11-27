@@ -130,7 +130,12 @@ describe('Kimi native TUI session', () => {
     const projection = projectAgentEvents(session);
     const candidates: AdapterEventCandidate[] = [];
     expect(session.events.onCandidate).toBeTypeOf('function');
-    const offCandidate = session.events.onCandidate!((candidate) => candidates.push(candidate));
+    // what the predicate says as each candidate is published
+    const provisionalAt: Array<[string, boolean | undefined]> = [];
+    const offCandidate = session.events.onCandidate!((candidate) => {
+      candidates.push(candidate);
+      provisionalAt.push([candidate.type, session.nativeSessionProvisional?.()]);
+    });
     const monitor = projection.monitorBatches;
     expect(launched).toEqual([
       { command: '/opt/kimi', args: ['--model', 'kimi-k2'], cwd, env: { KIMI_CODE_HOME: home } },
@@ -138,12 +143,18 @@ describe('Kimi native TUI session', () => {
     expect(session.sessionId).toMatch(/^kimi-pending-/);
     // RA-D7: a provisional id names no journal, so nothing may be ended to resume it
     expect(session.durableRecordSeen()).toBe(false);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
     await expect(session.services.prompt.submit({ text: 'ping', confirmationTimeoutMs: 2_000 })).resolves.toEqual({
       status: 'confirmed',
     });
     expect(wroteTurn).toBe(true);
     expect(session.sessionId).toBe('session-native-1');
     expect(session.durableRecordSeen()).toBe(true);
+    // the bind's own start is said with the predicate already false, and so is everything after it
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+    const bindAt = provisionalAt.findIndex(([type]) => type === 'session:started');
+    expect(bindAt).toBeGreaterThanOrEqual(0);
+    expect(provisionalAt.slice(bindAt).every(([, provisional]) => provisional === false)).toBe(true);
     expect(projection.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'pong', activeTurn: undefined });
     const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
     expect(assistant).not.toHaveProperty('sequence');
@@ -210,8 +221,9 @@ describe('Kimi native TUI session', () => {
     expect(prepared.sessionId).toBe(sessionId);
     expect(prepared.launch.args).toEqual(['--session', sessionId]);
     const session = await prepared.adopt('runtime-resume');
-    // the journal was found at prepare
+    // the journal was found at prepare, and the id is the session's own
     expect(session.durableRecordSeen()).toBe(true);
+    expect(session.nativeSessionProvisional?.()).toBe(false);
     const projection = projectAgentEvents(session);
     expect(projection.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'old reply' });
     await expect(session.services.prompt.submit({ text: 'staged', mode: 'paste-only' })).resolves.toEqual({

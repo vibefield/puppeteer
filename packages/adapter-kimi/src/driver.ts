@@ -43,6 +43,12 @@ export interface CreateKimiTuiSessionOptions extends AgentTuiSessionOptions {
   agent?: string | undefined;
   /** Agent markdown selection is valid only for a new session. */
   agentFile?: string | undefined;
+  /**
+   * The run owns its Kimi home: a managed profile's, which only its runs write (the provider sets it when the
+   * profile binds an environment of its own). Never set for a person's own home. See the session observer's
+   * discovery for what it decides.
+   */
+  ownedRoot?: boolean | undefined;
   pollIntervalMs?: number | undefined;
   maxReplayBytes?: number | undefined;
   promptConfirmationTimeoutMs?: number | undefined;
@@ -142,6 +148,7 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         location,
         baselineSessionIds,
         replayOffsets,
+        ...(options.ownedRoot === true ? { ownedRoot: true } : {}),
         pollIntervalMs: options.pollIntervalMs,
         maxReplayBytes: options.maxReplayBytes,
       });
@@ -224,6 +231,9 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         observationLevel: () => 'native-log',
         sessionDirectory: () => observer.sessionDirectory(),
         durableRecordSeen: () => observer.sessionId() !== undefined,
+        // A fresh run's `kimi-pending-…` id is a placeholder until discovery binds its session. The observer holds the
+        // bound id before the bind's `session:started` is said, so the run is never provisional under its own id.
+        nativeSessionProvisional: () => observer.sessionId() === undefined,
         events: {
           onCandidate(listener) {
             if (sessionDisposed) return () => undefined;
