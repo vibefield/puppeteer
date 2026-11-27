@@ -49,6 +49,12 @@ export interface ClaudeSessionRefusal {
 export interface ClaudeSessionSelection {
   /** The id observed now; absent while a picker has chosen none. */
   selected(): string | undefined;
+  /**
+   * Whether the choice holds: from the start for a launch that names its session and for an attach; for a picker
+   * launch, once the chosen session runs a hook of its own or the session rotates. A start alone holds nothing: Claude
+   * starts the highlighted conversation before the person chooses.
+   */
+  held(): boolean;
   /** The hook bridge's verdict on one authenticated request (its `allowSession`). */
   verdict(
     sessionId: string,
@@ -112,6 +118,7 @@ export function createClaudeSessionSelection(options: ClaudeSessionSelectionOpti
 
   return {
     selected: () => selected,
+    held: () => held,
 
     verdict(sessionId, kind, body) {
       const hook = kind === 'hook';

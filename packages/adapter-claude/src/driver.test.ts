@@ -2380,6 +2380,156 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     projection.dispose();
     await session.dispose();
   });
+
+  /** A picker launch adopted, with what its predicate answered as each candidate was published. */
+  async function pickerLaunch(prefix: string) {
+    const { configDir } = configRoot(prefix);
+    const prepared = await prepareClaudeTuiSession({
+      cwd: '/tmp',
+      configDir,
+      resumeInvocation: ['--resume'],
+      automate: async () => ({ accepted: true }),
+    });
+    const session = await prepared.adopt('resume-picker-pane');
+    sessions.push(session);
+    const provisionalAtAdopt = session.nativeSessionProvisional?.();
+    const seen: Array<{ type: string; nativeSessionId: string | undefined; provisional: boolean | undefined }> = [];
+    session.events.onCandidate((candidate) =>
+      seen.push({
+        type: candidate.event.type,
+        nativeSessionId: candidate.nativeSessionId,
+        provisional: session.nativeSessionProvisional?.(),
+      }),
+    );
+    const settings = JSON.parse(readFileSync(prepared.launch.settingsPath, 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ url?: string }> }>>;
+    };
+    const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
+    const headers = {
+      'content-type': 'application/json',
+      authorization: `Bearer ${prepared.launch.env.PUPPETEER_HOOK_TOKEN}`,
+    };
+    const post = async (body: Record<string, unknown>, url = endpoint) => {
+      const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ cwd: '/tmp', ...body }) });
+      return response.status;
+    };
+    return {
+      session,
+      provisionalAtAdopt,
+      seen,
+      post,
+      statusLine: (body: Record<string, unknown>) => post(body, prepared.launch.env.PUPPETEER_STATUSLINE_ENDPOINT!),
+    };
+  }
+
+  it('says a picker’s placeholder id is provisional until the chosen session runs a hook of its own', async () => {
+    const bootId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f80';
+    const chosenId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f81';
+    const { session, provisionalAtAdopt, seen, post } = await pickerLaunch('driver-picker-provisional-');
+    const provisionalId = session.sessionId;
+    expect(provisionalAtAdopt).toBe(true);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+
+    // the boot session's own start and instructions leave it provisional
+    expect(await post({ session_id: bootId, hook_event_name: 'SessionStart', source: 'startup' })).toBe(200);
+    expect(
+      await post({ session_id: bootId, hook_event_name: 'InstructionsLoaded', load_reason: 'session_start' }),
+    ).toBe(200);
+    expect(session.sessionId).toBe(provisionalId);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+
+    // the chosen conversation's start alone does not hold the choice: Claude starts a preview the same way
+    expect(await post({ session_id: chosenId, hook_event_name: 'SessionStart', source: 'resume' })).toBe(200);
+    expect(session.sessionId).toBe(chosenId);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+    expect(seen.filter(({ type }) => type === 'session:started')).toEqual([
+      { type: 'session:started', nativeSessionId: chosenId, provisional: true },
+    ]);
+
+    // the chosen session's first hook of its own holds it: every candidate it publishes already reads false
+    const beforePrompt = seen.length;
+    expect(
+      await post({
+        session_id: chosenId,
+        hook_event_name: 'UserPromptSubmit',
+        prompt: 'typed after resume',
+        prompt_id: 'p-chosen',
+      }),
+    ).toBe(200);
+    const fromPrompt = seen.slice(beforePrompt);
+    expect(fromPrompt.map(({ type }) => type)).toContain('turn:started');
+    expect(fromPrompt.every(({ nativeSessionId, provisional }) => nativeSessionId === chosenId && !provisional)).toBe(
+      true,
+    );
+    expect(seen.slice(0, beforePrompt).every(({ provisional }) => provisional === true)).toBe(true);
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+
+    // a held choice stays held: a /clear moves the session, never back to provisional
+    expect(await post({ session_id: chosenId, hook_event_name: 'SessionEnd', reason: 'clear' })).toBe(200);
+    const clearedId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f82';
+    expect(await post({ session_id: clearedId, hook_event_name: 'SessionStart', source: 'clear' })).toBe(200);
+    expect(session.sessionId).toBe(clearedId);
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+  });
+
+  it('keeps a previewed conversation provisional: Claude starts the highlighted one before a choice holds', async () => {
+    const previewId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f90';
+    const chosenId = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6f91';
+    const { session, seen, post, statusLine } = await pickerLaunch('driver-picker-preview-');
+
+    // the highlighted conversation starts and draws its status line, and the selection names it: still provisional
+    expect(await post({ session_id: previewId, hook_event_name: 'SessionStart' })).toBe(200);
+    expect(session.sessionId).toBe(previewId);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+    expect(await statusLine({ session_id: previewId, model: { id: 'claude-fable-5', display_name: 'Fable 5' } })).toBe(
+      200,
+    );
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+
+    // the person moves to another conversation: its start moves the selection, and it is still provisional
+    expect(await post({ session_id: chosenId, hook_event_name: 'SessionStart' })).toBe(200);
+    expect(session.sessionId).toBe(chosenId);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+    expect(seen.filter(({ type }) => type === 'session:started')).toEqual([
+      { type: 'session:started', nativeSessionId: previewId, provisional: true },
+      { type: 'session:started', nativeSessionId: chosenId, provisional: true },
+    ]);
+
+    // the chosen one's first hook of its own holds it, before what it says is published
+    const beforeHold = seen.length;
+    expect(
+      await post({ session_id: chosenId, hook_event_name: 'InstructionsLoaded', load_reason: 'session_start' }),
+    ).toBe(200);
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+    expect(seen.slice(beforeHold).map(({ type }) => type)).toContain('session:ready');
+    expect(seen.slice(beforeHold).every(({ provisional }) => provisional === false)).toBe(true);
+    // the preview no longer moves anything
+    expect(await post({ session_id: previewId, hook_event_name: 'SessionStart' })).toBe(403);
+    expect(session.sessionId).toBe(chosenId);
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+  });
+
+  it('is never provisional for a fresh launch or a launch that resumes a named session', async () => {
+    const { session, hook } = await startSession();
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+    await hook('SessionStart', { source: 'startup' });
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+
+    const named = '7f0d2c8e-1c3a-4c1e-9f3a-2d3c4b5a6fa0';
+    const { configDir, transcriptOf } = configRoot('driver-resume-provisional-');
+    // a resume by id is refused before launch unless its conversation is on disk
+    writeFileSync(transcriptOf(named), '');
+    const prepared = await prepareClaudeTuiSession({
+      cwd: '/tmp',
+      configDir,
+      resume: named,
+      automate: async () => ({ accepted: true }),
+    });
+    const resumed = await prepared.adopt('resume-pane');
+    sessions.push(resumed);
+    expect(resumed.sessionId).toBe(named);
+    expect(resumed.nativeSessionProvisional?.()).toBe(false);
+  });
 });
 
 describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / PU-1)', () => {
@@ -2768,6 +2918,44 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     expect((await post(pinned)).status).toBe(403);
     expect((await post(rotated)).status).toBe(200);
     rmSync(configDir, { recursive: true, force: true });
+    await cleanupClaudeSession(prepared!);
+  });
+
+  it('is never provisional for an attach: it binds under the id the running process announced', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      ingress: { onBound: (value) => void (bound = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-attach-provisional' };
+        },
+        automate: async () => ({ accepted: true }),
+      },
+    });
+    const sessionId = launched.sessionId;
+    await launched.dispose({ release: true });
+    const { configDir } = configRoot('driver-attach-provisional-');
+    const attached = await attachClaudeTuiSession({
+      sessionId,
+      runtimeSessionId: 'rt-attach-provisional',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      automate: async () => ({ accepted: true }),
+    });
+    sessions.push(attached);
+    expect(attached.nativeSessionProvisional?.()).toBe(false);
+    const res = await fetch(`http://127.0.0.1:${bound!.port}/hooks`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${bound!.token}` },
+      body: JSON.stringify({ session_id: sessionId, cwd: '/tmp', hook_event_name: 'Stop' }),
+    });
+    expect(res.status).toBe(200);
+    expect(attached.sessionId).toBe(sessionId);
+    expect(attached.nativeSessionProvisional?.()).toBe(false);
     await cleanupClaudeSession(prepared!);
   });
 

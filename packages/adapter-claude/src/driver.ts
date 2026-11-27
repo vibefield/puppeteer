@@ -1216,6 +1216,10 @@ function createClaudeObservation(
         get sessionId() {
           return nativeSessionId();
         },
+        // A launch through Claude's own picker runs under the id this adapter minted, then under each conversation the
+        // picker starts, until the chosen session runs a hook of its own (session-selection.ts): a start alone may be
+        // a preview the person never chose. A launch that names its session and an attach hold from the start.
+        nativeSessionProvisional: () => !selection.held(),
         runtimeSessionId,
         observationLevel: () => observation,
         transcriptPath: () => transcriptPath,
