@@ -20,7 +20,7 @@ describe('agentEventCatalog', () => {
       [AgentEventType, (typeof agentEventCatalog)[AgentEventType]]
     >;
 
-    expect(entries).toHaveLength(38);
+    expect(entries).toHaveLength(39);
     expect(new Set(entries.map(([, definition]) => definition.eventType)).size).toBe(entries.length);
 
     for (const [type, definition] of entries) {
@@ -239,5 +239,29 @@ describe('agentEventCatalog', () => {
     const catalogRoutes = Object.keys(agentEventCatalog).sort();
 
     expect(documentedRoutes).toEqual(catalogRoutes);
+  });
+
+  it('states the catalog’s count wherever the Agent API reference counts routes', () => {
+    const html = readFileSync(fileURLToPath(new URL('../../../../docs/agent-api.html', import.meta.url)), 'utf8');
+    const total = Object.keys(agentEventCatalog).length;
+
+    expect(html.match(/<div class="stat"><strong>(\d+)<\/strong><span>normalized event routes<\/span>/)?.[1]).toBe(
+      String(total),
+    );
+    expect(html.match(/All (\d+) public routes are listed below/)?.[1]).toBe(String(total));
+    expect(html.match(/id="event-count">(\d+) \/ (\d+) routes</)?.slice(1)).toEqual([String(total), String(total)]);
+
+    // Each category section's badge counts the route cards inside it.
+    const sections = html.split('<section class="category-section"').slice(1);
+    expect(sections.length).toBeGreaterThan(0);
+    let counted = 0;
+    for (const section of sections) {
+      const body = section.slice(0, section.indexOf('</section>'));
+      const badge = Number(body.match(/<span class="badge category-[a-z-]+">(\d+) routes?<\/span>/)?.[1]);
+      const cards = [...body.matchAll(/<span class="route">\s*[a-z][a-z-]*:[a-z][a-z-]*\s*<\/span\s*>/g)].length;
+      expect(badge, body.slice(0, 120)).toBe(cards);
+      counted += cards;
+    }
+    expect(counted).toBe(total);
   });
 });

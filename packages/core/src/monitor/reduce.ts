@@ -876,6 +876,9 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
       if (actor) break;
       updates.push(...titleUpdates(event.title, true));
       break;
+    case 'session:forked':
+      // The fork is another session; the run keeps observing its own, so its status, session and title stay.
+      break;
     case 'session:ready':
       if (actor) break;
       updates.push(upsert('status', 'run', { kind: 'run', lifecycle: 'running', alive: true }));

@@ -52,6 +52,14 @@ export interface AgentHost {
    */
   automateTerminal(runtimeSessionId: string, operation: TerminalAutomationOperation): Promise<TerminalAutomationResult>;
   /**
+   * Whether a person's input has reached this terminal since its spawn: true once it has, and from then on. The
+   * host's own {@link automateTerminal} operations are not that input. Absent, or false, is "not seen". An adapter
+   * that finds its run's native session by discovery, among sessions other processes may start in the same
+   * place, asks it before it takes a new session it has no other evidence for: a session that appears before
+   * anyone typed into the run's own terminal may have been started elsewhere.
+   */
+  terminalInputSeen?(runtimeSessionId: string): boolean | Promise<boolean>;
+  /**
    * The complete environment for a helper process the adapter spawns itself (a private app-server, a leader, a
    * `serve` backend): the host's agent-environment policy applied over the adapter's own variables, as
    * {@link spawnTerminal} applies it to {@link TerminalSpec.env}. Such a helper runs the agent's model calls and

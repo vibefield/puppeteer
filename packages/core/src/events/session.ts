@@ -12,6 +12,19 @@ export const SessionStartedEventSchema = z.strictObject({
 });
 export type SessionStartedEvent = z.infer<typeof SessionStartedEventSchema>;
 
+/**
+ * A session forked from this run started under its own native id. The run keeps observing its own session: the
+ * envelope's `nativeSessionId` stays the observed one, and nothing here moves the run's native identity.
+ */
+export const SessionForkedEventSchema = z.strictObject({
+  type: z.literal('session:forked'),
+  /** The fork's own native session id. The envelope keeps the session the run observes. */
+  nativeSessionId: z.string().trim().min(1),
+  /** The provider's word for how it began, e.g. Claude Code `SessionStart.source` "fork". */
+  startSource: z.string().trim().min(1).optional(),
+});
+export type SessionForkedEvent = z.infer<typeof SessionForkedEventSchema>;
+
 export const SessionReadyEventSchema = z.strictObject({ type: z.literal('session:ready') });
 export type SessionReadyEvent = z.infer<typeof SessionReadyEventSchema>;
 
@@ -32,9 +45,11 @@ export const SessionTitleUpdatedEventSchema = z.strictObject({
 });
 export type SessionTitleUpdatedEvent = z.infer<typeof SessionTitleUpdatedEventSchema>;
 
-export type SessionEvent = SessionStartedEvent | SessionReadyEvent | SessionExitedEvent | SessionTitleUpdatedEvent;
+export type SessionEvent =
+  SessionStartedEvent | SessionForkedEvent | SessionReadyEvent | SessionExitedEvent | SessionTitleUpdatedEvent;
 export const SessionEventSchema = z.discriminatedUnion('type', [
   SessionStartedEventSchema,
+  SessionForkedEventSchema,
   SessionReadyEventSchema,
   SessionExitedEventSchema,
   SessionTitleUpdatedEventSchema,

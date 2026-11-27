@@ -2379,6 +2379,11 @@ interface AgentProviderLaunchService {
               (<span class="mono">@vibefield/puppeteer-builtin-providers/forwarder</span>) in the agent's process tree; a
               Node single executable must lend it, since its own executable runs no script. Without it the adapter stages
               its forwarder and runs it with native-observation's script runner, or refuses the launch where there is none.
+              An optional <span class="mono">terminalInputSeen(id)</span> says whether a person's input has reached that
+              terminal since its spawn (the host's own <span class="mono">automateTerminal</span> operations are not that
+              input); an adapter that finds its run's session by discovery (Kimi, in a home the run does not own) binds a
+              new session it has no other evidence for only once the answer is true, and without it only by its own
+              prompt's echo.
             </div>
 
             <div class="callout">

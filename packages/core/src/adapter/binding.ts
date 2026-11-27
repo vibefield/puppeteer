@@ -39,6 +39,15 @@ export interface AgentAdapterBinding {
    */
   durableRecordSeen?(): boolean;
   /**
+   * Whether `sessionId` is still a placeholder this adapter minted, before the agent named its conversation. The
+   * adapter turns it false before it publishes the bound session's `session:started` wherever it can. Where a choice
+   * can still move after that start (a native picker that starts the highlighted conversation before one is chosen),
+   * it turns false at the chosen session's first event of its own. Runtime marks the run's continuation
+   * `provisional: true` while it is true, and drops the mark at the run's next event once it is false. Absent = never
+   * provisional.
+   */
+  nativeSessionProvisional?(): boolean;
+  /**
    * For a binding attached with a replay cursor: settles once the durable record's first read has replayed what it
    * holds after the cursor (true), or found no cursor to replay after (false). Rejects when no record was found or its
    * read failed. Absent: the adapter does not replay.

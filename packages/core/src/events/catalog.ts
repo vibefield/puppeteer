@@ -32,6 +32,7 @@ import {
 } from './reasoning.js';
 import {
   SessionExitedEventSchema,
+  SessionForkedEventSchema,
   SessionReadyEventSchema,
   SessionStartedEventSchema,
   SessionTitleUpdatedEventSchema,
@@ -121,6 +122,12 @@ export const agentEventCatalog = {
     'session:started',
     SessionStartedEventSchema,
     'A provider session started or rebound to a new native identity.',
+  ),
+  'session:forked': defineAgentEvent(
+    'session',
+    'session:forked',
+    SessionForkedEventSchema,
+    'A session forked from this run started under its own native id; the run keeps observing its own.',
   ),
   'session:ready': defineAgentEvent('session', 'session:ready', SessionReadyEventSchema, 'The session is ready.'),
   'session:exited': defineAgentEvent(

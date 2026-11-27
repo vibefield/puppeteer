@@ -4578,6 +4578,146 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     await second.dispose();
   });
 
+  it('hears an attached run on its event rail while attach() is pending: a start the adapter replays, then what follows', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-rail-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-rail-registry-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    let emitAttached: ((envelope: AgentEventEnvelope) => void) | undefined;
+    const providerFor = () =>
+      ({
+        ...fakeProvider('one', handles),
+        async createSession() {
+          return standaloneSession('native-rail', 'terminal-rail');
+        },
+        async attachSession(options) {
+          const listeners = new Set<(candidate: AdapterEventCandidate) => void>();
+          const emit = (envelope: AgentEventEnvelope): void =>
+            listeners.forEach((listener) => listener(candidateFromEnvelope(envelope)));
+          emitAttached = emit;
+          return {
+            sessionId: options.sessionId,
+            runtimeSessionId: options.runtimeSessionId,
+            observationLevel: () => 'structured',
+            events: {
+              onCandidate(listener) {
+                listeners.add(listener);
+                // the adapter says what it missed while no host listened as soon as the runtime listens: a move the
+                // session made, marked replay, while attach() has not yet returned
+                queueMicrotask(() =>
+                  emit(
+                    testEnvelope(
+                      {
+                        type: 'session:started',
+                        nativeSessionId: 'native-cleared',
+                        startSource: 'clear',
+                        rebind: true,
+                      },
+                      { sessionId: options.sessionId, source: 'native-hook', monotonicTime: 2, replay: true },
+                    ),
+                  ),
+                );
+                return () => listeners.delete(listener);
+              },
+            },
+            services: {
+              prompt: {
+                async submit() {
+                  return { status: 'confirmed' };
+                },
+              },
+            },
+            async dispose() {},
+          };
+        },
+      }) satisfies AgentProvider;
+
+    const first = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [providerFor()],
+      creationRegistry: createFileCreationRequestRegistry({ directory: registryDirectory }),
+    });
+    const created = await first.createSession({ agent: 'one', creationRequestId: 'attach-rail', cwd: root });
+    if ('error' in created) throw new Error(created.error.message);
+    await first.dispose({ detach: true });
+
+    const second = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [providerFor()],
+      creationRegistry: createFileCreationRequestRegistry({ directory: registryDirectory }),
+    });
+    let attaching = true;
+    const heard: Array<{
+      terminal: string;
+      type: string;
+      nativeSessionId?: string;
+      replay: boolean;
+      attaching: boolean;
+    }> = [];
+    second.onEvent((terminalSessionId, envelope) => {
+      const event = envelope.event as { type: string; nativeSessionId?: string };
+      if (event.type !== 'session:started' && event.type !== 'session:forked') return;
+      heard.push({
+        terminal: terminalSessionId,
+        type: event.type,
+        ...(event.nativeSessionId === undefined ? {} : { nativeSessionId: event.nativeSessionId }),
+        replay: envelope.replay === true,
+        attaching,
+      });
+    });
+    const attached = await second.attach({
+      agent: 'one',
+      creationRequestId: 'attach-rail',
+      runtimeRunId: created.runtimeRunId,
+      expectedRuntimeEpoch: created.runtimeEpoch,
+      sessionId: created.nativeSession.id,
+      terminalSessionId: created.terminalSessionId,
+      cwd: root,
+    });
+    attaching = false;
+    if ('error' in attached) throw new Error(attached.error.message);
+    // after the attach, the live rail goes on: a fork told, and a later move
+    emitAttached!(
+      testEnvelope(
+        { type: 'session:forked', nativeSessionId: 'native-fork', startSource: 'fork' },
+        { sessionId: 'native-cleared', source: 'native-hook', monotonicTime: 3 },
+      ),
+    );
+    emitAttached!(
+      testEnvelope(
+        { type: 'session:started', nativeSessionId: 'native-resumed', startSource: 'resume', rebind: true },
+        { sessionId: 'native-cleared', source: 'native-hook', monotonicTime: 4 },
+      ),
+    );
+    expect(heard).toEqual([
+      {
+        terminal: 'terminal-rail',
+        type: 'session:started',
+        nativeSessionId: 'native-cleared',
+        replay: true,
+        attaching: true,
+      },
+      {
+        terminal: 'terminal-rail',
+        type: 'session:forked',
+        nativeSessionId: 'native-fork',
+        replay: false,
+        attaching: false,
+      },
+      {
+        terminal: 'terminal-rail',
+        type: 'session:started',
+        nativeSessionId: 'native-resumed',
+        replay: false,
+        attaching: false,
+      },
+    ]);
+    await second.dispose();
+    await rm(root, { recursive: true, force: true });
+    await rm(registryDirectory, { recursive: true, force: true });
+  });
+
   it("says on an attach given the host's cursor whether it replayed after it, on its result alone", async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-replay-'));
     const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-replay-registry-'));

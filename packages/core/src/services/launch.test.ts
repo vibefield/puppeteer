@@ -47,6 +47,27 @@ describe('agent launch contracts', () => {
     );
   });
 
+  it('says a placeholder id is provisional, and reads a continuation without the word as before', () => {
+    const provisional = {
+      providerId: 'example',
+      nativeSessionId: 'example-pending-3f',
+      implementation: 'native',
+      resumable: false,
+      provisional: true,
+    };
+    expect(AgentContinuationSchema.parse(provisional)).toEqual(provisional);
+    // Absent once the agent's own id is known, and on every continuation written before the field existed.
+    const bound = AgentContinuationSchema.parse({ providerId: 'example', nativeSessionId: 'native-1' });
+    expect(bound).toEqual({ providerId: 'example', nativeSessionId: 'native-1', implementation: 'native' });
+    expect(bound).not.toHaveProperty('provisional');
+    for (const word of ['yes', 'true', 1, null]) {
+      expect(
+        AgentContinuationSchema.safeParse({ providerId: 'example', nativeSessionId: 'native-1', provisional: word })
+          .success,
+      ).toBe(false);
+    }
+  });
+
   it('rejects duplicate descriptor routes and environment declarations', () => {
     const result = AgentLaunchProviderSchema.safeParse({
       id: 'example',
