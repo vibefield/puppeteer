@@ -71,6 +71,39 @@ describe('takeClaudeHookSpool', () => {
     ]);
   });
 
+  it('skips a start whose time is no time, and says a kept time as the forwarder writes one', () => {
+    const dir = spoolDir();
+    const spool = join(dir, 'times.hook-spool.jsonl');
+    writeFileSync(
+      spool,
+      line({ session_id: 's-words', source: 'clear', at: 'not a time' }) +
+        line({ session_id: 's-number', source: 'clear', at: 1_764_201_600_000 }) +
+        line({ session_id: 's-far', source: 'clear', at: '+275760-09-13T00:00:00.000Z' }) +
+        line({ session_id: 's-offset', source: 'clear', at: '2026-11-27T09:00:00+09:00' }) +
+        line({ session_id: 's-kept', source: 'resume' }),
+    );
+    expect(takeClaudeHookSpool(spool).map(({ sessionId, at }) => ({ sessionId, at }))).toEqual([
+      { sessionId: 's-offset', at: '2026-11-27T00:00:00.000Z' },
+      { sessionId: 's-kept', at: '2026-11-27T00:00:00.000Z' },
+    ]);
+  });
+
+  it('takes a start only under a session id that is a bare name, never a path', () => {
+    const dir = spoolDir();
+    const spool = join(dir, 'ids.hook-spool.jsonl');
+    writeFileSync(
+      spool,
+      line({ session_id: '../../../outside', source: 'clear' }) +
+        line({ session_id: 'projects/-tmp/inner', source: 'clear' }) +
+        line({ session_id: '..\\outside', source: 'resume' }) +
+        line({ session_id: '..', source: 'clear' }) +
+        line({ session_id: '11111111-1111-4111-8111-111111111111', source: 'clear' }),
+    );
+    expect(takeClaudeHookSpool(spool).map(({ sessionId }) => sessionId)).toEqual([
+      '11111111-1111-4111-8111-111111111111',
+    ]);
+  });
+
   it('reads no more than the forwarder keeps: 256 starts within 64 KiB', () => {
     const dir = spoolDir();
     const spool = join(dir, 'long.hook-spool.jsonl');

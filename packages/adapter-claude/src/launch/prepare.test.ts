@@ -18,6 +18,7 @@ import {
   ClaudeHooksOffError,
   cleanupClaudeSession,
   hasClaudeOtelExporterConflict,
+  locateClaudeTranscript,
   prepareClaudeSession,
   statusLineForwarderCommand,
   type PreparedClaudeSession,
@@ -559,6 +560,21 @@ describe('prepareClaudeSession', () => {
     const imposterRoot = conversationRoot(resumeId);
     const p = await prepare({ resume: resumeId, env: { PUPPETEER_IMPOSTER_HOME: imposterRoot } });
     expect(p.args).toContain('--resume');
+  });
+
+  it('finds a conversation by an id that is a bare name, and never by an id that names a path', () => {
+    const id = '64a61b19-f4d8-4f96-ba56-07024b470816';
+    const root = conversationRoot(id);
+    try {
+      expect(locateClaudeTranscript(id, root)).toBe(join(root, 'projects', '-work-repo', `${id}.jsonl`));
+      // a file beside the projects folder, named as a conversation is: what a hook's or a spool's id must never reach
+      writeFileSync(join(root, 'outside.jsonl'), '');
+      for (const sessionId of ['../../outside', `../-work-repo/${id}`, '..\\..\\outside', '..']) {
+        expect(locateClaudeTranscript(sessionId, root), sessionId).toBeUndefined();
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('finds a resume under the launch environment’s CLAUDE_CONFIG_DIR, the root an attach reads', async () => {

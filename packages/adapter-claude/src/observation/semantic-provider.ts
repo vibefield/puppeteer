@@ -50,12 +50,19 @@ export interface SemanticObservationAttachRequest {
    * what the durable record holds after it, marked `replay`, and settles the handle's `replayedAfter`.
    */
   replayAfter?: AttachReplayCursor | undefined;
+  /**
+   * With `attached`, in place of `replayAfter`: the host's cursor names a turn of another conversation (the pane moved
+   * to this one while no host listened). The first read replays this record whole, from its first turn, marked
+   * `replay`, and settles the handle's `replayedAfter` false: the cursor is not in this record.
+   */
+  replayWhole?: boolean | undefined;
 }
 
 export interface SemanticObservationHandle {
   /**
    * For an attach given `replayAfter`: settles once the first read has replayed what follows the cursor (true), or
-   * found no cursor in the durable record (false). Absent for every other attach.
+   * found no cursor in the durable record (false). For one given `replayWhole`: false, once the whole record is
+   * replayed. Absent for every other attach.
    */
   readonly replayedAfter?: Promise<boolean> | undefined;
   onEvent(listener: (event: SemanticObservationEvent) => void): () => void;

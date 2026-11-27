@@ -19,6 +19,7 @@ import { Buffer } from 'node:buffer';
 import { existsSync, openSync, readSync, closeSync, renameSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { CLAUDE_HOOK_SPOOL_MAX_BYTES, CLAUDE_HOOK_SPOOL_MAX_LINES } from '../launch/forwarder.js';
+import { isClaudeSessionFileName } from '../launch/prepare.js';
 
 /** One start the forwarder kept: when it ran, the session it started, and Claude's word for how. */
 export interface ClaudeSpooledStart {
@@ -56,6 +57,20 @@ function readHead(path: string, limit: number): string {
   }
 }
 
+/**
+ * A kept start's time as the forwarder writes it (`toISOString()`), or undefined when it is no time: the replay says
+ * the start at this time, and an event whose time the runtime cannot read is dropped there after the replay has
+ * already moved the observer.
+ */
+function spooledTime(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) return undefined;
+  const iso = new Date(ms).toISOString();
+  // A year past four digits is no time a forwarder wrote, and no ISO time the runtime reads.
+  return /^\d{4}-/u.test(iso) ? iso : undefined;
+}
+
 function spooledStart(line: string): ClaudeSpooledStart | undefined {
   let parsed: unknown;
   try {
@@ -67,9 +82,12 @@ function spooledStart(line: string): ClaudeSpooledStart | undefined {
   const row = parsed as Record<string, unknown>;
   if (row.v !== 1 || row.hook_event_name !== 'SessionStart') return undefined;
   if (typeof row.session_id !== 'string' || row.session_id.trim().length === 0) return undefined;
-  if (typeof row.at !== 'string') return undefined;
+  // The id becomes a transcript's file name under the config root (locateClaudeTranscript): a bare name, or no start.
+  if (!isClaudeSessionFileName(row.session_id)) return undefined;
+  const at = spooledTime(row.at);
+  if (at === undefined) return undefined;
   return {
-    at: row.at,
+    at,
     sessionId: row.session_id,
     ...(typeof row.source === 'string' ? { source: row.source } : {}),
     ...(typeof row.transcript_path === 'string' ? { transcriptPath: row.transcript_path } : {}),
@@ -79,7 +97,8 @@ function spooledStart(line: string): ClaudeSpooledStart | undefined {
 /**
  * Take the spool at `spoolPath` and read the starts it kept, in the order they ran. No spool (none was ever written,
  * or the last attach took it) reads as none. A line that does not parse is skipped: the last one may be torn by a
- * forwarder still writing it. Throws only when the path is not absolute, which no launch writes.
+ * forwarder still writing it. So is a start whose session id is no bare name, or whose time is no time: the agent can
+ * write the spool. Throws only when the path is not absolute, which no launch writes.
  */
 export function takeClaudeHookSpool(spoolPath: string): ClaudeSpooledStart[] {
   if (!isAbsolute(spoolPath)) throw new Error('a Claude hook spool is named by an absolute path');

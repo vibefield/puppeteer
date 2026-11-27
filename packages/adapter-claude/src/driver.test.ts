@@ -3038,6 +3038,16 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
       }),
     ]);
     expect(started[0]!.event).toMatchObject({ startSource: 'clear' });
+    // the move starts the context over, as a live /clear does: the monitor's context family is replaced by nothing
+    expect(projection.monitorBatches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          observedAt: started[0]!.timestamp,
+          evidence: [{ namespace: 'claude-native-hook', id: expect.any(String) }],
+          updates: [{ family: 'context', operation: 'replace', values: [], coverage: 'complete' }],
+        }),
+      ]),
+    );
     await vi.waitFor(() => expect(attached.transcriptPath()).toBe(transcriptOf(cleared)));
     await cleanupClaudeSession(prepared!);
   });
@@ -3223,6 +3233,148 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     expect((await post(ids.resumed, { hook_event_name: 'Stop' })).status).toBe(200);
     await vi.waitFor(() => expect(projection.envelopes.some((e) => e.event.type === 'turn:completed')).toBe(true));
     expect(projection.envelopes.filter((e) => e.event.type === 'session:forked')).toHaveLength(1);
+    await cleanupClaudeSession(prepared!);
+  });
+
+  it('knows a fork the spool kept from the moment it is taken: the fork’s hooks are refused before anything listens', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let record: AgentAttachRecord | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const { configDir, transcriptOf } = configRoot('driver-spooled-fork-');
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      configDir,
+      ingress: { onBound: (value) => void (bound = value), onAttachRecord: (value) => void (record = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-spooled-fork' };
+        },
+        automate: async () => ({ accepted: true }),
+      },
+    });
+    const pinned = launched.sessionId;
+    await launched.dispose({ release: true });
+    // while no host listened a /branch started a fork, whose conversation is under the root as a /clear's would be
+    const fork = '99999999-9999-4999-8999-999999999999';
+    writeFileSync(transcriptOf(pinned), transcriptLine(pinned, 'u-pinned'));
+    writeFileSync(transcriptOf(fork), transcriptLine(fork, 'u-fork'));
+    writeFileSync(
+      prepared!.hookSpool!,
+      `${JSON.stringify({ v: 1, at: '2026-11-27T02:00:00.000Z', hook_event_name: 'SessionStart', session_id: fork, source: 'fork', transcript_path: transcriptOf(fork) })}\n`,
+    );
+    const attached = await attachClaudeTuiSession({
+      sessionId: pinned,
+      runtimeSessionId: 'rt-spooled-fork',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      attachRecord: record,
+      automate: async () => ({ accepted: true }),
+    });
+    sessions.push(attached);
+    // Nothing has subscribed yet, and the attached id has not spoken: the fork's first hook is not taken for a /clear
+    // made while no host listened.
+    const post = (sessionId: string, fields: Record<string, unknown>): Promise<Response> =>
+      fetch(`http://127.0.0.1:${bound!.port}/hooks`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bound!.token}` },
+        body: JSON.stringify({ session_id: sessionId, cwd: '/tmp', ...fields }),
+      });
+    expect((await post(fork, { hook_event_name: 'UserPromptSubmit', prompt: 'in the fork' })).status).toBe(403);
+    expect(attached.sessionId).toBe(pinned);
+    // the fork is told once something listens, and the pane stays on its own conversation
+    const projection = projectAgentEvents(attached);
+    await vi.waitFor(() =>
+      expect(projection.envelopes.filter((e) => e.event.type === 'session:forked')).toEqual([
+        expect.objectContaining({
+          nativeSessionId: pinned,
+          replay: true,
+          event: { type: 'session:forked', nativeSessionId: fork, startSource: 'fork' },
+        }),
+      ]),
+    );
+    await vi.waitFor(() => expect(attached.transcriptPath()).toBe(transcriptOf(pinned)));
+    expect((await post(pinned, { hook_event_name: 'Stop' })).status).toBe(200);
+    await cleanupClaudeSession(prepared!);
+  });
+
+  it('reads a pane the spool moved from its first turn, and says the host’s cursor, a turn of the session it left, is not there', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let record: AgentAttachRecord | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const { configDir, transcriptOf } = configRoot('driver-spooled-cursor-');
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      configDir,
+      ingress: { onBound: (value) => void (bound = value), onAttachRecord: (value) => void (record = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-spooled-cursor' };
+        },
+        automate: async () => ({ accepted: true }),
+      },
+    });
+    const pinned = launched.sessionId;
+    writeFileSync(transcriptOf(pinned), transcriptLine(pinned, 'u-pinned'));
+    await launched.dispose({ release: true });
+    // While no host listened the person cleared, then ran one turn in the new conversation.
+    const cleared = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const row = (fields: Record<string, unknown>): string =>
+      `${JSON.stringify({ isSidechain: false, sessionId: cleared, cwd: '/tmp', timestamp: '2026-11-27T03:00:00.000Z', ...fields })}\n`;
+    writeFileSync(
+      transcriptOf(cleared),
+      row({
+        type: 'user',
+        uuid: 'u-new',
+        parentUuid: null,
+        promptId: 'pid-new',
+        turnOrigin: 'human',
+        message: { role: 'user', content: 'after the clear' },
+      }) +
+        row({
+          type: 'assistant',
+          uuid: 'a-new',
+          parentUuid: 'u-new',
+          message: { role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text: 'done' }] },
+        }),
+    );
+    writeFileSync(
+      prepared!.hookSpool!,
+      `${JSON.stringify({ v: 1, at: '2026-11-27T02:59:00.000Z', hook_event_name: 'SessionStart', session_id: cleared, source: 'clear', transcript_path: transcriptOf(cleared) })}\n`,
+    );
+    const attached = await attachClaudeTuiSession({
+      sessionId: pinned,
+      runtimeSessionId: 'rt-spooled-cursor',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      attachRecord: record,
+      // where the host's own record stops: a turn of the conversation the pane left
+      replayAfter: { turnId: 'pid-before-the-clear', turnEnded: true },
+      automate: async () => ({ accepted: true }),
+    });
+    sessions.push(attached);
+    const projection = projectAgentEvents(attached);
+    await expect(attached.replayedAfter!()).resolves.toBe(false);
+    expect(attached.sessionId).toBe(cleared);
+    // the conversation the pane moved to is replayed from its first turn, under its own id
+    const turns = projection.envelopes
+      .filter(({ event }) => event.type === 'turn:started' || event.type === 'turn:completed')
+      .map(({ event, nativeSessionId, replay }) => ({ event, nativeSessionId, replay }));
+    expect(turns).toEqual([
+      {
+        event: expect.objectContaining({ type: 'turn:started', turnId: 'pid-new', prompt: 'after the clear' }),
+        nativeSessionId: cleared,
+        replay: true,
+      },
+      {
+        event: expect.objectContaining({ type: 'turn:completed', turnId: 'pid-new', lastAssistantMessage: 'done' }),
+        nativeSessionId: cleared,
+        replay: true,
+      },
+    ]);
     await cleanupClaudeSession(prepared!);
   });
 

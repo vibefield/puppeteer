@@ -934,9 +934,16 @@ function createClaudeObservation(
     const attached = bootstrapOpenWork;
     bootstrapOpenWork = false;
     transcriptPath = path;
-    // The cursor goes to the attach that answers it, and to no later one.
+    // The cursor goes to the attach that answers it, and to no later one. A pane the spool moved is read whole instead:
+    // the cursor names a turn of the conversation it left.
     const answer = attached ? answerReplay : undefined;
     if (answer !== undefined) answerReplay = undefined;
+    const replayRequest =
+      answer === undefined || options.replayAfter === undefined
+        ? {}
+        : cursorLeftBehind
+          ? { replayWhole: true as const }
+          : { replayAfter: options.replayAfter };
     const nextAttachment = (async (): Promise<SemanticObservationHandle | undefined> => {
       const prior = await priorAttachment?.catch(() => undefined);
       await prior?.dispose();
@@ -947,7 +954,7 @@ function createClaudeObservation(
         transcriptPath: path,
         pollIntervalMs: options.transcriptPollIntervalMs,
         ...(attached ? { attached: true } : {}),
-        ...(answer !== undefined && options.replayAfter !== undefined ? { replayAfter: options.replayAfter } : {}),
+        ...replayRequest,
       });
       if (disposed || generation !== semanticGeneration) {
         await handle.dispose();
@@ -1073,12 +1080,16 @@ function createClaudeObservation(
   /**
    * The starts the spool kept while no host listened, said at the first subscription, after the runtime has checked
    * the attach under the id its host kept, and before the transcript is read: a `/clear` or `/resume` moves the
-   * observer as it would have live (`session:started` with `rebind`, marked `replay`, at the time it ran), a `fork` is
-   * said as `session:forked`. A `startup` or `compact` start names the session it was under, and moves nothing. The
+   * observer as it would have live (`session:started` with `rebind`, marked `replay`, at the time it ran, with the
+   * monitor's context started over), a `fork` is said as `session:forked` (the selection knew it from the moment the
+   * spool was taken). A `startup` or `compact` start names the session it was under, and moves nothing. The
    * transcript read is then the last move's, and none when it cannot be found: the record's own would be read under the
    * new id.
    */
   let spooled = options.spooled;
+  // The pane the spool moved is in another conversation than the one the host's replay cursor names a turn of: that
+  // conversation is read whole, as replay, and the cursor is answered as not found in it.
+  let cursorLeftBehind = false;
   function replaySpooled(): void {
     const replay = spooled;
     spooled = undefined;
@@ -1086,7 +1097,6 @@ function createClaudeObservation(
     let moved: ClaudeSpooledStart | undefined;
     for (const start of replay.starts) {
       if (start.source === 'fork') {
-        selection.forked(start.sessionId);
         tellFork(start.sessionId, start.at, true);
         continue;
       }
@@ -1101,18 +1111,26 @@ function createClaudeObservation(
       };
       const normalized = normalizer.normalize(body, { rebind: true });
       monitorEvidence.observeNativeSession(start.sessionId);
+      const publication = (): ClaudeEventPublication => ({
+        source: 'native-hook',
+        timestamp: start.at,
+        providerVersion: options.providerVersion,
+        confidence: 'authoritative',
+        native: body,
+        replay: true,
+      });
+      // As the live rotation publishes it: what it settled for other actors first, and the monitor's context family
+      // emptied with the invalidation, so the conversation left behind keeps no context figures.
+      applySettled(normalized.settled, publication);
       for (const event of normalized.events) {
-        apply(event, {
-          source: 'native-hook',
-          timestamp: start.at,
-          providerVersion: options.providerVersion,
-          confidence: 'authoritative',
-          native: body,
-          replay: true,
-        });
+        if (event.type === 'context-window:invalidated') {
+          emitMonitorBatch(monitorEvidence.rootContextInvalidationBatch(start.at, `hook-spool:${start.sessionId}`));
+        }
+        apply(event, publication());
       }
     }
     if (moved === undefined) return;
+    cursorLeftBehind = true;
     const transcript =
       (moved.transcriptPath === undefined ? undefined : selection.transcriptFor(moved.transcriptPath)) ??
       locateClaudeTranscript(moved.sessionId, replay.root);
@@ -1440,7 +1458,14 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
   try {
     // Taken once the bridge is bound, so a start sent from now on is heard live rather than kept. A launch made before
     // its forwarder kept starts (`claude.hook.v1`) has no record and no spool: its attach replays nothing, as before.
-    const starts = hookSpool === undefined ? [] : startsToReplay(takeClaudeHookSpool(hookSpool), options.sessionId);
+    const kept = hookSpool === undefined ? [] : takeClaudeHookSpool(hookSpool);
+    // A fork the spool kept is known from now, not from the first subscription: its hooks can reach the bridge while
+    // the attach is still being checked, and an attach that has not heard its own session must never take a fork's
+    // for a /clear it missed. It is told at the first subscription.
+    for (const start of kept) {
+      if (start.source === 'fork' && start.sessionId !== options.sessionId) selection.forked(start.sessionId);
+    }
+    const starts = startsToReplay(kept, options.sessionId);
     const moves = starts.some((start) => start.source === 'clear' || start.source === 'resume');
     // An attach writes nothing, so it cleans nothing: the launch's files are in the run's staging directory, which the
     // runtime removes at the run's end (core `AgentTuiSessionOptions.stagingDir`), or a temp dir without one.

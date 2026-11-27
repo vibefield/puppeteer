@@ -161,12 +161,29 @@ export interface PreparedClaudeSession {
 }
 
 /**
+ * Whether `sessionId` can name a conversation's file: a bare name, never a path (no `/`, `\` or `..`). Claude's own
+ * ids are UUIDs. An id read from where the agent can write (a hook's body, the launch's hook spool) is joined to a
+ * folder under the config root, so an id with path segments would name a file anywhere.
+ */
+export function isClaudeSessionFileName(sessionId: string): boolean {
+  return (
+    sessionId.length > 0 &&
+    !sessionId.includes('/') &&
+    !sessionId.includes('\\') &&
+    !sessionId.includes('..') &&
+    !sessionId.includes('\0')
+  );
+}
+
+/**
  * Where Claude keeps a conversation: `<root>/projects/<cwd slug>/<id>.jsonl`,
  * the root being the config dir (the imposter mirrors the layout under its
  * state root). Claude finds a session by id from any directory (probed
- * 2.1.269, 2026-09-11), so every project folder is searched.
+ * 2.1.269, 2026-09-11), so every project folder is searched. An id that is no
+ * bare name ({@link isClaudeSessionFileName}) names no conversation.
  */
 export function locateClaudeTranscript(sessionId: string, root: string): string | undefined {
+  if (!isClaudeSessionFileName(sessionId)) return undefined;
   const projects = join(root, 'projects');
   let folders: string[];
   try {

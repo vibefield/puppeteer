@@ -324,7 +324,11 @@ describe('ClaudeTranscriptObservationProvider', () => {
       prompt('p-3', 'a-2', 'run the tests'),
       toolCall('a-3', 'p-3'),
     ];
-    const attach = async (request: { attached?: true; replayAfter?: { turnId: string; turnEnded?: boolean } }) => {
+    const attach = async (request: {
+      attached?: true;
+      replayAfter?: { turnId: string; turnEnded?: boolean };
+      replayWhole?: true;
+    }) => {
       const root = mkdtempSync(join(tmpdir(), 'claude-transcript-replay-'));
       roots.push(root);
       const path = join(root, 'session-1.jsonl');
@@ -369,6 +373,22 @@ describe('ClaudeTranscriptObservationProvider', () => {
         { type: 'turn:started', turnId: 'pid-p-3', replay: true, openAtAttach: true },
         { type: 'tool:requested', turnId: 'pid-p-3', replay: true, openAtAttach: true },
       ]);
+      await expect(handle.replayedAfter).resolves.toBe(false);
+    });
+
+    it('replays the whole record from its first turn for a cursor of another session, and says it was not found', async () => {
+      const { handle, events } = await attach({ attached: true, replayWhole: true });
+      expect(shape(events)).toEqual([
+        { type: 'turn:started', turnId: 'pid-p-1', replay: true, openAtAttach: undefined },
+        { type: 'conversation:assistant-message', turnId: 'pid-p-1', replay: true, openAtAttach: undefined },
+        { type: 'turn:completed', turnId: 'pid-p-1', replay: true, openAtAttach: undefined },
+        { type: 'turn:started', turnId: 'pid-p-2', replay: true, openAtAttach: undefined },
+        { type: 'conversation:assistant-message', turnId: 'pid-p-2', replay: true, openAtAttach: undefined },
+        { type: 'turn:completed', turnId: 'pid-p-2', replay: true, openAtAttach: undefined },
+        { type: 'turn:started', turnId: 'pid-p-3', replay: true, openAtAttach: true },
+        { type: 'tool:requested', turnId: 'pid-p-3', replay: true, openAtAttach: true },
+      ]);
+      expect(events[0]?.event).toEqual({ type: 'turn:started', turnId: 'pid-p-1', prompt: 'first' });
       await expect(handle.replayedAfter).resolves.toBe(false);
     });
 
