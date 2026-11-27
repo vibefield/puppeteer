@@ -64,8 +64,9 @@ export interface KimiSessionObserverOptions {
   replayOffsets?: KimiJournalOffsets | undefined;
   /**
    * The run owns this Kimi home (a managed profile's): only its runs start sessions there. The provider sets it;
-   * a person's own home is never owned. With no host prompt waiting, a fresh run binds the one new candidate with a
-   * typed prompt, in an owned home as in any other (see `pollDiscovery`).
+   * a person's own home is never owned. With no host prompt waiting, only a fresh run in an owned home binds the one
+   * new candidate with a typed prompt; elsewhere a fresh run binds only by its host prompt's echo (see
+   * `pollDiscovery`).
    */
   ownedRoot?: boolean | undefined;
   pollIntervalMs?: number | undefined;
@@ -296,13 +297,15 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
   /**
    * Binds a fresh run to the one new session that is its own. Every candidate is new to this run and claimed by no
    * peer (a peer's bind removes it), and holds a prompt the person typed. A prompt the host sent and waits for picks
-   * the candidate that echoes it. With none waiting, the one candidate binds; two or more stand ambiguous, said once
-   * per set of candidates and judged again at every poll, so one that a peer binds leaves the other to bind.
+   * the candidate that echoes it. With none waiting, only a run in a home it owns binds: there the one candidate
+   * binds, and two or more stand ambiguous, said once per set of candidates and judged again at every poll, so one
+   * that a peer binds leaves the other to bind.
    *
-   * The settled rule asks more of a home the run does not own: with no host prompt waiting, bind only once input has
-   * been written to this run's own terminal since its spawn, so a session started in another terminal in the same
-   * folder is not taken for the run's. No host surface reports that input to an adapter, so that half is not built:
-   * a run in any home binds as it did, and `ownedRoot` changes nothing yet.
+   * In a home the run does not own, a new session that holds none of the run's host prompts may be one a person
+   * started in another terminal in the same folder, so with no host prompt waiting nothing binds there. Binding once
+   * input has been written to the run's own terminal since its spawn would also be sound, but no host surface reports
+   * that input to an adapter: such a run binds only by its host prompt's echo, and a run a person only types into
+   * stays provisional.
    */
   const pollDiscovery = async (): Promise<void> => {
     const candidates = (await listKimiSessionsForCwd(options.kimiHome, options.cwd)).filter(
@@ -313,7 +316,9 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
       return;
     }
 
+    // Judged on the prompts waiting now: one can settle while the folder is listed.
     const expected = new Set([...promptWaiters.values()].map((waiter) => waiter.text));
+    if (expected.size === 0 && options.ownedRoot !== true) return;
     const matches: KimiSessionLocation[] = [];
     for (const candidate of candidates) {
       const prompts = await candidatePrompts(candidate.wirePath, maxDiscoveryBytes);

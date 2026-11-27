@@ -193,6 +193,71 @@ describe('Kimi native TUI session', () => {
     await session.dispose();
   });
 
+  it('binds a fresh run that holds no host prompt only in a home it owns', async () => {
+    /** A new session in the folder holding a typed prompt, as a Kimi process writes it. */
+    async function typedSession(home: string, cwd: string, sessionId: string, text: string): Promise<void> {
+      const sessionDir = join(home, 'sessions', encodeKimiWorkDirKey(cwd), sessionId);
+      await mkdir(join(sessionDir, 'agents', 'main'), { recursive: true });
+      await writeFile(join(sessionDir, 'state.json'), JSON.stringify({ id: sessionId, cwd, createdAt: 1 }));
+      await writeFile(
+        kimiMainWirePath(sessionDir),
+        `${[
+          { type: 'metadata', protocol_version: '1.5', created_at: 1 },
+          { type: 'turn.prompt', input: [{ type: 'text', text }], origin: { kind: 'user' }, time: 2 },
+        ]
+          .map((record) => JSON.stringify(record))
+          .join('\n')}\n`,
+      );
+    }
+
+    // a person's own home: after the launch, someone starts Kimi in another terminal in the same folder
+    const home = await root();
+    const cwd = join(home, 'repo');
+    const host: AgentHost = {
+      spawnTerminal: vi.fn(),
+      async automateTerminal(_runtimeSessionId, operation) {
+        // the run's own Kimi writes its session when the host's prompt is submitted
+        if (operation.kind === 'paste' && operation.submit) {
+          await typedSession(home, cwd, 'session-own', operation.text);
+        }
+        return { accepted: true };
+      },
+    };
+    const prepared = await prepareKimiTuiSession({ cwd, host, kimiHome: home, pollIntervalMs: 60_000 });
+    await typedSession(home, cwd, 'session-outside', 'typed in another terminal');
+    // adoption reads the folder once: the session from outside is the one new candidate
+    const session = await prepared.adopt('runtime-native');
+    expect(session.sessionId).toMatch(/^kimi-pending-/);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+    expect(session.durableRecordSeen()).toBe(false);
+    // the run's own prompt names its own session
+    await expect(session.services.prompt.submit({ text: 'mine', confirmationTimeoutMs: 2_000 })).resolves.toEqual({
+      status: 'confirmed',
+    });
+    expect(session.sessionId).toBe('session-own');
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+    await prepared.dispose();
+
+    // a managed profile's home, which only its runs write: the person typed the run's first prompt in its pane
+    const ownedHome = await root();
+    const ownedCwd = join(ownedHome, 'repo');
+    const ownedHost: AgentHost = { spawnTerminal: vi.fn(), automateTerminal: vi.fn() };
+    const ownedPrepared = await prepareKimiTuiSession({
+      cwd: ownedCwd,
+      host: ownedHost,
+      kimiHome: ownedHome,
+      ownedRoot: true,
+      pollIntervalMs: 60_000,
+    });
+    await typedSession(ownedHome, ownedCwd, 'session-typed', 'typed in the pane');
+    const owned = await ownedPrepared.adopt('runtime-owned');
+    expect(owned.sessionId).toBe('session-typed');
+    expect(owned.nativeSessionProvisional?.()).toBe(false);
+    expect(owned.durableRecordSeen()).toBe(true);
+    expect(ownedHost.automateTerminal).not.toHaveBeenCalled();
+    await ownedPrepared.dispose();
+  });
+
   it('snapshots resume history before adoption and reports paste-only honestly', async () => {
     const home = await root();
     const cwd = join(home, 'repo');

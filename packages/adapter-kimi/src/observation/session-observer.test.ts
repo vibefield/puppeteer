@@ -207,12 +207,12 @@ describe('Kimi session observer', () => {
           (nativeEvent as { candidates: { sessionId: string }[] }).candidates.map(({ sessionId }) => sessionId).sort(),
         );
 
-    it('leaves two candidates ambiguous until a peer binds one, then binds the other; a third from outside stands', async () => {
+    it('in a home they own, leaves two candidates ambiguous until a peer binds one, then binds the other; a third started meanwhile stands', async () => {
       const home = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-peers-'));
       roots.push(home);
       const cwd = join(home, 'repo');
-      const first = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
-      const second = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      const first = createKimiSessionObserver({ kimiHome: home, cwd, ownedRoot: true, pollIntervalMs: 60_000 });
+      const second = createKimiSessionObserver({ kimiHome: home, cwd, ownedRoot: true, pollIntervalMs: 60_000 });
       const firstEvents: KimiObservedEvent[] = [];
       const secondEvents: KimiObservedEvent[] = [];
       first.onEvent((event) => firstEvents.push(event));
@@ -240,7 +240,7 @@ describe('Kimi session observer', () => {
         startSource: 'native-wire-bind',
       });
 
-      // a session started from outside in the meantime keeps the second ambiguous
+      // a session started in the meantime keeps the second ambiguous
       await startSession(home, cwd, 'session-z', 'z');
       await second.poll();
       expect(second.sessionId()).toBeUndefined();
@@ -257,11 +257,11 @@ describe('Kimi session observer', () => {
       await second.stop();
     });
 
-    it('binds the one session a peer left, and never a session a peer bound before it started', async () => {
+    it('in a home it owns, binds the one session a peer left, and never a session a peer bound before it started', async () => {
       const home = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-peers-'));
       roots.push(home);
       const cwd = join(home, 'repo');
-      const first = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      const first = createKimiSessionObserver({ kimiHome: home, cwd, ownedRoot: true, pollIntervalMs: 60_000 });
       first.onError(() => undefined);
       await startSession(home, cwd, 'session-a', 'a');
       await startSession(home, cwd, 'session-b', 'b');
@@ -270,17 +270,55 @@ describe('Kimi session observer', () => {
       expect(first.sessionId()).toBe('session-a');
       await echo.promise;
       // a run launched later in the same folder: the peer's session is in its baseline from the start
-      const later = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      const later = createKimiSessionObserver({ kimiHome: home, cwd, ownedRoot: true, pollIntervalMs: 60_000 });
       later.onError(() => undefined);
       await later.poll();
       expect(later.sessionId()).toBe('session-b');
       // a third run finds nothing left to bind
-      const third = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      const third = createKimiSessionObserver({ kimiHome: home, cwd, ownedRoot: true, pollIntervalMs: 60_000 });
       await third.poll();
       expect(third.sessionId()).toBeUndefined();
       await first.stop();
       await later.stop();
       await third.stop();
+    });
+
+    it('in a home it does not own, binds no session that holds none of its prompts, not even the one a peer left', async () => {
+      const home = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-peers-'));
+      roots.push(home);
+      const cwd = join(home, 'repo');
+      const first = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      const second = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      const secondEvents: KimiObservedEvent[] = [];
+      second.onEvent((event) => secondEvents.push(event));
+      first.onError(() => undefined);
+      second.onError(() => undefined);
+      await startSession(home, cwd, 'session-a', 'a');
+      const echo = first.expectPrompt('a', 2_000);
+      await first.poll();
+      expect(first.sessionId()).toBe('session-a');
+      await echo.promise;
+
+      // a person starts Kimi in another terminal in the same folder: the one candidate the peer's bind leaves
+      await startSession(home, cwd, 'session-outside', 'typed in another terminal');
+      await second.poll();
+      expect(second.sessionId()).toBeUndefined();
+      // a run launched later in the folder takes it no more
+      const later = createKimiSessionObserver({ kimiHome: home, cwd, pollIntervalMs: 60_000 });
+      await later.poll();
+      expect(later.sessionId()).toBeUndefined();
+      // with no prompt of its own nothing is judged, so nothing is said ambiguous either
+      expect(ambiguities(secondEvents)).toEqual([]);
+
+      // the run's own prompt names its own session, and never the one from outside
+      const own = second.expectPrompt('b', 2_000);
+      await startSession(home, cwd, 'session-b', 'b');
+      await second.poll();
+      expect(second.sessionId()).toBe('session-b');
+      await expect(own.promise).resolves.toMatchObject({ matched: true, sessionId: 'session-b' });
+      await first.stop();
+      await second.stop();
+      await later.stop();
     });
   });
 
