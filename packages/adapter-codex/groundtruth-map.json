@@ -56,6 +56,7 @@
     "serverRequest/resolved",
     "skills/config/write",
     "skills/list",
+    "thread/fork",
     "thread/inject_items",
     "thread/read",
     "thread/resume",
@@ -65,13 +66,13 @@
     "turn/start"
   ],
   "unmapped": {
-    "count": 220,
-    "sha256": "a99913d42c6c0fc4d25fe7c0756722780991783bb3a39bf72530992feb80e0a5",
+    "count": 219,
+    "sha256": "13a4a9fef050e207c295db9bbc795cba6618fcc1e3c589b4b00be570ce8ed2b9",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 276,
     "semantic": 27,
-    "observedOrControlled": 29
+    "observedOrControlled": 30
   }
 }

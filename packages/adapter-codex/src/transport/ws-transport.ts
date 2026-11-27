@@ -305,17 +305,66 @@ export interface WebSocketTapProxy {
   dispose(): Promise<void>;
 }
 
+/**
+ * What a tap reads of the app-server's answers to the TUI. Every server frame is framed (a message is only found by
+ * reading the frames before it), but its JSON is parsed and handed over only while `waiting()` says a request the
+ * tap cares about is unanswered, so the replies and notifications of an ordinary turn cost no parse.
+ */
+export interface WebSocketTapServerReader {
+  waiting(): boolean;
+  message(message: unknown): void;
+}
+
+/** Text frames of one direction, decoded past the upgrade's headers; a framing error resets it and forwarding goes on. */
+function createTapReader(
+  onMessage: (message: unknown) => void,
+  parse: () => boolean = () => true,
+): (chunk: Buffer) => void {
+  let decoder = new FrameDecoder();
+  let upgraded = false;
+  let headers = Buffer.alloc(0);
+  return (chunk) => {
+    let framed = chunk;
+    if (!upgraded) {
+      headers = Buffer.concat([headers, chunk]);
+      const end = headers.indexOf('\r\n\r\n');
+      if (end < 0) return;
+      upgraded = true;
+      framed = headers.subarray(end + 4);
+      headers = Buffer.alloc(0);
+    }
+    try {
+      for (const frame of decoder.feed(framed)) {
+        if (frame.opcode !== OP_TEXT && frame.opcode !== OP_BINARY) continue;
+        if (!parse()) continue;
+        try {
+          onMessage(JSON.parse(frame.payload.toString('utf8')));
+        } catch {
+          // Non-JSON frames remain transparently forwarded.
+        }
+      }
+    } catch {
+      // Observation must never disturb the transparent byte stream. Reset
+      // after malformed/unsupported framing and keep forwarding untouched.
+      decoder = new FrameDecoder();
+    }
+  };
+}
+
 let tapCounter = 0;
 
 /**
  * Transparent local proxy for a native Codex TUI connection. Bytes remain
- * untouched; client WebSocket text frames are decoded only to discover which
- * thread a native resume picker selected. The proxy mirrors the upstream
- * endpoint kind, so the picker works over both POSIX UDS and Windows loopback.
+ * untouched both ways; client WebSocket text frames are decoded to learn what
+ * the TUI asks for (the thread a native resume picker selected, a thread it
+ * starts, resumes or forks), and server frames, when a reader is given, to
+ * hear the answer that names the thread. The proxy mirrors the upstream
+ * endpoint kind, so it works over both POSIX UDS and Windows loopback.
  */
 export function createWebSocketTapProxy(
   upstreamEndpoint: AppServerEndpoint,
   onClientMessage: (message: unknown) => void,
+  onServerMessage?: WebSocketTapServerReader,
 ): WebSocketTapProxy {
   const socketPath =
     upstreamEndpoint.kind === 'unix'
@@ -341,36 +390,22 @@ export function createWebSocketTapProxy(
     const upstream = connectEndpoint(upstreamEndpoint);
     track(downstream);
     track(upstream);
-    let decoder = new FrameDecoder();
-    let upgraded = false;
-    let requestHeaders = Buffer.alloc(0);
+    const readClient = createTapReader(onClientMessage);
+    const readServer =
+      onServerMessage === undefined
+        ? undefined
+        : createTapReader(
+            (message) => onServerMessage.message(message),
+            () => onServerMessage.waiting(),
+          );
 
-    upstream.on('data', (chunk) => downstream.write(chunk));
+    upstream.on('data', (chunk) => {
+      downstream.write(chunk);
+      readServer?.(chunk);
+    });
     downstream.on('data', (chunk) => {
       upstream.write(chunk);
-      let framed = chunk;
-      if (!upgraded) {
-        requestHeaders = Buffer.concat([requestHeaders, chunk]);
-        const end = requestHeaders.indexOf('\r\n\r\n');
-        if (end < 0) return;
-        upgraded = true;
-        framed = requestHeaders.subarray(end + 4);
-        requestHeaders = Buffer.alloc(0);
-      }
-      try {
-        for (const frame of decoder.feed(framed)) {
-          if (frame.opcode !== OP_TEXT && frame.opcode !== OP_BINARY) continue;
-          try {
-            onClientMessage(JSON.parse(frame.payload.toString('utf8')));
-          } catch {
-            // Non-JSON frames remain transparently forwarded.
-          }
-        }
-      } catch {
-        // Observation must never disturb the transparent byte stream. Reset
-        // after malformed/unsupported framing and keep forwarding untouched.
-        decoder = new FrameDecoder();
-      }
+      readClient(chunk);
     });
     const close = (): void => {
       downstream.destroy();

@@ -1603,3 +1603,143 @@ describe('observer run briefing', () => {
     }
   });
 });
+
+describe('createCodexObserver follows the thread its TUI moves to', () => {
+  /** The fake app-server, with `thread/resume` of the named threads refused as not yet resumable (no rollout). */
+  function withUnresumable(t: ReturnType<typeof controllable>, ...unresumable: string[]) {
+    const refused: string[] = [];
+    const transport: Transport = {
+      send: (message) => {
+        const msg = message as { id?: number; method?: string; params?: { threadId?: unknown } };
+        if (msg.method === 'thread/resume' && unresumable.includes(String(msg.params?.threadId))) {
+          refused.push(String(msg.params?.threadId));
+          queueMicrotask(() =>
+            t.deliver({ jsonrpc: '2.0', id: msg.id, error: { code: -1, message: 'no rollout found for thread id' } }),
+          );
+          return;
+        }
+        t.transport.send(message);
+      },
+      onMessage: (handler) => t.transport.onMessage(handler),
+      onClose: (handler) => t.transport.onClose(handler),
+      close: () => t.transport.close(),
+    };
+    return { transport, refused: () => refused.length };
+  }
+  const resumed = (t: ReturnType<typeof controllable>) =>
+    t
+      .calls()
+      .filter((call) => call.method === 'thread/resume')
+      .map((call) => (call.params as { threadId?: string }).threadId);
+  const starts = (projection: ReturnType<typeof projectAgentEvents>) =>
+    projection.envelopes
+      .filter((envelope) => envelope.event.type === 'session:started')
+      .map(({ event, nativeSessionId }) => ({ event, nativeSessionId }));
+
+  it.each([
+    ['new', 'th-new'],
+    ['resume', 'th-resumed'],
+    ['fork', 'th-forked'],
+  ] as const)('a %s thread moves the observer, said as a rebind with the move as its source', async (move, id) => {
+    const t = controllable(0);
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-1' });
+    const projection = projectAgentEvents(obs);
+    await obs.followThread({ id, name: 'the next one', ...(move === 'fork' ? { forkedFromId: 'th-1' } : {}) }, move);
+    expect(obs.sessionId).toBe(id);
+    expect(starts(projection)).toEqual([
+      { event: { type: 'session:started', nativeSessionId: 'th-1' }, nativeSessionId: 'th-1' },
+      {
+        event: { type: 'session:started', nativeSessionId: id, title: 'the next one', startSource: move, rebind: true },
+        nativeSessionId: id,
+      },
+    ]);
+    // the new thread is attached with its history; the old one is left, never unsubscribed
+    expect(resumed(t)).toEqual(['th-1', id]);
+    expect(t.calls().some((call) => call.method === 'thread/unsubscribe')).toBe(false);
+    expect(safeParseAgentEvent('session:started', starts(projection)[1]!.event).success).toBe(true);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('drives its events from the new thread alone once it moved', async () => {
+    const t = controllable(0);
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-1' });
+    const projection = projectAgentEvents(obs);
+    await obs.followThread({ id: 'th-2' }, 'new');
+    // a turn is said once its prompt is: Codex starts the turn, then completes the user message that starts it
+    const turn = (threadId: string, turnId: string) => {
+      t.deliver({ jsonrpc: '2.0', method: 'turn/started', params: { threadId, turn: { id: turnId } } });
+      t.deliver({
+        jsonrpc: '2.0',
+        method: 'item/completed',
+        params: {
+          threadId,
+          turnId,
+          item: { type: 'userMessage', id: `user-${turnId}`, content: [{ type: 'text', text: 'go' }] },
+        },
+      });
+    };
+    turn('th-1', 'turn-old');
+    turn('th-2', 'turn-new');
+    await vi.waitFor(() =>
+      expect(
+        projection.envelopes.filter((e) => e.event.type === 'turn:started').map((e) => [e.turnId, e.nativeSessionId]),
+      ).toEqual([['turn-new', 'th-2']]),
+    );
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it("moves nothing for a sub-agent's thread or for the thread it observes", async () => {
+    const t = controllable(0);
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-1' });
+    const projection = projectAgentEvents(obs);
+    await obs.followThread({ id: 'th-child', parentThreadId: 'th-1' }, 'resume');
+    await obs.followThread(
+      { id: 'th-child-2', source: { subAgent: { thread_spawn: { parent_thread_id: 'th-1' } } } },
+      'new',
+    );
+    await obs.followThread({ id: 'th-1' }, 'resume');
+    expect(obs.sessionId).toBe('th-1');
+    expect(resumed(t)).toEqual(['th-1']);
+    expect(starts(projection)).toHaveLength(1);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('binds a thread before any is attached, as a picker chooses: no rebind', async () => {
+    const t = controllable(0);
+    const obs = await createCodexObserver({ transport: t.transport });
+    const projection = projectAgentEvents(obs);
+    expect(obs.sessionId).toBeUndefined();
+    await obs.followThread({ id: 'th-picked' }, 'resume');
+    expect(obs.sessionId).toBe('th-picked');
+    expect(starts(projection)).toEqual([
+      { event: { type: 'session:started', nativeSessionId: 'th-picked' }, nativeSessionId: 'th-picked' },
+    ]);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('lets a later move supersede one still waiting for its thread, which then says nothing', async () => {
+    const t = controllable(0);
+    const blank = withUnresumable(t, 'th-blank');
+    const obs = await createCodexObserver({ transport: blank.transport, threadId: 'th-1' });
+    const projection = projectAgentEvents(obs);
+    // a `/new` thread has no rollout before its first prompt: its attach waits, retrying
+    const waiting = obs.followThread({ id: 'th-blank' }, 'new');
+    await vi.waitFor(() => expect(blank.refused()).toBeGreaterThan(0));
+    await obs.followThread({ id: 'th-3' }, 'resume');
+    await waiting;
+    expect(obs.sessionId).toBe('th-3');
+    const tries = blank.refused();
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect(blank.refused()).toBe(tries);
+    expect(starts(projection).map(({ event }) => event)).toEqual([
+      { type: 'session:started', nativeSessionId: 'th-1' },
+      { type: 'session:started', nativeSessionId: 'th-3', startSource: 'resume', rebind: true },
+    ]);
+    projection.dispose();
+    await obs.dispose();
+  });
+});

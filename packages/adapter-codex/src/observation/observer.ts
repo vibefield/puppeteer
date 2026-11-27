@@ -128,6 +128,25 @@ export interface CodexThreadInfo {
   path?: string | undefined;
 }
 
+/**
+ * How a TUI came to another thread, by the request that named it: `new` (`thread/start`, the TUI's `/new`), `resume`
+ * (`thread/resume`), `fork` (`thread/fork`). It is `session:started`'s `startSource`, for display.
+ */
+export type CodexThreadMove = 'new' | 'resume' | 'fork';
+
+/** A thread as the app-server's answer to that request names it (`Thread`): its id, and how it relates to others. */
+export interface CodexFollowedThread {
+  id: string;
+  /** Set only for a sub-agent's thread. */
+  parentThreadId?: string | null | undefined;
+  /** `{subAgent: …}` for a sub-agent's thread. */
+  source?: unknown;
+  forkedFromId?: string | null | undefined;
+  name?: string | null | undefined;
+  path?: string | null | undefined;
+  [key: string]: unknown;
+}
+
 export interface CodexObserver {
   /** The observed thread's native correlation id (undefined until one attaches). */
   readonly sessionId: string | undefined;
@@ -144,6 +163,15 @@ export interface CodexObserver {
    * provider, after publishing the `codex-model-provider-refused` diagnostic.
    */
   attachThread(threadId: string): Promise<void>;
+  /**
+   * Follow the thread the TUI moved to (`thread/start`, `thread/resume` or `thread/fork`, as the app-server answered
+   * it): the observer leaves the thread it observes, attaches the new one with its history, and publishes
+   * `session:started` with `rebind` and the move as `startSource`, as a Claude `/clear` is reported. A sub-agent's
+   * thread, or the observed thread itself, moves nothing. Before any thread is attached (a picker that has not
+   * chosen) it is the binding, as `attachThread` is. Resolves once the new thread is attached or the move is
+   * superseded.
+   */
+  followThread(thread: CodexFollowedThread, move: CodexThreadMove): Promise<void>;
   /**
    * Take the app-server's own `thread/settings/updated` as another connection of this session heard it. Codex sends
    * that notification only to a connection that opted into its experimental API, which this one does not
@@ -200,6 +228,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   let currentTurnId: string | undefined;
   let attached = false;
   let attaching = false;
+  let attachGeneration = 0;
   let disposed = false;
   let railClosed = false;
   let contextWindowObserved = false;
@@ -356,12 +385,18 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     thread: Record<string, unknown> | undefined,
     fresh = false,
     overrides: CreateCodexObserverOptions['resumeOverrides'] = undefined,
+    move: CodexThreadMove | undefined = undefined,
   ): Promise<void> {
     if (attached || attaching) return;
     attaching = true;
+    // A later move supersedes this attach wherever it waits (a `/new` thread is not resumable before its first prompt).
+    const generation = ++attachGeneration;
+    const current = (): boolean => generation === attachGeneration;
     sessionId = threadId;
     threadPath = str(thread?.path) ?? threadPath;
-    if (thread) applyEnvironmentFromResponse({ thread });
+    // A moved-to thread says where it runs from its resume's answer, once it can be resumed: before that, nothing is
+    // published under its id.
+    if (thread && move === undefined) applyEnvironmentFromResponse({ thread });
     const configured: CodexConfiguredIntent = {
       ...(overrides?.model ? { model: overrides.model } : {}),
       ...(overrides?.effort ? { effort: overrides.effort } : {}),
@@ -372,9 +407,10 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     // the connection drops, or we're disposed — a bounded one-shot was the
     // "stuck at preparing, no messages" bug when a slow first turn missed it.
     let delay = 200;
-    while (!attached && !disposed && !railClosed) {
+    while (!attached && !disposed && !railClosed && current()) {
       try {
         const resumed = await history.resume(threadId, overrides); // opens the live stream
+        if (!current()) return;
         threadPath = str(rec(resumed?.thread)?.path) ?? threadPath;
         applyEnvironmentFromResponse(resumed, undefined, undefined, configured);
         let turns = turnsOf(resumed);
@@ -382,6 +418,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         if (!fresh) {
           // Never throws: history enrichment must never prevent live resume attachment.
           const read = await history.read(threadId, resumed);
+          if (!current()) return;
           turns = read.turns;
           incomplete = read.incomplete;
           threadPath = read.path ?? threadPath;
@@ -389,12 +426,22 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         // A thread this connection just created has no prior turns or usage.
         // Existing and externally discovered threads retain the replay barrier.
         const contextWindow = !fresh && threadPath ? await readLastCodexContextWindow(threadPath) : undefined;
+        if (!current()) return;
         // The thread's name is its title (`normalization/session.ts`). A thread that is resumed already has the name
         // Codex or a person gave it, and nothing says it again: `thread/started` is for a thread that begins, and
         // `thread/name/updated` for a rename. So the resume's own answer is where a resumed session's title is read,
         // else the thread this attach was handed. An unnamed thread starts with no title, as before.
         const name = (str(rec(resumed?.thread)?.name) ?? str(thread?.name))?.trim();
-        apply({ type: 'session:started', nativeSessionId: threadId, ...(name ? { title: name } : {}) }, 'native-hook');
+        // A move the TUI made is said as a Claude `/clear` is: a session started in the same run, `rebind`.
+        apply(
+          {
+            type: 'session:started',
+            nativeSessionId: threadId,
+            ...(name ? { title: name } : {}),
+            ...(move === undefined ? {} : { startSource: move, rebind: true }),
+          },
+          'native-hook',
+        );
         // A resumed history can exceed the event source's 256-event startup
         // buffer and evict session:started (leaving the monitor "Starting").
         // Replay only once the runtime has subscribed, so history streams
@@ -442,6 +489,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         attaching = false;
         flushHistoryReplay();
       } catch (error) {
+        if (!current()) return;
         // An explicit briefing resume must surface rejected native config instead of retrying it forever,
         // and so must a provider admission refusal (0.166.0): it lasts until the configuration changes.
         if (Object.keys(pickAgentBriefing(overrides ?? {})).length || error instanceof CodexModelProviderRefusedError) {
@@ -453,11 +501,50 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         delay = Math.min(Math.floor(delay * 1.5), 2000);
       }
     }
+    if (!current()) return;
     if (!attached) {
       attaching = false; // disposed before the thread ever materialized
       return;
     }
     for (const l of threadListeners) l({ threadId, path: threadPath });
+  }
+
+  /** A thread the TUI moved to, as {@link CodexObserver.followThread} says. */
+  async function followThread(thread: CodexFollowedThread, move: CodexThreadMove): Promise<void> {
+    const threadId = str(thread.id);
+    if (disposed || !threadId || threadId === sessionId) return;
+    // A sub-agent's thread is the run's own child, which the monitor's actor rail already carries: the pane is where
+    // it was. Codex sets `parentThreadId` only for one, and its `source` says `subAgent`.
+    const source = rec(thread.source);
+    if (str(thread.parentThreadId) !== undefined || (source !== undefined && 'subAgent' in source)) return;
+    // A picker that has chosen nothing yet: this is its binding, not a move.
+    if (sessionId === undefined) return attachThreadOrPublish(threadId, thread);
+    // The old thread is left, not unsubscribed: filtering by id is enough, and an unsubscribe could unload a thread
+    // whose turn still runs.
+    attached = false;
+    attaching = false;
+    historyReplayed = false;
+    pendingHistoryReplay = undefined;
+    queuedLiveNotifications.length = 0;
+    currentTurnId = undefined;
+    contextWindowObserved = false;
+    threadPath = undefined;
+    // `fresh` stays false: a `/new` thread is resumable only from its first prompt, which is then replayed.
+    await attachThreadOrPublish(threadId, thread, move);
+  }
+
+  /** Attach with no caller left to hear a provider refusal: it is published, and the attach goes no further. */
+  async function attachThreadOrPublish(
+    threadId: string,
+    thread: Record<string, unknown> | undefined,
+    move?: CodexThreadMove,
+  ): Promise<void> {
+    try {
+      await attach(threadId, thread, false, undefined, move);
+    } catch (error) {
+      if (!(error instanceof CodexModelProviderRefusedError)) throw error;
+      publishProviderRefusal(threadId, error);
+    }
   }
 
   /** No caller awaits a passive or TUI-requested attach, so a provider refusal is published, not only thrown. */
@@ -664,6 +751,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         if (error instanceof CodexModelProviderRefusedError) publishProviderRefusal(threadId, error);
         throw error;
       }),
+    followThread,
     settingsUpdated(params) {
       if (disposed) return;
       receive('thread/settings/updated', params);

@@ -114,6 +114,73 @@ describe('createWebSocketTapProxy over TCP', () => {
   });
 });
 
+describe('createWebSocketTapProxy reading the answers', () => {
+  it('reads the server frames only while a request waits, and forwards every byte unchanged both ways', async () => {
+    let serverSide: import('node:net').Socket | undefined;
+    const upstreamBytes: Buffer[] = [];
+    const upstream = createServer((socket) => {
+      serverSide = socket;
+      socket.on('data', (chunk) => upstreamBytes.push(chunk));
+    });
+    await new Promise<void>((resolve, reject) => {
+      upstream.once('error', reject);
+      upstream.listen(0, '127.0.0.1', resolve);
+    });
+    const upstreamAddress = upstream.address();
+    if (!upstreamAddress || typeof upstreamAddress === 'string') throw new Error('upstream did not bind TCP');
+    let waiting = false;
+    const answers: unknown[] = [];
+    const tap = createWebSocketTapProxy(
+      { kind: 'websocket', url: `ws://127.0.0.1:${upstreamAddress.port}` },
+      () => undefined,
+      { waiting: () => waiting, message: (message) => answers.push(message) },
+    );
+    await tap.ready();
+    const tapEndpoint = tap.endpoint();
+    if (tapEndpoint.kind !== 'websocket') throw new Error('tap did not bind TCP');
+    const tapAddress = new URL(tapEndpoint.url);
+    const client = createConnection({ host: tapAddress.hostname, port: Number(tapAddress.port) });
+    const clientBytes: Buffer[] = [];
+    client.on('data', (chunk) => clientBytes.push(chunk));
+    await new Promise<void>((resolve, reject) => {
+      client.once('connect', resolve);
+      client.once('error', reject);
+    });
+    const request = Buffer.concat([
+      Buffer.from('GET / HTTP/1.1\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n'),
+      frame(0x1, Buffer.from(JSON.stringify({ id: 1, method: 'thread/start', params: {} })), { masked: true }),
+    ]);
+    client.write(request);
+    await vi.waitFor(() => expect(serverSide).toBeDefined());
+    await vi.waitFor(() => expect(Buffer.concat(upstreamBytes)).toEqual(request));
+
+    // the upgrade's answer and a frame that arrives while nothing waits: framed, never parsed
+    const quiet = Buffer.concat([
+      Buffer.from('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n'),
+      frame(0x1, Buffer.from(JSON.stringify({ method: 'turn/started', params: { threadId: 't-1' } }))),
+    ]);
+    serverSide!.write(quiet);
+    await vi.waitFor(() => expect(Buffer.concat(clientBytes)).toEqual(quiet));
+    expect(answers).toEqual([]);
+
+    // a request waits: the next answer is parsed and handed over, split across two frames as the server may send it
+    waiting = true;
+    const answer = JSON.stringify({ id: 1, result: { thread: { id: 't-new' } } });
+    const midpoint = Math.floor(answer.length / 2);
+    const loud = Buffer.concat([
+      frame(0x1, Buffer.from(answer.slice(0, midpoint)), { fin: false }),
+      frame(0x0, Buffer.from(answer.slice(midpoint))),
+    ]);
+    serverSide!.write(loud);
+    await vi.waitFor(() => expect(answers).toEqual([JSON.parse(answer)]));
+    await vi.waitFor(() => expect(Buffer.concat(clientBytes)).toEqual(Buffer.concat([quiet, loud])));
+
+    client.destroy();
+    await tap.dispose();
+    await new Promise<void>((resolve) => upstream.close(() => resolve()));
+  });
+});
+
 describe.skipIf(!posix)('wsOverUnixTransport', () => {
   it('reassembles fragmented app-server responses before parsing JSON', async () => {
     const socketPath = join(realpathSync(tmpdir()), `cx-fragmented-${process.pid}.sock`);
