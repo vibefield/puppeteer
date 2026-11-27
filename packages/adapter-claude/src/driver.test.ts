@@ -2495,13 +2495,19 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
       { type: 'session:started', nativeSessionId: chosenId, provisional: true },
     ]);
 
-    // the chosen one's first hook of its own holds it, before what it says is published
+    // the chosen one's first hook of its own holds it, before what it says is published: on the picker's path that is
+    // the person's first prompt (Claude re-fires InstructionsLoaded only for --continue and --resume <id>)
     const beforeHold = seen.length;
     expect(
-      await post({ session_id: chosenId, hook_event_name: 'InstructionsLoaded', load_reason: 'session_start' }),
+      await post({
+        session_id: chosenId,
+        hook_event_name: 'UserPromptSubmit',
+        prompt: 'the first words in the chosen one',
+        prompt_id: 'p-held',
+      }),
     ).toBe(200);
     expect(session.nativeSessionProvisional?.()).toBe(false);
-    expect(seen.slice(beforeHold).map(({ type }) => type)).toContain('session:ready');
+    expect(seen.slice(beforeHold).map(({ type }) => type)).toContain('turn:started');
     expect(seen.slice(beforeHold).every(({ provisional }) => provisional === false)).toBe(true);
     // the preview no longer moves anything
     expect(await post({ session_id: previewId, hook_event_name: 'SessionStart' })).toBe(403);
