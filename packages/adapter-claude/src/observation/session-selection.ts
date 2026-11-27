@@ -68,11 +68,22 @@ export interface ClaudeSessionSelection {
    * written.
    */
   transcriptFor(path: string): string | undefined;
+  /**
+   * Move to `sessionId` as a rotation does, for one the bridge never heard: a `/clear` or `/resume` start the
+   * forwarder kept while no host listened, replayed at an attach (hook-spool.ts). The spool says where the pane went,
+   * so the attached id's silence no longer reads as a rotation unheard.
+   */
+  restore(sessionId: string): void;
+  /** A fork's id the bridge never heard announced (a kept `fork` start): its hooks are refused, never followed. */
+  forked(sessionId: string): void;
   /** Every hook refused, as it is refused (a status line is refused without a word). */
   onRefused(listener: (refusal: ClaudeSessionRefusal) => void): () => void;
   /** An attach's unheard rotation, with the transcript it found under the root. */
   onUnheardRotation(listener: (transcript: string) => void): () => void;
 }
+
+/** Forks remembered by id; past it the oldest is forgotten, as the driver forgets the refusals it told. */
+const MAX_FORKS_KEPT = 64;
 
 /** Where `path` really is, or undefined when it is not there. */
 function realPath(path: string): string | undefined {
@@ -94,6 +105,12 @@ export function createClaudeSessionSelection(options: ClaudeSessionSelectionOpti
   let ending: string | undefined;
   // Sessions a native resume launch runs that are never the one chosen.
   const boot = new Set<string>();
+  // Forks announced by their start: a fork's conversation is under the root as a /clear's is, so an attach that has
+  // not heard its session must never take a fork's hooks for one.
+  const forks = new Set<string>();
+  const forget = (seen: Set<string>): void => {
+    if (seen.size > MAX_FORKS_KEPT) seen.delete(seen.values().next().value as string);
+  };
   const refusedListeners = new Set<(refusal: ClaudeSessionRefusal) => void>();
   const unheardListeners = new Set<(transcript: string) => void>();
 
@@ -141,9 +158,14 @@ export function createClaudeSessionSelection(options: ClaudeSessionSelectionOpti
         }
         return true;
       }
+      if (hookEventName === 'SessionStart' && source === 'fork') {
+        forks.add(sessionId);
+        forget(forks);
+      }
       // A /clear typed while no host listened: the first hook under a new id, before the attached id has spoken,
-      // whose conversation is under the same root (a subagent's or a stranger's id has none there).
-      if (hook && !heard) {
+      // whose conversation is under the same root (a subagent's or a stranger's id has none there), and that is no
+      // fork's: a fork's start and what the fork posts after it are refused, as a launch refuses them.
+      if (hook && !heard && !forks.has(sessionId)) {
         const transcript = locateClaudeTranscript(sessionId, options.root);
         if (transcript !== undefined) {
           selected = sessionId;
@@ -165,6 +187,15 @@ export function createClaudeSessionSelection(options: ClaudeSessionSelectionOpti
       }
       if (hook) tell(refusedListeners, { sessionId, hookEventName, source });
       return false;
+    },
+
+    restore(sessionId) {
+      rotate(sessionId);
+    },
+
+    forked(sessionId) {
+      forks.add(sessionId);
+      forget(forks);
     },
 
     transcriptFor(path) {

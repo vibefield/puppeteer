@@ -135,6 +135,12 @@ export interface PrepareClaudeSessionOptions extends AgentRunBriefing {
    * Injectable, as `hookBridgeFactory` is, for tests.
    */
   scriptRunner?: ScriptRunner | null | undefined;
+  /**
+   * Keep each `SessionStart` the bridge could not be reached for in a spool beside the settings, for an attach to read
+   * back (observation/hook-spool.ts): the command hooks then run the forwarder's `claude.hook.v2` word. For a host that
+   * keeps an attach record, which is how an attach finds the spool. Absent = `claude.hook.v1`, and no spool.
+   */
+  hookSpool?: boolean | undefined;
 }
 
 /** DESIGN §11 PreparedNativeSession, narrowed to what this adapter fills. */
@@ -147,18 +153,37 @@ export interface PreparedClaudeSession {
   settingsPath: string;
   /** The staged forwarder the hooks and status lines run; absent when the host lends a forwarder runtime. */
   forwarderPath?: string | undefined;
+  /** Where the command hooks keep a start no bridge took ({@link PrepareClaudeSessionOptions.hookSpool}). */
+  hookSpool?: string | undefined;
   filesToCleanup: string[];
   /** What of the briefing went unapplied under `briefingRefusal: 'withhold'`. */
   briefingWithheld?: readonly AgentBriefingWithheld[] | undefined;
 }
 
 /**
+ * Whether `sessionId` can name a conversation's file: a bare name, never a path (no `/`, `\` or `..`). Claude's own
+ * ids are UUIDs. An id read from where the agent can write (a hook's body, the launch's hook spool) is joined to a
+ * folder under the config root, so an id with path segments would name a file anywhere.
+ */
+export function isClaudeSessionFileName(sessionId: string): boolean {
+  return (
+    sessionId.length > 0 &&
+    !sessionId.includes('/') &&
+    !sessionId.includes('\\') &&
+    !sessionId.includes('..') &&
+    !sessionId.includes('\0')
+  );
+}
+
+/**
  * Where Claude keeps a conversation: `<root>/projects/<cwd slug>/<id>.jsonl`,
  * the root being the config dir (the imposter mirrors the layout under its
  * state root). Claude finds a session by id from any directory (probed
- * 2.1.269, 2026-09-11), so every project folder is searched.
+ * 2.1.269, 2026-09-11), so every project folder is searched. An id that is no
+ * bare name ({@link isClaudeSessionFileName}) names no conversation.
  */
 export function locateClaudeTranscript(sessionId: string, root: string): string | undefined {
+  if (!isClaudeSessionFileName(sessionId)) return undefined;
   const projects = join(root, 'projects');
   let folders: string[];
   try {
@@ -349,6 +374,9 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   try {
     const settingsPath = join(dir, `${sessionId}.settings.json`);
     const forwarderPath = stagesForwarder ? join(dir, `${sessionId}.forwarder.mjs`) : undefined;
+    // Only the forwarder writes it, and only when a start reaches no bridge: a launch whose bridge never went away
+    // leaves no spool on disk.
+    const hookSpool = options.hookSpool === true ? join(dir, `${sessionId}.hook-spool.jsonl`) : undefined;
     // What every hook and status line runs; its word and the word's arguments follow.
     const forwarderCommand = {
       command: forwarder.command,
@@ -407,6 +435,7 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
         endpoint: options.endpoint,
         tokenEnvVar: options.tokenEnvVar,
         forwarder: forwarderCommand,
+        ...(hookSpool === undefined ? {} : { hookSpool }),
         ...(options.fileChangeMatcher !== undefined ? { matchers: { FileChanged: options.fileChangeMatcher } } : {}),
         statusLine,
         subagentStatusLine,
@@ -482,9 +511,11 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
       },
       settingsPath,
       forwarderPath,
+      ...(hookSpool === undefined ? {} : { hookSpool }),
       filesToCleanup: [
         settingsPath,
         ...(forwarderPath === undefined ? [] : [forwarderPath]),
+        ...(hookSpool === undefined ? [] : [hookSpool]),
         ...briefingFiles,
         ...(ownsDir ? [dir] : []),
       ],

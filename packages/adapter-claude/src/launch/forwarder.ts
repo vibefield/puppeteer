@@ -14,9 +14,15 @@
  * its arguments and meaning; a change is a new word.
  */
 import { spawn } from 'node:child_process';
+import { open } from 'node:fs/promises';
 
 /** `claude.hook.v1 <endpoint> <token variable> <timeout ms>`, the hook's JSON on stdin. */
 export const CLAUDE_HOOK_FORWARDER_WORD = 'claude.hook.v1';
+/**
+ * `claude.hook.v2 <endpoint> <token variable> <timeout ms> <spool path>`: v1's relay, and a `SessionStart` the bridge
+ * could not be reached for is kept as one line of the spool (observation/hook-spool.ts reads it at an attach).
+ */
+export const CLAUDE_HOOK_SPOOL_FORWARDER_WORD = 'claude.hook.v2';
 /** `claude.statusline.v1 [subagent]`, the line's JSON on stdin; its endpoint and delegate ride the environment. */
 export const CLAUDE_STATUS_LINE_FORWARDER_WORD = 'claude.statusline.v1';
 /** The status-line word's one argument: the child (task) line rather than the root line. */
@@ -46,11 +52,13 @@ async function readInput(stdin: AsyncIterable<string | Uint8Array>): Promise<str
   return Buffer.concat(chunks).toString('utf8');
 }
 
-/** A command-only hook: POST the hook's document to the bridge; 0 when it took it, 1 when not, 2 when unarmed. */
-const relayHook: Relay = async ([endpoint, tokenEnvVar, timeoutText], io) => {
-  const input = await readInput(io.stdin);
-  const token = tokenEnvVar ? io.env[tokenEnvVar] : undefined;
-  if (!endpoint || !tokenEnvVar || !token) return 2;
+/** POST one hook's document to the bridge: 0 when it took it, 1 when it answered otherwise, `unreached` on no answer. */
+async function postHook(
+  input: string,
+  endpoint: string,
+  token: string,
+  timeoutText: string | undefined,
+): Promise<0 | 1 | 'unreached'> {
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -60,8 +68,83 @@ const relayHook: Relay = async ([endpoint, tokenEnvVar, timeoutText], io) => {
     });
     return response.ok ? 0 : 1;
   } catch {
-    return 1;
+    return 'unreached';
   }
+}
+
+/** A command-only hook: POST the hook's document to the bridge; 0 when it took it, 1 when not, 2 when unarmed. */
+const relayHook: Relay = async ([endpoint, tokenEnvVar, timeoutText], io) => {
+  const input = await readInput(io.stdin);
+  const token = tokenEnvVar ? io.env[tokenEnvVar] : undefined;
+  if (!endpoint || !tokenEnvVar || !token) return 2;
+  const posted = await postHook(input, endpoint, token, timeoutText);
+  return posted === 'unreached' ? 1 : posted;
+};
+
+/** The spool keeps at most this many lines and bytes; a start past either is not kept. */
+export const CLAUDE_HOOK_SPOOL_MAX_LINES = 256;
+export const CLAUDE_HOOK_SPOOL_MAX_BYTES = 64 * 1024;
+
+/**
+ * Keep one `SessionStart` the bridge could not be reached for: one JSON line, appended (the file is made owner-only),
+ * holding the hook's ids and source and never the bearer. A document that is not a start with a session id, a spool
+ * at its bound, or a spool that cannot be written keeps nothing: the hook is lost, as with v1.
+ */
+async function spoolStart(spoolPath: string, input: string): Promise<void> {
+  let document: Record<string, unknown>;
+  try {
+    const parsed: unknown = JSON.parse(input);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return;
+    document = parsed as Record<string, unknown>;
+  } catch {
+    return;
+  }
+  if (document.hook_event_name !== 'SessionStart') return;
+  const sessionId = document.session_id;
+  if (typeof sessionId !== 'string' || sessionId.trim().length === 0) return;
+  const line = `${JSON.stringify({
+    v: 1,
+    at: new Date().toISOString(),
+    hook_event_name: 'SessionStart',
+    session_id: sessionId,
+    ...(typeof document.source === 'string' ? { source: document.source } : {}),
+    ...(typeof document.transcript_path === 'string' ? { transcript_path: document.transcript_path } : {}),
+  })}\n`;
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    // 'a+' reads what is kept and appends after it; a file it creates is the owner's alone.
+    handle = await open(spoolPath, 'a+', 0o600);
+    const { size } = await handle.stat();
+    const lineBytes = Buffer.byteLength(line, 'utf8');
+    if (size + lineBytes > CLAUDE_HOOK_SPOOL_MAX_BYTES) return;
+    const kept = size === 0 ? '' : await handle.readFile('utf8');
+    let lines = 0;
+    for (let at = kept.indexOf('\n'); at !== -1; at = kept.indexOf('\n', at + 1)) lines += 1;
+    if (lines >= CLAUDE_HOOK_SPOOL_MAX_LINES) return;
+    // One write: an append of one line lands whole beside another forwarder's.
+    await handle.write(line);
+  } catch {
+    // The spool's folder is gone (an OS temp sweep) or cannot be written: nothing is kept.
+  } finally {
+    await handle?.close().catch(() => undefined);
+  }
+}
+
+/**
+ * v1's relay, and a `SessionStart` that reached no bridge is kept in the spool: only when the post had no answer (the
+ * bridge is down, or did not answer in time), never on an answer of any status. A host that comes back reads it at its
+ * attach (the start of a `/clear` typed meanwhile, say). A bridge that took the hook and did not answer within its
+ * timeout leaves a start the host did hear: the bridge answers as soon as it has read a hook, so that needs a host that
+ * hung mid-request.
+ */
+const relayHookWithSpool: Relay = async ([endpoint, tokenEnvVar, timeoutText, spoolPath], io) => {
+  const input = await readInput(io.stdin);
+  const token = tokenEnvVar ? io.env[tokenEnvVar] : undefined;
+  if (!endpoint || !tokenEnvVar || !token) return 2;
+  const posted = await postHook(input, endpoint, token, timeoutText);
+  if (posted !== 'unreached') return posted;
+  if (spoolPath) await spoolStart(spoolPath, input);
+  return 1;
 };
 
 /**
@@ -111,6 +194,7 @@ const relayStatusLine: Relay = async ([channel], io) => {
 const RELAYS: ReadonlyMap<string, Relay> = new Map<string, Relay>([
   [CLAUDE_HOOK_FORWARDER_WORD, relayHook],
   [CLAUDE_STATUS_LINE_FORWARDER_WORD, relayStatusLine],
+  [CLAUDE_HOOK_SPOOL_FORWARDER_WORD, relayHookWithSpool],
 ]);
 
 /** Every word this forwarder has shipped, in the order it shipped them. */

@@ -762,6 +762,8 @@ interface ReplayTurn {
  *   rewind, a window past it), nothing is replayed and `found` is false.
  * - Each turn after the cursor's opens with `turn:started` and its prompt. The cursor's own turn, whose start the host
  *   heard, opens with nothing, and is replayed only while the host did not hear it end.
+ * - No cursor: the whole record, every turn from the first opening with its start, and `found` false (a pane that
+ *   moved to this conversation while no host listened, the host's cursor naming a turn of the one it left).
  * - A turn's replies are its root assistant messages with text, keyed to the turn.
  * - A turn ends, as `turn:completed` with the model's stop reason and its last words, only when its last assistant row
  *   names a terminal one ({@link TERMINAL_STOP_REASONS}). An end is never inferred from silence: a turn that ended any
@@ -770,7 +772,7 @@ interface ReplayTurn {
  */
 export function projectClaudeTranscriptReplayAfter(
   records: readonly ClaudeTranscriptRecord[],
-  cursor: AttachReplayCursor,
+  cursor: AttachReplayCursor | undefined,
 ): { found: boolean; events: SemanticObservationEvent[] } {
   const turns: ReplayTurn[] = [];
   let current: ReplayTurn | undefined;
@@ -789,10 +791,11 @@ export function projectClaudeTranscriptReplayAfter(
     const text = transcriptText(record);
     if (text) current.replies.set(transcriptRecordId(record), { record, text });
   }
-  const at = turns.findIndex((turn) => turn.turnId === cursor.turnId);
-  if (at < 0) return { found: false, events: [] };
+  // With no cursor no turn is the cursor's (`at` is -1), so every turn opens with its start.
+  const at = cursor === undefined ? -1 : turns.findIndex((turn) => turn.turnId === cursor.turnId);
+  if (cursor !== undefined && at < 0) return { found: false, events: [] };
   const events: SemanticObservationEvent[] = [];
-  const from = cursor.turnEnded === true ? at + 1 : at;
+  const from = cursor === undefined ? 0 : cursor.turnEnded === true ? at + 1 : at;
   for (const turn of turns.slice(from)) {
     const { turnId } = turn;
     if (turn !== turns[at]) {
@@ -812,5 +815,5 @@ export function projectClaudeTranscriptReplayAfter(
       events.push(observation(completed, turn.last, { turnId }));
     }
   }
-  return { found: true, events };
+  return { found: cursor !== undefined, events };
 }

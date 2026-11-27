@@ -17,14 +17,16 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   isAgentAttachRefusedError,
   safeParseAgentEvent,
   type AdapterEventCandidate,
+  type AgentAttachRecord,
   type TerminalAutomationOperation,
 } from '@vibefield/puppeteer-core';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
@@ -63,6 +65,54 @@ function configRoot(prefix: string): { configDir: string; transcriptOf(sessionId
       return join(project, `${sessionId}.jsonl`);
     },
   };
+}
+
+/** One assistant row of a Claude transcript: enough for the rail to find the conversation and read it. */
+function transcriptLine(sessionId: string, uuid: string): string {
+  return `${JSON.stringify({
+    parentUuid: null,
+    type: 'assistant',
+    uuid,
+    timestamp: '2026-09-12T00:00:00.000Z',
+    sessionId,
+    cwd: '/tmp',
+    version: '1',
+    gitBranch: 'main',
+    isSidechain: false,
+    userType: 'external',
+    requestId: `request-${uuid}`,
+    message: {
+      id: `msg_${uuid}`,
+      type: 'message',
+      role: 'assistant',
+      model: 'm',
+      content: [{ type: 'text', text: 'x' }],
+      stop_reason: null,
+      usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+    },
+  })}\n`;
+}
+
+/**
+ * Run one command hook as Claude runs it: the handler the launch's settings name for `event`, in the launch's
+ * environment, the hook's document on stdin. Answers the forwarder's exit.
+ */
+function runCommandHook(prepared: PreparedClaudeSession, event: string, document: object): Promise<number> {
+  const settings = JSON.parse(readFileSync(prepared.settingsPath, 'utf8')) as {
+    hooks: Record<string, Array<{ hooks: Array<{ type: string; command?: string; args?: string[] }> }>>;
+  };
+  const handler = settings.hooks[event]![0]!.hooks[0]!;
+  expect(handler.type).toBe('command');
+  return new Promise((resolve, reject) => {
+    const child = spawn(handler.command!, handler.args!, {
+      shell: false,
+      env: { ...process.env, ...prepared.env },
+      stdio: ['pipe', 'ignore', 'ignore'],
+    });
+    child.once('error', reject);
+    child.once('close', (code) => resolve(code ?? 1));
+    child.stdin.end(JSON.stringify(document));
+  });
 }
 
 /** A durable observer that reads nothing and records each transcript the driver attaches it to. */
@@ -1803,6 +1853,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     };
     const prepared = await prepareClaudeTuiSession({
       cwd: '/tmp',
+      configDir: configRoot('driver-own-root-').configDir,
       hookBridgeFactory: () => bridge,
       automate: async () => ({ accepted: true }),
     });
@@ -2546,6 +2597,7 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
       await expect(
         prepareClaudeTuiSession({
           cwd: '/tmp',
+          configDir: configRoot('driver-own-root-').configDir,
           automate: async () => ({ accepted: true }),
           hookBridgeFactory: (options) => (bridge = createHookBridge(options)),
           ingress: {
@@ -2574,6 +2626,7 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     const automations: TerminalAutomationOperation[] = [];
     const launched = await createClaudeSession({
       cwd: '/tmp',
+      configDir: configRoot('driver-own-root-').configDir,
       ingress: { onBound: (value) => void (bound = value) },
       ports: {
         spawn: async (p) => {
@@ -2732,6 +2785,7 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     let prepared: PreparedClaudeSession | undefined;
     const launched = await createClaudeSession({
       cwd: '/tmp',
+      configDir: configRoot('driver-own-root-').configDir,
       ingress: { onBound: (value) => void (bound = value) },
       ports: {
         spawn: async (p) => {
@@ -2848,6 +2902,7 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     let prepared: PreparedClaudeSession | undefined;
     const launched = await createClaudeSession({
       cwd: '/tmp',
+      configDir: configRoot('driver-own-root-').configDir,
       ingress: { onBound: (value) => void (bound = value) },
       ports: {
         spawn: async (p) => {
@@ -2927,11 +2982,441 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     await cleanupClaudeSession(prepared!);
   });
 
+  it('replays a /clear made while no host listened, from the start the forwarder kept, once the attach is heard', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let record: AgentAttachRecord | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const { configDir, transcriptOf } = configRoot('driver-spooled-clear-');
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      configDir,
+      ingress: { onBound: (value) => void (bound = value), onAttachRecord: (value) => void (record = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-spooled-clear' };
+        },
+        automate: async () => ({ accepted: true }),
+      },
+    });
+    const pinned = launched.sessionId;
+    writeFileSync(transcriptOf(pinned), transcriptLine(pinned, 'u-pinned'));
+    await launched.dispose({ release: true });
+    // The host is gone. The person types /clear: Claude runs its SessionStart hook, a command, through the forwarder
+    // the launch staged, and the bridge it posts to is not there.
+    const cleared = '33333333-3333-4333-8333-333333333333';
+    writeFileSync(transcriptOf(cleared), transcriptLine(cleared, 'u-cleared'));
+    await runCommandHook(prepared!, 'SessionStart', {
+      session_id: cleared,
+      transcript_path: transcriptOf(cleared),
+      cwd: '/tmp',
+      hook_event_name: 'SessionStart',
+      source: 'clear',
+    });
+
+    const attached = await attachClaudeTuiSession({
+      sessionId: pinned,
+      runtimeSessionId: 'rt-spooled-clear',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      attachRecord: record,
+      automate: async () => ({ accepted: true }),
+    });
+    sessions.push(attached);
+    // The attach binds under the id its host kept; the rotation is said once something listens.
+    expect(attached.sessionId).toBe(pinned);
+    const projection = projectAgentEvents(attached);
+    await vi.waitFor(() => expect(attached.sessionId).toBe(cleared));
+    const started = projection.envelopes.filter((e) => e.event.type === 'session:started');
+    expect(started).toEqual([
+      expect.objectContaining({
+        nativeSessionId: cleared,
+        source: 'native-hook',
+        replay: true,
+        event: expect.objectContaining({ type: 'session:started', nativeSessionId: cleared, rebind: true }),
+      }),
+    ]);
+    expect(started[0]!.event).toMatchObject({ startSource: 'clear' });
+    // the move starts the context over, as a live /clear does: the monitor's context family is replaced by nothing
+    expect(projection.monitorBatches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          observedAt: started[0]!.timestamp,
+          evidence: [{ namespace: 'claude-native-hook', id: expect.any(String) }],
+          updates: [{ family: 'context', operation: 'replace', values: [], coverage: 'complete' }],
+        }),
+      ]),
+    );
+    await vi.waitFor(() => expect(attached.transcriptPath()).toBe(transcriptOf(cleared)));
+    await cleanupClaudeSession(prepared!);
+  });
+
+  it('tells a fork an attach has not heard of as session:forked, and never takes the pane to it', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const { configDir, transcriptOf } = configRoot('driver-attach-fork-');
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      configDir,
+      ingress: { onBound: (value) => void (bound = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-attach-fork' };
+        },
+        automate: async () => ({ accepted: true }),
+      },
+    });
+    const pinned = launched.sessionId;
+    await launched.dispose({ release: true });
+    // a /branch writes the fork's conversation under the root, as a /clear does
+    const fork = '44444444-4444-4444-8444-444444444444';
+    writeFileSync(transcriptOf(pinned), transcriptLine(pinned, 'u-pinned'));
+    writeFileSync(transcriptOf(fork), transcriptLine(fork, 'u-fork'));
+    const attached = await attachClaudeTuiSession({
+      sessionId: pinned,
+      runtimeSessionId: 'rt-attach-fork',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      automate: async () => ({ accepted: true }),
+    });
+    sessions.push(attached);
+    const projection = projectAgentEvents(attached);
+    const post = (sessionId: string, fields: Record<string, unknown>): Promise<Response> =>
+      fetch(`http://127.0.0.1:${bound!.port}/hooks`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bound!.token}` },
+        body: JSON.stringify({ session_id: sessionId, cwd: '/tmp', ...fields }),
+      });
+    // the attached session has not spoken yet: the fork's start is the first hook under a new id
+    expect(
+      (await post(fork, { hook_event_name: 'SessionStart', source: 'fork', transcript_path: transcriptOf(fork) }))
+        .status,
+    ).toBe(403);
+    // and what the fork posts after it is the fork's own
+    expect((await post(fork, { hook_event_name: 'UserPromptSubmit', prompt: 'in the fork' })).status).toBe(403);
+    expect(attached.sessionId).toBe(pinned);
+    await vi.waitFor(() =>
+      expect(projection.envelopes.filter((e) => e.event.type === 'session:forked')).toEqual([
+        expect.objectContaining({
+          nativeSessionId: pinned,
+          event: { type: 'session:forked', nativeSessionId: fork, startSource: 'fork' },
+        }),
+      ]),
+    );
+    expect(attached.transcriptPath()).toBe(transcriptOf(pinned));
+    // the pane's own session still speaks for the run
+    expect((await post(pinned, { hook_event_name: 'Stop' })).status).toBe(200);
+    await cleanupClaudeSession(prepared!);
+  });
+
+  it('reports its attach record before launch, naming the spool beside its settings; a host that keeps none gets v1', async () => {
+    const records: AgentAttachRecord[] = [];
+    let launchedAt = -1;
+    const session = await prepareClaudeTuiSession({
+      cwd: '/tmp',
+      configDir: configRoot('driver-own-root-').configDir,
+      automate: async () => ({ accepted: true }),
+      ingress: { onAttachRecord: (record) => void records.push(record) },
+    });
+    launchedAt = records.length;
+    try {
+      const { hookSpool, settingsPath } = session.launch;
+      expect(hookSpool).toBe(join(dirname(settingsPath), `${session.sessionId}.hook-spool.jsonl`));
+      expect(records).toEqual([{ version: 1, state: JSON.stringify({ hookSpool }) }]);
+      // reported before the recipe was handed back, so before anything can launch it
+      expect(launchedAt).toBe(1);
+      expect(readFileSync(settingsPath, 'utf8')).toContain('claude.hook.v2');
+    } finally {
+      await session.dispose();
+    }
+    const plain = await prepareClaudeTuiSession({
+      cwd: '/tmp',
+      configDir: configRoot('driver-own-root-').configDir,
+      automate: async () => ({ accepted: true }),
+    });
+    try {
+      expect(plain.launch.hookSpool).toBeUndefined();
+      expect(readFileSync(plain.launch.settingsPath, 'utf8')).not.toContain('claude.hook.v2');
+    } finally {
+      await plain.dispose();
+    }
+  });
+
+  it('replays what the spool kept after the host’s own id, in order: a clear and a resume move, a fork is told once', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let record: AgentAttachRecord | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const { configDir, transcriptOf } = configRoot('driver-spooled-order-');
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      configDir,
+      ingress: { onBound: (value) => void (bound = value), onAttachRecord: (value) => void (record = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-spooled-order' };
+        },
+        automate: async () => ({ accepted: true }),
+      },
+    });
+    const pinned = launched.sessionId;
+    await launched.dispose({ release: true });
+    const ids = {
+      before: '55555555-5555-4555-8555-555555555555',
+      cleared: '66666666-6666-4666-8666-666666666666',
+      forked: '77777777-7777-4777-8777-777777777777',
+      resumed: '88888888-8888-4888-8888-888888888888',
+    };
+    writeFileSync(transcriptOf(ids.resumed), transcriptLine(ids.resumed, 'u-resumed'));
+    const kept = (sessionId: string, source: string, at: string): string =>
+      `${JSON.stringify({ v: 1, at, hook_event_name: 'SessionStart', session_id: sessionId, source, transcript_path: transcriptOf(sessionId) })}\n`;
+    // what the forwarder kept: a start from before the host's own id (it heard that one), then the pane's moves
+    writeFileSync(
+      prepared!.hookSpool!,
+      kept(ids.before, 'clear', '2026-11-27T01:00:00.000Z') +
+        kept(pinned, 'resume', '2026-11-27T01:00:01.000Z') +
+        kept(ids.cleared, 'clear', '2026-11-27T01:00:02.000Z') +
+        kept(ids.cleared, 'compact', '2026-11-27T01:00:03.000Z') +
+        kept(ids.forked, 'fork', '2026-11-27T01:00:04.000Z') +
+        kept(ids.resumed, 'resume', '2026-11-27T01:00:05.000Z'),
+    );
+    const attached = await attachClaudeTuiSession({
+      sessionId: pinned,
+      runtimeSessionId: 'rt-spooled-order',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      attachRecord: record,
+      automate: async () => ({ accepted: true }),
+    });
+    sessions.push(attached);
+    expect(attached.sessionId).toBe(pinned);
+    const projection = projectAgentEvents(attached);
+    const moves = projection.envelopes
+      .filter((e) => e.event.type === 'session:started' || e.event.type === 'session:forked')
+      .map(({ event, nativeSessionId, timestamp, replay }) => ({ event, nativeSessionId, timestamp, replay }));
+    expect(moves).toEqual([
+      {
+        event: expect.objectContaining({ type: 'session:started', nativeSessionId: ids.cleared, rebind: true }),
+        nativeSessionId: ids.cleared,
+        timestamp: '2026-11-27T01:00:02.000Z',
+        replay: true,
+      },
+      {
+        event: { type: 'session:forked', nativeSessionId: ids.forked, startSource: 'fork' },
+        nativeSessionId: ids.cleared,
+        timestamp: '2026-11-27T01:00:04.000Z',
+        replay: true,
+      },
+      {
+        event: expect.objectContaining({ type: 'session:started', nativeSessionId: ids.resumed, rebind: true }),
+        nativeSessionId: ids.resumed,
+        timestamp: '2026-11-27T01:00:05.000Z',
+        replay: true,
+      },
+    ]);
+    expect(attached.sessionId).toBe(ids.resumed);
+    await vi.waitFor(() => expect(attached.transcriptPath()).toBe(transcriptOf(ids.resumed)));
+    // the spool is taken, never deleted; the fork's start heard live as well is not told twice
+    expect(existsSync(prepared!.hookSpool!)).toBe(false);
+    expect(existsSync(`${prepared!.hookSpool!}.1.taken`)).toBe(true);
+    const post = (sessionId: string, fields: Record<string, unknown>): Promise<Response> =>
+      fetch(`http://127.0.0.1:${bound!.port}/hooks`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bound!.token}` },
+        body: JSON.stringify({ session_id: sessionId, cwd: '/tmp', ...fields }),
+      });
+    expect((await post(ids.forked, { hook_event_name: 'SessionStart', source: 'fork' })).status).toBe(403);
+    expect((await post(ids.resumed, { hook_event_name: 'Stop' })).status).toBe(200);
+    await vi.waitFor(() => expect(projection.envelopes.some((e) => e.event.type === 'turn:completed')).toBe(true));
+    expect(projection.envelopes.filter((e) => e.event.type === 'session:forked')).toHaveLength(1);
+    await cleanupClaudeSession(prepared!);
+  });
+
+  it('knows a fork the spool kept from the moment it is taken: the fork’s hooks are refused before anything listens', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let record: AgentAttachRecord | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const { configDir, transcriptOf } = configRoot('driver-spooled-fork-');
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      configDir,
+      ingress: { onBound: (value) => void (bound = value), onAttachRecord: (value) => void (record = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-spooled-fork' };
+        },
+        automate: async () => ({ accepted: true }),
+      },
+    });
+    const pinned = launched.sessionId;
+    await launched.dispose({ release: true });
+    // while no host listened a /branch started a fork, whose conversation is under the root as a /clear's would be
+    const fork = '99999999-9999-4999-8999-999999999999';
+    writeFileSync(transcriptOf(pinned), transcriptLine(pinned, 'u-pinned'));
+    writeFileSync(transcriptOf(fork), transcriptLine(fork, 'u-fork'));
+    writeFileSync(
+      prepared!.hookSpool!,
+      `${JSON.stringify({ v: 1, at: '2026-11-27T02:00:00.000Z', hook_event_name: 'SessionStart', session_id: fork, source: 'fork', transcript_path: transcriptOf(fork) })}\n`,
+    );
+    const attached = await attachClaudeTuiSession({
+      sessionId: pinned,
+      runtimeSessionId: 'rt-spooled-fork',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      attachRecord: record,
+      automate: async () => ({ accepted: true }),
+    });
+    sessions.push(attached);
+    // Nothing has subscribed yet, and the attached id has not spoken: the fork's first hook is not taken for a /clear
+    // made while no host listened.
+    const post = (sessionId: string, fields: Record<string, unknown>): Promise<Response> =>
+      fetch(`http://127.0.0.1:${bound!.port}/hooks`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bound!.token}` },
+        body: JSON.stringify({ session_id: sessionId, cwd: '/tmp', ...fields }),
+      });
+    expect((await post(fork, { hook_event_name: 'UserPromptSubmit', prompt: 'in the fork' })).status).toBe(403);
+    expect(attached.sessionId).toBe(pinned);
+    // the fork is told once something listens, and the pane stays on its own conversation
+    const projection = projectAgentEvents(attached);
+    await vi.waitFor(() =>
+      expect(projection.envelopes.filter((e) => e.event.type === 'session:forked')).toEqual([
+        expect.objectContaining({
+          nativeSessionId: pinned,
+          replay: true,
+          event: { type: 'session:forked', nativeSessionId: fork, startSource: 'fork' },
+        }),
+      ]),
+    );
+    await vi.waitFor(() => expect(attached.transcriptPath()).toBe(transcriptOf(pinned)));
+    expect((await post(pinned, { hook_event_name: 'Stop' })).status).toBe(200);
+    await cleanupClaudeSession(prepared!);
+  });
+
+  it('reads a pane the spool moved from its first turn, and says the host’s cursor, a turn of the session it left, is not there', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let record: AgentAttachRecord | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const { configDir, transcriptOf } = configRoot('driver-spooled-cursor-');
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      configDir,
+      ingress: { onBound: (value) => void (bound = value), onAttachRecord: (value) => void (record = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-spooled-cursor' };
+        },
+        automate: async () => ({ accepted: true }),
+      },
+    });
+    const pinned = launched.sessionId;
+    writeFileSync(transcriptOf(pinned), transcriptLine(pinned, 'u-pinned'));
+    await launched.dispose({ release: true });
+    // While no host listened the person cleared, then ran one turn in the new conversation.
+    const cleared = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const row = (fields: Record<string, unknown>): string =>
+      `${JSON.stringify({ isSidechain: false, sessionId: cleared, cwd: '/tmp', timestamp: '2026-11-27T03:00:00.000Z', ...fields })}\n`;
+    writeFileSync(
+      transcriptOf(cleared),
+      row({
+        type: 'user',
+        uuid: 'u-new',
+        parentUuid: null,
+        promptId: 'pid-new',
+        turnOrigin: 'human',
+        message: { role: 'user', content: 'after the clear' },
+      }) +
+        row({
+          type: 'assistant',
+          uuid: 'a-new',
+          parentUuid: 'u-new',
+          message: { role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text: 'done' }] },
+        }),
+    );
+    writeFileSync(
+      prepared!.hookSpool!,
+      `${JSON.stringify({ v: 1, at: '2026-11-27T02:59:00.000Z', hook_event_name: 'SessionStart', session_id: cleared, source: 'clear', transcript_path: transcriptOf(cleared) })}\n`,
+    );
+    const attached = await attachClaudeTuiSession({
+      sessionId: pinned,
+      runtimeSessionId: 'rt-spooled-cursor',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      attachRecord: record,
+      // where the host's own record stops: a turn of the conversation the pane left
+      replayAfter: { turnId: 'pid-before-the-clear', turnEnded: true },
+      automate: async () => ({ accepted: true }),
+    });
+    sessions.push(attached);
+    const projection = projectAgentEvents(attached);
+    await expect(attached.replayedAfter!()).resolves.toBe(false);
+    expect(attached.sessionId).toBe(cleared);
+    // the conversation the pane moved to is replayed from its first turn, under its own id
+    const turns = projection.envelopes
+      .filter(({ event }) => event.type === 'turn:started' || event.type === 'turn:completed')
+      .map(({ event, nativeSessionId, replay }) => ({ event, nativeSessionId, replay }));
+    expect(turns).toEqual([
+      {
+        event: expect.objectContaining({ type: 'turn:started', turnId: 'pid-new', prompt: 'after the clear' }),
+        nativeSessionId: cleared,
+        replay: true,
+      },
+      {
+        event: expect.objectContaining({ type: 'turn:completed', turnId: 'pid-new', lastAssistantMessage: 'done' }),
+        nativeSessionId: cleared,
+        replay: true,
+      },
+    ]);
+    await cleanupClaudeSession(prepared!);
+  });
+
+  it('refuses an attach record it cannot read, before it binds anything, and reads no spool as the attach of old', async () => {
+    let started = false;
+    const bridgeFactory = (options: Parameters<typeof createHookBridge>[0]): HookBridge => {
+      const bridge = createHookBridge(options);
+      return {
+        ...bridge,
+        start: () => {
+          started = true;
+          return bridge.start();
+        },
+      };
+    };
+    const base = {
+      sessionId: '00000000-0000-4000-8000-00000000abcf',
+      runtimeSessionId: 'rt-record',
+      cwd: '/tmp',
+      ingress: { port: 1, token: 'pinned-bearer-value' },
+      hookBridgeFactory: bridgeFactory,
+      automate: async () => ({ accepted: true as const }),
+    };
+    for (const attachRecord of [
+      { version: 2, state: JSON.stringify({ hookSpool: '/tmp/x.hook-spool.jsonl' }) },
+      { version: 1, state: 'not json' },
+      { version: 1, state: JSON.stringify({ hookSpool: 'relative.hook-spool.jsonl' }) },
+      { version: 1, state: JSON.stringify({}) },
+    ]) {
+      const refused = await attachClaudeTuiSession({ ...base, attachRecord }).catch((error: unknown) => error);
+      expect(isAgentAttachRefusedError(refused), attachRecord.state).toBe(true);
+      expect(refused).toMatchObject({ next: 'native-log' });
+    }
+    expect(started).toBe(false);
+  });
+
   it('is never provisional for an attach: it binds under the id the running process announced', async () => {
     let bound: { port: number; token: string } | undefined;
     let prepared: PreparedClaudeSession | undefined;
     const launched = await createClaudeSession({
       cwd: '/tmp',
+      configDir: configRoot('driver-own-root-').configDir,
       ingress: { onBound: (value) => void (bound = value) },
       ports: {
         spawn: async (p) => {
@@ -3045,6 +3530,7 @@ it.each([false, true])(
     try {
       const creating = createClaudeSession({
         cwd: '/tmp',
+        configDir: configRoot('driver-own-root-').configDir,
         mcpServers: { field: { command: 'door', env: { TOKEN: 'secret' } } },
         allowTools: ['field/*'],
         instructions: 'role briefing',

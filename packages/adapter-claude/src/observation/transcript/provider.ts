@@ -74,10 +74,13 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
     let activePoll: Promise<void> | undefined;
     let pendingPoll: Promise<void> | undefined;
     const transcriptReader = createClaudeTranscriptReader(request.transcriptPath);
-    // An attach given a cursor says, once its first read has replayed what follows it, whether it found the cursor.
+    // An attach given a cursor says, once its first read has replayed what follows it, whether it found the cursor. A
+    // record the pane moved to while no host listened is replayed whole: the cursor names a turn of another one.
     let settleReplay: ((replayed: boolean) => void) | undefined;
+    const replayWhole = request.attached === true && request.replayWhole === true;
+    const replayCursor = replayWhole ? undefined : request.replayAfter;
     const replayedAfter =
-      request.attached === true && request.replayAfter !== undefined
+      request.attached === true && (replayWhole || replayCursor !== undefined)
         ? new Promise<boolean>((resolve) => {
             settleReplay = resolve;
           })
@@ -129,8 +132,8 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
         let open = projectClaudeTranscriptOpenWork(rows);
         // What followed the host's cursor comes first, as replay. A turn still open that the replay starts is started
         // there, before its replies, as open at attach; the open work then does not start it again.
-        if (request.replayAfter !== undefined) {
-          const replayed = projectClaudeTranscriptReplayAfter(rows, request.replayAfter);
+        if (replayWhole || replayCursor !== undefined) {
+          const replayed = projectClaudeTranscriptReplayAfter(rows, replayCursor);
           const opening = new Set(
             open.flatMap(({ event }) => (event.type === 'turn:started' && event.turnId ? [event.turnId] : [])),
           );

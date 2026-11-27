@@ -18,6 +18,7 @@ import {
   ClaudeHooksOffError,
   cleanupClaudeSession,
   hasClaudeOtelExporterConflict,
+  locateClaudeTranscript,
   prepareClaudeSession,
   statusLineForwarderCommand,
   type PreparedClaudeSession,
@@ -186,6 +187,50 @@ describe('prepareClaudeSession', () => {
       expect(received).toEqual([JSON.parse(payload)]);
     } finally {
       await bridge.dispose();
+    }
+  });
+
+  it('keeps a start no bridge took in a spool beside the settings, when asked, and cleans it with the launch', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'prepare-spool-'));
+    try {
+      // nothing listens on port 1: the bridge is down, as it is while its host is
+      const p = await prepare({ settingsDir: dir, endpoint: 'http://127.0.0.1:1/hooks', hookSpool: true });
+      const hookSpool = join(dir, `${p.sessionId}.hook-spool.jsonl`);
+      expect(p.hookSpool).toBe(hookSpool);
+      expect(p.filesToCleanup).toContain(hookSpool);
+      // written only when a start reaches no bridge
+      expect(existsSync(hookSpool)).toBe(false);
+      const settings = JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
+        hooks: Record<string, Array<{ hooks: Array<{ type: string; command: string; args: string[] }> }>>;
+      };
+      const handler = settings.hooks.SessionStart![0]!.hooks[0]!;
+      expect(handler.args.slice(-5)).toEqual([
+        'claude.hook.v2',
+        'http://127.0.0.1:1/hooks',
+        BASE.tokenEnvVar,
+        String(getHookSpec('SessionStart')!.timeoutSec * 1000),
+        hookSpool,
+      ]);
+      const start = {
+        session_id: 'after-clear',
+        transcript_path: '/workspace/after-clear.jsonl',
+        cwd: '/workspace',
+        hook_event_name: 'SessionStart',
+        source: 'clear',
+      };
+      await expect(runExecutable(handler.command, handler.args, JSON.stringify(start), p.env)).rejects.toThrow();
+      const kept = JSON.parse(readFileSync(hookSpool, 'utf8')) as Record<string, unknown>;
+      expect(kept).toMatchObject({ v: 1, hook_event_name: 'SessionStart', session_id: 'after-clear', source: 'clear' });
+      expect(readFileSync(hookSpool, 'utf8')).not.toContain(BASE.token);
+      await cleanupClaudeSession(p);
+      expect(existsSync(hookSpool)).toBe(false);
+      // without the ask, the hooks keep the word that keeps nothing
+      const plain = await prepare({ settingsDir: dir });
+      expect(plain.hookSpool).toBeUndefined();
+      expect(readFileSync(plain.settingsPath, 'utf8')).not.toContain('hook-spool');
+      expect(readFileSync(plain.settingsPath, 'utf8')).toContain('claude.hook.v1');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 
@@ -515,6 +560,21 @@ describe('prepareClaudeSession', () => {
     const imposterRoot = conversationRoot(resumeId);
     const p = await prepare({ resume: resumeId, env: { PUPPETEER_IMPOSTER_HOME: imposterRoot } });
     expect(p.args).toContain('--resume');
+  });
+
+  it('finds a conversation by an id that is a bare name, and never by an id that names a path', () => {
+    const id = '64a61b19-f4d8-4f96-ba56-07024b470816';
+    const root = conversationRoot(id);
+    try {
+      expect(locateClaudeTranscript(id, root)).toBe(join(root, 'projects', '-work-repo', `${id}.jsonl`));
+      // a file beside the projects folder, named as a conversation is: what a hook's or a spool's id must never reach
+      writeFileSync(join(root, 'outside.jsonl'), '');
+      for (const sessionId of ['../../outside', `../-work-repo/${id}`, '..\\..\\outside', '..']) {
+        expect(locateClaudeTranscript(sessionId, root), sessionId).toBeUndefined();
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('finds a resume under the launch environment’s CLAUDE_CONFIG_DIR, the root an attach reads', async () => {

@@ -12,8 +12,9 @@
  *
  * Transport split follows the hybrid bridge (DESIGN §16.4): http events POST
  * straight to the loopback bridge; command-only events run the forwarder
- * (launch/forwarder.ts, its `claude.hook.v1` word) in Claude's exec form, which
- * relays stdin JSON to the same bridge on every platform.
+ * (launch/forwarder.ts, its `claude.hook.v1` word, or `claude.hook.v2` with a
+ * spool) in Claude's exec form, which relays stdin JSON to the same bridge on
+ * every platform.
  *
  * SECURITY (DESIGN §16.5, §23): settings land on disk, so the token VALUE is
  * never written here. Only the `$<VAR>` reference goes in, resolved at hook
@@ -22,7 +23,7 @@
 
 import { defaultHookEvents, supportedHookEvents, type HookEventSpec } from '../generated/registry.js';
 import type { ClaudeStatusLineConfig } from '../observation/status-channel.js';
-import { CLAUDE_HOOK_FORWARDER_WORD } from './forwarder.js';
+import { CLAUDE_HOOK_FORWARDER_WORD, CLAUDE_HOOK_SPOOL_FORWARDER_WORD } from './forwarder.js';
 
 export interface HttpHookHandler {
   type: 'http';
@@ -64,6 +65,11 @@ export interface GenerateHookSettingsOptions {
    * runtime, or this process's script runner and the staged forwarder's path.
    */
   forwarder: { command: string; args: readonly string[] };
+  /**
+   * Where the command hooks keep a `SessionStart` no bridge was there for (an absolute path): they then run the
+   * forwarder's `claude.hook.v2` word with it. Absent = `claude.hook.v1`, which keeps nothing.
+   */
+  hookSpool?: string | undefined;
   /** Native matcher values. A FileChanged matcher also opts that event in. */
   matchers?: Readonly<Record<string, string>> | undefined;
   /**
@@ -92,10 +98,11 @@ function handlerFor(spec: HookEventSpec, options: GenerateHookSettingsOptions): 
     command: options.forwarder.command,
     args: [
       ...options.forwarder.args,
-      CLAUDE_HOOK_FORWARDER_WORD,
+      options.hookSpool === undefined ? CLAUDE_HOOK_FORWARDER_WORD : CLAUDE_HOOK_SPOOL_FORWARDER_WORD,
       options.endpoint,
       options.tokenEnvVar,
       String(spec.timeoutSec * 1000),
+      ...(options.hookSpool === undefined ? [] : [options.hookSpool]),
     ],
     timeout: spec.timeoutSec,
   };
