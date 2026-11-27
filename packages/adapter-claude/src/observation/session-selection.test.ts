@@ -182,6 +182,31 @@ describe('createClaudeSessionSelection: a native picker chooses after launch', (
     ]);
   });
 
+  it('says the choice holds only once the chosen session runs a hook or rotates; a launch and an attach hold at once', () => {
+    const holds = (selection: ClaudeSessionSelection, requests: readonly Request[]) =>
+      requests.map((request) => {
+        verdicts(selection, [request]);
+        return selection.held();
+      });
+    const picker = launch({ selected: undefined, resumeInvocation: true });
+    expect(picker.held()).toBe(false);
+    expect(
+      holds(picker, [
+        [B, 'SessionStart', { source: 'startup' }],
+        [B, 'InstructionsLoaded', { load_reason: 'session_start' }],
+        [X, 'SessionStart'],
+        [X, 'statusline'],
+        [Y, 'SessionStart', { source: 'resume' }],
+        [Y, 'UserPromptSubmit'],
+        [X, 'SessionStart', { source: 'resume' }],
+      ]),
+    ).toEqual([false, false, false, false, false, true, true]);
+    const rotated = launch({ selected: undefined, resumeInvocation: true });
+    expect(holds(rotated, [[Z, 'SessionStart', { source: 'clear' }]])).toEqual([true]);
+    expect(launch().held()).toBe(true);
+    expect(createClaudeSessionSelection({ mode: 'attach', selected: X, root: ROOT }).held()).toBe(true);
+  });
+
   it('follows /clear and an armed /resume once the choice holds', () => {
     expect(
       verdicts(launch({ selected: undefined, resumeInvocation: true }), [

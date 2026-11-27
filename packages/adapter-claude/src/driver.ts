@@ -39,6 +39,7 @@ import {
   type AgentBriefingWithheld,
   type AgentRunBriefing,
   pickAgentBriefing,
+  SessionForkedEventSchema,
   settleAgentBriefing,
   withAgentBriefing,
   withholdUntilAccepted,
@@ -704,12 +705,38 @@ function createClaudeObservation(
 
   bridge.onUnavailable(reportHookRailUnavailable);
 
-  // A hook the selection refused is said, once per session: a background copy (`/fork`) or a stranger posting to
-  // this bridge is seen, never followed (session-selection.ts). So is a transcript path it would not follow.
+  // A hook the selection refused is said, once per session: a stranger posting to this bridge is seen, never followed
+  // (session-selection.ts). So is a transcript path it would not follow.
   const refusedSessions = new Set<string>();
   const refusedTranscripts = new Set<string>();
+  // A fork's start is said apart, once per fork and by a count of its own, as `session:forked`: the fork's own id in
+  // the payload, the envelope still naming the session this run observes. `/branch`, `--fork-session` and the `/fork`
+  // background copy share the start's source, so the run is never moved to the fork. Any holder of the run's bearer
+  // can post such a start under any id, as it can post the `clear` start that does move the observer: saying the id
+  // gives it nothing it did not have. What a fork posts after its start is its own and says nothing more.
+  const forkedSessions = new Set<string>();
   selection.onRefused((refusal) => {
-    if (disposed || !firstSighting(refusedSessions, refusal.sessionId, MAX_REFUSALS_TOLD)) return;
+    if (disposed) return;
+    const forked =
+      refusal.hookEventName === 'SessionStart' && refusal.source === 'fork'
+        ? SessionForkedEventSchema.safeParse({
+            type: 'session:forked',
+            nativeSessionId: refusal.sessionId,
+            startSource: 'fork',
+          })
+        : undefined;
+    if (forked?.success) {
+      if (!firstSighting(forkedSessions, refusal.sessionId, MAX_REFUSALS_TOLD)) return;
+      apply(forked.data, {
+        source: 'native-hook',
+        timestamp: new Date().toISOString(),
+        providerVersion: options.providerVersion,
+        confidence: 'authoritative',
+      });
+      return;
+    }
+    if (forkedSessions.has(refusal.sessionId)) return;
+    if (!firstSighting(refusedSessions, refusal.sessionId, MAX_REFUSALS_TOLD)) return;
     apply(
       { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'hook-bridge.session-refused' },
       {
@@ -1189,6 +1216,10 @@ function createClaudeObservation(
         get sessionId() {
           return nativeSessionId();
         },
+        // A launch through Claude's own picker runs under the id this adapter minted, then under each conversation the
+        // picker starts, until the chosen session runs a hook of its own (session-selection.ts): a start alone may be
+        // a preview the person never chose. A launch that names its session and an attach hold from the start.
+        nativeSessionProvisional: () => !selection.held(),
         runtimeSessionId,
         observationLevel: () => observation,
         transcriptPath: () => transcriptPath,
