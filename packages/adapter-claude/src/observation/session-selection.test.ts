@@ -293,6 +293,61 @@ describe('createClaudeSessionSelection: an attach follows the running process', 
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('never takes a fork for a /clear it did not hear: the start is refused, and so is what the fork posts after it', () => {
+    // A `/branch` or a background `/fork` writes the fork's conversation under the root, as a /clear does.
+    const root = rootWith(X, Y);
+    try {
+      const selection = createClaudeSessionSelection({ mode: 'attach', selected: X, root });
+      const refused: ClaudeSessionRefusal[] = [];
+      const located: string[] = [];
+      selection.onRefused((refusal) => refused.push(refusal));
+      selection.onUnheardRotation((transcript) => located.push(transcript));
+      expect(
+        verdicts(selection, [
+          [Y, 'SessionStart', { source: 'fork' }],
+          [Y, 'UserPromptSubmit'],
+          [X, 'Stop'],
+        ]),
+      ).toEqual([
+        [false, X],
+        [false, X],
+        [true, X],
+      ]);
+      expect(refused).toEqual([
+        { sessionId: Y, hookEventName: 'SessionStart', source: 'fork' },
+        { sessionId: Y, hookEventName: 'UserPromptSubmit', source: undefined },
+      ]);
+      expect(located).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('restores a rotation the host did not hear, and keeps a fork it was told of from being followed', () => {
+    const root = rootWith(X, Y, Z);
+    try {
+      const selection = createClaudeSessionSelection({ mode: 'attach', selected: X, root });
+      // the starts the forwarder kept while no bridge listened, replayed at the attach: a /clear to Y, a fork Z
+      selection.restore(Y);
+      selection.forked(Z);
+      expect(selection.selected()).toBe(Y);
+      expect(selection.held()).toBe(true);
+      expect(
+        verdicts(selection, [
+          [Z, 'UserPromptSubmit'],
+          [X, 'Stop'],
+          [Y, 'UserPromptSubmit'],
+        ]),
+      ).toEqual([
+        [false, Y],
+        [false, Y],
+        [true, Y],
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('createClaudeSessionSelection: the transcript the rail may follow', () => {

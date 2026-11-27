@@ -135,6 +135,12 @@ export interface PrepareClaudeSessionOptions extends AgentRunBriefing {
    * Injectable, as `hookBridgeFactory` is, for tests.
    */
   scriptRunner?: ScriptRunner | null | undefined;
+  /**
+   * Keep each `SessionStart` the bridge could not be reached for in a spool beside the settings, for an attach to read
+   * back (observation/hook-spool.ts): the command hooks then run the forwarder's `claude.hook.v2` word. For a host that
+   * keeps an attach record, which is how an attach finds the spool. Absent = `claude.hook.v1`, and no spool.
+   */
+  hookSpool?: boolean | undefined;
 }
 
 /** DESIGN §11 PreparedNativeSession, narrowed to what this adapter fills. */
@@ -147,6 +153,8 @@ export interface PreparedClaudeSession {
   settingsPath: string;
   /** The staged forwarder the hooks and status lines run; absent when the host lends a forwarder runtime. */
   forwarderPath?: string | undefined;
+  /** Where the command hooks keep a start no bridge took ({@link PrepareClaudeSessionOptions.hookSpool}). */
+  hookSpool?: string | undefined;
   filesToCleanup: string[];
   /** What of the briefing went unapplied under `briefingRefusal: 'withhold'`. */
   briefingWithheld?: readonly AgentBriefingWithheld[] | undefined;
@@ -349,6 +357,9 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   try {
     const settingsPath = join(dir, `${sessionId}.settings.json`);
     const forwarderPath = stagesForwarder ? join(dir, `${sessionId}.forwarder.mjs`) : undefined;
+    // Only the forwarder writes it, and only when a start reaches no bridge: a launch whose bridge never went away
+    // leaves no spool on disk.
+    const hookSpool = options.hookSpool === true ? join(dir, `${sessionId}.hook-spool.jsonl`) : undefined;
     // What every hook and status line runs; its word and the word's arguments follow.
     const forwarderCommand = {
       command: forwarder.command,
@@ -407,6 +418,7 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
         endpoint: options.endpoint,
         tokenEnvVar: options.tokenEnvVar,
         forwarder: forwarderCommand,
+        ...(hookSpool === undefined ? {} : { hookSpool }),
         ...(options.fileChangeMatcher !== undefined ? { matchers: { FileChanged: options.fileChangeMatcher } } : {}),
         statusLine,
         subagentStatusLine,
@@ -482,9 +494,11 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
       },
       settingsPath,
       forwarderPath,
+      ...(hookSpool === undefined ? {} : { hookSpool }),
       filesToCleanup: [
         settingsPath,
         ...(forwarderPath === undefined ? [] : [forwarderPath]),
+        ...(hookSpool === undefined ? [] : [hookSpool]),
         ...briefingFiles,
         ...(ownsDir ? [dir] : []),
       ],

@@ -128,6 +128,32 @@ describe('generateHookSettings', () => {
     }
   });
 
+  it('names the spooling word and the spool on every command hook when given one, and leaves the http hooks as they were', () => {
+    const hookSpool = '/tmp/puppeteer launch.hook-spool.jsonl';
+    const plain = generateHookSettings(OPTS);
+    const spooled = generateHookSettings({ ...OPTS, hookSpool });
+    let commands = 0;
+    for (const spec of defaultHookEvents()) {
+      const handler = spooled.hooks[spec.event]![0]!.hooks[0]!;
+      if (handler.type === 'http') {
+        expect(handler, spec.event).toEqual(plain.hooks[spec.event]![0]!.hooks[0]);
+        continue;
+      }
+      commands += 1;
+      expect(handler.args, spec.event).toEqual([
+        ...OPTS.forwarder.args,
+        'claude.hook.v2',
+        OPTS.endpoint,
+        OPTS.tokenEnvVar,
+        String(spec.timeoutSec * 1000),
+        hookSpool,
+      ]);
+    }
+    // SessionStart is one of them: the start a /clear sends is a command hook
+    expect(spooled.hooks.SessionStart![0]!.hooks[0]!.type).toBe('command');
+    expect(commands).toBeGreaterThan(0);
+  });
+
   it('runs a host’s lent forwarder runtime as given: its arguments, then the word, and no staged path', () => {
     const forwarder = { command: '/opt/Host/host-executable', args: ['--host-role=agent-forwarder'] };
     const handler = generateHookSettings({ ...OPTS, forwarder }).hooks.SessionStart![0]!.hooks[0]!;

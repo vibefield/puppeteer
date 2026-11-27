@@ -23,8 +23,10 @@ import { type ClaudeLaunchPreflight, preflightClaudeLaunch } from './detection.j
  */
 
 import { randomUUID } from 'node:crypto';
+import { isAbsolute } from 'node:path';
 import {
   AgentAttachRefusedError,
+  type AgentAttachRecord,
   type AgentEvent,
   type AgentEventConfidence,
   type AgentAdapterBinding,
@@ -63,6 +65,7 @@ import {
 } from './launch/prepare.js';
 import { claudeConfigRoot } from './launch/config-root.js';
 import { createClaudeSessionSelection, type ClaudeSessionSelection } from './observation/session-selection.js';
+import { takeClaudeHookSpool, type ClaudeSpooledStart } from './observation/hook-spool.js';
 import { createPromptInjector, type PromptInjector } from './services/prompt.js';
 import { createClaudeModelSwitch } from './services/model-switch.js';
 import { createClaudeTurnStop } from './services/turn-stop.js';
@@ -296,6 +299,54 @@ export interface AttachClaudeTuiSessionOptions extends Pick<
    * session's `replayedAfter()` says whether it found it, or refuses when there was no transcript to read.
    */
   replayAfter?: AttachReplayCursor | undefined;
+  /**
+   * The attach record the launch reported (version 1), as the host kept it: it names the spool of the starts no bridge
+   * took while the host was away, which this attach replays. Absent (a host that keeps none, a launch made before the
+   * record existed) = the attach of old, which replays no start. Another version refuses, with `native-log`.
+   */
+  attachRecord?: AgentAttachRecord | undefined;
+}
+
+/**
+ * The attach record a Claude launch reports through `HostIngress.onAttachRecord` before it starts: version 1,
+ * `state` `{"hookSpool":"<abs path>"}`, no `secret` (the spool holds no bearer). The host keeps it and never reads it.
+ */
+const CLAUDE_ATTACH_RECORD_VERSION = 1;
+
+function claudeAttachRecord(hookSpool: string): AgentAttachRecord {
+  return { version: CLAUDE_ATTACH_RECORD_VERSION, state: JSON.stringify({ hookSpool }) };
+}
+
+/** The spool an attach record names; a record this build cannot read refuses the attach and never guesses. */
+function hookSpoolOf(record: AgentAttachRecord): string {
+  if (record.version !== CLAUDE_ATTACH_RECORD_VERSION) {
+    throw new AgentAttachRefusedError(
+      'native-log',
+      `this Claude session's attach record is version ${String(record.version)}, which this build cannot read`,
+    );
+  }
+  let hookSpool: unknown;
+  try {
+    hookSpool = (JSON.parse(record.state) as { hookSpool?: unknown } | null)?.hookSpool;
+  } catch {
+    hookSpool = undefined;
+  }
+  if (typeof hookSpool !== 'string' || !isAbsolute(hookSpool)) {
+    throw new AgentAttachRefusedError('native-log', "this Claude session's attach record names no spool");
+  }
+  return hookSpool;
+}
+
+/**
+ * What an attach replays of the starts its spool kept: those after the last one under the id the host attaches by
+ * (the host heard that one, or learned it since), in the order they ran.
+ */
+function startsToReplay(starts: readonly ClaudeSpooledStart[], sessionId: string): ClaudeSpooledStart[] {
+  let after = 0;
+  starts.forEach((start, index) => {
+    if (start.sessionId === sessionId) after = index + 1;
+  });
+  return starts.slice(after);
 }
 
 /**
@@ -377,6 +428,9 @@ export async function prepareClaudeTuiSession(
       refuseHooksOff: options.refuseHooksOff,
       forwarderRuntime: options.forwarderRuntime,
       settingsDir: options.stagingDir,
+      // A host that keeps an attach record can hand the spool back to its attach; for any other it would hold starts
+      // nobody reads.
+      hookSpool: options.ingress?.onAttachRecord !== undefined,
       briefingRefusal: refusal,
       endpoint: bridge.endpoint(),
       ...(otelUsageEnabled ? { otelLogsEndpoint: bridge.otelLogsEndpoint() } : {}),
@@ -389,6 +443,8 @@ export async function prepareClaudeTuiSession(
     });
 
     try {
+      // Before the process can run a hook: the host keeps the record beside the session for its next attach.
+      if (prepared.hookSpool !== undefined) options.ingress?.onAttachRecord?.(claudeAttachRecord(prepared.hookSpool));
       const observation = createClaudeObservation(
         options,
         bridge,
@@ -474,10 +530,17 @@ interface ClaudeObservation {
   noTranscript(): void;
 }
 
+/** The starts an attach replays (hook-spool.ts), and the config root their transcripts are under. */
+interface ClaudeSpooledReplay {
+  starts: readonly ClaudeSpooledStart[];
+  root: string;
+}
+
 function createClaudeObservation(
   options: PrepareClaudeTuiSessionOptions & {
     attached?: boolean | undefined;
     replayAfter?: AttachReplayCursor | undefined;
+    spooled?: ClaudeSpooledReplay | undefined;
   },
   bridge: HookBridge,
   bound: ClaudeBoundIdentity,
@@ -709,30 +772,38 @@ function createClaudeObservation(
   // (session-selection.ts). So is a transcript path it would not follow.
   const refusedSessions = new Set<string>();
   const refusedTranscripts = new Set<string>();
-  // A fork's start is said apart, once per fork and by a count of its own, as `session:forked`: the fork's own id in
-  // the payload, the envelope still naming the session this run observes. `/branch`, `--fork-session` and the `/fork`
+  // A fork's start is said apart, once per fork and by a set of its own, as `session:forked`: the fork's own id in the
+  // payload, the envelope still naming the session this run observes. `/branch`, `--fork-session` and the `/fork`
   // background copy share the start's source, so the run is never moved to the fork. Any holder of the run's bearer
   // can post such a start under any id, as it can post the `clear` start that does move the observer: saying the id
-  // gives it nothing it did not have. What a fork posts after its start is its own and says nothing more.
+  // gives it nothing it did not have. What a fork posts after its start is its own and says nothing more. A fork the
+  // spool kept and the bridge then heard as well is said once.
   const forkedSessions = new Set<string>();
+  /** Say a fork's start, once per fork; false when `sessionId` is no id the event can carry. */
+  function tellFork(sessionId: string, timestamp: string, replay: boolean): boolean {
+    const forked = SessionForkedEventSchema.safeParse({
+      type: 'session:forked',
+      nativeSessionId: sessionId,
+      startSource: 'fork',
+    });
+    if (!forked.success) return false;
+    if (!firstSighting(forkedSessions, sessionId, MAX_REFUSALS_TOLD)) return true;
+    apply(forked.data, {
+      source: 'native-hook',
+      timestamp,
+      providerVersion: options.providerVersion,
+      confidence: 'authoritative',
+      ...(replay ? { replay: true } : {}),
+    });
+    return true;
+  }
   selection.onRefused((refusal) => {
     if (disposed) return;
-    const forked =
-      refusal.hookEventName === 'SessionStart' && refusal.source === 'fork'
-        ? SessionForkedEventSchema.safeParse({
-            type: 'session:forked',
-            nativeSessionId: refusal.sessionId,
-            startSource: 'fork',
-          })
-        : undefined;
-    if (forked?.success) {
-      if (!firstSighting(forkedSessions, refusal.sessionId, MAX_REFUSALS_TOLD)) return;
-      apply(forked.data, {
-        source: 'native-hook',
-        timestamp: new Date().toISOString(),
-        providerVersion: options.providerVersion,
-        confidence: 'authoritative',
-      });
+    if (
+      refusal.hookEventName === 'SessionStart' &&
+      refusal.source === 'fork' &&
+      tellFork(refusal.sessionId, new Date().toISOString(), false)
+    ) {
       return;
     }
     if (forkedSessions.has(refusal.sessionId)) return;
@@ -999,6 +1070,56 @@ function createClaudeObservation(
     else pendingTranscript = path;
   }
 
+  /**
+   * The starts the spool kept while no host listened, said at the first subscription, after the runtime has checked
+   * the attach under the id its host kept, and before the transcript is read: a `/clear` or `/resume` moves the
+   * observer as it would have live (`session:started` with `rebind`, marked `replay`, at the time it ran), a `fork` is
+   * said as `session:forked`. A `startup` or `compact` start names the session it was under, and moves nothing. The
+   * transcript read is then the last move's, and none when it cannot be found: the record's own would be read under the
+   * new id.
+   */
+  let spooled = options.spooled;
+  function replaySpooled(): void {
+    const replay = spooled;
+    spooled = undefined;
+    if (replay === undefined || disposed) return;
+    let moved: ClaudeSpooledStart | undefined;
+    for (const start of replay.starts) {
+      if (start.source === 'fork') {
+        selection.forked(start.sessionId);
+        tellFork(start.sessionId, start.at, true);
+        continue;
+      }
+      if (start.source !== 'clear' && start.source !== 'resume') continue;
+      selection.restore(start.sessionId);
+      moved = start;
+      const body: ClaudeHookPayload = {
+        hook_event_name: 'SessionStart',
+        session_id: start.sessionId,
+        source: start.source,
+        ...(start.transcriptPath === undefined ? {} : { transcript_path: start.transcriptPath }),
+      };
+      const normalized = normalizer.normalize(body, { rebind: true });
+      monitorEvidence.observeNativeSession(start.sessionId);
+      for (const event of normalized.events) {
+        apply(event, {
+          source: 'native-hook',
+          timestamp: start.at,
+          providerVersion: options.providerVersion,
+          confidence: 'authoritative',
+          native: body,
+          replay: true,
+        });
+      }
+    }
+    if (moved === undefined) return;
+    const transcript =
+      (moved.transcriptPath === undefined ? undefined : selection.transcriptFor(moved.transcriptPath)) ??
+      locateClaudeTranscript(moved.sessionId, replay.root);
+    pendingTranscript = transcript;
+    if (transcript === undefined) noTranscript();
+  }
+
   function pollSemantic(hint?: SemanticObservationPollHint): void {
     void semanticAttachment
       ?.then((handle) => handle?.poll(hint))
@@ -1232,6 +1353,7 @@ function createClaudeObservation(
             // else, and its next hook or status line says what it is
             if (!options.attached) publishConfiguredIntent();
             void publishCapabilities();
+            replaySpooled();
             if (pendingTranscript !== undefined) {
               const path = pendingTranscript;
               pendingTranscript = undefined;
@@ -1289,8 +1411,11 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
   }
   const { otelUsageEnabled, otelUsageUnavailableReason, otelUsageVerified } = otelUsagePolicy(options);
   const root = claudeConfigRoot(options);
+  // Read before anything is bound: a record this build cannot read refuses the attach.
+  const hookSpool = options.attachRecord === undefined ? undefined : hookSpoolOf(options.attachRecord);
   // The attached id holds until a rotation is heard; a /clear typed while no host listened is the first hook under a
-  // new id with a conversation under the root, before the attached id speaks (session-selection.ts).
+  // new id with a conversation under the root, before the attached id speaks (session-selection.ts), unless the
+  // spool says where the pane went.
   const selection = createClaudeSessionSelection({ mode: 'attach', selected: options.sessionId, root });
   const bridge: HookBridge = (options.hookBridgeFactory ?? createHookBridge)({
     port: options.ingress.port,
@@ -1313,10 +1438,19 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
     throw error;
   }
   try {
+    // Taken once the bridge is bound, so a start sent from now on is heard live rather than kept. A launch made before
+    // its forwarder kept starts (`claude.hook.v1`) has no record and no spool: its attach replays nothing, as before.
+    const starts = hookSpool === undefined ? [] : startsToReplay(takeClaudeHookSpool(hookSpool), options.sessionId);
+    const moves = starts.some((start) => start.source === 'clear' || start.source === 'resume');
     // An attach writes nothing, so it cleans nothing: the launch's files are in the run's staging directory, which the
     // runtime removes at the run's end (core `AgentTuiSessionOptions.stagingDir`), or a temp dir without one.
     const observation = createClaudeObservation(
-      { ...options, ingress: undefined, attached: true },
+      {
+        ...options,
+        ingress: undefined,
+        attached: true,
+        ...(starts.length === 0 ? {} : { spooled: { starts, root } }),
+      },
       bridge,
       { sessionId: options.sessionId, cleanup: async () => undefined },
       selection,
@@ -1325,10 +1459,13 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
       otelUsageVerified,
     );
     // The durable rail first: a quiet session announces nothing until its next
-    // hook, and its transcript already says where it stands.
-    const transcript = locateClaudeTranscript(options.sessionId, root);
-    if (transcript !== undefined) observation.observeTranscript(transcript);
-    else observation.noTranscript();
+    // hook, and its transcript already says where it stands. A pane the spool
+    // moved is read from where it went, once the moves are said.
+    if (!moves) {
+      const transcript = locateClaudeTranscript(options.sessionId, root);
+      if (transcript !== undefined) observation.observeTranscript(transcript);
+      else observation.noTranscript();
+    }
     return await observation.adopt(options.runtimeSessionId);
   } catch (err) {
     await bridge.dispose();
