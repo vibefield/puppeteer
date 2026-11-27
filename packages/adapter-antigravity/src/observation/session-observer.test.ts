@@ -19,12 +19,13 @@ async function store(): Promise<string> {
   return root;
 }
 
-function observe(root: string, sessionId?: string): AntigravitySessionObserver {
+function observe(root: string, sessionId?: string, ownedRoot?: boolean): AntigravitySessionObserver {
   const observer = createAntigravitySessionObserver({
     root,
     baselineSessionIds: new Set(),
     pollIntervalMs: 60_000,
     ...(sessionId ? { location: antigravitySessionLocation(root, sessionId) } : {}),
+    ...(ownedRoot ? { ownedRoot } : {}),
   });
   observers.push(observer);
   return observer;
@@ -126,5 +127,62 @@ describe('Antigravity transcript correlation', () => {
     await observer.poll();
     expect(observer.sessionId()).toBe('session-a');
     expect(events).toContain('turn:started');
+  });
+});
+
+describe('Antigravity in a root the run owns', () => {
+  it('binds the one new transcript a person typed into, with no prompt sent through puppeteer', async () => {
+    const root = await store();
+    const observer = observe(root, undefined, true);
+    const binds: string[] = [];
+    observer.onBind((bound) => binds.push(bound.sessionId));
+    // a transcript with no typed prompt yet is not enough
+    const { transcriptPath } = antigravitySessionLocation(root, 'session-typed');
+    await mkdir(dirname(transcriptPath), { recursive: true });
+    await writeFile(transcriptPath, '');
+    await observer.poll();
+    expect(observer.sessionId()).toBeUndefined();
+    await transcript(root, 'session-typed', 'typed in the pane');
+    await observer.poll();
+    expect(observer.sessionId()).toBe('session-typed');
+    expect(binds).toEqual(['session-typed']);
+  });
+
+  it('binds nothing while two transcripts are new, or while another run in the root is unbound', async () => {
+    const root = await store();
+    const observer = observe(root, undefined, true);
+    await transcript(root, 'session-a', 'one');
+    await transcript(root, 'session-b', 'two');
+    await observer.poll();
+    expect(observer.sessionId()).toBeUndefined();
+
+    const shared = await store();
+    const first = observe(shared, undefined, true);
+    const second = observe(shared, undefined, true);
+    await transcript(shared, 'session-c', 'typed');
+    await Promise.all([first.poll(), second.poll()]);
+    expect([first.sessionId(), second.sessionId()]).toEqual([undefined, undefined]);
+    // once the other run binds by its own prompt's echo, the one left is this run's
+    const echo = second.expectPrompt('typed', 10_000);
+    await second.poll();
+    await expect(echo.promise).resolves.toEqual({ matched: true, sessionId: 'session-c' });
+    await transcript(shared, 'session-d', 'typed here');
+    await first.poll();
+    expect(first.sessionId()).toBe('session-d');
+  });
+
+  it('decides by the echo alone while a prompt it sent waits, and a root it does not own binds only by echo', async () => {
+    const root = await store();
+    const owned = observe(root, undefined, true);
+    owned.expectPrompt('sent', 10_000);
+    await transcript(root, 'session-typed', 'something else');
+    await owned.poll();
+    expect(owned.sessionId()).toBeUndefined();
+
+    const native = await store();
+    const observer = observe(native);
+    await transcript(native, 'session-typed', 'typed only');
+    await observer.poll();
+    expect(observer.sessionId()).toBeUndefined();
   });
 });

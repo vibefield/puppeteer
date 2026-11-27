@@ -25,6 +25,12 @@ export interface CreateAntigravityTuiSessionOptions extends AgentTuiSessionOptio
   agent?: string | undefined;
   project?: string | undefined;
   addDirs?: string[] | undefined;
+  /**
+   * The run owns its data root: a managed profile's, which only its runs write (the provider sets it when the
+   * profile binds an environment of its own). A fresh run there binds the one new transcript typed into even when no
+   * prompt was sent through puppeteer. Never set for a person's own root.
+   */
+  ownedRoot?: boolean | undefined;
   pollIntervalMs?: number | undefined;
   maxReplayBytes?: number | undefined;
   promptConfirmationTimeoutMs?: number | undefined;
@@ -102,6 +108,7 @@ export async function prepareAntigravityTuiSession(
         location,
         replayBoundary,
         baselineSessionIds,
+        ...(options.ownedRoot === true ? { ownedRoot: true } : {}),
         pollIntervalMs: options.pollIntervalMs,
         maxReplayBytes: options.maxReplayBytes,
       });
@@ -225,6 +232,9 @@ export async function prepareAntigravityTuiSession(
         sessionDirectory: () => observer.sessionDirectory(),
         // until it binds the id is provisional: no transcript holds it, and prepare refuses its resume
         durableRecordSeen: () => observer.sessionId() !== undefined,
+        // The observer holds the bound id before the bind's `session:started` is said, so that start, and everything
+        // after it, is published under an id that is no longer provisional.
+        nativeSessionProvisional: () => observer.sessionId() === undefined,
         events: { onCandidate: (listener) => (sessionDisposed ? () => undefined : events.onCandidate(listener)) },
         services: { prompt: { submit: (submission) => prompts.submit(submission) } },
         async dispose() {

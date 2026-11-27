@@ -1,3 +1,4 @@
+import { open } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createAppendOnlyJsonlTail } from '@vibefield/puppeteer-native-observation';
 import type {
@@ -55,6 +56,31 @@ interface SessionDiscovery {
   boundSessionId?: string | undefined;
 }
 
+/** Whether a transcript holds a prompt typed into it: a `USER_INPUT` row, read from its first bytes. */
+async function transcriptHoldsUserInput(path: string, maxBytes = 4 * 1024 * 1024): Promise<boolean> {
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    handle = await open(path, 'r');
+    const size = Math.min((await handle.stat()).size, maxBytes);
+    const bytes = Buffer.alloc(size);
+    const { bytesRead } = await handle.read(bytes, 0, size, 0);
+    for (const line of bytes.subarray(0, bytesRead).toString('utf8').split(/\r?\n/)) {
+      if (!line) continue;
+      try {
+        if (antigravityRecord(JSON.parse(line))?.type === 'USER_INPUT') return true;
+      } catch {
+        // A partial tail is expected while the transcript is being written.
+      }
+    }
+    return false;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw error;
+  } finally {
+    await handle?.close().catch(() => undefined);
+  }
+}
+
 // Observers sharing a native store must not claim each other's conversations.
 // Each observer remembers claims made during its lifetime, even after the
 // claiming observer stops, so a delayed launch cannot adopt an older peer.
@@ -65,6 +91,12 @@ export function createAntigravitySessionObserver(options: {
   location?: AntigravitySessionLocation | undefined;
   replayBoundary?: number | undefined;
   baselineSessionIds?: ReadonlySet<string> | undefined;
+  /**
+   * The run owns this data root (a managed profile's, which only its runs write; the provider sets it). There a run
+   * the person only types into binds too: with no host prompt waiting, the one new candidate holding a typed prompt,
+   * while no other unbound observer of this process shares the root. A person's own root is never owned.
+   */
+  ownedRoot?: boolean | undefined;
   pollIntervalMs?: number | undefined;
   maxReplayBytes?: number | undefined;
 }): AntigravitySessionObserver {
@@ -132,6 +164,15 @@ export function createAntigravitySessionObserver(options: {
         return;
       }
     }
+    // A prompt the host sent decides by its echo alone. In a root only this host's runs write, with none waiting,
+    // the one new transcript a person typed into is this run's, unless another run here is still unbound: then
+    // nothing tells the two apart.
+    if (!options.ownedRoot || waiters.size > 0) return;
+    for (const peer of discoveries) if (peer !== discovery && peer.boundSessionId === undefined) return;
+    const typed = [];
+    for (const candidate of candidates)
+      if (await transcriptHoldsUserInput(candidate.transcriptPath)) typed.push(candidate);
+    if (typed.length === 1 && waiters.size === 0) bind(typed[0]!);
   };
   const observePrompt = (value: unknown) => {
     if (!location) return;
