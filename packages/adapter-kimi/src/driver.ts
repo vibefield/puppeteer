@@ -45,9 +45,9 @@ export interface CreateKimiTuiSessionOptions extends AgentTuiSessionOptions {
   agentFile?: string | undefined;
   /**
    * The run owns its Kimi home: a managed profile's, which only its runs write (the provider sets it when the
-   * profile binds an environment of its own). Never set for a person's own home. Only a fresh run that owns its home
-   * binds, with no host prompt waiting, a new session that holds none of its host prompts (the session observer's
-   * discovery).
+   * profile binds an environment of its own). Never set for a person's own home. With no host prompt waiting, a
+   * fresh run binds a new session that holds none of its host prompts only when it owns its home, or once its host
+   * says input reached the run's terminal (`AgentHost.terminalInputSeen`; the session observer's discovery).
    */
   ownedRoot?: boolean | undefined;
   pollIntervalMs?: number | undefined;
@@ -143,6 +143,7 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
       if (adoptedSession) return adoptedSession;
       adoptedRuntimeSessionId = runtimeSessionId;
 
+      const host = options.host;
       const observer = createKimiSessionObserver({
         kimiHome,
         cwd: options.cwd,
@@ -150,6 +151,10 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         baselineSessionIds,
         replayOffsets,
         ...(options.ownedRoot === true ? { ownedRoot: true } : {}),
+        // the host's answer for the terminal this run was adopted into
+        ...(host.terminalInputSeen
+          ? { terminalInputSeen: () => host.terminalInputSeen?.(runtimeSessionId) ?? false }
+          : {}),
         pollIntervalMs: options.pollIntervalMs,
         maxReplayBytes: options.maxReplayBytes,
       });

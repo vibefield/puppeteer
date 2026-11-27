@@ -320,6 +320,92 @@ describe('Kimi session observer', () => {
       await second.stop();
       await later.stop();
     });
+
+    it('in a home it does not own, binds no session until its host saw input in the run’s own terminal, then binds the one new session', async () => {
+      const home = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-input-'));
+      roots.push(home);
+      const cwd = join(home, 'repo');
+      let typed = false;
+      let asked = 0;
+      const observer = createKimiSessionObserver({
+        kimiHome: home,
+        cwd,
+        terminalInputSeen: () => {
+          asked += 1;
+          return typed;
+        },
+        pollIntervalMs: 60_000,
+      });
+      const events: KimiObservedEvent[] = [];
+      observer.onEvent((event) => events.push(event));
+      observer.onError(() => undefined);
+
+      // no host prompt and no input to the run's terminal: the one new session may be another terminal's
+      await startSession(home, cwd, 'session-new', 'typed somewhere');
+      await observer.poll();
+      await observer.poll();
+      expect(observer.sessionId()).toBeUndefined();
+      expect(asked).toBe(2);
+      expect(events.some(({ event }) => event.type === 'session:started')).toBe(false);
+      expect(ambiguities(events)).toEqual([]);
+
+      // input reaches the run's own terminal: the next poll binds the one new session
+      typed = true;
+      await observer.poll();
+      expect(observer.sessionId()).toBe('session-new');
+      expect(events.find(({ event }) => event.type === 'session:started')?.event).toMatchObject({
+        nativeSessionId: 'session-new',
+        startSource: 'native-wire-bind',
+      });
+      await observer.stop();
+    });
+
+    it('with input seen, says two new sessions ambiguous; waits for a host answer that is a promise, and takes one that fails as not seen', async () => {
+      const home = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-input-'));
+      roots.push(home);
+      const cwd = join(home, 'repo');
+      const seen = createKimiSessionObserver({
+        kimiHome: home,
+        cwd,
+        terminalInputSeen: () => Promise.resolve(true),
+        pollIntervalMs: 60_000,
+      });
+      const seenEvents: KimiObservedEvent[] = [];
+      seen.onEvent((event) => seenEvents.push(event));
+      seen.onError(() => undefined);
+      await startSession(home, cwd, 'session-x', 'x');
+      await startSession(home, cwd, 'session-y', 'y');
+      await seen.poll();
+      expect(seen.sessionId()).toBeUndefined();
+      expect(ambiguities(seenEvents)).toEqual([['session-x', 'session-y']]);
+
+      const otherHome = await mkdtemp(join(tmpdir(), 'puppeteer-kimi-input-'));
+      roots.push(otherHome);
+      const otherCwd = join(otherHome, 'repo');
+      const failing = createKimiSessionObserver({
+        kimiHome: otherHome,
+        cwd: otherCwd,
+        terminalInputSeen: () => Promise.reject(new Error('the host cannot answer')),
+        pollIntervalMs: 60_000,
+      });
+      const failingEvents: KimiObservedEvent[] = [];
+      failing.onEvent((event) => failingEvents.push(event));
+      await startSession(otherHome, otherCwd, 'session-one', 'one');
+      await failing.poll();
+      expect(failing.sessionId()).toBeUndefined();
+      expect(failingEvents).toEqual([]);
+      const answered = createKimiSessionObserver({
+        kimiHome: otherHome,
+        cwd: otherCwd,
+        terminalInputSeen: async () => true,
+        pollIntervalMs: 60_000,
+      });
+      await answered.poll();
+      expect(answered.sessionId()).toBe('session-one');
+      await seen.stop();
+      await failing.stop();
+      await answered.stop();
+    });
   });
 
   it('performs a final bounded journal drain before stopping', async () => {

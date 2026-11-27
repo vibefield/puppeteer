@@ -25,6 +25,22 @@ async function root(): Promise<string> {
   return value;
 }
 
+/** A new session in the folder holding a typed prompt, as a Kimi process writes it. */
+async function typedSession(home: string, cwd: string, sessionId: string, text: string): Promise<void> {
+  const sessionDir = join(home, 'sessions', encodeKimiWorkDirKey(cwd), sessionId);
+  await mkdir(join(sessionDir, 'agents', 'main'), { recursive: true });
+  await writeFile(join(sessionDir, 'state.json'), JSON.stringify({ id: sessionId, cwd, createdAt: 1 }));
+  await writeFile(
+    kimiMainWirePath(sessionDir),
+    `${[
+      { type: 'metadata', protocol_version: '1.5', created_at: 1 },
+      { type: 'turn.prompt', input: [{ type: 'text', text }], origin: { kind: 'user' }, time: 2 },
+    ]
+      .map((record) => JSON.stringify(record))
+      .join('\n')}\n`,
+  );
+}
+
 describe('Kimi native TUI session', () => {
   it('builds only valid native CLI combinations', () => {
     expect(
@@ -194,22 +210,6 @@ describe('Kimi native TUI session', () => {
   });
 
   it('binds a fresh run that holds no host prompt only in a home it owns', async () => {
-    /** A new session in the folder holding a typed prompt, as a Kimi process writes it. */
-    async function typedSession(home: string, cwd: string, sessionId: string, text: string): Promise<void> {
-      const sessionDir = join(home, 'sessions', encodeKimiWorkDirKey(cwd), sessionId);
-      await mkdir(join(sessionDir, 'agents', 'main'), { recursive: true });
-      await writeFile(join(sessionDir, 'state.json'), JSON.stringify({ id: sessionId, cwd, createdAt: 1 }));
-      await writeFile(
-        kimiMainWirePath(sessionDir),
-        `${[
-          { type: 'metadata', protocol_version: '1.5', created_at: 1 },
-          { type: 'turn.prompt', input: [{ type: 'text', text }], origin: { kind: 'user' }, time: 2 },
-        ]
-          .map((record) => JSON.stringify(record))
-          .join('\n')}\n`,
-      );
-    }
-
     // a person's own home: after the launch, someone starts Kimi in another terminal in the same folder
     const home = await root();
     const cwd = join(home, 'repo');
@@ -256,6 +256,33 @@ describe('Kimi native TUI session', () => {
     expect(owned.durableRecordSeen()).toBe(true);
     expect(ownedHost.automateTerminal).not.toHaveBeenCalled();
     await ownedPrepared.dispose();
+  });
+
+  it('in a home it does not own, binds the session typed into its pane once its host says input reached the terminal it was adopted into', async () => {
+    const home = await root();
+    const cwd = join(home, 'repo');
+    let typed = false;
+    const terminalInputSeen = vi.fn((_runtimeSessionId: string) => typed);
+    const host: AgentHost = { spawnTerminal: vi.fn(), automateTerminal: vi.fn(), terminalInputSeen };
+    const prepared = await prepareKimiTuiSession({ cwd, host, kimiHome: home, pollIntervalMs: 20 });
+    await typedSession(home, cwd, 'session-typed', 'typed in the pane');
+    const session = await prepared.adopt('runtime-typed');
+    // the host has seen no input in this terminal: the new session may be another terminal's, so nothing binds
+    expect(session.sessionId).toMatch(/^kimi-pending-/);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+    expect(session.durableRecordSeen()).toBe(false);
+    expect(terminalInputSeen).toHaveBeenCalled();
+    // the person types in the pane: the host's next answer binds the one new session
+    typed = true;
+    await vi.waitFor(() => expect(session.sessionId).toBe('session-typed'));
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+    expect(session.durableRecordSeen()).toBe(true);
+    // asked of the terminal the run was adopted into, and of no other
+    expect(new Set(terminalInputSeen.mock.calls.map(([runtimeSessionId]) => runtimeSessionId))).toEqual(
+      new Set(['runtime-typed']),
+    );
+    expect(host.automateTerminal).not.toHaveBeenCalled();
+    await prepared.dispose();
   });
 
   it('snapshots resume history before adoption and reports paste-only honestly', async () => {

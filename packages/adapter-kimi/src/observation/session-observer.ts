@@ -64,11 +64,16 @@ export interface KimiSessionObserverOptions {
   replayOffsets?: KimiJournalOffsets | undefined;
   /**
    * The run owns this Kimi home (a managed profile's): only its runs start sessions there. The provider sets it;
-   * a person's own home is never owned. With no host prompt waiting, only a fresh run in an owned home binds the one
-   * new candidate with a typed prompt; elsewhere a fresh run binds only by its host prompt's echo (see
-   * `pollDiscovery`).
+   * a person's own home is never owned. With no host prompt waiting, a fresh run in an owned home binds the one new
+   * candidate with a typed prompt; elsewhere it binds it only once input reached the run's own terminal
+   * (`terminalInputSeen`), and otherwise only by its host prompt's echo (see `pollDiscovery`).
    */
   ownedRoot?: boolean | undefined;
+  /**
+   * The host's answer, for the run's own terminal, to whether input has been written to it since its spawn (core
+   * `AgentHost.terminalInputSeen`). Absent, false, or a read that fails is "not seen".
+   */
+  terminalInputSeen?: (() => boolean | Promise<boolean>) | undefined;
   pollIntervalMs?: number | undefined;
   readChunkBytes?: number | undefined;
   maxRecordBytes?: number | undefined;
@@ -294,18 +299,29 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
     await bootstrap();
   };
 
+  // Once the host has seen input in the run's terminal it has for good, so it is not asked again.
+  let inputSeen = false;
+  const terminalInputSeen = async (): Promise<boolean> => {
+    if (inputSeen || !options.terminalInputSeen) return inputSeen;
+    try {
+      inputSeen = (await options.terminalInputSeen()) === true;
+    } catch {
+      // A host that cannot answer has seen nothing.
+    }
+    return inputSeen;
+  };
+
   /**
    * Binds a fresh run to the one new session that is its own. Every candidate is new to this run and claimed by no
    * peer (a peer's bind removes it), and holds a prompt the person typed. A prompt the host sent and waits for picks
-   * the candidate that echoes it. With none waiting, only a run in a home it owns binds: there the one candidate
-   * binds, and two or more stand ambiguous, said once per set of candidates and judged again at every poll, so one
-   * that a peer binds leaves the other to bind.
+   * the candidate that echoes it. With none waiting, the run binds a candidate when it owns its home, or once input
+   * has been written to its own terminal since its spawn: then the one candidate binds, and two or more stand
+   * ambiguous, said once per set of candidates and judged again at every poll, so one that a peer binds leaves the
+   * other to bind.
    *
    * In a home the run does not own, a new session that holds none of the run's host prompts may be one a person
-   * started in another terminal in the same folder, so with no host prompt waiting nothing binds there. Binding once
-   * input has been written to the run's own terminal since its spawn would also be sound, but no host surface reports
-   * that input to an adapter: such a run binds only by its host prompt's echo, and a run a person only types into
-   * stays provisional.
+   * started in another terminal in the same folder. Until input reached the run's own terminal, its own Kimi has
+   * written no prompt, so nothing binds there with no host prompt waiting, and the run stays provisional.
    */
   const pollDiscovery = async (): Promise<void> => {
     const candidates = (await listKimiSessionsForCwd(options.kimiHome, options.cwd)).filter(
@@ -316,9 +332,11 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
       return;
     }
 
-    // Judged on the prompts waiting now: one can settle while the folder is listed.
+    // The host is asked only while no prompt of its own waits: a waiting prompt is judged by its echo alone.
+    const unprompted = options.ownedRoot === true || (promptWaiters.size === 0 && (await terminalInputSeen()));
+    // Judged on the prompts waiting now: one can settle while the folder is listed or the host answers.
     const expected = new Set([...promptWaiters.values()].map((waiter) => waiter.text));
-    if (expected.size === 0 && options.ownedRoot !== true) return;
+    if (expected.size === 0 && !unprompted) return;
     const matches: KimiSessionLocation[] = [];
     for (const candidate of candidates) {
       const prompts = await candidatePrompts(candidate.wirePath, maxDiscoveryBytes);
