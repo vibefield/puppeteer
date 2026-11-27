@@ -40,8 +40,11 @@ export interface AgentAdapterBinding {
   durableRecordSeen?(): boolean;
   /**
    * Whether `sessionId` is still a placeholder this adapter minted, before the agent named its conversation. The
-   * adapter turns it false before it publishes anything under the agent's own id. Runtime marks the run's
-   * continuation `provisional: true` while it is true. Absent = never provisional.
+   * adapter turns it false before it publishes the bound session's `session:started` wherever it can. Where a choice
+   * can still move after that start (a native picker that starts the highlighted conversation before one is chosen),
+   * it turns false at the chosen session's first event of its own. Runtime marks the run's continuation
+   * `provisional: true` while it is true, and drops the mark at the run's next event once it is false. Absent = never
+   * provisional.
    */
   nativeSessionProvisional?(): boolean;
   /**
