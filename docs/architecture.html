@@ -2411,6 +2411,7 @@ interface AgentProviderLaunchService {
   readonly runtimeSessionId: string;   <span class="comment">// host terminal routing identity</span>
   observationLevel(): ObservationLevel;
   durableRecordSeen?(): boolean;       <span class="comment">// false: a resume by sessionId cannot succeed yet</span>
+  nativeSessionProvisional?(): boolean; <span class="comment">// true: sessionId is a placeholder the adapter minted</span>
   readonly events: {
     onCandidate(listener: (candidate: AdapterEventCandidate) =&gt; void): () =&gt; void;
   };
@@ -2420,6 +2421,26 @@ interface AgentProviderLaunchService {
   };
   dispose(): Promise&lt;void&gt;;
 }</code></pre>
+
+            <div class="callout">
+              <strong>Native identity moves.</strong> A binding's <span class="mono">sessionId</span> follows the
+              conversation the agent's process is in. When the agent moves the run to another session in place (a
+              Claude <span class="mono">/clear</span> or <span class="mono">/resume</span>, a thread Codex's TUI starts,
+              resumes or forks), the adapter says <span class="mono">session:started</span> with
+              <span class="mono">rebind: true</span> and the agent's own word for the move in
+              <span class="mono">startSource</span>, and everything after it is said under the new id. A session forked
+              from the run that the run does not observe (Claude's <span class="mono">/fork</span>) is said once as
+              <span class="mono">session:forked</span>: its payload names the fork's id, its envelope keeps the
+              session the run observes, and the run's identity does not move. A launch that does not know its id yet
+              (a picker's, a lazy session discovered after launch) says so with
+              <span class="mono">nativeSessionProvisional()</span>, and Runtime marks the run's continuation
+              <span class="mono">provisional: true</span> while it is true. An adapter turns it false before the bound
+              session's <span class="mono">session:started</span> wherever it can; where a choice can still move after
+              that start (Claude's picker starts a conversation it only previews the same way), it turns false at the
+              chosen session's first event of its own, and Runtime removes the mark at the run's next event. The
+              conformance suite holds each adapter to the moves it names (<span class="mono">rotate</span>,
+              <span class="mono">fork</span>, <span class="mono">provisional</span>).
+            </div>
 
             <div class="cards">
               <article class="card">
