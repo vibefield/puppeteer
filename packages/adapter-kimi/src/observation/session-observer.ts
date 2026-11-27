@@ -65,13 +65,14 @@ export interface KimiSessionObserverOptions {
   /**
    * The run owns this Kimi home (a managed profile's): only its runs start sessions there. The provider sets it;
    * a person's own home is never owned. With no host prompt waiting, a fresh run in an owned home binds the one new
-   * candidate with a typed prompt; elsewhere it binds it only once input reached the run's own terminal
+   * candidate with a typed prompt; elsewhere it binds it only once a person's input reached the run's own terminal
    * (`terminalInputSeen`), and otherwise only by its host prompt's echo (see `pollDiscovery`).
    */
   ownedRoot?: boolean | undefined;
   /**
-   * The host's answer, for the run's own terminal, to whether input has been written to it since its spawn (core
-   * `AgentHost.terminalInputSeen`). Absent, false, or a read that fails is "not seen".
+   * The host's answer, for the run's own terminal, to whether a person's input has reached it since its spawn (core
+   * `AgentHost.terminalInputSeen`; the host's own automation is not that input). Absent, false, or a read that fails
+   * is "not seen".
    */
   terminalInputSeen?: (() => boolean | Promise<boolean>) | undefined;
   pollIntervalMs?: number | undefined;
@@ -314,14 +315,15 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
   /**
    * Binds a fresh run to the one new session that is its own. Every candidate is new to this run and claimed by no
    * peer (a peer's bind removes it), and holds a prompt the person typed. A prompt the host sent and waits for picks
-   * the candidate that echoes it. With none waiting, the run binds a candidate when it owns its home, or once input
-   * has been written to its own terminal since its spawn: then the one candidate binds, and two or more stand
+   * the candidate that echoes it. With none waiting, the run binds a candidate when it owns its home, or once a
+   * person's input has reached its own terminal since its spawn: then the one candidate binds, and two or more stand
    * ambiguous, said once per set of candidates and judged again at every poll, so one that a peer binds leaves the
    * other to bind.
    *
    * In a home the run does not own, a new session that holds none of the run's host prompts may be one a person
-   * started in another terminal in the same folder. Until input reached the run's own terminal, its own Kimi has
-   * written no prompt, so nothing binds there with no host prompt waiting, and the run stays provisional.
+   * started in another terminal in the same folder. Until a person's input reached the run's own terminal, nothing
+   * binds there with no host prompt waiting, and the run stays provisional; a host prompt whose echo timed out
+   * counts as no such input.
    */
   const pollDiscovery = async (): Promise<void> => {
     const candidates = (await listKimiSessionsForCwd(options.kimiHome, options.cwd)).filter(

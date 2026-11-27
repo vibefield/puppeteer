@@ -47,7 +47,8 @@ export interface CreateKimiTuiSessionOptions extends AgentTuiSessionOptions {
    * The run owns its Kimi home: a managed profile's, which only its runs write (the provider sets it when the
    * profile binds an environment of its own). Never set for a person's own home. With no host prompt waiting, a
    * fresh run binds a new session that holds none of its host prompts only when it owns its home, or once its host
-   * says input reached the run's terminal (`AgentHost.terminalInputSeen`; the session observer's discovery).
+   * says a person's input reached the run's terminal (`AgentHost.terminalInputSeen`; the session observer's
+   * discovery).
    */
   ownedRoot?: boolean | undefined;
   pollIntervalMs?: number | undefined;
