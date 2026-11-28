@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.16](https://github.com/vibefield/puppeteer/compare/v0.4.15...v0.4.16) (2026-11-28)
+
+
+### Features
+
+* **adapter-claude:** a /clear made while no host listened is replayed at the next attach ([#131](https://github.com/vibefield/puppeteer/issues/131)) ([693df68](https://github.com/vibefield/puppeteer/commit/693df682bb688b696c0e6f59e0ea438f5b670461))
+* **adapter-claude:** a forked session's id reaches the host, and a resume picker's placeholder id says it is provisional ([#130](https://github.com/vibefield/puppeteer/issues/130)) ([6f2f4ca](https://github.com/vibefield/puppeteer/commit/6f2f4ca9ceb6440943f51b933367d12d61727956))
+* **adapter-codex:** a thread started, resumed or forked inside a managed TUI is followed and reported ([#133](https://github.com/vibefield/puppeteer/issues/133)) ([e10fe18](https://github.com/vibefield/puppeteer/commit/e10fe188c29d4ffdc5087b89731e1d80321bd8ac))
+* **adapter-kimi,adapter-antigravity:** a fresh run says its id is provisional until it binds, and binds a session it sent no prompt to only in a root it owns or once its own terminal was typed into ([#134](https://github.com/vibefield/puppeteer/issues/134)) ([f04b5a6](https://github.com/vibefield/puppeteer/commit/f04b5a6b14d8cda92b10b0ec82a891966873a90e))
+* **builtin-providers:** a managed profile's run owns its root, and a Claude attach gets the record its launch reported ([#135](https://github.com/vibefield/puppeteer/issues/135)) ([866b53d](https://github.com/vibefield/puppeteer/commit/866b53d44c27ebb254294020d6c1b1a822e1c162))
+* **core,runtime:** session:forked, and a run's continuation says its id is provisional until its adapter names the session ([#129](https://github.com/vibefield/puppeteer/issues/129)) ([149061e](https://github.com/vibefield/puppeteer/commit/149061e44d455a3ae70e5d579c96d3d87367a53c))
+* **imposter:** the Claude imposter moves its session on a scenario's session.rotate ([#137](https://github.com/vibefield/puppeteer/issues/137)) ([433fdcc](https://github.com/vibefield/puppeteer/commit/433fdcc748005e937e00898ab2ce62393c6abe63))
+* **testing:** the conformance suite holds an adapter to the native moves it follows ([#136](https://github.com/vibefield/puppeteer/issues/136)) ([6cc89fa](https://github.com/vibefield/puppeteer/commit/6cc89fab91426b8d76b6febadbb20b262f8b3738))
+
 ## [0.4.15](https://github.com/vibefield/puppeteer/compare/v0.4.14...v0.4.15) (2026-11-25)
 
 
