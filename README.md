@@ -45,8 +45,8 @@
 <!-- x-release-please-start-version -->
 
 ```sh
-pnpm add @vibefield/puppeteer-runtime@0.4.16 \
-  @vibefield/puppeteer-builtin-providers@0.4.16
+pnpm add @vibefield/puppeteer-runtime@0.4.17 \
+  @vibefield/puppeteer-builtin-providers@0.4.17
 ```
 
 <!-- x-release-please-end -->

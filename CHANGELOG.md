@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.17](https://github.com/vibefield/puppeteer/compare/v0.4.16...v0.4.17) (2026-11-28)
+
+
+### Bug Fixes
+
+* **adapter-codex:** ready() waits for the app-server socket to accept a connection, not for its file ([#138](https://github.com/vibefield/puppeteer/issues/138)) ([3839e50](https://github.com/vibefield/puppeteer/commit/3839e50b999f881183c883f4291f0aba9e067ce7))
+
 ## [0.4.16](https://github.com/vibefield/puppeteer/compare/v0.4.15...v0.4.16) (2026-11-28)
 
 
