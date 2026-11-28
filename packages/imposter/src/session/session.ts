@@ -7,9 +7,9 @@
  * an off-model emission (docs/archive/IMPOSTER.md §7.3 item 3).
  */
 
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import type { OpChannel, OpInvocation, Persona } from '../persona/types.ts';
 import { flagValue } from '../cli/argv.ts';
 import {
@@ -31,6 +31,7 @@ import {
   scenarioSteps,
   type ScenarioGate,
   type ScenarioRunner,
+  type SessionRotateSource,
 } from './scenario.ts';
 import { substitute } from './template.ts';
 import { mintPersonaSessionId } from '../persona/session-id.ts';
@@ -112,6 +113,7 @@ export interface RunScenarioOptions {
 }
 
 export interface ImposterSession {
+  /** The conversation the session is in now: a scenario's `session.rotate` moves it, and these with it. */
   readonly sessionId: string;
   readonly transcriptPath: string;
   readonly transcriptRoot: string;
@@ -157,7 +159,9 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   const resumedSessionId = flagValue(argv, persona.flagsFor('resume', '--resume'));
   const explicitSessionId = flagValue(argv, persona.flagsFor('sessionId', '--session-id')) ?? resumedSessionId;
   const generatedSessionId = mintPersonaSessionId(persona);
-  const sessionId = explicitSessionId ?? generatedSessionId;
+  // The conversation this process is in. Fixed for the process's life, except that a scenario's `session.rotate`
+  // moves it (as a `/clear` does), and the transcript with it.
+  let sessionId = explicitSessionId ?? generatedSessionId;
   const settingsPath = flagValue(argv, persona.flagsFor('settings', '--settings'));
   const sessionTitle = flagValue(argv, persona.flagsFor('name', '--name')) ?? 'imposter-session';
   const permissionMode = flagValue(argv, persona.flagsFor('permissionMode', '--permission-mode')) ?? 'default';
@@ -183,13 +187,14 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
     );
   }
   const slug = cwd.replace(/[^a-zA-Z0-9]/g, '-');
-  const transcriptPath = join(transcriptRoot, 'projects', slug, `${sessionId}.jsonl`);
+  const transcriptFor = (id: string): string => join(transcriptRoot, 'projects', slug, `${id}.jsonl`);
+  let transcriptPath = transcriptFor(sessionId);
 
   const settings: HookSettings & { statusLine?: unknown } = settingsPath
     ? (JSON.parse(readFileSync(settingsPath, 'utf8')) as HookSettings)
     : {};
   const hookEmitter = createHookEmitter({ settings, env, log });
-  const transcript = createTranscriptWriter(transcriptPath);
+  let transcript = createTranscriptWriter(transcriptPath);
   const statusLineInvoker = createStatusLineInvoker(settings.statusLine, { log });
 
   // Drops are keyed by the VENDOR's channel name — the same name `liveChannels`
@@ -237,8 +242,11 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
    * declared below but only read when an op actually emits, which is always
    * after initialization.
    */
-  const envelope = (fields: Record<string, unknown>): Record<string, unknown> => ({
-    ...(substitute(persona.document.envelope, { bindings }) as Record<string, unknown>),
+  const envelope = (
+    fields: Record<string, unknown>,
+    scope: Record<string, unknown> = bindings,
+  ): Record<string, unknown> => ({
+    ...(substitute(persona.document.envelope, { bindings: scope }) as Record<string, unknown>),
     ...fields,
   });
 
@@ -249,13 +257,19 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
    */
   const fallbackRoute = persona.model.events.find((event) => (settings.hooks?.[event.event]?.length ?? 0) > 0)?.event;
 
-  const wireFor = (event: string, payload: Record<string, unknown>): Record<string, unknown> => ({
-    ...envelope(payload),
+  const wireFor = (
+    event: string,
+    payload: Record<string, unknown>,
+    scope: Record<string, unknown> = bindings,
+  ): Record<string, unknown> => ({
+    ...envelope(payload, scope),
     ...(persona.document.eventNameField ? { [persona.document.eventNameField]: event } : {}),
   });
 
-  const emit = async (event: string, payload: Record<string, unknown>): Promise<void> => {
-    const wire = wireFor(event, payload);
+  const emit = async (event: string, payload: Record<string, unknown>): Promise<void> =>
+    emitHookWire(event, wireFor(event, payload));
+
+  const emitHookWire = async (event: string, wire: Record<string, unknown>): Promise<void> => {
     const violations = persona.validate(event, wire);
     if (violations.length > 0) {
       throw new Error(`imposter refused an off-model payload for ${event}: ${violations.join('; ')}`);
@@ -560,7 +574,9 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   };
 
   const guardedTranscript: TranscriptWriter = {
-    path: transcript.path,
+    get path() {
+      return transcript.path;
+    },
     append: (entry) => {
       if (dropped('transcript')) return log('dropped transcript record: channel is disconnected');
       transcript.append(entry);
@@ -740,6 +756,98 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
     }
   };
 
+  /**
+   * What a `session.rotate` says, as the persona's own `session.end` and `session.start` say it, each under the
+   * session it belongs to: a move ends this session (reason = the source) and starts the next one (source = the
+   * source); a fork only starts its copy. Every wire is held to the model here, before anything moves.
+   */
+  const rotationWires = (
+    source: SessionRotateSource,
+    next: { sessionId: string; transcriptPath: string },
+  ): {
+    ended: Array<[string, Record<string, unknown>]>;
+    started: Array<[string, Record<string, unknown>]>;
+    violations: string[];
+  } => {
+    const violations: string[] = [];
+    if (persona.document.nativeStore)
+      violations.push(`${persona.vendor} keeps a native session store, which a move here does not move`);
+    if (persona.channelFor('hook') === undefined)
+      violations.push(`${persona.vendor} has no hook channel to say a move on`);
+    const said = (
+      op: 'session.end' | 'session.start',
+      argument: Record<string, unknown>,
+      ids: { sessionId: string; transcriptPath: string },
+    ): Array<[string, Record<string, unknown>]> => {
+      const declared = persona.ops[op];
+      if (!declared || declared.length === 0) {
+        violations.push(`${persona.vendor} binds no ${op}`);
+        return [];
+      }
+      const scope = { ...bindings, $sessionId: ids.sessionId, $transcriptPath: ids.transcriptPath };
+      const uuids = new Map<string, string>();
+      const wires: Array<[string, Record<string, unknown>]> = [];
+      for (const binding of declared) {
+        if (binding.channel !== 'hook' || !binding.event) {
+          violations.push(`${op} reaches the ${binding.channel} channel; a move is said on hooks alone`);
+          continue;
+        }
+        const payload =
+          binding.with === undefined
+            ? {}
+            : (substitute(binding.with, { scopes: { op: argument }, bindings: scope, uuids }) as Record<
+                string,
+                unknown
+              >);
+        const wire = wireFor(binding.event, payload, scope);
+        violations.push(...persona.validate(binding.event, wire).map((violation) => `${binding.event}: ${violation}`));
+        wires.push([binding.event, wire]);
+      }
+      return wires;
+    };
+    const ended = source === 'fork' ? [] : said('session.end', { reason: source }, { sessionId, transcriptPath });
+    const started = said('session.start', { source }, next);
+    return { ended, started, violations };
+  };
+
+  const nextSession = (): { sessionId: string; transcriptPath: string } => {
+    const id = mintPersonaSessionId(persona);
+    return { sessionId: id, transcriptPath: transcriptFor(id) };
+  };
+
+  /**
+   * `session.rotate`. `clear` and `resume` move this process to a new conversation in place, as a `/clear` or a
+   * `/resume` in the pane does: the old session ends, the session's id and transcript become the new one's, and the
+   * new one starts. `fork` starts a copy under its own id and transcript, which holds this session's records so far,
+   * and this session stays where it is. Whether the vendor rewrites the copied records' own ids is not captured; they
+   * are copied as they are.
+   */
+  const rotate = async (source: SessionRotateSource): Promise<void> => {
+    const next = nextSession();
+    const { ended, started, violations } = rotationWires(source, next);
+    if (violations.length > 0) {
+      throw new Error(`imposter refused session.rotate ${source}: ${violations.join('; ')}`);
+    }
+    if (source === 'fork') {
+      if (dropped('transcript')) log('dropped the fork transcript: channel is disconnected');
+      else {
+        mkdirSync(dirname(next.transcriptPath), { recursive: true });
+        if (existsSync(transcriptPath)) copyFileSync(transcriptPath, next.transcriptPath);
+        else createTranscriptWriter(next.transcriptPath);
+      }
+      for (const [event, wire] of started) await emitHookWire(event, wire);
+      return;
+    }
+    for (const [event, wire] of ended) await emitHookWire(event, wire);
+    sessionId = next.sessionId;
+    transcriptPath = next.transcriptPath;
+    transcript = createTranscriptWriter(transcriptPath);
+    bindings.$sessionId = sessionId;
+    bindings.$transcriptPath = transcriptPath;
+    log(`session.rotate ${source}: now ${sessionId}`);
+    for (const [event, wire] of started) await emitHookWire(event, wire);
+  };
+
   const runner: ScenarioRunner = createScenarioRunner({
     emit: emitAny,
     request: async (event, payload) => {
@@ -754,6 +862,10 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
     // envelope included, so a scenario cannot pass here and be refused there.
     validate: (event, payload) => persona.validate(event, wireFor(event, payload)),
     fault: applyFault,
+    rotate: {
+      check: (source) => rotationWires(source, nextSession()).violations,
+      run: rotate,
+    },
     bindings,
     log,
   });
@@ -774,8 +886,12 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   };
 
   return {
-    sessionId,
-    transcriptPath,
+    get sessionId() {
+      return sessionId;
+    },
+    get transcriptPath() {
+      return transcriptPath;
+    },
     transcriptRoot,
     get liveChannels() {
       return liveChannels();

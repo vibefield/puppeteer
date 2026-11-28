@@ -126,6 +126,70 @@ describe('createScenarioRunner', () => {
     expect(readFileSync(join(dir, 't.jsonl'), 'utf8')).toBe('{"type":"assis');
   });
 
+  it('moves the session for session.rotate, in order with the steps around it', async () => {
+    const seen: string[] = [];
+    const runner = createScenarioRunner({
+      emit: async (event) => void seen.push(event),
+      transcript: createTranscriptWriter(join(dir, 't.jsonl')),
+      rotate: { check: () => [], run: async (source) => void seen.push(`rotate:${source}`) },
+    });
+    await runner.run([
+      { emit: { event: 'Before' } },
+      { at: 0, do: { op: 'session.rotate', source: 'clear' } },
+      { op: 'session.rotate', source: 'resume' },
+      { op: 'session.rotate', source: 'fork' },
+      { emit: { event: 'After' } },
+    ]);
+    expect(seen).toEqual(['Before', 'rotate:clear', 'rotate:resume', 'rotate:fork', 'After']);
+  });
+
+  it('refuses an unknown op or source, a stray source, and a move the session cannot make, before anything runs', async () => {
+    const seen: string[] = [];
+    const checked: string[] = [];
+    const runner = createScenarioRunner({
+      emit: async (event) => void seen.push(event),
+      transcript: createTranscriptWriter(join(dir, 't.jsonl')),
+      rotate: {
+        check: (source) => {
+          checked.push(source);
+          return source === 'resume' ? ['SessionEnd: reason must be one of clear, logout'] : [];
+        },
+        run: async (source) => void seen.push(`rotate:${source}`),
+      },
+    });
+    const first = { emit: { event: 'MustNotEmit' } };
+    await expect(runner.run([first, { op: 'session.branch', source: 'clear' }] as never)).rejects.toThrow(
+      /unsupported scenario op session.branch/,
+    );
+    await expect(runner.run([first, { op: 'session.rotate', source: 'branch' }] as never)).rejects.toThrow(
+      /needs a source of clear, resume, fork/,
+    );
+    await expect(runner.run([first, { op: 'session.rotate' }] as never)).rejects.toThrow(/needs a source/);
+    await expect(runner.run([first, { delay: { ms: 0 }, source: 'clear' }] as never)).rejects.toThrow(
+      /source belongs to an op step/,
+    );
+    await expect(
+      runner.run([first, { op: 'session.rotate', source: 'clear', emit: { event: 'Also' } }] as never),
+    ).rejects.toThrow(/exactly one action/);
+    // the session's own check holds the move to the model, and a refusal names what it refused
+    await expect(runner.run([first, { op: 'session.rotate', source: 'resume' }] as never)).rejects.toThrow(
+      /refused session.rotate resume: SessionEnd: reason must be one of/,
+    );
+    expect(checked).toEqual(['resume']);
+    expect(seen).toEqual([]);
+  });
+
+  it('logs a move it has no session to make, as a dry run sends no emit to a wire', async () => {
+    const logged: string[] = [];
+    const runner = createScenarioRunner({
+      emit: async () => {},
+      transcript: createTranscriptWriter(join(dir, 't.jsonl')),
+      log: (message) => void logged.push(message),
+    });
+    await runner.run([{ op: 'session.rotate', source: 'fork' }]);
+    expect(logged).toEqual(['session.rotate fork: no session to move']);
+  });
+
   it('prepares without touching a channel, so a paused run can answer immediately', () => {
     const emitted: string[] = [];
     const runner = createScenarioRunner({

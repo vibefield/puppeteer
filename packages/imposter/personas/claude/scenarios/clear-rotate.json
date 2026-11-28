@@ -1,0 +1,39 @@
+{
+  "name": "clear-rotate",
+  "notes": "/clear in the pane (Claude Code 2.1.311's TUI census order): SessionEnd with reason clear under the session it leaves, SessionStart with source clear under a new id and a new transcript, then a status line whose context restarts. The session.rotate op moves the imposter's own session id and transcript, so every later hook, record and status line is the new session's.",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "op": "session.rotate",
+        "source": "clear"
+      }
+    },
+    {
+      "at": 50,
+      "do": {
+        "statusline": {
+          "with": {
+            "session_id": "$sessionId",
+            "transcript_path": "$transcriptPath",
+            "cwd": "$cwd",
+            "model": {
+              "id": "$modelId",
+              "display_name": "$modelId"
+            },
+            "workspace": {
+              "current_dir": "$cwd"
+            },
+            "context_window": {
+              "total_input_tokens": 0,
+              "context_window_size": "$capacityTokens",
+              "current_usage": null,
+              "used_percentage": null,
+              "remaining_percentage": null
+            }
+          }
+        }
+      }
+    }
+  ]
+}

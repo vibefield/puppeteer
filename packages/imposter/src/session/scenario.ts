@@ -15,6 +15,16 @@
 import type { TranscriptWriter } from './channels/transcript.ts';
 import { substitute } from './template.ts';
 
+/**
+ * How the agent moves its conversation: in place (`clear`, `resume`, as a `/clear` or a `/resume` in the pane does),
+ * or by starting a copy of it that it does not move to (`fork`).
+ */
+export const SESSION_ROTATE_SOURCES = ['clear', 'resume', 'fork'] as const;
+export type SessionRotateSource = (typeof SESSION_ROTATE_SOURCES)[number];
+
+/** The ops a scenario step may name. A move changes the session's own identity, which no raw emit can. */
+export const SCENARIO_OPS = ['session.rotate'] as const;
+
 export interface ScenarioAction {
   emit?: {
     channel?: string;
@@ -41,6 +51,9 @@ export interface ScenarioAction {
     event?: string;
     with?: Record<string, unknown>;
   };
+  /** `{"op": "session.rotate", "source": "clear" | "resume" | "fork"}`: the session moves (see `SessionRotateSource`). */
+  op?: (typeof SCENARIO_OPS)[number];
+  source?: SessionRotateSource;
 }
 
 export interface ScenarioTimelineStep {
@@ -65,6 +78,15 @@ export interface ScenarioRunnerOptions {
   bindings?: Record<string, unknown>;
   statusline?: (payload: Record<string, unknown>) => Promise<void>;
   fault?: (fault: ScenarioFault) => void | Promise<void>;
+  /**
+   * The session's move, for a `session.rotate` step. `check` returns the move's violations without moving anything,
+   * so a move the persona cannot make fails the script before its first side effect. Absent: the runner has no
+   * session to move (a dry run over a scenario pack, whose emits reach no wire either) and logs the step.
+   */
+  rotate?: {
+    check(source: SessionRotateSource): string[];
+    run(source: SessionRotateSource): Promise<void>;
+  };
   /** Legacy/default crash behavior when no general fault handler is supplied. */
   crash?: (exitCode: number) => void;
   log?: (message: string) => void;
@@ -234,13 +256,33 @@ export function createScenarioRunner(options: ScenarioRunnerOptions): ScenarioRu
 
       rejectUnknownFields(
         action as Record<string, unknown>,
-        ['delay', 'emit', 'transcript', 'statusline', 'fault'],
+        ['delay', 'emit', 'transcript', 'statusline', 'fault', 'op', 'source'],
         'scenario action',
       );
-      const actionCount = [action.delay, action.emit, action.transcript, action.statusline, action.fault].filter(
-        (value) => value !== undefined,
-      ).length;
+      const actionCount = [
+        action.delay,
+        action.emit,
+        action.transcript,
+        action.statusline,
+        action.fault,
+        action.op,
+      ].filter((value) => value !== undefined).length;
       if (actionCount !== 1) throw new Error('each scenario step must contain exactly one action');
+
+      if (action.op !== undefined) {
+        if (!(SCENARIO_OPS as readonly unknown[]).includes(action.op)) {
+          throw new Error(`unsupported scenario op ${String(action.op)}`);
+        }
+        if (!(SESSION_ROTATE_SOURCES as readonly unknown[]).includes(action.source)) {
+          throw new Error(`scenario op session.rotate needs a source of ${SESSION_ROTATE_SOURCES.join(', ')}`);
+        }
+        const violations = options.rotate?.check(action.source!) ?? [];
+        if (violations.length > 0) {
+          throw new Error(`imposter refused session.rotate ${action.source!}: ${violations.join('; ')}`);
+        }
+      } else if (action.source !== undefined) {
+        throw new Error('scenario source belongs to an op step');
+      }
 
       if (action.delay !== undefined) {
         if (!isRecord(action.delay)) throw new Error('scenario delay must be an object');
@@ -374,6 +416,12 @@ export function createScenarioRunner(options: ScenarioRunnerOptions): ScenarioRu
           await runOptions.gate?.wait();
           if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs / speed));
           if (action.delay !== undefined) {
+            report();
+            continue;
+          }
+          if (action.op !== undefined) {
+            if (options.rotate) await options.rotate.run(action.source!);
+            else log(`${action.op} ${action.source!}: no session to move`);
             report();
             continue;
           }

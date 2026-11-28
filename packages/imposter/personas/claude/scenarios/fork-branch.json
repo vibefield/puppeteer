@@ -1,0 +1,13 @@
+{
+  "name": "fork-branch",
+  "notes": "/fork: a copy of the conversation starts in the background under its own id (SessionStart with source fork, its transcript holding the records so far), while the pane stays in the session it was in. What the copy does after its start is not scripted, and a capture of the TUI moving to its branch (/branch) does not exist.",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "op": "session.rotate",
+        "source": "fork"
+      }
+    }
+  ]
+}
