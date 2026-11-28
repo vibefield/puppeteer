@@ -229,6 +229,15 @@ const BUILTIN_PROVIDER_DESCRIPTORS = {
 } as const satisfies Record<BuiltinAgentKind, AgentProviderDescriptor>;
 
 /**
+ * Whether a run owns the agent's data root: a profile that binds an environment of its own (a managed profile's root,
+ * which only its runs write). A run under a person's own root, the native default with nothing to bind, never does.
+ * An adapter that binds a fresh run by discovery reads it to decide what it may take for the run's own session.
+ */
+function ownsRoot(profile: AgentProfile | undefined, profiles: ProfileService): boolean {
+  return profile !== undefined && Object.keys(profiles.bindingEnvironment(profile)).length > 0;
+}
+
+/**
  * A selected profile binds exactly like a shell-forwarded launch: the adapter's
  * own native-invocation normalizer turns the binding variables into native
  * options, so this composition root never learns which variable a provider
@@ -549,7 +558,17 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       // posting to the bridge it was launched against; rebinding that ingress
       // and tailing the transcript by id is the whole re-attach. The profile
       // binding resolves the config root the same way a launch does.
-      async attachSession({ sessionId, runtimeSessionId, cwd, host, agentOptions, profile, ingress, replayAfter }) {
+      async attachSession({
+        sessionId,
+        runtimeSessionId,
+        cwd,
+        host,
+        agentOptions,
+        profile,
+        ingress,
+        replayAfter,
+        attachRecord,
+      }) {
         if (!ingress) {
           throw new Error('Claude attach needs the ingress the process was launched against');
         }
@@ -576,6 +595,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           accountUsage: claudeAccountUsageSink(cwd, profile, launch),
           automate: host.automateTerminal,
           ...(replayAfter === undefined ? {} : { replayAfter }),
+          // The record the launch reported, which names the spool of starts no bridge took while the host was away.
+          ...(attachRecord === undefined ? {} : { attachRecord }),
         });
       },
       async prepareSession({
@@ -917,6 +938,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           plan: launch?.plan,
           agent: launch?.agent,
           agentFile: launch?.agentFile,
+          ...(ownsRoot(profile, services.kimi.profiles) ? { ownedRoot: true } : {}),
           pollIntervalMs: launch?.pollIntervalMs,
           maxReplayBytes: launch?.maxReplayBytes,
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
@@ -943,6 +965,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           plan: launch?.plan,
           agent: launch?.agent,
           agentFile: launch?.agentFile,
+          ...(ownsRoot(profile, services.kimi.profiles) ? { ownedRoot: true } : {}),
           pollIntervalMs: launch?.pollIntervalMs,
           maxReplayBytes: launch?.maxReplayBytes,
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
@@ -1093,6 +1116,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           agent: launch?.agent,
           project: launch?.project,
           addDirs: launch?.addDirs,
+          ...(ownsRoot(profile, services.antigravity.profiles) ? { ownedRoot: true } : {}),
           pollIntervalMs: launch?.pollIntervalMs,
           maxReplayBytes: launch?.maxReplayBytes,
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
@@ -1123,6 +1147,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           agent: launch?.agent,
           project: launch?.project,
           addDirs: launch?.addDirs,
+          ...(ownsRoot(profile, services.antigravity.profiles) ? { ownedRoot: true } : {}),
           pollIntervalMs: launch?.pollIntervalMs,
           maxReplayBytes: launch?.maxReplayBytes,
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
