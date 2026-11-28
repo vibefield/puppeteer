@@ -1,2 +1,2 @@
 /** One protocol/client version shared by every Puppeteer package projection. */
-export const PUPPETEER_VERSION = '0.4.16'; // x-release-please-version
+export const PUPPETEER_VERSION = '0.4.17'; // x-release-please-version
