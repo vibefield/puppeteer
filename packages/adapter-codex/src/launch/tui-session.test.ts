@@ -22,6 +22,7 @@ const fakes = vi.hoisted(() => {
     tapReady: vi.fn(),
     tapDispose: vi.fn(),
     tapClientMessage: undefined as ((message: unknown) => void) | undefined,
+    tapServerReader: undefined as { waiting(): boolean; message(message: unknown): void } | undefined,
   };
 });
 
@@ -39,8 +40,13 @@ vi.mock('../transport/ws-transport.js', () => ({
     endpoint.kind === 'unix' ? `unix://${endpoint.path}` : endpoint.url,
   ),
   createWebSocketTapProxy: vi.fn(
-    (_upstream: { kind: string; path?: string; url?: string }, onClientMessage: (message: unknown) => void) => {
+    (
+      _upstream: { kind: string; path?: string; url?: string },
+      onClientMessage: (message: unknown) => void,
+      onServerMessage?: { waiting(): boolean; message(message: unknown): void },
+    ) => {
       fakes.tapClientMessage = onClientMessage;
+      fakes.tapServerReader = onServerMessage;
       return {
         endpoint: () => ({ kind: 'unix', path: '/tmp/codex-tap.sock' }),
         ready: fakes.tapReady,
@@ -280,7 +286,7 @@ describe('Codex TUI preparation', () => {
     expect(prepared.sessionId).toBe('thread-1');
     expect(prepared.launch).toEqual({
       command: '/opt/codex',
-      args: ['resume', 'thread-1', '--remote', 'unix:///tmp/codex.sock'],
+      args: ['resume', 'thread-1', '--remote', 'unix:///tmp/codex-tap.sock'],
       cwd: '/work/repo',
       env: { CODEX_HOME: '/profiles/codex', AI_PERSONA: 'codex' },
     });
@@ -375,7 +381,7 @@ describe('Codex TUI preparation', () => {
     );
     expect(fakes.createObserver.mock.lastCall?.[0]).not.toHaveProperty('start');
     // The TUI joins the thread the observer resumed, and adopts its settings (C7).
-    expect(prepared.launch.args).toEqual(['resume', 'thread-1', '--remote', 'unix:///tmp/codex.sock']);
+    expect(prepared.launch.args).toEqual(['resume', 'thread-1', '--remote', 'unix:///tmp/codex-tap.sock']);
     await prepared.dispose();
 
     const inherited = await prepareCodexTuiSession({
@@ -394,7 +400,7 @@ describe('Codex TUI preparation', () => {
 
     expect(terminalHost.spawnTerminal).toHaveBeenCalledWith({
       command: 'codex',
-      args: ['resume', 'thread-1', '--remote', 'unix:///tmp/codex.sock'],
+      args: ['resume', 'thread-1', '--remote', 'unix:///tmp/codex-tap.sock'],
       cwd: '/work/repo',
     });
     expect(session.runtimeSessionId).toBe('spawned-pane');
@@ -434,7 +440,7 @@ describe('Codex TUI preparation', () => {
       'resume',
       'thread-1',
       '--remote',
-      'unix:///tmp/codex.sock',
+      'unix:///tmp/codex-tap.sock',
       '--image=/work/a.png',
       '--image=/work/b.png',
       '--search',
@@ -444,7 +450,7 @@ describe('Codex TUI preparation', () => {
     ]);
     // Said once: one --remote, and its value is the adapter's address, never the prompt.
     expect(args.filter((argument) => argument === '--remote')).toHaveLength(1);
-    expect(args[args.indexOf('--remote') + 1]).toBe('unix:///tmp/codex.sock');
+    expect(args[args.indexOf('--remote') + 1]).toBe('unix:///tmp/codex-tap.sock');
     // A carried variadic follows the address, and the prompt follows `--`: neither can be swallowed.
     expect(args.findIndex((argument) => argument.startsWith('--image'))).toBeGreaterThan(args.indexOf('--remote') + 1);
     expect(args.slice(-2)).toEqual(['--', '-v is broken']);
@@ -598,6 +604,125 @@ describe('Codex TUI preparation', () => {
     }
   });
 
+  describe('the thread the TUI moves to', () => {
+    /** An observer whose thread a test sets, as the real one does once it attaches. */
+    function movingObserver(initial: string | undefined) {
+      let observed = initial;
+      const attachThread = vi.fn(async (threadId: string) => {
+        observed = threadId;
+      });
+      const followThread = vi.fn(async (_thread: { id: string }, _move: string) => undefined);
+      fakes.createObserver.mockResolvedValue({
+        get sessionId() {
+          return observed;
+        },
+        observationLevel: () => 'structured',
+        threadPath: () => undefined,
+        events: { onCandidate: fakes.observerOnCandidate },
+        attachThread,
+        followThread,
+        onThread: fakes.observerOnThread,
+        settingsUpdated: fakes.observerSettingsUpdated,
+        dispose: fakes.observerDispose,
+      });
+      return { attachThread, followThread, observe: (threadId: string) => (observed = threadId) };
+    }
+
+    it('joins every TUI through the tap, and hands the observer the thread each start, resume or fork names', async () => {
+      const { attachThread, followThread } = movingObserver('thread-1');
+      const prepared = await prepareCodexTuiSession({ cwd: '/work', host: host() });
+      const reader = fakes.tapServerReader!;
+      expect(reader).toBeDefined();
+      // nothing waits: the answers of an ordinary turn are not even parsed
+      expect(reader.waiting()).toBe(false);
+      // the TUI's own resume of the thread this recipe owns: its answer names the thread observed
+      fakes.tapClientMessage!({ id: 1, method: 'thread/resume', params: { threadId: 'thread-1' } });
+      reader.message({ id: 1, result: { thread: { id: 'thread-1' } } });
+      // `/new`: the request carries no id, the answer does
+      fakes.tapClientMessage!({ id: 7, method: 'thread/start', params: { cwd: '/work' } });
+      expect(reader.waiting()).toBe(true);
+      reader.message({ id: 7, result: { thread: { id: 'thread-new', name: null } } });
+      expect(reader.waiting()).toBe(false);
+      // a resume and a fork, answered out of order, under ids of either kind
+      fakes.tapClientMessage!({ id: 'r-1', method: 'thread/resume', params: { threadId: 'thread-old' } });
+      fakes.tapClientMessage!({ id: 8, method: 'thread/fork', params: { threadId: 'thread-new' } });
+      reader.message({ jsonrpc: '2.0', id: 8, result: { thread: { id: 'thread-fork', forkedFromId: 'thread-new' } } });
+      reader.message({ jsonrpc: '2.0', id: 'r-1', result: { thread: { id: 'thread-old' } } });
+      expect(followThread.mock.calls.map(([thread, move]) => [thread.id, move])).toEqual([
+        ['thread-1', 'resume'],
+        ['thread-new', 'new'],
+        ['thread-fork', 'fork'],
+        ['thread-old', 'resume'],
+      ]);
+      expect(followThread.mock.calls[1]![0]).toEqual({ id: 'thread-new', name: null });
+      // a thread this recipe owns is attached already: no request attaches one
+      expect(attachThread).not.toHaveBeenCalled();
+      await prepared.dispose();
+      expect(fakes.tapDispose).toHaveBeenCalledOnce();
+    });
+
+    it('drops a request answered with an error, reads no other answer, and forgets the oldest of many', async () => {
+      const { followThread } = movingObserver('thread-1');
+      const prepared = await prepareCodexTuiSession({ cwd: '/work', host: host() });
+      const reader = fakes.tapServerReader!;
+      fakes.tapClientMessage!({ id: 9, method: 'thread/start', params: {} });
+      reader.message({ id: 9, error: { code: -32600, message: 'refused' } });
+      expect(reader.waiting()).toBe(false);
+      // a request that names no thread is not kept
+      fakes.tapClientMessage!({ id: 10, method: 'turn/start', params: { threadId: 'thread-1' } });
+      fakes.tapClientMessage!({ method: 'thread/start', params: {} });
+      expect(reader.waiting()).toBe(false);
+      fakes.tapClientMessage!({ id: 11, method: 'thread/start', params: {} });
+      // a notification, a server request, another request's answer, and an answer with no thread
+      reader.message({ method: 'thread/started', params: { thread: { id: 'thread-x' } } });
+      reader.message({ id: 11, method: 'item/commandExecution/requestApproval', params: {} });
+      reader.message({ id: 12, result: { thread: { id: 'thread-y' } } });
+      reader.message({ id: 11, result: {} });
+      expect(followThread).not.toHaveBeenCalled();
+      expect(reader.waiting()).toBe(false);
+      for (let n = 0; n < 40; n++) {
+        fakes.tapClientMessage!({ id: 100 + n, method: 'thread/resume', params: { threadId: `thread-${n}` } });
+      }
+      reader.message({ id: 100, result: { thread: { id: 'thread-forgotten' } } });
+      reader.message({ id: 139, result: { thread: { id: 'thread-kept' } } });
+      expect(followThread.mock.calls.map(([thread]) => thread.id)).toEqual(['thread-kept']);
+      await prepared.dispose();
+    });
+
+    it('keeps a picker provisional until the TUI resumes the chosen thread: listing and reading threads choose none', async () => {
+      const { attachThread } = movingObserver(undefined);
+      const prepared = await prepareCodexTuiSession({ cwd: '/work', host: host(), resumeInvocation: ['resume'] });
+      const session = await prepared.adopt('pane');
+      expect(session.nativeSessionProvisional?.()).toBe(true);
+      expect(session.sessionId).toMatch(/^codex-pending-/);
+      // what a picker asks to list and show threads names no choice
+      fakes.tapClientMessage!({ id: 1, method: 'thread/list', params: {} });
+      fakes.tapClientMessage!({ id: 2, method: 'thread/read', params: { threadId: 'thread-a' } });
+      fakes.tapClientMessage!({ id: 3, method: 'thread/turns/list', params: { threadId: 'thread-a' } });
+      expect(session.nativeSessionProvisional?.()).toBe(true);
+      expect(attachThread).not.toHaveBeenCalled();
+      expect(fakes.tapServerReader!.waiting()).toBe(false);
+      // the choice: the observer attaches it from the request, before the thread's start is published
+      fakes.tapClientMessage!({ id: 4, method: 'thread/resume', params: { threadId: 'thread-a' } });
+      expect(attachThread).toHaveBeenCalledExactlyOnceWith('thread-a');
+      await vi.waitFor(() => expect(session.nativeSessionProvisional?.()).toBe(false));
+      expect(session.sessionId).toBe('thread-a');
+      await session.dispose();
+    });
+
+    it('is never provisional for a thread the recipe owns or resumed by id', async () => {
+      movingObserver('thread-1');
+      const fresh = await (await prepareCodexTuiSession({ cwd: '/work', host: host() })).adopt('pane');
+      expect(fresh.nativeSessionProvisional?.()).toBe(false);
+      await fresh.dispose();
+      const resumed = await (
+        await prepareCodexTuiSession({ cwd: '/work', host: host(), resume: 'thread-1' })
+      ).adopt('pane');
+      expect(resumed.nativeSessionProvisional?.()).toBe(false);
+      await resumed.dispose();
+    });
+  });
+
   describe('the model switch', () => {
     /** A connection that answers every request with `{}`, and can speak as the app-server. */
     function settingsConnection() {
@@ -686,6 +811,42 @@ describe('Codex TUI preparation', () => {
         expect(connection.sent.map(({ method }) => method)).toEqual(['initialize', 'initialized', 'thread/resume']);
         expect(connection.sent[2]!.params).toEqual({ threadId: 'thread-picked', excludeTurns: true });
         await prepared.dispose();
+      } finally {
+        for (const key of Object.keys(fakes.transport)) delete (fakes.transport as Record<string, unknown>)[key];
+      }
+    });
+
+    it('listens to the thread the TUI moved to, on the connection it already has', async () => {
+      const connection = settingsConnection();
+      let observed = 'thread-1';
+      fakes.createObserver.mockResolvedValue({
+        get sessionId() {
+          return observed;
+        },
+        observationLevel: () => 'structured',
+        threadPath: () => undefined,
+        events: { onCandidate: fakes.observerOnCandidate },
+        attachThread: vi.fn(),
+        followThread: vi.fn(),
+        onThread: fakes.observerOnThread,
+        settingsUpdated: fakes.observerSettingsUpdated,
+        dispose: fakes.observerDispose,
+      });
+      try {
+        const prepared = await prepareCodexTuiSession({ cwd: '/work/repo', executable: '/opt/codex', host: host() });
+        await prepared.adopt('pane');
+        await settled();
+        observed = 'thread-2';
+        fakes.observerOnThread.mock.lastCall![0]({ threadId: 'thread-2' });
+        await settled();
+        expect(connection.sent.map(({ method, params }) => [method, params?.threadId])).toEqual([
+          ['initialize', undefined],
+          ['initialized', undefined],
+          ['thread/resume', 'thread-1'],
+          ['thread/resume', 'thread-2'],
+        ]);
+        await prepared.dispose();
+        expect(connection.close).toHaveBeenCalledOnce();
       } finally {
         for (const key of Object.keys(fakes.transport)) delete (fakes.transport as Record<string, unknown>)[key];
       }

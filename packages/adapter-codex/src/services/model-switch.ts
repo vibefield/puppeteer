@@ -62,6 +62,12 @@ export interface CodexModelSwitch extends AgentModelSwitchService {
    * for here. A failure is not kept: the next call, or the next `submit`, opens it again.
    */
   listen(): Promise<void>;
+  /**
+   * The observed thread is now `threadId` (the TUI moved to another one): an open connection subscribes to it too, so
+   * its settings are heard. A connection not yet open subscribes to the observed thread when it opens. Never awaited
+   * and never kept as a failure: the session is whole without it.
+   */
+  follow(threadId: string): void;
   dispose(): Promise<void>;
 }
 
@@ -93,6 +99,8 @@ function refusal(cause: unknown): AgentModelSwitchReceipt {
 
 export function createCodexModelSwitch(options: CodexModelSwitchOptions): CodexModelSwitch {
   let rail: Promise<AppServerClient> | undefined;
+  // The thread the connection is subscribed to, or is being subscribed to.
+  let subscribed: string | undefined;
   let active = false;
   let closed = false;
 
@@ -119,9 +127,12 @@ export function createCodexModelSwitch(options: CodexModelSwitchOptions): CodexM
       await client.request('thread/resume', { threadId, excludeTurns: true });
       return client;
     })();
+    subscribed = threadId;
     rail = opened;
     const forget = (): void => {
-      if (rail === opened) rail = undefined;
+      if (rail !== opened) return;
+      rail = undefined;
+      subscribed = undefined;
     };
     client.onClose(forget);
     opened.catch(() => {
@@ -135,6 +146,17 @@ export function createCodexModelSwitch(options: CodexModelSwitchOptions): CodexM
     offer: { model: true, controls: [EFFORT_CONTROL], persistence: 'session' },
     async listen(): Promise<void> {
       await open();
+    },
+    follow(threadId): void {
+      const opened = rail;
+      if (opened === undefined || closed || options.isDisposed() || subscribed === threadId) return;
+      subscribed = threadId;
+      void opened
+        .then(async (client) => {
+          if (rail !== opened || subscribed !== threadId) return;
+          await client.request('thread/resume', { threadId, excludeTurns: true });
+        })
+        .catch(() => undefined);
     },
     async submit(request): Promise<AgentModelSwitchReceipt> {
       if (closed || options.isDisposed()) {

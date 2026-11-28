@@ -990,7 +990,7 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
             <a class="hook-chip use-used" href="#cx-m-initialize"><code>initialize</code></a
             ><a class="hook-chip use-used" href="#cx-m-thread-start"><code>thread/start</code></a
             ><a class="hook-chip use-used" href="#cx-m-thread-resume"><code>thread/resume</code></a
-            ><a class="hook-chip use-unused" href="#cx-m-thread-fork"><code>thread/fork</code></a
+            ><a class="hook-chip use-used" href="#cx-m-thread-fork"><code>thread/fork</code></a
             ><a class="hook-chip use-partial" href="#cx-m-thread-read"><code>thread/read</code></a
             ><a class="hook-chip use-unused" href="#cx-m-thread-list"><code>thread/list</code></a
             ><a class="hook-chip use-used" href="#cx-m-thread-turns-list"><code>thread/turns/list</code></a
@@ -1240,7 +1240,14 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
                 <h5>Source section</h5>
                 <p class="muted-p">Official docs § Start or resume a thread</p>
                 <h5>Puppeteer</h5>
-                <p class="hook-usage"><strong>Puppeteer:</strong> Called / handled for agent session lifecycle.</p>
+                <p class="hook-usage">
+                  <strong>Puppeteer:</strong> Called / handled for agent session lifecycle. A managed TUI joins through the adapter's tap, which reads the app-server's answer to the TUI's own
+                  <code>thread/start</code>, <code>thread/resume</code> and <code>thread/fork</code>: the thread it
+                  names (a start's or a fork's request carries no id) moves the observer, which attaches it with its
+                  history and publishes <code>session:started</code> with <code>rebind</code> and the move
+                  (<code>new</code>, <code>resume</code>, <code>fork</code>) as its <code>startSource</code>. A
+                  sub-agent's thread (<code>parentThreadId</code>, a <code>subAgent</code> source) moves nothing.
+                </p>
               </div>
             </article>
             <article class="hook-card use-used" id="cx-m-thread-resume">
@@ -1344,15 +1351,22 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
                   <strong>Puppeteer:</strong> Called / handled for agent session lifecycle. The observer and the
                   app-server driver resume with <code>excludeTurns: true</code> and read history through
                   <code>thread/turns/list</code>; on an app-server that refuses <code>excludeTurns</code> without
-                  <code>experimentalApi</code> (0.150.x, 0.147.0) they fall back to the full resume.
+                  <code>experimentalApi</code> (0.150.x, 0.147.0) they fall back to the full resume. A native resume
+                  picker's first <code>thread/resume</code> is the run's binding, attached from the request; a
+                  later one the TUI sends is a move, as below. A managed TUI joins through the adapter's tap, which reads the app-server's answer to the TUI's own
+                  <code>thread/start</code>, <code>thread/resume</code> and <code>thread/fork</code>: the thread it
+                  names (a start's or a fork's request carries no id) moves the observer, which attaches it with its
+                  history and publishes <code>session:started</code> with <code>rebind</code> and the move
+                  (<code>new</code>, <code>resume</code>, <code>fork</code>) as its <code>startSource</code>. A
+                  sub-agent's thread (<code>parentThreadId</code>, a <code>subAgent</code> source) moves nothing.
                 </p>
               </div>
             </article>
-            <article class="hook-card use-unused" id="cx-m-thread-fork">
+            <article class="hook-card use-used" id="cx-m-thread-fork">
               <header class="hook-card-h">
                 <div class="hook-card-title">
                   <a class="hook-anchor" href="#cx-m-thread-fork"><code>thread/fork</code></a>
-                  <span class="tag t-unused">Not used</span>
+                  <span class="tag t-used">Used</span>
                 </div>
               </header>
               <div class="hook-card-body">
@@ -1446,6 +1460,15 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
                 </p>
                 <h5>Source section</h5>
                 <p class="muted-p">Official docs § Start or resume a thread</p>
+                <h5>Puppeteer</h5>
+                <p class="hook-usage">
+                  <strong>Puppeteer:</strong> Read, never sent: the TUI's own fork is a move. A managed TUI joins through the adapter's tap, which reads the app-server's answer to the TUI's own
+                  <code>thread/start</code>, <code>thread/resume</code> and <code>thread/fork</code>: the thread it
+                  names (a start's or a fork's request carries no id) moves the observer, which attaches it with its
+                  history and publishes <code>session:started</code> with <code>rebind</code> and the move
+                  (<code>new</code>, <code>resume</code>, <code>fork</code>) as its <code>startSource</code>. A
+                  sub-agent's thread (<code>parentThreadId</code>, a <code>subAgent</code> source) moves nothing.
+                </p>
               </div>
             </article>
             <article class="hook-card use-partial" id="cx-m-thread-read">

@@ -46,7 +46,12 @@ import type {
   TerminalSpec,
 } from '@vibefield/puppeteer-core';
 import { resolveCodexExecutable } from '../detection.js';
-import { createCodexObserver } from '../observation/observer.js';
+import {
+  createCodexObserver,
+  type CodexFollowedThread,
+  type CodexObserver,
+  type CodexThreadMove,
+} from '../observation/observer.js';
 import { createCodexModelSwitch } from '../services/model-switch.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
 import { spawnAppServer, type AppServerTransportKind } from '../transport/app-server-process.js';
@@ -55,6 +60,7 @@ import {
   connectAppServerEndpoint,
   createWebSocketTapProxy,
   type WebSocketTapProxy,
+  type WebSocketTapServerReader,
 } from '../transport/ws-transport.js';
 
 export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions, AgentRunBriefing {
@@ -111,6 +117,75 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions, Ag
    * last, after `--`, so clap reads it as the prompt whatever it starts with.
    */
   prompt?: string | undefined;
+}
+
+/** The TUI's requests that name the thread it goes to, and the move each is. */
+const THREAD_MOVES: ReadonlyMap<string, CodexThreadMove> = new Map<string, CodexThreadMove>([
+  ['thread/start', 'new'],
+  ['thread/resume', 'resume'],
+  ['thread/fork', 'fork'],
+]);
+/** Requests awaiting their answer, at most; past it the oldest is forgotten. */
+const MAX_PENDING_MOVES = 32;
+
+const record = (value: unknown): Record<string, unknown> | undefined =>
+  value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+
+/** A JSON-RPC id as a map key: a number and a string of the same digits are two ids. */
+function requestKey(id: unknown): string | undefined {
+  return typeof id === 'number' || typeof id === 'string' ? `${typeof id}:${String(id)}` : undefined;
+}
+
+/**
+ * What the tap hears of the thread a managed TUI goes to. A thread the TUI starts, resumes or forks is named in the
+ * app-server's ANSWER (a `thread/start` or `thread/fork` request carries no new id), so the tap keeps each such
+ * request's id, reads the server's frames only while one waits, and hands the answer's `thread` to the observer
+ * (`followThread`). An error answer drops the request. A picker's first `thread/resume` is its binding, attached from
+ * the request itself as before; its answer then names the thread already observed and moves nothing.
+ */
+export function codexThreadMoves(observer: () => Pick<CodexObserver, 'sessionId' | 'attachThread' | 'followThread'>): {
+  clientMessage(message: unknown): void;
+  serverReader: WebSocketTapServerReader;
+} {
+  const pending = new Map<string, CodexThreadMove>();
+  return {
+    clientMessage(message) {
+      const request = record(message);
+      const method = typeof request?.method === 'string' ? request.method : undefined;
+      const move = method === undefined ? undefined : THREAD_MOVES.get(method);
+      if (move === undefined) return;
+      const params = record(request?.params);
+      if (move === 'resume' && observer().sessionId === undefined && typeof params?.threadId === 'string') {
+        // The observer publishes a provider refusal as a diagnostic, and the TUI's own request receives
+        // Codex's error; nothing awaits this attach, so its rejection must not go unhandled.
+        observer()
+          .attachThread(params.threadId)
+          .catch(() => undefined);
+      }
+      const key = requestKey(request?.id);
+      if (key === undefined) return;
+      pending.delete(key);
+      pending.set(key, move);
+      if (pending.size > MAX_PENDING_MOVES) pending.delete(pending.keys().next().value as string);
+    },
+    serverReader: {
+      waiting: () => pending.size > 0,
+      message(message) {
+        const answer = record(message);
+        // A server request or a notification has a method; an answer has none.
+        if (answer === undefined || answer.method !== undefined) return;
+        const key = requestKey(answer.id);
+        const move = key === undefined ? undefined : pending.get(key);
+        if (key === undefined || move === undefined) return;
+        pending.delete(key);
+        const thread = record(record(answer.result)?.thread);
+        if (thread === undefined || typeof thread.id !== 'string') return;
+        observer()
+          .followThread(thread as CodexFollowedThread, move)
+          .catch(() => undefined);
+      },
+    },
+  };
 }
 
 const OWNED_TUI_ARGUMENTS = ['--remote', '--remote-auth-token-env', '--'];
@@ -190,7 +265,8 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   // before the TUI process is even spawned.
   let observer: Awaited<ReturnType<typeof createCodexObserver>>;
   const serverEndpoint = server.endpoint();
-  let resumeTap: WebSocketTapProxy | undefined;
+  let tap: WebSocketTapProxy;
+  const moves = codexThreadMoves(() => observer);
   try {
     observer = await createCodexObserver({
       transport: connectAppServerEndpoint(serverEndpoint),
@@ -242,26 +318,18 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   }
 
   // Always join the owned/resumed thread — never bare `--remote` (that creates
-  // a second, unmaterialized thread on first keystroke).
-  if (opts.resumeInvocation) {
-    resumeTap = createWebSocketTapProxy(serverEndpoint, (message) => {
-      const request = message as { method?: unknown; params?: { threadId?: unknown } };
-      if (request.method === 'thread/resume' && typeof request.params?.threadId === 'string') {
-        // The observer publishes a provider refusal as a diagnostic, and the TUI's own request receives
-        // Codex's error; nothing awaits this attach, so its rejection must not go unhandled.
-        observer.attachThread(request.params.threadId).catch(() => undefined);
-      }
-    });
-    try {
-      await resumeTap.ready();
-    } catch (error) {
-      await resumeTap.dispose();
-      await observer.dispose().catch(() => undefined);
-      await server.dispose();
-      throw error;
-    }
+  // a second, unmaterialized thread on first keystroke). The TUI joins through a
+  // tap, which hears the thread it moves to (`codexThreadMoves`).
+  tap = createWebSocketTapProxy(serverEndpoint, moves.clientMessage, moves.serverReader);
+  try {
+    await tap.ready();
+  } catch (error) {
+    await tap.dispose();
+    await observer.dispose().catch(() => undefined);
+    await server.dispose();
+    throw error;
   }
-  const remoteAddr = appServerRemoteAddress(resumeTap?.endpoint() ?? serverEndpoint);
+  const remoteAddr = appServerRemoteAddress(tap.endpoint());
   // `resume <thread>` first (clap's SESSION_ID), then the adapter's `--remote <addr>`,
   // then what was typed, and the prompt last behind `--` (clap's PROMPT) — a variadic
   // like `--image` can take neither the address nor the prompt.
@@ -289,8 +357,12 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   });
   // Listening from the start is what lets a change made in the TUI's own picker be observed. It is not awaited and
   // a failure is not kept: the session is whole without it, and a switch asked for later opens the connection again.
+  // A thread the TUI moves to is the one the rail then listens to.
   const listenForSettings = (): void => void modelSwitch.listen().catch(() => undefined);
-  const unsubscribeThread = observer.onThread(listenForSettings);
+  const unsubscribeThread = observer.onThread(({ threadId: observed }) => {
+    modelSwitch.follow(observed);
+    listenForSettings();
+  });
   async function dispose(): Promise<void> {
     if (disposed) return;
     disposed = true;
@@ -298,7 +370,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
     echoes.dispose();
     await modelSwitch.dispose();
     await observer.dispose().catch(() => undefined);
-    await resumeTap?.dispose();
+    await tap.dispose();
     await server.dispose();
   }
 
@@ -321,6 +393,10 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
         get sessionId(): string {
           return observer.sessionId ?? threadId;
         },
+        // A picker launch runs under the id minted here until the TUI resumes the thread the person chose: the
+        // observer attaches it from that request, before its `session:started`. What the picker sends to list or show
+        // threads names no choice, so it leaves the run provisional.
+        nativeSessionProvisional: () => observer.sessionId === undefined,
         runtimeSessionId,
         observationLevel: () => observer.observationLevel(),
         threadPath: () => observer.threadPath(),

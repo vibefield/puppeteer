@@ -142,6 +142,52 @@ describe('createCodexModelSwitch', () => {
     expect(connections[0]!.requests().map(({ method }) => method)).toEqual(['initialize', 'thread/resume']);
   });
 
+  it('subscribes its open connection to the thread the TUI moved to, once, and then hears that thread', async () => {
+    const link = connection();
+    const heard: Record<string, unknown>[] = [];
+    let observed: string | undefined = 'thread-1';
+    let opened = 0;
+    const service = createCodexModelSwitch({
+      connect: () => {
+        opened += 1;
+        return link.transport;
+      },
+      threadId: () => observed,
+      isDisposed: () => false,
+      onSettings: (params) => heard.push(params),
+      requestTimeoutMs: 40,
+    });
+    // a connection not open yet subscribes when it opens: following moves nothing
+    service.follow('thread-1');
+    expect(opened).toBe(0);
+    await service.listen();
+    observed = 'thread-2';
+    service.follow('thread-2');
+    service.follow('thread-2');
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(link.requests().map(({ method, params }) => [method, params?.threadId])).toEqual([
+      ['initialize', undefined],
+      ['thread/resume', 'thread-1'],
+      ['thread/resume', 'thread-2'],
+    ]);
+    expect(link.requests().at(-1)!.params).toEqual({ threadId: 'thread-2', excludeTurns: true });
+    expect(opened).toBe(1);
+    const moved = { threadId: 'thread-2', threadSettings: { model: 'gpt-5.1-codex' } };
+    link.say({
+      jsonrpc: '2.0',
+      method: 'thread/settings/updated',
+      params: { threadId: 'thread-1', threadSettings: {} },
+    });
+    link.say({ jsonrpc: '2.0', method: 'thread/settings/updated', params: moved });
+    expect(heard).toEqual([moved]);
+    await expect(service.submit({ kind: 'model', modelId: 'gpt-5.1-codex-max' })).resolves.toEqual({ status: 'sent' });
+    expect(link.requests().at(-1)).toMatchObject({
+      method: 'thread/settings/update',
+      params: { threadId: 'thread-2', model: 'gpt-5.1-codex-max' },
+    });
+    await service.dispose();
+  });
+
   it("answers none of the thread's requests: an approval is the person's, in the TUI", async () => {
     const { service, connections } = codex();
     await service.listen();
