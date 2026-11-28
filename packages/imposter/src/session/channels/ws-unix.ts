@@ -365,9 +365,8 @@ export async function connectUnixWebSocket(socketPath: string): Promise<WebSocke
 /**
  * Listen for app-server clients on a unix socket.
  *
- * The socket file is removed on close because the adapter's readiness probe is
- * `existsSync(socketPath)` (ws-transport.ts): a stale file left behind by a
- * dead imposter would report ready and then refuse every connection.
+ * The socket file is removed on close, so that a stopped server leaves no
+ * file at the path that nothing listens on.
  */
 export async function listenUnixWebSocket(options: UnixWebSocketServerOptions): Promise<UnixWebSocketServer> {
   // Tracked so `close()` can end them. `Server.close()` stops accepting and
