@@ -36,6 +36,52 @@ describe('Antigravity native TUI session: the durable record (RA-D7)', () => {
     expect(prepared.sessionId).toMatch(/^antigravity-pending-/);
     const session = await prepared.adopt('runtime-antigravity');
     expect(session.durableRecordSeen()).toBe(false);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+    await prepared.dispose();
+  });
+
+  it('binds a run typed into in a root it owns, saying its start with the id no longer provisional', async () => {
+    const dataRoot = await store();
+    const prepared = await prepareAntigravityTuiSession({
+      cwd: '/repo',
+      host: host(),
+      executable: '/opt/agy',
+      dataRoot,
+      ownedRoot: true,
+      pollIntervalMs: 20,
+    });
+    const session = await prepared.adopt('runtime-antigravity-owned');
+    const seen: Array<{ type: string; nativeSessionId: string | undefined; provisional: boolean | undefined }> = [];
+    session.events.onCandidate((candidate) =>
+      seen.push({
+        type: candidate.event.type,
+        nativeSessionId: candidate.nativeSessionId,
+        provisional: session.nativeSessionProvisional?.(),
+      }),
+    );
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+    // the person types into the pane; nothing was sent through puppeteer
+    const { transcriptPath } = antigravitySessionLocation(dataRoot, 'conversation-typed');
+    await mkdir(dirname(transcriptPath), { recursive: true });
+    await writeFile(
+      transcriptPath,
+      `${JSON.stringify({
+        type: 'USER_INPUT',
+        source: 'USER_EXPLICIT',
+        status: 'DONE',
+        step_index: 0,
+        created_at: '2026-11-27T00:00:00Z',
+        content: '<USER_REQUEST>typed here</USER_REQUEST>',
+      })}\n`,
+    );
+    await vi.waitFor(() => expect(session.sessionId).toBe('conversation-typed'));
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+    expect(session.durableRecordSeen()).toBe(true);
+    expect(seen.find(({ type }) => type === 'session:started')).toEqual({
+      type: 'session:started',
+      nativeSessionId: 'conversation-typed',
+      provisional: false,
+    });
     await prepared.dispose();
   });
 
@@ -64,6 +110,7 @@ describe('Antigravity native TUI session: the durable record (RA-D7)', () => {
     });
     const session = await prepared.adopt('runtime-antigravity-resume');
     expect(session.durableRecordSeen()).toBe(true);
+    expect(session.nativeSessionProvisional?.()).toBe(false);
     await prepared.dispose();
   });
 });

@@ -25,6 +25,22 @@ async function root(): Promise<string> {
   return value;
 }
 
+/** A new session in the folder holding a typed prompt, as a Kimi process writes it. */
+async function typedSession(home: string, cwd: string, sessionId: string, text: string): Promise<void> {
+  const sessionDir = join(home, 'sessions', encodeKimiWorkDirKey(cwd), sessionId);
+  await mkdir(join(sessionDir, 'agents', 'main'), { recursive: true });
+  await writeFile(join(sessionDir, 'state.json'), JSON.stringify({ id: sessionId, cwd, createdAt: 1 }));
+  await writeFile(
+    kimiMainWirePath(sessionDir),
+    `${[
+      { type: 'metadata', protocol_version: '1.5', created_at: 1 },
+      { type: 'turn.prompt', input: [{ type: 'text', text }], origin: { kind: 'user' }, time: 2 },
+    ]
+      .map((record) => JSON.stringify(record))
+      .join('\n')}\n`,
+  );
+}
+
 describe('Kimi native TUI session', () => {
   it('builds only valid native CLI combinations', () => {
     expect(
@@ -130,7 +146,12 @@ describe('Kimi native TUI session', () => {
     const projection = projectAgentEvents(session);
     const candidates: AdapterEventCandidate[] = [];
     expect(session.events.onCandidate).toBeTypeOf('function');
-    const offCandidate = session.events.onCandidate!((candidate) => candidates.push(candidate));
+    // what the predicate says as each candidate is published
+    const provisionalAt: Array<[string, boolean | undefined]> = [];
+    const offCandidate = session.events.onCandidate!((candidate) => {
+      candidates.push(candidate);
+      provisionalAt.push([candidate.type, session.nativeSessionProvisional?.()]);
+    });
     const monitor = projection.monitorBatches;
     expect(launched).toEqual([
       { command: '/opt/kimi', args: ['--model', 'kimi-k2'], cwd, env: { KIMI_CODE_HOME: home } },
@@ -138,12 +159,18 @@ describe('Kimi native TUI session', () => {
     expect(session.sessionId).toMatch(/^kimi-pending-/);
     // RA-D7: a provisional id names no journal, so nothing may be ended to resume it
     expect(session.durableRecordSeen()).toBe(false);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
     await expect(session.services.prompt.submit({ text: 'ping', confirmationTimeoutMs: 2_000 })).resolves.toEqual({
       status: 'confirmed',
     });
     expect(wroteTurn).toBe(true);
     expect(session.sessionId).toBe('session-native-1');
     expect(session.durableRecordSeen()).toBe(true);
+    // the bind's own start is said with the predicate already false, and so is everything after it
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+    const bindAt = provisionalAt.findIndex(([type]) => type === 'session:started');
+    expect(bindAt).toBeGreaterThanOrEqual(0);
+    expect(provisionalAt.slice(bindAt).every(([, provisional]) => provisional === false)).toBe(true);
     expect(projection.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'pong', activeTurn: undefined });
     const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
     expect(assistant).not.toHaveProperty('sequence');
@@ -182,6 +209,82 @@ describe('Kimi native TUI session', () => {
     await session.dispose();
   });
 
+  it('binds a fresh run that holds no host prompt only in a home it owns', async () => {
+    // a person's own home: after the launch, someone starts Kimi in another terminal in the same folder
+    const home = await root();
+    const cwd = join(home, 'repo');
+    const host: AgentHost = {
+      spawnTerminal: vi.fn(),
+      async automateTerminal(_runtimeSessionId, operation) {
+        // the run's own Kimi writes its session when the host's prompt is submitted
+        if (operation.kind === 'paste' && operation.submit) {
+          await typedSession(home, cwd, 'session-own', operation.text);
+        }
+        return { accepted: true };
+      },
+    };
+    const prepared = await prepareKimiTuiSession({ cwd, host, kimiHome: home, pollIntervalMs: 60_000 });
+    await typedSession(home, cwd, 'session-outside', 'typed in another terminal');
+    // adoption reads the folder once: the session from outside is the one new candidate
+    const session = await prepared.adopt('runtime-native');
+    expect(session.sessionId).toMatch(/^kimi-pending-/);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+    expect(session.durableRecordSeen()).toBe(false);
+    // the run's own prompt names its own session
+    await expect(session.services.prompt.submit({ text: 'mine', confirmationTimeoutMs: 2_000 })).resolves.toEqual({
+      status: 'confirmed',
+    });
+    expect(session.sessionId).toBe('session-own');
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+    await prepared.dispose();
+
+    // a managed profile's home, which only its runs write: the person typed the run's first prompt in its pane
+    const ownedHome = await root();
+    const ownedCwd = join(ownedHome, 'repo');
+    const ownedHost: AgentHost = { spawnTerminal: vi.fn(), automateTerminal: vi.fn() };
+    const ownedPrepared = await prepareKimiTuiSession({
+      cwd: ownedCwd,
+      host: ownedHost,
+      kimiHome: ownedHome,
+      ownedRoot: true,
+      pollIntervalMs: 60_000,
+    });
+    await typedSession(ownedHome, ownedCwd, 'session-typed', 'typed in the pane');
+    const owned = await ownedPrepared.adopt('runtime-owned');
+    expect(owned.sessionId).toBe('session-typed');
+    expect(owned.nativeSessionProvisional?.()).toBe(false);
+    expect(owned.durableRecordSeen()).toBe(true);
+    expect(ownedHost.automateTerminal).not.toHaveBeenCalled();
+    await ownedPrepared.dispose();
+  });
+
+  it('in a home it does not own, binds the session typed into its pane once its host says input reached the terminal it was adopted into', async () => {
+    const home = await root();
+    const cwd = join(home, 'repo');
+    let typed = false;
+    const terminalInputSeen = vi.fn((_runtimeSessionId: string) => typed);
+    const host: AgentHost = { spawnTerminal: vi.fn(), automateTerminal: vi.fn(), terminalInputSeen };
+    const prepared = await prepareKimiTuiSession({ cwd, host, kimiHome: home, pollIntervalMs: 20 });
+    await typedSession(home, cwd, 'session-typed', 'typed in the pane');
+    const session = await prepared.adopt('runtime-typed');
+    // the host has seen no input in this terminal: the new session may be another terminal's, so nothing binds
+    expect(session.sessionId).toMatch(/^kimi-pending-/);
+    expect(session.nativeSessionProvisional?.()).toBe(true);
+    expect(session.durableRecordSeen()).toBe(false);
+    expect(terminalInputSeen).toHaveBeenCalled();
+    // the person types in the pane: the host's next answer binds the one new session
+    typed = true;
+    await vi.waitFor(() => expect(session.sessionId).toBe('session-typed'));
+    expect(session.nativeSessionProvisional?.()).toBe(false);
+    expect(session.durableRecordSeen()).toBe(true);
+    // asked of the terminal the run was adopted into, and of no other
+    expect(new Set(terminalInputSeen.mock.calls.map(([runtimeSessionId]) => runtimeSessionId))).toEqual(
+      new Set(['runtime-typed']),
+    );
+    expect(host.automateTerminal).not.toHaveBeenCalled();
+    await prepared.dispose();
+  });
+
   it('snapshots resume history before adoption and reports paste-only honestly', async () => {
     const home = await root();
     const cwd = join(home, 'repo');
@@ -210,8 +313,9 @@ describe('Kimi native TUI session', () => {
     expect(prepared.sessionId).toBe(sessionId);
     expect(prepared.launch.args).toEqual(['--session', sessionId]);
     const session = await prepared.adopt('runtime-resume');
-    // the journal was found at prepare
+    // the journal was found at prepare, and the id is the session's own
     expect(session.durableRecordSeen()).toBe(true);
+    expect(session.nativeSessionProvisional?.()).toBe(false);
     const projection = projectAgentEvents(session);
     expect(projection.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'old reply' });
     await expect(session.services.prompt.submit({ text: 'staged', mode: 'paste-only' })).resolves.toEqual({

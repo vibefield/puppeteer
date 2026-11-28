@@ -1,7 +1,7 @@
 /** Append-safe observer for Kimi Code's session index and wire 1.5 journals. */
 
 import { open, readFile, stat } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibefield/puppeteer-core';
 import { KimiWireNormalizer } from '../normalization/pipeline.js';
 import {
@@ -62,6 +62,19 @@ export interface KimiSessionObserverOptions {
   baselineSessionIds?: ReadonlySet<string> | undefined;
   /** Per-journal sizes captured before a resumed TUI launch. */
   replayOffsets?: KimiJournalOffsets | undefined;
+  /**
+   * The run owns this Kimi home (a managed profile's): only its runs start sessions there. The provider sets it;
+   * a person's own home is never owned. With no host prompt waiting, a fresh run in an owned home binds the one new
+   * candidate with a typed prompt; elsewhere it binds it only once a person's input reached the run's own terminal
+   * (`terminalInputSeen`), and otherwise only by its host prompt's echo (see `pollDiscovery`).
+   */
+  ownedRoot?: boolean | undefined;
+  /**
+   * The host's answer, for the run's own terminal, to whether a person's input has reached it since its spawn (core
+   * `AgentHost.terminalInputSeen`; the host's own automation is not that input). Absent, false, or a read that fails
+   * is "not seen".
+   */
+  terminalInputSeen?: (() => boolean | Promise<boolean>) | undefined;
   pollIntervalMs?: number | undefined;
   readChunkBytes?: number | undefined;
   maxRecordBytes?: number | undefined;
@@ -140,6 +153,17 @@ async function candidatePrompts(path: string, maxBytes: number): Promise<string[
   }
 }
 
+/** One observer's claim in a workspace it shares with the other observers of this process. */
+interface KimiDiscovery {
+  baseline: Set<string>;
+  boundSessionId?: string | undefined;
+}
+
+// Observers of one Kimi home and folder must not claim each other's sessions. A session a peer bound joins every
+// other observer's baseline, so it is never a candidate again; each remembers claims made during its lifetime, even
+// after the claiming observer stops, so a delayed launch cannot adopt an older peer's session.
+const discoveriesByWorkspace = new Map<string, Set<KimiDiscovery>>();
+
 function stateTimestamp(value: unknown): string | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
   const result = new Date(value);
@@ -154,6 +178,15 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
   const promptWaiters = new Map<number, PromptWaiter>();
   const journals = new Map<string, JournalState>();
   const baseline = new Set(options.baselineSessionIds ?? []);
+  const workspace = `${resolve(options.kimiHome)}\0${resolve(options.cwd)}`;
+  const discoveries = discoveriesByWorkspace.get(workspace) ?? new Set<KimiDiscovery>();
+  const discovery: KimiDiscovery = { baseline, boundSessionId: options.location?.sessionId };
+  for (const peer of discoveries) {
+    if (peer.boundSessionId) baseline.add(peer.boundSessionId);
+    if (discovery.boundSessionId) peer.baseline.add(discovery.boundSessionId);
+  }
+  discoveries.add(discovery);
+  discoveriesByWorkspace.set(workspace, discoveries);
   const replayOffsets = options.replayOffsets ?? new Map<string, number>();
   const readChunkBytes = Math.max(1, Math.floor(options.readChunkBytes ?? 64 * 1024));
   const maxRecordBytes = Math.max(readChunkBytes, Math.floor(options.maxRecordBytes ?? 1024 * 1024));
@@ -257,18 +290,55 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
   };
 
   const bind = async (location: KimiSessionLocation): Promise<void> => {
-    if (bound || stopped) return;
+    if (bound || stopped || baseline.has(location.sessionId)) return;
+    // Claimed before anything is said under it: the id is this run's from here (`sessionId()`), and no peer's.
     bound = location;
+    discovery.boundSessionId = location.sessionId;
+    for (const peer of discoveries) {
+      if (peer !== discovery) peer.baseline.add(location.sessionId);
+    }
     await bootstrap();
   };
 
+  // Once the host has seen input in the run's terminal it has for good, so it is not asked again.
+  let inputSeen = false;
+  const terminalInputSeen = async (): Promise<boolean> => {
+    if (inputSeen || !options.terminalInputSeen) return inputSeen;
+    try {
+      inputSeen = (await options.terminalInputSeen()) === true;
+    } catch {
+      // A host that cannot answer has seen nothing.
+    }
+    return inputSeen;
+  };
+
+  /**
+   * Binds a fresh run to the one new session that is its own. Every candidate is new to this run and claimed by no
+   * peer (a peer's bind removes it), and holds a prompt the person typed. A prompt the host sent and waits for picks
+   * the candidate that echoes it. With none waiting, the run binds a candidate when it owns its home, or once a
+   * person's input has reached its own terminal since its spawn: then the one candidate binds, and two or more stand
+   * ambiguous, said once per set of candidates and judged again at every poll, so one that a peer binds leaves the
+   * other to bind.
+   *
+   * In a home the run does not own, a new session that holds none of the run's host prompts may be one a person
+   * started in another terminal in the same folder. Until a person's input reached the run's own terminal, nothing
+   * binds there with no host prompt waiting, and the run stays provisional; a host prompt whose echo timed out
+   * counts as no such input.
+   */
   const pollDiscovery = async (): Promise<void> => {
     const candidates = (await listKimiSessionsForCwd(options.kimiHome, options.cwd)).filter(
       (candidate) => !baseline.has(candidate.sessionId),
     );
-    if (candidates.length === 0) return;
+    if (candidates.length === 0) {
+      ambiguityFingerprint = undefined;
+      return;
+    }
 
+    // The host is asked only while no prompt of its own waits: a waiting prompt is judged by its echo alone.
+    const unprompted = options.ownedRoot === true || (promptWaiters.size === 0 && (await terminalInputSeen()));
+    // Judged on the prompts waiting now: one can settle while the folder is listed or the host answers.
     const expected = new Set([...promptWaiters.values()].map((waiter) => waiter.text));
+    if (expected.size === 0 && !unprompted) return;
     const matches: KimiSessionLocation[] = [];
     for (const candidate of candidates) {
       const prompts = await candidatePrompts(candidate.wirePath, maxDiscoveryBytes);
@@ -529,6 +599,8 @@ export function createKimiSessionObserver(options: KimiSessionObserverOptions): 
       await poll().catch(() => undefined);
       stopped = true;
       settleAllUnmatched('Kimi observer disposed before native prompt echo');
+      discoveries.delete(discovery);
+      if (discoveries.size === 0) discoveriesByWorkspace.delete(workspace);
       eventListeners.clear();
       recordListeners.clear();
       errorListeners.clear();
