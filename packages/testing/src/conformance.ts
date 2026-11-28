@@ -10,10 +10,21 @@
  * (Claude's transcript observer, Codex's structured injection determinism) is
  * covered by each adapter's own tests, not here — conformance is about what all
  * drivers share.
+ *
+ * The native moves (`rotate`, `fork`, `provisional`) are shared too, but not every
+ * adapter follows each one: an adapter names the moves it follows
+ * (`AgentAdapterConformanceOptions.moves`) and its harness gives the member of that
+ * name; each named move is then held to the contract here.
  */
 
 import { describe, it, expect } from 'vitest';
-import { type AgentAdapterBinding, type MonitorMetricFamily, type ObservationLevel } from '@vibefield/puppeteer-core';
+import {
+  type AdapterEventCandidate,
+  type AgentAdapterBinding,
+  type AgentEventEnvelope,
+  type MonitorMetricFamily,
+  type ObservationLevel,
+} from '@vibefield/puppeteer-core';
 import { projectAgentEvents, type TestAgentProjection } from './adapter-projection.js';
 
 const OBSERVATION_LEVELS: ObservationLevel[] = [
@@ -47,6 +58,47 @@ export interface AgentAdapterHarness {
   resumeHistory?: 'observable' | 'identity-only';
   /** Assert that adapter/harness-owned observation, control, and process resources are gone after dispose. */
   assertNoOrphans(): Promise<void>;
+  /**
+   * Make the agent move this run to a new native session in place (Claude's `/clear`, a conversation resumed inside
+   * the TUI); resolves with the new session's id once the agent has said the move. Given when `moves` names `rotate`.
+   */
+  rotate?(): Promise<string>;
+  /**
+   * Make the agent start a session forked from this one, which this run does not observe (Claude's `/fork`);
+   * resolves with the fork's id once the agent has said it. Given when `moves` names `fork`.
+   */
+  fork?(): Promise<string>;
+  /**
+   * A fresh binding whose native id is not known yet (a picker's, a lazy discovery's), with the native acts that
+   * bind it. Given when `moves` names `provisional`.
+   */
+  provisional?(): Promise<AgentProvisionalHarness>;
+}
+
+/** A native move an adapter follows, held to the shared contract when its conformance names it. */
+export type AgentAdapterMove = 'rotate' | 'fork' | 'provisional';
+
+export interface AgentAdapterConformanceOptions {
+  /** The moves this adapter follows; the harness gives the member of each name. */
+  moves?: readonly AgentAdapterMove[];
+}
+
+/** A binding launched without its native id, and what binds it. */
+export interface AgentProvisionalHarness {
+  binding: AgentAdapterBinding;
+  /**
+   * Make the agent bind a session of its own (the picker's choice, the first prompt of a lazy session); resolves
+   * with that session's id once the binding's `session:started` has named it.
+   */
+  bind(): Promise<string>;
+  /**
+   * Where the choice holds only after the bound session's start (Claude's picker: at the chosen session's first hook
+   * of its own, since a preview starts the same way), drive that event. Absent = the predicate reads false before
+   * the bound session's `session:started` is published.
+   */
+  hold?(): Promise<void>;
+  /** Release whatever the harness owns besides the binding. */
+  dispose?(): Promise<void>;
 }
 
 /**
@@ -54,9 +106,25 @@ export interface AgentAdapterHarness {
  * level of an adapter test file: `runAgentAdapterConformance('codex', setup)`.
  * `createHarness` returns a fresh, ready-to-drive binding per assertion.
  */
-export function runAgentAdapterConformance(label: string, createHarness: () => Promise<AgentAdapterHarness>): void {
+export function runAgentAdapterConformance(
+  label: string,
+  createHarness: () => Promise<AgentAdapterHarness>,
+  options: AgentAdapterConformanceOptions = {},
+): void {
   const projectionFor = (harness: AgentAdapterHarness): TestAgentProjection =>
     harness.projection ?? projectAgentEvents(harness.binding);
+  const moves = new Set(options.moves ?? []);
+  const member = <Name extends AgentAdapterMove>(
+    harness: AgentAdapterHarness,
+    name: Name,
+  ): NonNullable<AgentAdapterHarness[Name]> => {
+    const found = harness[name];
+    if (typeof found !== 'function')
+      throw new Error(`the ${label} conformance names ${name} but its harness gives none`);
+    return found.bind(harness) as NonNullable<AgentAdapterHarness[Name]>;
+  };
+  const startsOf = (envelopes: readonly AgentEventEnvelope[], nativeSessionId: string) =>
+    envelopes.filter(({ event }) => event.type === 'session:started' && event.nativeSessionId === nativeSessionId);
 
   describe(`Agent adapter binding conformance: ${label}`, () => {
     it('exposes non-empty session and runtime identities', async () => {
@@ -178,6 +246,118 @@ export function runAgentAdapterConformance(label: string, createHarness: () => P
         projection.dispose();
       }
     });
+
+    if (moves.has('rotate')) {
+      it('follows a move to a new native session: said once with rebind, and the run goes on under the new id', async () => {
+        const h = await createHarness();
+        const projection = projectionFor(h);
+        try {
+          await h.driveTurn('before the move');
+          const before = h.binding.sessionId;
+          const after = await member(h, 'rotate')();
+          expect(after).not.toBe(before);
+          await waitForProjection(() => h.binding.sessionId === after, 'the moved native session id');
+          const starts = startsOf(projection.envelopes, after);
+          expect(starts).toHaveLength(1);
+          expect(starts[0]!.event).toMatchObject({ type: 'session:started', nativeSessionId: after, rebind: true });
+          expect(starts[0]!.nativeSessionId).toBe(after);
+          // a move is not a fork, and nothing after it is said under the old id
+          expect(projection.envelopes.some(({ type }) => type === 'session:forked')).toBe(false);
+          const moved = projection.envelopes.indexOf(starts[0]!);
+          expect(projection.envelopes.slice(moved).filter(({ nativeSessionId }) => nativeSessionId === before)).toEqual(
+            [],
+          );
+          await h.driveTurn('after the move');
+          expect(projection.state.lifecycle).toBe('ready');
+          expect(projection.state.lastAssistantMessage).toBe(h.reply);
+          expect(projection.envelopes.at(-1)!.nativeSessionId).toBe(after);
+        } finally {
+          projection.dispose();
+          await h.binding.dispose();
+        }
+      });
+    }
+
+    if (moves.has('fork')) {
+      it('tells a fork once and keeps observing its own session', async () => {
+        const h = await createHarness();
+        const projection = projectionFor(h);
+        try {
+          await h.driveTurn('before the fork');
+          const own = h.binding.sessionId;
+          const forked = await member(h, 'fork')();
+          expect(forked).not.toBe(own);
+          await waitForProjection(
+            () => projection.envelopes.some(({ type }) => type === 'session:forked'),
+            'the fork reported',
+          );
+          const forks = projection.envelopes.filter(({ type }) => type === 'session:forked');
+          expect(forks.map(({ event }) => event)).toEqual([
+            expect.objectContaining({ type: 'session:forked', nativeSessionId: forked }),
+          ]);
+          // the envelope names the session this run observes, which the fork did not move
+          expect(forks[0]!.nativeSessionId).toBe(own);
+          expect(h.binding.sessionId).toBe(own);
+          expect(startsOf(projection.envelopes, forked)).toEqual([]);
+          await h.driveTurn('after the fork');
+          expect(projection.state.lifecycle).toBe('ready');
+          expect(projection.envelopes.at(-1)!.nativeSessionId).toBe(own);
+        } finally {
+          projection.dispose();
+          await h.binding.dispose();
+        }
+      });
+    }
+
+    if (moves.has('provisional')) {
+      it('says a placeholder id is provisional until a session of its own binds, and never after', async () => {
+        const h = await createHarness();
+        let p: AgentProvisionalHarness | undefined;
+        let off: (() => void) | undefined;
+        try {
+          p = await member(h, 'provisional')();
+          const binding = p.binding;
+          expect(binding.nativeSessionProvisional, 'a provisional launch says so through its binding').toBeTypeOf(
+            'function',
+          );
+          const provisional = (): boolean | undefined => binding.nativeSessionProvisional?.();
+          const seen: Array<{ candidate: AdapterEventCandidate; provisional: boolean | undefined }> = [];
+          off = binding.events.onCandidate((candidate) => seen.push({ candidate, provisional: provisional() }));
+          const placeholder = binding.sessionId;
+          expect(provisional()).toBe(true);
+
+          const bound = await p.bind();
+          expect(bound).not.toBe(placeholder);
+          expect(binding.sessionId).toBe(bound);
+          const starts = seen.filter(
+            ({ candidate }) => candidate.event.type === 'session:started' && candidate.event.nativeSessionId === bound,
+          );
+          expect(starts.length).toBeGreaterThan(0);
+          // the bound session's start is its binding, not a move of a session that had been chosen
+          expect(
+            starts.every(({ candidate }) => candidate.event.type === 'session:started' && !candidate.event.rebind),
+          ).toBe(true);
+          let from = seen.indexOf(starts[0]!);
+          if (p.hold) {
+            // said under the bound id while the choice may still move
+            expect(starts[0]!.provisional).toBe(true);
+            expect(provisional()).toBe(true);
+            from = seen.length;
+            await p.hold();
+            expect(seen.length, 'the event that holds the choice is published').toBeGreaterThan(from);
+          }
+          expect(provisional()).toBe(false);
+          expect(seen.slice(from).filter((entry) => entry.provisional !== false)).toEqual([]);
+          expect(seen.slice(from).every(({ candidate }) => candidate.nativeSessionId === bound)).toBe(true);
+          expect(binding.sessionId).toBe(bound);
+        } finally {
+          off?.();
+          await p?.binding.dispose();
+          await p?.dispose?.();
+          await h.binding.dispose();
+        }
+      });
+    }
   });
 }
 

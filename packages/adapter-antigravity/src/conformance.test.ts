@@ -107,6 +107,20 @@ async function createHarness(existing?: DurableStore): Promise<AgentAdapterHarne
     await dispose();
     disposed = true;
   };
+  const driveTurn = async (prompt: string): Promise<void> => {
+    let completed = false;
+    const off = session.events.onCandidate((candidate: AdapterEventCandidate) => {
+      if (!candidate.replay && candidate.event.type === 'turn:completed') completed = true;
+    });
+    try {
+      const receipt = await session.services.prompt.submit({ text: prompt });
+      if (receipt.status !== 'confirmed')
+        throw new Error(`expected confirmed Antigravity prompt receipt, got ${receipt.status}: ${receipt.reason}`);
+      await waitFor(() => completed, 'Antigravity turn completion');
+    } finally {
+      off();
+    }
+  };
   return {
     binding: session,
     reply: REPLY,
@@ -117,24 +131,22 @@ async function createHarness(existing?: DurableStore): Promise<AgentAdapterHarne
     assertNoOrphans: async () => {
       if (!disposed) throw new Error('Antigravity observer remains active');
     },
-    driveTurn: async (prompt) => {
-      let completed = false;
-      const off = session.events.onCandidate((candidate: AdapterEventCandidate) => {
-        if (!candidate.replay && candidate.event.type === 'turn:completed') completed = true;
-      });
-      try {
-        const receipt = await session.services.prompt.submit({ text: prompt });
-        if (receipt.status !== 'confirmed')
-          throw new Error(`expected confirmed Antigravity prompt receipt, got ${receipt.status}: ${receipt.reason}`);
-        await waitFor(() => completed, 'Antigravity turn completion');
-      } finally {
-        off();
-      }
+    driveTurn,
+    // a fresh run binds its session once the first prompt it was handed is echoed in a new durable record
+    provisional: async () => {
+      if (existing) throw new Error('a resumed Antigravity run names its session at launch');
+      return {
+        binding: session,
+        bind: async () => {
+          await driveTurn('bind this run');
+          return session.sessionId;
+        },
+      };
     },
   };
 }
 
-runAgentAdapterConformance('antigravity-transcript', () => createHarness());
+runAgentAdapterConformance('antigravity-transcript', () => createHarness(), { moves: ['provisional'] });
 
 async function createMonitorHarness(): Promise<AgentMonitorAdapterHarness> {
   const cwd = temporaryDirectory('puppeteer-antigravity-monitor-cwd-');

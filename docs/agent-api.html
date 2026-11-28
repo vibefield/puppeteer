@@ -3347,6 +3347,7 @@ type MonitorFamilyUpdate =
   readonly sessionId: string;
   readonly runtimeSessionId: string;
   observationLevel(): ObservationLevel;
+  durableRecordSeen?(): boolean; // false while no durable record holds sessionId: its resume cannot succeed yet
   nativeSessionProvisional?(): boolean; // true while sessionId is a placeholder this adapter minted; absent = never
   readonly events: {
     onCandidate(listener: (candidate: AdapterEventCandidate) =&gt; void): () =&gt; void;
