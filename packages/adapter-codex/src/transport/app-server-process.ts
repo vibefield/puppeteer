@@ -2,6 +2,7 @@
 
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, realpathSync, rmSync } from 'node:fs';
+import { connect } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveCodexExecutable } from '../detection.js';
@@ -30,7 +31,7 @@ export interface AppServerHandle {
   process: ChildProcess;
   /** Available after `ready()`; consumers never need platform-specific addressing. */
   endpoint(): AppServerEndpoint;
-  /** Resolves once the UDS exists or the ephemeral loopback address is reported. */
+  /** Resolves once the UDS accepts a connection or the ephemeral loopback address is reported. */
   ready(timeoutMs?: number): Promise<void>;
   /** Stop the app-server and resolve only after its process releases session state. */
   dispose(): Promise<void>;
@@ -130,13 +131,33 @@ export function spawnAppServer(opts: SpawnAppServerOptions = {}): AppServerHandl
     processSettled = true;
     resolveProcessExit();
   };
+  // The socket file exists from the server's bind(), before its listen(), and a
+  // connect made in between is refused (ECONNREFUSED), so the file alone does not
+  // say the server is ready. Ready is a connection the server accepts; the probe
+  // closes it at once, before any WebSocket upgrade.
+  let probing = false;
+  const probeUnix = (): void => {
+    if (readySettled || probing || !socketPath || !existsSync(socketPath)) return;
+    probing = true;
+    let answered = false;
+    const probe = connect(socketPath);
+    const answer = (accepted: boolean): void => {
+      if (answered) return;
+      answered = true;
+      probing = false;
+      probe.destroy();
+      if (accepted) settleReady({ kind: 'unix', path: socketPath });
+    };
+    probe.once('connect', () => answer(true));
+    probe.on('error', () => answer(false));
+  };
   child.stderr?.on('data', (chunk: Buffer | string) => {
     stderr = `${stderr}${chunk.toString()}`.slice(-32_768);
-    // Native startup diagnostics arrive just after bind. Observe the socket
-    // immediately on that wakeup instead of always paying the next 50 ms poll.
-    // The filesystem check is still authoritative; polling remains the fallback
-    // for versions that print nothing or print before creating their listener.
-    if (!readySettled && socketPath && existsSync(socketPath)) settleReady({ kind: 'unix', path: socketPath });
+    // Native startup diagnostics arrive around bind. Probe the socket
+    // immediately on that wakeup instead of always paying the next 50 ms poll;
+    // polling remains the fallback for versions that print nothing or print
+    // before their listener accepts.
+    if (socketPath) probeUnix();
     if (transportKind !== 'websocket') return;
     const match = /listening on:\s+(ws:\/\/(?:\[[^\]]+\]|[^:\s]+):\d+)/.exec(stderr);
     if (match?.[1]) settleReady({ kind: 'websocket', url: match[1] });
@@ -152,10 +173,7 @@ export function spawnAppServer(opts: SpawnAppServerOptions = {}): AppServerHandl
   if (socketPath) {
     const poll = (): void => {
       if (readySettled) return;
-      if (existsSync(socketPath)) {
-        settleReady({ kind: 'unix', path: socketPath });
-        return;
-      }
+      probeUnix();
       readyPoll = setTimeout(poll, 50);
       readyPoll.unref?.();
     };

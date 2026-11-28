@@ -137,9 +137,8 @@ describe.skipIf(process.platform === 'win32')('the codex imposter, served over a
     await server.ready();
     const path = unixEndpoint(server).path;
     await server.dispose();
-    // `ready()` is `existsSync(socketPath)` in the adapter, so a file left
-    // behind by a dead imposter would pass the probe and then refuse every
-    // connection — a hang instead of a failure.
+    // A file left behind by a dead imposter would stay at the path and refuse
+    // every connection, so a closed server must not leave its socket behind.
     await waitFor(() => !existsSync(path), 'the socket file to be removed');
   });
 });

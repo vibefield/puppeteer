@@ -1,4 +1,5 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
@@ -41,6 +42,16 @@ function runAs(platform: NodeJS.Platform): void {
   Object.defineProperty(process, 'platform', { ...realPlatform, value: platform });
 }
 
+// A real Unix listener, for the readiness tests: readiness is a connection the server accepts. Windows has no
+// filesystem Unix listener for node to open, so those tests run where the Unix transport does.
+const unixHost = process.platform !== 'win32';
+function listen(listener: Server, socketPath: string): Promise<void> {
+  return new Promise((resolve) => listener.listen(socketPath, resolve));
+}
+function close(listener: Server): Promise<void> {
+  return new Promise((resolve) => (listener.listening ? listener.close(() => resolve()) : resolve()));
+}
+
 describe('spawnAppServer process contract', () => {
   beforeEach(() => runAs('linux'));
   afterEach(() => {
@@ -48,41 +59,78 @@ describe('spawnAppServer process contract', () => {
     vi.clearAllMocks();
   });
 
-  it('observes a bound Unix socket on a native wakeup without waiting for the poll', async () => {
+  it.skipIf(!unixHost)('observes a listening Unix socket on a native wakeup without waiting for the poll', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const root = mkdtempSync(join(tmpdir(), 'codex-ready-'));
     const socketPath = join(root, 'server.sock');
     const child = new FakeChildProcess();
     mocks.spawn.mockReturnValue(child.asChildProcess());
     const server = spawnAppServer({ executable: 'codex-test', transport: 'unix', socketPath });
+    const listener = createServer();
     try {
       child.stderr.write('before bind');
       expect(() => server.endpoint()).toThrow('before ready');
-      writeFileSync(socketPath, 'fixture');
+      await listen(listener, socketPath);
       child.stderr.write('after bind');
       await server.ready();
       expect(server.endpoint()).toEqual({ kind: 'unix', path: socketPath });
     } finally {
       await server.dispose();
+      await close(listener);
       vi.useRealTimers();
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it('retains polling readiness when the native Unix server is silent', async () => {
+  it.skipIf(!unixHost)('retains polling readiness when the native Unix server is silent', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const root = mkdtempSync(join(tmpdir(), 'codex-ready-quiet-'));
     const socketPath = join(root, 'server.sock');
     const child = new FakeChildProcess();
     mocks.spawn.mockReturnValue(child.asChildProcess());
     const server = spawnAppServer({ executable: 'codex-test', transport: 'unix', socketPath });
+    const listener = createServer();
     try {
-      writeFileSync(socketPath, 'fixture');
+      await listen(listener, socketPath);
       await vi.advanceTimersByTimeAsync(50);
+      await server.ready();
       expect(server.endpoint()).toEqual({ kind: 'unix', path: socketPath });
     } finally {
       await server.dispose();
+      await close(listener);
       vi.useRealTimers();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  // The socket file exists from a server's bind(), before its listen(); a connect in between is refused
+  // (ECONNREFUSED), and a client that took the file for readiness saw "app-server transport closed" on its first
+  // request. A regular file at the path fails the connect too (ENOTSOCK), so it stands in for a bound socket here.
+  it.skipIf(!unixHost)('is not ready while the socket path exists but nothing accepts on it', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'codex-ready-bound-'));
+    const socketPath = join(root, 'server.sock');
+    const child = new FakeChildProcess();
+    mocks.spawn.mockReturnValue(child.asChildProcess());
+    const server = spawnAppServer({ executable: 'codex-test', transport: 'unix', socketPath });
+    const listener = createServer();
+    try {
+      writeFileSync(socketPath, 'bound, not yet listening');
+      child.stderr.write('after bind');
+      let ready = false;
+      void server.ready().then(
+        () => void (ready = true),
+        () => undefined,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(ready).toBe(false);
+
+      rmSync(socketPath);
+      await listen(listener, socketPath);
+      await server.ready();
+      expect(server.endpoint()).toEqual({ kind: 'unix', path: socketPath });
+    } finally {
+      await server.dispose();
+      await close(listener);
       rmSync(root, { recursive: true, force: true });
     }
   });
